@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { withAlpha } from "./colorUtils";
 import type { HeroVariant } from "./themes";
-import { cldImg } from "../../utils/cloudImage";
 import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { websiteText } from "./website.text";
 
@@ -188,7 +187,7 @@ export default function HeroSlider({
                     of showing blurred side bars). */}
                 {loadedIndices.has(index) && (
                   <img
-                    src={cldImg(slide.image_url, 1920)}
+                    src={slide.image_url}
                     alt=""
                     fetchPriority={index === 0 ? "high" : "auto"}
                     className="absolute inset-0 h-full w-full object-cover"

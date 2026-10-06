@@ -5,7 +5,7 @@ import { env } from "./env";
  * student photos) as base64 data URIs directly on the row - there is
  * no disk/object storage yet. This config centralizes the limits that
  * behavior depends on so they aren't magic numbers scattered across
- * controllers, and gives the future disk/S3/Cloudinary storage
+ * controllers, and gives the future object storage
  * provider (see shared/storage) a single place to read limits from.
  */
 export const uploadConfig = {

@@ -147,33 +147,28 @@ export async function updateMadrasa(id: number, payload: any) {
 
 /* =========================
    PLATFORM SETTINGS (Super Admin's own account-level config,
-   not tied to any one madrasa - e.g. the Cloudinary account System
-   Template backgrounds get uploaded to)
+   not tied to any one madrasa - e.g. the Cloudflare R2 bucket every
+   upload goes to)
 ========================= */
 
-export type PlatformCloudinaryConfig = {
-  configured: boolean;
-  cloud_name: string | null;
-  api_key: string | null;
-};
+/** Read-only: R2 is configured through the server's R2_* env vars. */
+export type PlatformStorageConfig =
+  | { configured: false; missing: string[] }
+  | {
+      configured: true;
+      provider: "cloudflare-r2";
+      bucket: string;
+      public_url: string;
+    };
 
-export async function getPlatformCloudinaryConfig() {
-  const res = await cachedGet("/super/platform-settings/cloudinary");
-  return res.data.data as PlatformCloudinaryConfig;
+export async function getPlatformStorageConfig() {
+  const res = await cachedGet("/super/platform-settings/storage");
+  return res.data.data as PlatformStorageConfig;
 }
 
-export async function savePlatformCloudinaryConfig(payload: {
-  cloud_name: string;
-  api_key: string;
-  api_secret: string;
-}) {
-  const res = await api.put("/super/platform-settings/cloudinary", payload);
-  return res.data;
-}
-
-export async function deletePlatformCloudinaryConfig() {
-  const res = await api.delete("/super/platform-settings/cloudinary");
-  return res.data;
+export async function testPlatformStorageConnection() {
+  const res = await api.post("/super/platform-settings/storage/test");
+  return res.data.data as { ok: boolean; message?: string };
 }
 
 /* =========================

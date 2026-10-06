@@ -145,9 +145,8 @@ import {
    Platform settings handlers
 ========================= */
 import {
-  getPlatformCloudinaryConfig,
-  savePlatformCloudinaryConfig,
-  deletePlatformCloudinaryConfig,
+  getPlatformStorageConfig,
+  testPlatformStorageConnection,
   getPlatformSmsConfig,
   savePlatformSmsConfig,
   deletePlatformSmsConfig,
@@ -347,9 +346,9 @@ router.get("/document-templates/:id", superAdminMiddleware, getSystemTemplate);
    Base: /api/super/platform-settings
 ===================================================== */
 
-router.get("/platform-settings/cloudinary", superAdminMiddleware, getPlatformCloudinaryConfig);
-router.put("/platform-settings/cloudinary", superAdminMiddleware, savePlatformCloudinaryConfig);
-router.delete("/platform-settings/cloudinary", superAdminMiddleware, deletePlatformCloudinaryConfig);
+// R2 itself is configured via R2_* env vars; the UI only shows status + tests it.
+router.get("/platform-settings/storage", superAdminMiddleware, getPlatformStorageConfig);
+router.post("/platform-settings/storage/test", superAdminMiddleware, testPlatformStorageConnection);
 
 router.get("/platform-settings/sms", superAdminMiddleware, getPlatformSmsConfig);
 router.put("/platform-settings/sms", superAdminMiddleware, savePlatformSmsConfig);

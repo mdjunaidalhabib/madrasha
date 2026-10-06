@@ -53,7 +53,7 @@ describe("studentPhotoSchema", () => {
     studentPhotoSchema.safeParse({ params: { id: "3" }, body: { image } }).success;
 
   it("accepts hosted URLs, data-URIs, empty and null", () => {
-    expect(parse("https://res.cloudinary.com/x.jpg")).toBe(true);
+    expect(parse("https://files.example.com/madrasas/x/students/a.webp")).toBe(true);
     expect(parse("data:image/jpeg;base64,AAAA")).toBe(true);
     expect(parse("")).toBe(true);
     expect(parse(null)).toBe(true);

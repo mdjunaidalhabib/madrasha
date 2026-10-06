@@ -112,23 +112,20 @@ export const env = {
   smsParamNumber: process.env.SMS_PARAM_NUMBER || "number",
   smsParamMessage: process.env.SMS_PARAM_MESSAGE || "message",
 
-  /* ================= FILE STORAGE (Cloudinary) ================= */
-  // Every madrasa (tenant) shares one platform-wide Cloudinary account,
-  // configured by the super admin in Settings and stored in
-  // PlatformCloudinaryConfig (prisma/models/system.prisma) - the API secret
-  // is encrypted at rest with `secretsEncryptionKey` below, via
-  // shared/utils/crypto.util.ts. These CLOUDINARY_* vars are unused
-  // leftovers from the old single-tenant setup and are no longer read by
-  // the upload flow; the folder name still applies per-tenant.
-  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || "",
-  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || "",
-  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || "",
-  // Base folder every upload from this app goes into, e.g.
-  // "madrasha/<madrasaId>/students" is built from this + a sub-folder.
-  cloudinaryUploadFolder: process.env.CLOUDINARY_UPLOAD_FOLDER || "madrasha",
+  /* ================= FILE STORAGE (Cloudflare R2) ================= */
+  // One platform-wide bucket for every upload; each madrasa writes under
+  // madrasas/<slug>/ (see shared/storage/r2.service.ts). Uploads are
+  // disabled (frontend shows "cloud storage not configured") until all five
+  // are set.
+  r2AccountId: process.env.R2_ACCOUNT_ID || "",
+  r2AccessKeyId: process.env.R2_ACCESS_KEY_ID || "",
+  r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
+  r2Bucket: process.env.R2_BUCKET || "",
+  // Public base URL of the bucket (custom domain or https://pub-xxxx.r2.dev).
+  r2PublicUrl: (process.env.R2_PUBLIC_URL || "").replace(/\/+$/, ""),
 
-  // 32-byte (64 hex char) key used to encrypt per-tenant secrets (currently
-  // just Cloudinary API secrets) before they're stored in the database.
+  // 32-byte (64 hex char) key used to encrypt platform secrets (SMS API
+  // key, SMTP password) before they're stored in the database.
   // Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
   secretsEncryptionKey: process.env.SECRETS_ENCRYPTION_KEY || "",
 

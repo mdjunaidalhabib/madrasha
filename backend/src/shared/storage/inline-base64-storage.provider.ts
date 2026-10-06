@@ -9,8 +9,8 @@ import { uploadConfig } from "../config/upload.config";
  * provider later without touching controllers/services.
  *
  * Also accepts `https://` URLs: the shared upload widget (BrandImageBox)
- * uploads to Cloudinary and hands back a hosted URL rather than a base64
- * data URI whenever Cloudinary is configured for the tenant, so a value
+ * uploads to R2 and hands back a hosted URL rather than a base64
+ * data URI whenever cloud storage is configured, so a value
  * arriving here can legitimately be either form.
  */
 export class InlineBase64StorageProvider implements IStorageProvider {

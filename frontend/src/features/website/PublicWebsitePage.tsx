@@ -31,7 +31,6 @@ import ContactSection from "./ContactSection";
 import MapPreview from "./MapPreview";
 import NoticeMarquee from "./NoticeMarquee";
 import { resolveTheme, type ThemeTokens } from "./themes";
-import { cldImg } from "../../utils/cloudImage";
 import {
   LanguageSwitcher,
   formatDate as formatLangDate,
@@ -250,7 +249,7 @@ function PersonCard({
       <div className="-mt-10 px-5 pb-6">
         {photo ? (
           <img
-            src={cldImg(photo, 320)}
+            src={photo}
             alt={name}
             loading="lazy"
             decoding="async"
@@ -633,7 +632,7 @@ export default function PublicWebsitePage({
           >
             {madrasa?.logo_url ? (
               <img
-                src={cldImg(madrasa?.logo_url, 200)}
+                src={madrasa?.logo_url}
                 alt={t.logo}
                 className={`h-11 w-11 shrink-0 ${theme.round} object-cover shadow ring-2 ring-white`}
               />
@@ -750,7 +749,7 @@ export default function PublicWebsitePage({
           <div className="flex min-w-0 items-center gap-2">
             {madrasa?.logo_url ? (
               <img
-                src={cldImg(madrasa?.logo_url, 200)}
+                src={madrasa?.logo_url}
                 alt={t.logo}
                 className="h-9 w-9 shrink-0 rounded-full object-cover shadow ring-2 ring-white"
               />
@@ -888,7 +887,7 @@ export default function PublicWebsitePage({
                             <div className="flex items-center gap-3">
                               {madrasa?.logo_url ? (
                                 <img
-                                  src={cldImg(madrasa.logo_url, 200)}
+                                  src={madrasa.logo_url}
                                   alt={t.logo}
                                   className={`h-12 w-12 shrink-0 ${theme.round} object-cover ring-2 ring-white/30`}
                                 />
@@ -955,7 +954,7 @@ export default function PublicWebsitePage({
                                 aria-label={item.title || t.galleryFallback}
                               >
                                 <img
-                                  src={cldImg(item.image_url, 600)}
+                                  src={item.image_url}
                                   alt={item.title || t.galleryFallback}
                                   loading="lazy"
                                   decoding="async"
@@ -1133,7 +1132,7 @@ export default function PublicWebsitePage({
                             <div className="flex items-center gap-3">
                               {settings.muhtamim_photo ? (
                                 <img
-                                  src={cldImg(settings.muhtamim_photo, 400)}
+                                  src={settings.muhtamim_photo}
                                   alt={settings.muhtamim_name || t.headMessage}
                                   className={`h-14 w-14 shrink-0 ${theme.round} object-cover shadow ring-2 ring-white`}
                                 />
@@ -1174,7 +1173,7 @@ export default function PublicWebsitePage({
                             <div className="flex items-center gap-3">
                               {settings.sovapoti_photo ? (
                                 <img
-                                  src={cldImg(settings.sovapoti_photo, 400)}
+                                  src={settings.sovapoti_photo}
                                   alt={settings.sovapoti_name || t.presidentMessage}
                                   className={`h-14 w-14 shrink-0 ${theme.round} object-cover shadow ring-2 ring-white`}
                                 />
@@ -1218,7 +1217,7 @@ export default function PublicWebsitePage({
                                 <li key={member.id} className="flex items-center gap-3">
                                   {member.photo_url ? (
                                     <img
-                                      src={cldImg(member.photo_url, 200)}
+                                      src={member.photo_url}
                                       alt={member.name}
                                       className={`h-10 w-10 shrink-0 ${theme.round} object-cover`}
                                     />
@@ -1330,7 +1329,7 @@ export default function PublicWebsitePage({
               <div className="flex items-center gap-3">
                 {madrasa?.logo_url ? (
                   <img
-                    src={cldImg(madrasa?.logo_url, 200)}
+                    src={madrasa?.logo_url}
                     alt={t.logo}
                     className={`h-11 w-11 shrink-0 ${theme.round} object-cover ring-2 ring-white/10`}
                   />
@@ -1511,7 +1510,7 @@ export default function PublicWebsitePage({
             <X size={22} />
           </button>
           <img
-            src={cldImg(lightbox.url, 1600)}
+            src={lightbox.url}
             alt={lightbox.title}
             className={`animate-lightboxImage max-h-[85vh] max-w-full ${theme.media} object-contain shadow-2xl`}
             onClick={(e) => e.stopPropagation()}

@@ -11,10 +11,11 @@ import { photoText } from "./photo.text";
 /*  Image helpers                                                      */
 /* ------------------------------------------------------------------ */
 
-// Passport-style 3:4 output, capped so base64 fallbacks (no Cloudinary)
+// Passport-style 3:4 profile photo, 300x400 - the same size the server
+// stores (as WebP, see backend image-processing.ts), so base64 fallbacks
 // stay small in the DB.
-const OUT_W = 480;
-const OUT_H = 640;
+const OUT_W = 300;
+const OUT_H = 400;
 
 /** Center-crops any drawable source to 3:4 and returns a JPEG data-URI. */
 function cropToPortrait(

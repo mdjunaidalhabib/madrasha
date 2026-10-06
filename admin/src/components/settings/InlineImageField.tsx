@@ -5,7 +5,7 @@ import BrandImageBox from "./BrandImageBox";
 import ImageLightbox from "./ImageLightbox";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
-import { cloudNotConfiguredMsg, getCloudinaryPublicId } from "../../utils/cloudUpload";
+import { cloudNotConfiguredMsg, getStoragePublicId } from "../../utils/cloudUpload";
 import { uploadApi, type UploadFolder } from "../../services/phase4Api";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
@@ -44,7 +44,7 @@ export default function InlineImageField({
 
   // Uploading already persists the file to cloud storage - as soon as that
   // succeeds, save it as this field's value right away, no separate "Save"
-  // click needed. Cleans up the old Cloudinary asset it replaced too.
+  // click needed. Cleans up the old stored image it replaced too.
   const handleUploaded = async (url: string | null) => {
     if (!url) {
       useToastStore.getState().show(cloudNotConfiguredMsg(), "error");
@@ -53,8 +53,8 @@ export default function InlineImageField({
     setSaving(true);
     try {
       await onSave(url);
-      const oldPublicId = getCloudinaryPublicId(value);
-      if (oldPublicId && oldPublicId !== getCloudinaryPublicId(url)) {
+      const oldPublicId = getStoragePublicId(value);
+      if (oldPublicId && oldPublicId !== getStoragePublicId(url)) {
         uploadApi
           .deleteImage(oldPublicId)
           .catch((err) => logger.error("OLD BRAND IMAGE CLEANUP ERROR:", err));
@@ -77,7 +77,7 @@ export default function InlineImageField({
         setSaving(true);
         try {
           await onSave("");
-          const oldPublicId = getCloudinaryPublicId(value);
+          const oldPublicId = getStoragePublicId(value);
           if (oldPublicId) {
             uploadApi
               .deleteImage(oldPublicId)

@@ -17,6 +17,7 @@ import { CloudClient, CONNECTOR_VERSION } from './cloud';
 import { Logger, registerSecret } from './logger';
 import { EventQueue, QueueLockedError } from './queue';
 import { dpapiAvailable, writeProtectedFile, type ProtectScope } from './secret';
+import { parsePairingToken, type PairingData } from './pairing';
 import { extractCardFromEvent, REG_EVENT_ALL, zkTimeToText } from './protocol';
 import { deviceLock, loadUserState } from './device-users';
 
@@ -26,7 +27,10 @@ Usage: connector <command> [options]
 
 Commands:
   run                     run the connector (poll K40, sync queue, heartbeat) until stopped
-  setup [--user-scope]    interactive setup; stores the device key protected with Windows DPAPI
+  setup [--token <CODE>] [--user-scope]
+                          setup; stores the device key protected with Windows DPAPI. With --token (or env
+                          PAIRING_TOKEN) the pairing code from the admin panel is used: fully non-interactive.
+                          Without it, asks for a pairing code first (Enter = type the values manually)
   test-device             connect to the K40, print device time / user count / record count
   fetch-once [--dry-run]  read punches once; --dry-run prints them without touching the queue
   status                  queue counts (pending/syncing/synced/failed), last sync, last K40 contact
@@ -109,22 +113,59 @@ async function cmdSetup(cfgPath: string, args: string[]): Promise<number> {
       /* ignore */
     }
   }
-  console.log(`Connector setup -> ${cfgPath}\n(press Enter to keep the value in brackets)\n`);
-  const rl = readline.createInterface({ input: process.stdin });
-  const it: LineIter = rl[Symbol.asyncIterator]();
-  const apiBaseUrl = await ask(it, 'API base URL (https://...)', existing.apiBaseUrl);
-  const madrasaSlug = await ask(it, 'Madrasa slug (X-Madrasa-Slug)', existing.madrasaSlug);
-  const institutionId = await ask(it, 'Institution ID (number)', existing.institutionId ? String(existing.institutionId) : undefined);
-  const deviceId = await ask(it, 'Device ID / code (from admin panel)', existing.deviceId);
-  const useLocal = (await ask(it, 'Override K40 IP/port/comm key locally instead of using cloud values? (y/N)', existing.device ? 'y' : 'n')).toLowerCase().startsWith('y');
-  let device: Record<string, unknown> | undefined;
-  if (useLocal) {
-    const ip = await ask(it, 'K40 IP address', existing.device?.ip);
-    const port = await ask(it, 'K40 port', String(existing.device?.port ?? 4370));
-    const ck = await ask(it, 'K40 comm key (0 = none)', String(existing.device?.commKey ?? 0));
-    device = { ip, port: Number(port), commKey: Number(ck) };
+  const tokenArgIdx = args.indexOf('--token');
+  if (tokenArgIdx !== -1 && (!args[tokenArgIdx + 1] || args[tokenArgIdx + 1].startsWith('--'))) {
+    console.error('Setup aborted: --token needs a value (the pairing code from the admin panel)');
+    return 1;
   }
-  rl.close();
+  let token = (tokenArgIdx !== -1 ? args[tokenArgIdx + 1] : process.env.PAIRING_TOKEN) || '';
+  let pairing: PairingData | undefined;
+  let apiBaseUrl = '';
+  let madrasaSlug = '';
+  let institutionId = '';
+  let deviceId = '';
+  let device: Record<string, unknown> | undefined = existing.device;
+  console.log(`Connector setup -> ${cfgPath}`);
+  if (!token.trim()) {
+    console.log('(press Enter to keep the value in brackets)\n');
+    const rl = readline.createInterface({ input: process.stdin });
+    const it: LineIter = rl[Symbol.asyncIterator]();
+    token = await ask(it, 'Pairing code from admin panel (Enter to type values manually)');
+    // compatibility with old piped answer files that start with the API URL
+    const typedUrl = /^https?:\/\//i.test(token) ? token : '';
+    if (typedUrl) token = '';
+    if (token) {
+      rl.close();
+    } else {
+      apiBaseUrl = typedUrl || (await ask(it, 'API base URL (https://...)', existing.apiBaseUrl));
+      madrasaSlug = await ask(it, 'Madrasa slug (X-Madrasa-Slug)', existing.madrasaSlug);
+      institutionId = await ask(it, 'Institution ID (number)', existing.institutionId ? String(existing.institutionId) : undefined);
+      deviceId = await ask(it, 'Device ID / code (from admin panel)', existing.deviceId);
+      const useLocal = (await ask(it, 'Override K40 IP/port/comm key locally instead of using cloud values? (y/N)', existing.device ? 'y' : 'n')).toLowerCase().startsWith('y');
+      device = undefined;
+      if (useLocal) {
+        const ip = await ask(it, 'K40 IP address', existing.device?.ip);
+        const port = await ask(it, 'K40 port', String(existing.device?.port ?? 4370));
+        const ck = await ask(it, 'K40 comm key (0 = none)', String(existing.device?.commKey ?? 0));
+        device = { ip, port: Number(port), commKey: Number(ck) };
+      }
+      rl.close();
+    }
+  }
+  if (token) {
+    try {
+      pairing = parsePairingToken(token);
+    } catch (e) {
+      console.error(`Setup aborted: invalid pairing code: ${(e as Error).message}`);
+      return 1;
+    }
+    registerSecret(pairing.key);
+    apiBaseUrl = pairing.url;
+    madrasaSlug = pairing.slug;
+    institutionId = String(pairing.inst);
+    deviceId = pairing.dev;
+    console.log(`Pairing code OK: ${apiBaseUrl}  slug=${madrasaSlug}  institution=${institutionId}  device=${deviceId}`);
+  }
   try {
     validateApiBaseUrl(apiBaseUrl, existing.allowInsecureHttp === true);
     if (!madrasaSlug || !deviceId || !(Number(institutionId) > 0)) throw new Error('slug, institution id and device id are required');
@@ -132,7 +173,7 @@ async function cmdSetup(cfgPath: string, args: string[]): Promise<number> {
     console.error(`Setup aborted: ${(e as Error).message}`);
     return 1;
   }
-  const key = process.env.DEVICE_KEY || (await askHidden('Device key (input hidden; or set env DEVICE_KEY to skip this prompt)'));
+  const key = pairing?.key || process.env.DEVICE_KEY || (await askHidden('Device key (input hidden; or set env DEVICE_KEY to skip this prompt)'));
   if (!key) {
     console.error('Device key is empty - aborted.');
     return 1;
@@ -169,6 +210,7 @@ async function cmdSetup(cfgPath: string, args: string[]): Promise<number> {
     console.error(`config validation problem: ${(e as Error).message}`);
     return 1;
   }
+  if (pairing) console.log(`SETUP OK: device ${deviceId} paired with ${apiBaseUrl} (${madrasaSlug}).`);
   console.log('Next: "connector test-device", then install the service (install-service.ps1).');
   return 0;
 }

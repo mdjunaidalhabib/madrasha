@@ -13,30 +13,21 @@ const respondError = (res: Response, error: unknown, logTag: string) => {
   return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: (error as Error)?.message });
 };
 
-export const getPlatformCloudinaryConfig = async (_req: Request, res: Response) => {
+export const getPlatformStorageConfig = async (_req: Request, res: Response) => {
   try {
-    const data = await platformSettingsService.getCloudinaryConfig();
+    const data = await platformSettingsService.getStorageConfig();
     res.json({ data });
   } catch (error) {
-    respondError(res, error, "getPlatformCloudinaryConfig ERROR:");
+    respondError(res, error, "getPlatformStorageConfig ERROR:");
   }
 };
 
-export const savePlatformCloudinaryConfig = async (req: Request, res: Response) => {
+export const testPlatformStorageConnection = async (_req: Request, res: Response) => {
   try {
-    await platformSettingsService.saveCloudinaryConfig(req.body);
-    res.json({ message: t({ bn: "Cloudinary কনফিগ সংরক্ষণ হয়েছে", en: "Cloudinary config saved" }) });
+    const data = await platformSettingsService.testStorageConnection();
+    res.json({ data });
   } catch (error) {
-    respondError(res, error, "savePlatformCloudinaryConfig ERROR:");
-  }
-};
-
-export const deletePlatformCloudinaryConfig = async (_req: Request, res: Response) => {
-  try {
-    await platformSettingsService.deleteCloudinaryConfig();
-    res.json({ message: t({ bn: "Cloudinary কনফিগ সরানো হয়েছে", en: "Cloudinary config removed" }) });
-  } catch (error) {
-    respondError(res, error, "deletePlatformCloudinaryConfig ERROR:");
+    respondError(res, error, "testPlatformStorageConnection ERROR:");
   }
 };
 

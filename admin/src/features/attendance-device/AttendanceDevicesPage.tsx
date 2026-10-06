@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { KeyRound, Pencil, Plus, Power, RefreshCw, Trash2, Zap } from "lucide-react";
+import { Download, KeyRound, Pencil, Plus, Power, RefreshCw, Trash2, Zap } from "lucide-react";
 
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
@@ -17,6 +17,7 @@ import { hasPermission } from "../../utils/permissions";
 import DeviceFormModal from "./DeviceFormModal";
 import DeviceKeyModal, { type RevealedKey } from "./DeviceKeyModal";
 import { DeviceStatusBadge, TimeAgo } from "./components";
+import { CONNECTOR_DOWNLOAD_URL } from "./pairing";
 import { useDeviceStatus, useTick } from "./hooks";
 import type { AttendanceDevice } from "./types";
 import { formatNumber, getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
@@ -25,6 +26,10 @@ import { attendanceDeviceText } from "./attendanceDevice.text";
 const REFRESH_MS = 15_000;
 const TEST_POLL_MS = 4_000;
 const TEST_TIMEOUT_MS = 60_000;
+
+/** Compact outlined header-toolbar control (refresh / download). */
+const toolbarBtn =
+  "inline-flex h-8 items-center rounded-md border border-slate-200 bg-white text-[13px] font-medium shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800";
 
 type TestState = {
   phase: "waiting" | "ok" | "failed" | "timeout";
@@ -276,23 +281,39 @@ export default function AttendanceDevicesPage() {
         title={tx.title}
         subtitle={tx.subtitle}
         actions={
-          <>
-            <Button
-              variant="secondary"
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
               onClick={manualRefresh}
               disabled={refreshing}
-              className="gap-1.5"
+              title={tx.refresh}
+              aria-label={tx.refresh}
+              className={`${toolbarBtn} w-8 justify-center text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100`}
             >
               <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
-              {tx.refresh}
-            </Button>
+            </button>
+            <a
+              href={CONNECTOR_DOWNLOAD_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={tx.downloadConnectorHint}
+              aria-label={tx.downloadConnector}
+              className={`${toolbarBtn} gap-1.5 px-2.5 text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white`}
+            >
+              <Download size={14} />
+              <span className="hidden sm:inline">{tx.downloadConnector}</span>
+            </a>
             {canManage && (
-              <Button onClick={openCreate} className="gap-1.5">
+              <button
+                type="button"
+                onClick={openCreate}
+                className="inline-flex h-8 items-center gap-1 rounded-md bg-indigo-600 pl-2 pr-3 text-[13px] font-medium text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40"
+              >
                 <Plus size={15} />
                 {tx.newDevice}
-              </Button>
+              </button>
             )}
-          </>
+          </div>
         }
       />
 
@@ -309,7 +330,19 @@ export default function AttendanceDevicesPage() {
         ) : devices.length === 0 ? (
           <EmptyState
             title={tx.emptyTitle}
-            hint={tx.emptyHint}
+            hint={`${tx.emptyHint} ${tx.emptyConnectorHint}`}
+            action={
+              <a
+                href={CONNECTOR_DOWNLOAD_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={tx.downloadConnectorHint}
+                className={`${toolbarBtn} gap-1.5 px-3 text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white`}
+              >
+                <Download size={15} />
+                {tx.downloadConnector}
+              </a>
+            }
           />
         ) : (
           <div className="space-y-3">

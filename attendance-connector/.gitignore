@@ -5,3 +5,5 @@ logs/
 secrets/
 config.json
 *.tmp
+release/
+installer/output/

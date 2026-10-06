@@ -9,7 +9,7 @@ import InlineTextField from "../../../components/settings/InlineTextField";
 import InlineImageField from "../../../components/settings/InlineImageField";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
-import { getCloudinaryPublicId } from "../../../utils/cloudUpload";
+import { getStoragePublicId } from "../../../utils/cloudUpload";
 import { uploadApi } from "../../../services/phase4Api";
 import {
   getMyProfile,
@@ -180,9 +180,9 @@ export default function ProfileSettingsPage() {
   };
 
   const savePhoto = async (value: string) => {
-    const oldPublicId = getCloudinaryPublicId(profile?.photo_url);
+    const oldPublicId = getStoragePublicId(profile?.photo_url);
     await patchProfile({ photo_url: value });
-    if (oldPublicId && oldPublicId !== getCloudinaryPublicId(value)) {
+    if (oldPublicId && oldPublicId !== getStoragePublicId(value)) {
       uploadApi
         .deleteImage(oldPublicId)
         .catch((err) => logger.error("OLD PROFILE PHOTO CLEANUP ERROR:", err));

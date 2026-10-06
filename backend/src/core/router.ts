@@ -76,8 +76,10 @@ import notificationRoutes from "../modules/notifications/notification.routes";
 import billingRoutes from "../modules/billing/billing.routes";
 import billingAdminRoutes from "../modules/billing/billing-admin.routes";
 
-// 🖼️ Phase 4: Image/File Storage (Cloudinary)
+// 🖼️ Phase 4: Image/File Storage (Cloudflare R2)
 import uploadRoutes from "../modules/uploads/upload.routes";
+import { platformSettingsService } from "../modules/super-admin/platform-settings.service";
+import { CONNECTOR_INSTALLER_KEY, publicUrlFor } from "../shared/storage/r2.service";
 
 // 👨‍👩‍👧 Phase 5: Guardian Portal
 import guardianRoutes from "../modules/guardian/guardian.routes";
@@ -149,6 +151,15 @@ router.use("/super/message-billing", billingAdminRoutes);
    reject it. The router applies its own tenantMiddleware + per-route auth.
 ========================================================= */
 router.use("/attendance-devices", attendanceDeviceRoutes);
+
+/* Public, stable link to the Windows connector installer: redirects to the
+   copy CI uploads to the platform R2 bucket. Public on purpose - the
+   installer is useless without a pairing code from the admin panel. */
+router.get("/downloads/attendance-connector", async (_req, res) => {
+  const credentials = await platformSettingsService.resolveStorageCredentials().catch(() => null);
+  if (!credentials) return res.status(503).json({ success: false, message: "Download not available yet" });
+  return res.redirect(302, publicUrlFor(credentials, CONNECTOR_INSTALLER_KEY));
+});
 
 /* =========================================================
    📄 REPORT PDF DOWNLOAD (public, id-guarded)

@@ -3,9 +3,9 @@ import { Cloud, MessageSquare, Mail, RefreshCw, ShieldCheck, Eye, EyeOff } from 
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import {
-  getPlatformCloudinaryConfig,
-  savePlatformCloudinaryConfig,
-  deletePlatformCloudinaryConfig,
+  getPlatformStorageConfig,
+  testPlatformStorageConnection,
+  type PlatformStorageConfig,
   getPlatformSmsConfig,
   savePlatformSmsConfig,
   deletePlatformSmsConfig,
@@ -26,33 +26,30 @@ import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 
 /**
- * Platform-wide Super Admin settings - not tied to any one madrasa. Only
- * one section (Cloudinary) exists today; built as a list of independent
- * cards so more settings can be added later without restructuring the page.
+ * Platform-wide Super Admin settings - not tied to any one madrasa. Built
+ * as a list of independent cards so more settings can be added later
+ * without restructuring the page.
  */
-function CloudinarySettingsCard() {
+
+/**
+ * The single Cloudflare R2 bucket every upload goes to (each madrasa under
+ * madrasas/<slug>/). Configured only through the server's R2_* env vars -
+ * this card just shows the status and can test the connection.
+ */
+function StorageSettingsCard() {
   const toast = useToastStore((s) => s.show);
 
   const [loading, setLoading] = useState(true);
-  const [configured, setConfigured] = useState(false);
-  const [cloudName, setCloudName] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [apiSecret, setApiSecret] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [config, setConfig] = useState<PlatformStorageConfig | null>(null);
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    getPlatformCloudinaryConfig()
-      .then((data) => {
-        if (cancelled) return;
-        setConfigured(data.configured);
-        setCloudName(data.cloud_name || "");
-        // API key/secret are write-only - only the (non-sensitive) cloud name is prefilled.
-      })
+    getPlatformStorageConfig()
+      .then((data) => !cancelled && setConfig(data))
       .catch((err) => {
-        logger.error("LOAD PLATFORM CLOUDINARY CONFIG ERROR:", err);
-        toast("কনফিগারেশন লোড করা যায়নি", "error");
+        logger.error("LOAD PLATFORM STORAGE CONFIG ERROR:", err);
+        toast("স্টোরেজের অবস্থা লোড করা যায়নি", "error");
       })
       .finally(() => !cancelled && setLoading(false));
     return () => {
@@ -61,64 +58,34 @@ function CloudinarySettingsCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const save = async () => {
-    if (!cloudName.trim() || !apiKey.trim() || !apiSecret.trim()) {
-      toast("Cloud Name, API Key ও API Secret — তিনটিই আবশ্যক", "error");
-      return;
-    }
-    setSaving(true);
+  const test = async () => {
+    setTesting(true);
     try {
-      await savePlatformCloudinaryConfig({
-        cloud_name: cloudName.trim(),
-        api_key: apiKey.trim(),
-        api_secret: apiSecret.trim(),
-      });
-      setConfigured(true);
-      setApiSecret("");
-      toast("Cloudinary কনফিগারেশন সেভ হয়েছে", "success");
+      const result = await testPlatformStorageConnection();
+      if (result.ok) toast("R2 বাকেটের সাথে সংযোগ সফল", "success");
+      else toast(`সংযোগ হয়নি: ${result.message || ""}`, "error");
     } catch (err) {
-      logger.error("SAVE PLATFORM CLOUDINARY CONFIG ERROR:", err);
-      toast("সেভ করা যায়নি", "error");
+      logger.error("TEST PLATFORM STORAGE ERROR:", err);
+      toast("পরীক্ষা করা যায়নি", "error");
     } finally {
-      setSaving(false);
+      setTesting(false);
     }
   };
 
-  const remove = () => {
-    useConfirmStore.getState().show({
-      title: "Cloudinary কনফিগারেশন মুছুন",
-      message:
-        "প্ল্যাটফর্ম Cloudinary অ্যাকাউন্ট সরিয়ে ফেলতে চান? এরপর Super Admin থেকে সিস্টেম টেমপ্লেটের ব্যাকগ্রাউন্ড আপলোড কাজ করবে না, যতক্ষণ না আবার কনফিগার করা হয়।",
-      confirmText: "মুছুন",
-      danger: true,
-      onConfirm: async () => {
-        try {
-          await deletePlatformCloudinaryConfig();
-          setConfigured(false);
-          setCloudName("");
-          setApiKey("");
-          setApiSecret("");
-          toast("কনফিগারেশন মুছে ফেলা হয়েছে", "success");
-        } catch (err) {
-          logger.error("DELETE PLATFORM CLOUDINARY CONFIG ERROR:", err);
-          toast("মুছে ফেলা যায়নি", "error");
-        }
-      },
-    });
-  };
+  const configured = config?.configured === true;
 
   return (
     <div className="rounded-2xl border bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <div className="mb-5 flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <span className="rounded-xl bg-blue-50 p-2 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+          <span className="rounded-xl bg-orange-50 p-2 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
             <Cloud size={20} />
           </span>
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Cloudinary (Platform Storage)</h2>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Cloudflare R2 (Platform Storage)</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Super Admin যখন System Document Template-এর ব্যাকগ্রাউন্ড ছবি আপলোড করেন, সেটি এই
-              অ্যাকাউন্টে জমা হয় — কোনো নির্দিষ্ট মাদ্রাসার অ্যাকাউন্ট নয়।
+              সব মাদ্রাসার ছবি এই এক বাকেটে জমা হয় — প্রতিটি মাদ্রাসা নিজের ফোল্ডারে (
+              <code className="text-xs">madrasas/&lt;slug&gt;/</code>)। প্রোফাইল ছবি ৩০০×৪০০ WebP, অন্য ছবি ছোট করে WebP হিসেবে রাখা হয়।
             </p>
           </div>
         </div>
@@ -133,56 +100,35 @@ function CloudinarySettingsCard() {
 
       {loading ? (
         <p className="text-sm text-gray-500 dark:text-slate-400">লোড হচ্ছে...</p>
+      ) : config?.configured ? (
+        <dl className="grid gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-xs font-semibold text-slate-500 dark:text-slate-400">Bucket</dt>
+            <dd className="font-mono text-slate-900 dark:text-slate-100">{config.bucket}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-slate-500 dark:text-slate-400">Public URL</dt>
+            <dd className="break-all font-mono text-slate-900 dark:text-slate-100">{config.public_url}</dd>
+          </div>
+        </dl>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">Cloud Name</label>
-            <input
-              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              value={cloudName}
-              onChange={(e) => setCloudName(e.target.value)}
-              placeholder="e.g. my-cloud-name"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">API Key</label>
-            <input
-              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder={configured ? "•••••••••• (পরিবর্তনে নতুন মান দিন)" : ""}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-semibold dark:text-slate-200">API Secret</label>
-            <input
-              type="password"
-              className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              value={apiSecret}
-              onChange={(e) => setApiSecret(e.target.value)}
-              placeholder={configured ? "•••••••••• (পরিবর্তনে নতুন মান দিন)" : ""}
-            />
-          </div>
+        <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          সার্ভারের <code>backend/.env</code>-এ এই মানগুলো দিয়ে backend রিস্টার্ট করুন:
+          <code className="mt-1 block font-mono text-xs">{(config && !config.configured ? config.missing : []).join(", ")}</code>
         </div>
       )}
-      {!loading && (
-        <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
-          সেভ করার পর Secret আর কখনো দেখানো হয় না — পরিবর্তন করতে হলে আবার নতুন করে লিখুন।
-        </p>
-      )}
 
-      <div className="mt-6 flex items-center justify-between gap-2">
-        {configured ? (
-          <Button variant="danger" onClick={remove} disabled={loading || saving}>
-            মুছুন
+      <p className="mt-3 text-xs text-gray-500 dark:text-slate-400">
+        নিরাপত্তার জন্য R2-এর key শুধু সার্ভারের <code>.env</code>-এ থাকে, এখান থেকে দেখা বা বদলানো যায় না।
+      </p>
+
+      {configured && (
+        <div className="mt-6 flex justify-end">
+          <Button variant="secondary" onClick={test} disabled={testing}>
+            {testing ? "পরীক্ষা চলছে..." : "সংযোগ পরীক্ষা"}
           </Button>
-        ) : (
-          <span />
-        )}
-        <Button onClick={save} disabled={loading || saving}>
-          {saving ? "সেভ হচ্ছে..." : "সেভ করুন"}
-        </Button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -957,7 +903,7 @@ export default function SuperAdminSettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Settings" subtitle="প্ল্যাটফর্ম-ওয়াইড কনফিগারেশন — নির্দিষ্ট কোনো মাদ্রাসার জন্য নয়" />
-      <CloudinarySettingsCard />
+      <StorageSettingsCard />
       <SmsSettingsCard />
       <EmailSettingsCard />
       <SuperAdminAccountsCard />

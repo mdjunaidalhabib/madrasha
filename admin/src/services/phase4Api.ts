@@ -96,7 +96,7 @@ export const notificationApi = {
 
 };
 
-/* ================= IMAGE / FILE STORAGE (Cloudinary) ================= */
+/* ================= IMAGE / FILE STORAGE (Cloudflare R2) ================= */
 
 export type UploadFolder =
   | "students"
@@ -117,7 +117,8 @@ export interface UploadImageResponse {
 }
 
 export const uploadApi = {
-  /** Uploads a base64 data-URI image to Cloudinary. If cloud storage
+  /** Uploads a base64 data-URI image (server resizes it to WebP and stores
+   * it in R2 under this madrasa's folder). If cloud storage
    * isn't configured yet (`configured: false`), the caller should keep
    * using the base64 string it already has instead of `url`. */
   uploadImage: (image: string, folder: UploadFolder = "misc") =>

@@ -11,7 +11,7 @@ import {
   toTemplateListItemDto,
 } from "../document-templates/document-templates.mapper";
 import { TemplateActor } from "../document-templates/document-templates.types";
-import { uploadPlatformBackground } from "./platform-cloudinary.util";
+import { uploadPlatformBackground } from "./platform-storage.util";
 import { t } from "../../shared/i18n";
 
 const SUPER_ADMIN_CONTEXT = { kind: "super_admin" as const };

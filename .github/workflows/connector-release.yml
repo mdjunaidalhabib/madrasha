@@ -1,0 +1,147 @@
+name: Connector Release
+
+# Builds attendance-connector into a single connector.exe (@yao-pkg/pkg) and an Inno Setup installer,
+# then uploads both to the platform Cloudflare R2 bucket under downloads/attendance-connector/.
+# The admin panel download button hits GET /api/downloads/attendance-connector, which redirects there.
+# Release: git tag connector-v1.1.0 && git push origin connector-v1.1.0
+
+on:
+  push:
+    tags:
+      - "connector-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: connector-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: attendance-connector
+        shell: pwsh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: attendance-connector/package-lock.json
+
+      - name: Version
+        id: ver
+        run: |
+          $v = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -like 'connector-v*') {
+            $v = $env:GITHUB_REF_NAME.Substring('connector-v'.Length)
+          }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "Connector version: $v"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Package connector.exe
+        run: npm run package
+
+      - name: Smoke test connector.exe
+        run: |
+          if (-not (Test-Path release\connector.exe)) { throw 'release\connector.exe was not produced' }
+          & .\release\connector.exe help
+          Write-Host "connector.exe help exit code: $LASTEXITCODE (informational)"
+          $global:LASTEXITCODE = 0
+
+      # Code signing placeholder (enable once a certificate is available as secrets):
+      # - name: Sign connector.exe
+      #   env:
+      #     CERT_PFX_BASE64: ${{ secrets.CODESIGN_PFX_BASE64 }}
+      #     CERT_PASSWORD: ${{ secrets.CODESIGN_PASSWORD }}
+      #   run: |
+      #     [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\cert.pfx", [Convert]::FromBase64String($env:CERT_PFX_BASE64))
+      #     $signtool = (Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1).FullName
+      #     & $signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 /f "$env:RUNNER_TEMP\cert.pfx" /p $env:CERT_PASSWORD release\connector.exe
+      #     Remove-Item "$env:RUNNER_TEMP\cert.pfx"
+
+      - name: Install Inno Setup
+        run: |
+          $iscc = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) {
+            choco install innosetup -y --no-progress
+            if ($LASTEXITCODE -ne 0) { throw 'choco install innosetup failed' }
+            $iscc = @(
+              "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+              "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+            ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+          if (-not $iscc) { throw 'ISCC.exe not found after install' }
+          "ISCC=$iscc" >> $env:GITHUB_ENV
+          Write-Host "Using $iscc"
+
+      - name: Build installer
+        run: |
+          & $env:ISCC "/DAppVersion=${{ steps.ver.outputs.version }}" installer\AttendanceConnector.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
+          if (-not (Test-Path installer\output\AttendanceConnectorSetup.exe)) { throw 'AttendanceConnectorSetup.exe missing' }
+
+      # Code signing placeholder for the installer (same certificate as above):
+      # - name: Sign installer
+      #   run: '& $signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 /f cert.pfx /p $env:CERT_PASSWORD installer\output\AttendanceConnectorSetup.exe'
+
+      - name: Collect assets + checksums
+        run: |
+          New-Item -ItemType Directory -Force dist-release | Out-Null
+          Copy-Item installer\output\AttendanceConnectorSetup.exe dist-release\
+          Copy-Item release\connector.exe dist-release\
+          Get-ChildItem dist-release\*.exe | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
+          } | Set-Content dist-release\SHA256SUMS.txt -Encoding ascii
+          Get-Content dist-release\SHA256SUMS.txt
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: attendance-connector-${{ steps.ver.outputs.version }}
+          path: attendance-connector/dist-release/*
+          if-no-files-found: error
+
+      # Publish to the platform Cloudflare R2 bucket (not GitHub Releases).
+      # The backend route GET /api/downloads/attendance-connector redirects to
+      # downloads/attendance-connector/AttendanceConnectorSetup.exe (the
+      # "latest" copy); a versioned copy is kept next to it for rollback.
+      # Repo secrets: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
+      # R2_BUCKET - use an R2 API token limited to Object Read & Write on that bucket.
+      - name: Upload to Cloudflare R2
+        if: startsWith(github.ref, 'refs/tags/connector-v') || github.event_name == 'workflow_dispatch'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          if (-not $env:R2_ACCOUNT_ID -or -not $env:R2_BUCKET -or -not $env:AWS_ACCESS_KEY_ID) { throw 'R2_* repository secrets are not set' }
+          $endpoint = "https://$($env:R2_ACCOUNT_ID).r2.cloudflarestorage.com"
+          $base = "s3://$($env:R2_BUCKET)/downloads/attendance-connector"
+          foreach ($f in 'AttendanceConnectorSetup.exe', 'connector.exe', 'SHA256SUMS.txt') {
+            aws s3 cp "dist-release/$f" "$base/v$($env:VERSION)/$f" --endpoint-url $endpoint --cache-control "public, max-age=31536000, immutable" --only-show-errors
+            if ($LASTEXITCODE -ne 0) { throw "upload of v$($env:VERSION)/$f failed" }
+            # "latest" copy: short cache so a new release shows up within minutes
+            aws s3 cp "dist-release/$f" "$base/$f" --endpoint-url $endpoint --cache-control "public, max-age=300" --only-show-errors
+            if ($LASTEXITCODE -ne 0) { throw "upload of $f failed" }
+          }
+          Write-Host "Published v$($env:VERSION) to R2: downloads/attendance-connector/"

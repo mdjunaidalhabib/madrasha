@@ -3,8 +3,8 @@ export interface UploadImageRequestDto {
   /// FileReader.readAsDataURL(), same format already used for the old
   /// inline-base64 fields.
   image: string;
-  /// Which feature this upload belongs to - becomes a Cloudinary
-  /// sub-folder, e.g. "students", "teachers", "branding".
+  /// Which feature this upload belongs to - becomes the folder under
+  /// madrasas/<slug>/ in R2, e.g. "students", "teachers", "branding".
   folder?: string;
 }
 

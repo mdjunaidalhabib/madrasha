@@ -78,8 +78,8 @@ model Madrasa {
   // Custom report header/footer IMAGE, shown on every printed report/document
   // INSTEAD of the default logo+name+address header when enabled - not text,
   // so a madrasa can print its own pre-designed letterhead artwork at full
-  // upload quality (same untouched Cloudinary storage as reportLogo/
-  // reportBanner/reportWatermark - no server-side resize/compression).
+  // upload quality (same R2 "branding" preset as reportLogo/
+  // reportBanner/reportWatermark - WebP, at most 2400px wide, print-sharp).
   // Enabling this hides the default header/footer entirely, even before an
   // image is uploaded (the space simply renders blank until one is set).
   // printMode "letterhead" suppresses the logo/background/watermark/header/

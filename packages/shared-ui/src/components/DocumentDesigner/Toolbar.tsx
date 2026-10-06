@@ -19,8 +19,8 @@ export interface ToolbarProps {
   background: CanvasBackground | undefined;
   onChangeBackground: (background: CanvasBackground | undefined) => void;
   /** Uploads a background image file and resolves to a usable URL/data URI.
-   * Kept generic so the tenant designer (per-tenant Cloudinary via
-   * /uploads/image) and the Super Admin designer (platform Cloudinary) can
+   * Kept generic so the tenant designer (R2, madrasas/<slug>/ via
+   * /uploads/image) and the Super Admin designer (R2, platform/) can
    * each plug in their own upload endpoint without this component knowing
    * which one it is. */
   onUploadBackgroundImage: (file: File) => Promise<string>;

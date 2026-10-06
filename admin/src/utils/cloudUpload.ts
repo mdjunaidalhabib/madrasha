@@ -21,11 +21,12 @@ export const cloudNotConfiguredMsg = () => getText(servicesText).cloudNotConfigu
 export const isPendingCloudUpload = (value?: string | null) =>
   typeof value === "string" && value.startsWith("data:image/");
 
-/** Extracts the Cloudinary public_id (folder path included, no extension)
- * from a secure_url, e.g. ".../upload/v169.../madrasa_uploads/branding/abc.png"
- * -> "madrasa_uploads/branding/abc". Returns null for non-Cloudinary URLs. */
-export const getCloudinaryPublicId = (url?: string | null): string | null => {
-  if (!url || !url.includes("res.cloudinary.com")) return null;
-  const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z0-9]+$/);
+/** Extracts the R2 object key from a stored image URL, e.g.
+ * "https://cdn.example.com/madrasas/abc/students/2026/10/uuid.webp"
+ * -> "madrasas/abc/students/2026/10/uuid.webp". Returns null for anything
+ * else (external URLs, base64), which the backend can't delete. */
+export const getStoragePublicId = (url?: string | null): string | null => {
+  if (!url || !url.startsWith("https://")) return null;
+  const match = url.match(/\/(madrasas\/[^?#]+)$/);
   return match ? match[1] : null;
 };
