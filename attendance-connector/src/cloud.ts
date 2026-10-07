@@ -2,7 +2,7 @@
 import { redactText } from './logger';
 import type { AppConfig } from './config';
 
-export const CONNECTOR_VERSION = '1.1.0';
+export const CONNECTOR_VERSION = '1.2.0';
 const BASE_PATH = '/api/attendance-devices/connector';
 
 export interface CloudDeviceConfig {
@@ -90,6 +90,8 @@ export interface HeartbeatBody {
   users_synced_version?: string;
   user_sync_error?: string | null;
   device_user_count?: number;
+  /** punches still in the local queue (pending + syncing) - the cloud holds auto-absent while > 0 */
+  queue_pending?: number;
 }
 
 /** Classified outcome of one HTTP call; never throws. */

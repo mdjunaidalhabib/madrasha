@@ -25,6 +25,8 @@ export const toSettingsDto = (r: DeviceRules) => ({
   late_grace_minutes: r.lateGraceMinutes,
   auto_absent_enabled: r.autoAbsentEnabled,
   absent_cutoff_time: r.absentCutoffTime,
+  auto_absent_max_wait_minutes: r.autoAbsentMaxWaitMinutes,
+  manual_sms: r.manualSms,
   checkout_enabled: r.checkoutEnabled,
   checkout_after_time: r.checkoutAfterTime,
   weekly_off_days: [...(r.weeklyOffDays ?? [])].sort((a, b) => a - b),
@@ -66,6 +68,8 @@ export class AttendanceDeviceSettingsService {
     if (dto.late_grace_minutes !== undefined) next.lateGraceMinutes = dto.late_grace_minutes;
     if (dto.auto_absent_enabled !== undefined) next.autoAbsentEnabled = dto.auto_absent_enabled;
     if (dto.absent_cutoff_time !== undefined) next.absentCutoffTime = dto.absent_cutoff_time;
+    if (dto.auto_absent_max_wait_minutes !== undefined) next.autoAbsentMaxWaitMinutes = dto.auto_absent_max_wait_minutes;
+    if (dto.manual_sms !== undefined) next.manualSms = dto.manual_sms;
     if (dto.checkout_enabled !== undefined) next.checkoutEnabled = dto.checkout_enabled;
     if (dto.checkout_after_time !== undefined) next.checkoutAfterTime = dto.checkout_after_time;
     if (dto.weekly_off_days !== undefined) next.weeklyOffDays = [...dto.weekly_off_days].sort((a, b) => a - b);

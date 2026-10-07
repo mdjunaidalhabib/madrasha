@@ -451,6 +451,20 @@ export default function AttendanceDevicesPage() {
                         <ClockDrift seconds={device.clock_drift_sec} />
                       </dd>
                     </div>
+                    {device.queue_pending != null && (
+                      <div>
+                        <dt className="text-gray-400 dark:text-slate-500">{tx.queue}</dt>
+                        <dd
+                          className={`font-medium ${
+                            device.queue_pending > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-700 dark:text-slate-200"
+                          }`}
+                        >
+                          {device.queue_pending > 0
+                            ? tx.queuePending(formatNumber(device.queue_pending, lang))
+                            : tx.queueEmpty}
+                        </dd>
+                      </div>
+                    )}
                     <div className="sm:col-span-2">
                       <dt className="text-gray-400 dark:text-slate-500">{tx.userSync}</dt>
                       <dd className="flex flex-wrap items-center gap-2 font-medium text-gray-700 dark:text-slate-200">

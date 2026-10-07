@@ -517,6 +517,45 @@ describe("auto absent job", () => {
     map("9", { teacherId: 301 });
     setRules({ autoAbsentEnabled: true, absentCutoffTime: "10:30" });
     enableEvent("ATTENDANCE_ABSENT");
+    // Device synced: read after the cutoff (11:00 Dhaka) with an empty queue.
+    db.attendanceDevice[0].lastDeviceContactAt = NOW;
+    db.attendanceDevice[0].queuePending = 0;
+  });
+
+  it("waits while a device still has queued punches, then runs once the queue is empty", async () => {
+    db.attendanceDevice[0].queuePending = 3;
+    expect(await jobs.runAutoAbsent()).toEqual({ madrasas: 0, marked: 0, sms_enqueued: 0 });
+    expect(db.attendance).toHaveLength(0);
+
+    // the late punch arrives, then a heartbeat reports the queue drained
+    await punch("10002", "2026-09-20T08:10:00+06:00");
+    await ingest.heartbeat(db.attendanceDevice[0] as any, { device_id: "k40-a", device_status: "online", queue_pending: 0 } as any);
+    const r = await jobs.runAutoAbsent();
+    // 501 + teacher absent; 502 punched (late sync) and is NOT marked absent
+    expect(r).toEqual({ madrasas: 1, marked: 2, sms_enqueued: 1 });
+    expect(db.smsQueue.map((s) => s.dedupeKey)).toEqual(["attn:10:501:2026-09-20:absent"]);
+    expect(db.attendance.find((a) => a.attendeeId === 502)).toMatchObject({ status: "PRESENT", source: "k40" });
+  });
+
+  it("waits while the device was not read after the cutoff (offline), up to the max wait", async () => {
+    db.attendanceDevice[0].lastDeviceContactAt = new Date("2026-09-20T09:00:00+06:00");
+    expect(await jobs.runAutoAbsent()).toEqual({ madrasas: 0, marked: 0, sms_enqueued: 0 });
+
+    NOW = new Date("2026-09-20T12:31:00+06:00"); // cutoff 10:30 + 120 min default wait passed
+    db.attendanceDevice[0].lastSeenAt = NOW;
+    expect(await jobs.runAutoAbsent()).toMatchObject({ madrasas: 1, marked: 3 });
+  });
+
+  it("does not wait when the max wait is 0, nor for a device that was never set up", async () => {
+    db.attendanceDeviceSettings[0].autoAbsentMaxWaitMinutes = 0;
+    db.attendanceDevice[0].queuePending = 5;
+    expect(await jobs.runAutoAbsent()).toMatchObject({ madrasas: 1 });
+
+    db.attendance.length = 0;
+    db.attendanceDeviceSettings[0].autoAbsentMaxWaitMinutes = 120;
+    db.attendanceDeviceSettings[0].lastAutoAbsentDate = null;
+    db.attendanceDevice[0].lastSeenAt = null;
+    expect(await jobs.runAutoAbsent()).toMatchObject({ madrasas: 1 });
   });
 
   it("marks every mapped eligible person without a row ABSENT once, with one SMS per student", async () => {

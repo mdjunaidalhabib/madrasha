@@ -47,7 +47,8 @@ LATE / auto ABSENT / check-out rules, holidays, teacher & staff attendance, offl
   "clock_drift_sec": -12,                                    // optional, K40 clock minus PC clock (seconds)
   "users_synced_version": "9f2c…",                           // optional, users_version last written to the K40 (stamps last_user_sync_at)
   "user_sync_error": null,                                   // optional; null clears it
-  "device_user_count": 412 }                                 // optional, users stored on the K40
+  "device_user_count": 412,                                  // optional, users stored on the K40
+  "queue_pending": 0 }                                       // optional, punches still queued on the connector (holds auto-absent back while > 0)
 ```
 Response: `{ success, server_time, test_requested, poll_interval_sec, users_version, data: {same} }`.
 Effects: status / `last_seen_at` / `last_device_contact_at` / `last_error` updated. When `test_result` is present:

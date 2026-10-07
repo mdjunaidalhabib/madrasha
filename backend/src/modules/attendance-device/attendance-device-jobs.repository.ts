@@ -24,6 +24,14 @@ export class AttendanceDeviceJobsRepository {
     });
   }
 
+  /** Active devices with the sync telemetry the auto-absent gate looks at. */
+  findActiveDevices(madrasaId: number) {
+    return prisma.attendanceDevice.findMany({
+      where: { madrasaId, isActive: true },
+      select: { id: true, name: true, lastSeenAt: true, lastDeviceContactAt: true, queuePending: true },
+    });
+  }
+
   findAlertCandidates(madrasaId: number) {
     return prisma.attendanceDevice.findMany({
       where: { madrasaId, isActive: true, offlineAlertedAt: null, lastSeenAt: { not: null } },

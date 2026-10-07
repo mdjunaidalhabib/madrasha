@@ -221,6 +221,44 @@ describe("ingest: attendance rules", () => {
     expect(res.summary.attendance_marked).toBe(1);
     expect(db.attendance[0]).toMatchObject({ status: "PRESENT", source: "k40" });
   });
+
+  it("upgrades a manual ABSENT that was marked before the punch", async () => {
+    seedStudent();
+    seedMap();
+    db.attendance.push({
+      id: 79,
+      madrasaId: 10,
+      attendeeType: "STUDENT",
+      attendeeId: 501,
+      date: new Date("2026-09-20T00:00:00.000Z"),
+      status: "ABSENT",
+      source: "manual",
+      checkInAt: null,
+      updatedAt: new Date("2026-09-20T07:00:00+06:00"),
+    });
+    await ingest([ev()]);
+    expect(db.attendance[0]).toMatchObject({ status: "PRESENT", source: "k40" });
+  });
+
+  it("keeps a manual ABSENT marked after the punch (punch synced late from the offline queue)", async () => {
+    seedStudent();
+    seedMap();
+    db.attendance.push({
+      id: 80,
+      madrasaId: 10,
+      attendeeType: "STUDENT",
+      attendeeId: 501,
+      date: new Date("2026-09-20T00:00:00.000Z"),
+      status: "ABSENT",
+      source: "manual",
+      checkInAt: null,
+      updatedAt: new Date("2026-09-20T11:00:00+06:00"),
+    });
+    const res = await ingest([ev()]);
+    expect(res.summary.attendance_marked).toBe(0);
+    expect(db.attendance[0]).toMatchObject({ status: "ABSENT", source: "manual" });
+    expect(db.smsQueue).toHaveLength(0);
+  });
 });
 
 describe("ingest: SMS enqueue", () => {

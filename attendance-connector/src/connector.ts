@@ -663,6 +663,7 @@ export class Connector {
     if (this.authBlocked()) return;
     const test = this.pendingTest;
     const userReport = this.pendingUserReport;
+    const counts = this.queue.counts();
     const body: HeartbeatBody = {
       device_id: this.cfg.deviceId,
       device_status: (this.deviceOnline ? 'online' : 'offline') as 'online' | 'offline',
@@ -676,6 +677,7 @@ export class Connector {
           : {}),
       ...(test ? { test_result: test } : {}),
       connector_version: CONNECTOR_VERSION,
+      queue_pending: counts.pending + counts.syncing,
     };
     const r = await this.cloud.heartbeat(body);
     if (r.ok) {

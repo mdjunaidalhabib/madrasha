@@ -92,6 +92,8 @@ export const updateSettingsSchema = z
     late_grace_minutes: z.coerce.number().int().min(0).max(180),
     auto_absent_enabled: z.boolean(),
     absent_cutoff_time: hhmm,
+    auto_absent_max_wait_minutes: z.coerce.number().int().min(0).max(480),
+    manual_sms: z.boolean(),
     checkout_enabled: z.boolean(),
     checkout_after_time: hhmm,
     weekly_off_days: z
@@ -198,6 +200,8 @@ export const heartbeatSchema = z.object({
   users_synced_version: z.string().max(64).nullable().optional(),
   user_sync_error: z.string().max(2000).nullable().optional(),
   device_user_count: z.coerce.number().int().min(0).max(10_000_000).nullable().optional(),
+  /** Punches still in the connector queue (pending + syncing). */
+  queue_pending: z.coerce.number().int().min(0).max(10_000_000).nullable().optional(),
 });
 export type HeartbeatDto = z.infer<typeof heartbeatSchema>;
 

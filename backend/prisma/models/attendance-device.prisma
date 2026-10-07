@@ -74,6 +74,9 @@ model AttendanceDevice {
   /// Set when the "device offline" alert SMS was queued; cleared once the
   /// connector reports the device online again (one alert per outage).
   offlineAlertedAt   DateTime? @map("offline_alerted_at") @db.Timestamptz(3)
+  /// Punches still waiting in the connector's local queue (pending + syncing),
+  /// as of the last heartbeat. Null = connector too old to report it.
+  queuePending       Int?      @map("queue_pending")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
@@ -184,6 +187,14 @@ model AttendanceDeviceSettings {
   absentCutoffTime   String    @default("10:30") @map("absent_cutoff_time") @db.VarChar(5)
   /// Local date the auto-absent job last completed (idempotency).
   lastAutoAbsentDate DateTime? @map("last_auto_absent_date") @db.Date
+  /// Auto absent waits (up to this many minutes past the cutoff) while a
+  /// device is offline or still has queued punches, so a late internet sync
+  /// never marks people absent who actually punched in. 0 = never wait.
+  autoAbsentMaxWaitMinutes Int @default(120) @map("auto_absent_max_wait_minutes")
+
+  /// Guardian SMS for attendance marked by hand (today only, students only),
+  /// using the same অটো নোটিফিকেশন templates as device punches.
+  manualSms Boolean @default(false) @map("manual_sms")
 
   /// Check-out: a punch at/after checkoutAfterTime (and >= 30 min after check-in) is a check-out.
   checkoutEnabled   Boolean @default(false) @map("checkout_enabled")

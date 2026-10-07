@@ -30,6 +30,7 @@ import { getPolicy, attendancePolicyRepository, toPolicyDto } from "./core/atten
 import { AttendanceChangeInput, listAttendanceChanges, recordAttendanceChanges } from "./core/attendance-audit";
 import { statsForAttendee, statsForAttendees } from "./core/attendance-stats";
 import { t } from "../../shared/i18n";
+import { attendanceManualSmsService, ManualMarkChange } from "../attendance-device/attendance-manual-sms.service";
 
 const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string): never => {
   if (err instanceof ApiError) throw err;
@@ -198,8 +199,9 @@ export class AttendanceService {
     if (off) throw offDayError(off.reason, off.title);
 
     const day = dateOnly(date);
-    try {
-      return await this.repository.transaction(async (tx) => {
+    let smsChanges: ManualMarkChange[] = [];
+    const run = () =>
+      this.repository.transaction(async (tx) => {
         const existing = await this.repository.findForDate(
           tx,
           madrasaId,
@@ -252,10 +254,30 @@ export class AttendanceService {
 
         await recordAttendanceChanges(tx, audit);
 
+        smsChanges = audit.flatMap((a) =>
+          a.attendanceId !== null && a.newStatus !== null
+            ? [{ attendanceId: a.attendanceId, attendeeType, attendeeId: a.attendeeId, newStatus: a.newStatus }]
+            : [],
+        );
         const created = plan.creates.length;
         const updated = plan.updates.length + plan.remarkUpdates.length;
         return { savedCount: created + updated, created, updated, unchanged: plan.unchanged, skipped: plan.skipped };
       });
+
+    try {
+      let result: BulkMarkResult;
+      try {
+        result = await run();
+      } catch (err) {
+        // A device punch (or another tab) created one of these rows between our
+        // read and insert - the unique key aborted the tx. Re-plan once against
+        // the now-existing rows (a device row then shows up as "skipped").
+        if ((err as { code?: string })?.code !== "P2002") throw err;
+        result = await run();
+      }
+      // After commit, fire-and-forget: an SMS problem never fails the save.
+      void attendanceManualSmsService.notify(madrasaId, date, smsChanges);
+      return result;
     } catch (err) {
       if (err instanceof MarkRuleViolation) throw ruleError(err, policy.editWindowDays);
       return friendlyFailure("bulkMarkAttendance error:", err, t({ bn: "হাজিরা সংরক্ষণ করা যায়নি", en: "Failed to save attendance" }));
@@ -290,7 +312,7 @@ export class AttendanceService {
     if (status === row.status && remarks === row.remarks) return row;
 
     try {
-      return await this.repository.transaction(async (tx) => {
+      const saved = await this.repository.transaction(async (tx) => {
         const updated = await this.repository.update(tx, row.id, {
           status,
           remarks,
@@ -315,6 +337,12 @@ export class AttendanceService {
         ]);
         return updated;
       });
+      if (status !== row.status) {
+        void attendanceManualSmsService.notify(madrasaId, date, [
+          { attendanceId: row.id, attendeeType: row.attendeeType, attendeeId: row.attendeeId, newStatus: status },
+        ]);
+      }
+      return saved;
     } catch (err) {
       return friendlyFailure("correctAttendance error:", err, t({ bn: "হাজিরা সংশোধন করা যায়নি", en: "Failed to correct attendance" }));
     }

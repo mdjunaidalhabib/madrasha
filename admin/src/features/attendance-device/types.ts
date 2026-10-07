@@ -32,6 +32,8 @@ export interface AttendanceDevice {
   user_sync_error?: string | null;
   device_user_count?: number | null;
   offline_alerted_at?: string | null;
+  /** Punches still waiting in the connector's local queue (null = old connector). */
+  queue_pending?: number | null;
 }
 
 export interface CreateDevicePayload {
@@ -177,6 +179,10 @@ export interface DeviceSettings {
   late_grace_minutes: number;
   auto_absent_enabled: boolean;
   absent_cutoff_time: string;
+  /** Minutes auto absent may wait past the cutoff for devices to sync (0 = never wait). */
+  auto_absent_max_wait_minutes: number;
+  /** Guardian SMS for attendance marked by hand (today, students). */
+  manual_sms: boolean;
   checkout_enabled: boolean;
   checkout_after_time: string;
   /** 0 = Sunday ... 6 = Saturday (JS getDay order). */

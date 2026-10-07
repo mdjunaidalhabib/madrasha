@@ -429,6 +429,7 @@ export const analyticsApi = {
 export interface ClassOption {
   class_id: number;
   class_name: string;
+  division_id?: number;
   division_name?: string;
 }
 
@@ -457,6 +458,7 @@ export async function loadAllClasses(): Promise<ClassOption[]> {
       return rows.map((c: any) => ({
         class_id: Number(c.class_id),
         class_name: String(c.class_name_bn ?? c.class_name ?? c.name ?? `#${c.class_id}`),
+        division_id: d.division_id != null ? Number(d.division_id) : undefined,
         division_name: d.division_name_bn ?? undefined,
       }));
     }),

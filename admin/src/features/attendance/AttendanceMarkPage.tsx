@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { AlertTriangle, CalendarOff, CheckCheck, Clock, History, Info, Lock, MessageSquare, Save, Search } from "lucide-react";
+import { AlertTriangle, CalendarOff, CheckCheck, Clock, History, Info, Lock, MessageSquare, Save, Search, WifiOff } from "lucide-react";
 import { cachedGet } from "../../services/api";
 import {
   attendanceApi,
@@ -43,6 +43,70 @@ type PersonRaw = {
 };
 type Person = { id: number; name: string; roll?: number | string; sub?: string };
 type Draft = { status: AttendanceStatus | null; remarks: string };
+
+/* ---------- offline draft (per viewer, per sheet) ---------- */
+
+const DRAFT_PREFIX = "attendance-draft:v1:";
+const DRAFT_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
+type StoredDraft = { savedAt: number; entries: Record<number, Draft> };
+
+const draftKey = (type: string, date: string, classId: string) => `${DRAFT_PREFIX}${type}:${date}:${classId || "-"}`;
+
+const readDraft = (key: string): Record<number, Draft> | null => {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredDraft;
+    if (!parsed?.entries || Date.now() - Number(parsed.savedAt || 0) > DRAFT_MAX_AGE_MS) {
+      window.localStorage.removeItem(key);
+      return null;
+    }
+    return parsed.entries;
+  } catch {
+    return null;
+  }
+};
+
+const writeDraft = (key: string, entries: Record<number, Draft>) => {
+  try {
+    if (Object.keys(entries).length === 0) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), entries } satisfies StoredDraft));
+  } catch {
+    /* storage full / blocked - the in-memory sheet still works */
+  }
+};
+
+/** Drops drafts older than DRAFT_MAX_AGE_MS (sheets opened but never saved). */
+const pruneDrafts = () => {
+  try {
+    const store = window.localStorage;
+    for (let i = store.length - 1; i >= 0; i--) {
+      const key = store.key(i);
+      if (key?.startsWith(DRAFT_PREFIX)) readDraft(key);
+    }
+  } catch {
+    /* storage blocked */
+  }
+};
+
+/** navigator.onLine, kept live. */
+const useOnline = () => {
+  const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
+  useEffect(() => {
+    const up = () => setOnline(true);
+    const down = () => setOnline(false);
+    window.addEventListener("online", up);
+    window.addEventListener("offline", down);
+    return () => {
+      window.removeEventListener("online", up);
+      window.removeEventListener("offline", down);
+    };
+  }, []);
+  return online;
+};
+
+/** A request that never reached the server (no HTTP response). */
+const isNetworkError = (err: unknown) => !(err as { response?: unknown })?.response;
 
 const ATTENDEE_TYPES: AttendeeType[] = ["STUDENT", "TEACHER", "STAFF"];
 
@@ -254,10 +318,42 @@ const AttendanceMarkPage = () => {
     return next;
   }, [existing, people]);
 
+  const online = useOnline();
+  useEffect(pruneDrafts, []);
+  const sheetKey = ready ? draftKey(attendeeType, date, attendeeType === "STUDENT" ? selectedClass : "") : "";
+  // The sheet whose stored draft has been merged in - only then may the
+  // sheet be written back (otherwise a loading sheet would overwrite it).
+  const restoredKey = useRef("");
+
   useEffect(() => {
-    setDrafts(baseDrafts);
-    setOpenRemarks(new Set(Object.entries(baseDrafts).filter(([, d]) => d.remarks).map(([id]) => Number(id))));
-  }, [baseDrafts]);
+    let next = baseDrafts;
+    if (sheetKey && !rowsLoading) {
+      const stored = readDraft(sheetKey);
+      if (stored) {
+        let restored = 0;
+        next = { ...baseDrafts };
+        for (const [id, d] of Object.entries(stored)) {
+          const base = next[Number(id)];
+          if (!base || !d?.status) continue;
+          const row = existing.get(Number(id));
+          if (row && isProtectedSource(row.source)) continue;
+          if (base.status === d.status && base.remarks === (d.remarks || "")) continue;
+          next[Number(id)] = { status: d.status, remarks: d.remarks || "" };
+          restored++;
+        }
+        if (restored > 0 && restoredKey.current !== sheetKey) {
+          useToastStore.getState().show(getText(attendanceText).mark.draftRestored(formatNumber(restored, lang)), "info");
+        }
+      }
+      restoredKey.current = sheetKey;
+    } else {
+      restoredKey.current = "";
+    }
+    setDrafts(next);
+    setOpenRemarks(new Set(Object.entries(next).filter(([, d]) => d.remarks).map(([id]) => Number(id))));
+    // existing/lang are read for the merge only; baseDrafts already follows existing
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseDrafts, sheetKey, rowsLoading]);
 
   useEffect(() => {
     setOverride(false);
@@ -286,6 +382,27 @@ const AttendanceMarkPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [people, drafts, existing],
   );
+
+  // Keep every unsaved mark on this device so a dropped connection or a
+  // reload never loses a half-marked sheet.
+  useEffect(() => {
+    if (!sheetKey || rowsLoading || restoredKey.current !== sheetKey) return;
+    const entries: Record<number, Draft> = {};
+    for (const id of dirtyIds) if (drafts[id]) entries[id] = drafts[id];
+    writeDraft(sheetKey, entries);
+  }, [sheetKey, rowsLoading, dirtyIds, drafts]);
+
+  const wasOnline = useRef(online);
+  useEffect(() => {
+    if (online && !wasOnline.current && dirtyIds.length > 0) {
+      useToastStore.getState().show(getText(attendanceText).mark.backOnline(formatNumber(dirtyIds.length, lang)), "info", {
+        duration: 7000,
+      });
+    }
+    wasOnline.current = online;
+    // only react to the connection flipping
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online]);
 
   const counts = useMemo(() => {
     const c = { PRESENT: 0, LATE: 0, ABSENT: 0, LEAVE: 0, unmarked: 0 };
@@ -375,6 +492,7 @@ const AttendanceMarkPage = () => {
         ...(overrideProtected ? { override_protected: true } : {}),
       });
       setReasonOpen(false);
+      if (sheetKey) writeDraft(sheetKey, {});
       useToastStore
         .getState()
         .show(tt.savedSummary(num(result.created), num(result.updated), num(result.unchanged)), "success");
@@ -394,6 +512,10 @@ const AttendanceMarkPage = () => {
         return;
       }
       setReasonOpen(false);
+      if (isNetworkError(err)) {
+        useToastStore.getState().show(tt.offlineSaveFailed, "error", { duration: 7000 });
+        return;
+      }
       useToastStore.getState().show(apiErrorMessage(err, tt.saveFailed), "error");
     } finally {
       setSaving(false);
@@ -449,6 +571,13 @@ const AttendanceMarkPage = () => {
   return (
     <div className="mx-auto max-w-3xl space-y-4 pb-28">
       <PageHeader title={t.title} subtitle={t.subtitle} />
+
+      {!online && (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+          <WifiOff size={18} className="mt-0.5 shrink-0" />
+          {t.offlineBanner}
+        </div>
+      )}
 
       {/* Controls */}
       <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-4">

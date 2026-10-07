@@ -28,7 +28,7 @@ import {
 } from "./attendance-device-settings.service";
 import { attendanceDeviceIngestService, AttendanceDeviceIngestService } from "./attendance-device-ingest.service";
 import { maskPhone } from "./device-secret.util";
-import { dateOnly, localDateString } from "./time.util";
+import { dateOnly, localDateString, localDayRangeUtc } from "./time.util";
 
 export interface AutoAbsentResult {
   madrasas: number;
@@ -39,6 +39,32 @@ export interface AutoAbsentResult {
 export interface OfflineAlertResult {
   alerted: number;
 }
+
+/** A device silent this long counts as retired: it no longer holds auto absent back. */
+export const STALE_DEVICE_MS = 3 * 24 * 60 * 60 * 1000;
+
+export type GateDevice = {
+  id: number;
+  name: string;
+  lastSeenAt: Date | null;
+  lastDeviceContactAt: Date | null;
+  queuePending: number | null;
+};
+
+/**
+ * Devices whose punches from before the cutoff may not have reached the cloud
+ * yet. A device is settled when, after the cutoff, its connector has read the
+ * K40 (lastDeviceContactAt) and reported an empty queue in a heartbeat. An old
+ * connector that does not report the queue (null) is judged by contact alone.
+ * Never-seen and long-silent devices are ignored.
+ */
+export const unsettledDevices = (devices: GateDevice[], cutoffAt: Date, now: Date): GateDevice[] =>
+  devices.filter((d) => {
+    if (!d.lastSeenAt || now.getTime() - d.lastSeenAt.getTime() > STALE_DEVICE_MS) return false;
+    const readAfterCutoff = !!d.lastDeviceContactAt && d.lastDeviceContactAt.getTime() >= cutoffAt.getTime();
+    const queueEmpty = d.queuePending === null || d.queuePending === 0;
+    return !(readAfterCutoff && queueEmpty);
+  });
 
 const OFFLINE_ALERT_TEMPLATE = "উপস্থিতি ডিভাইস '{name}' {minutes} মিনিট ধরে অফলাইন। কানেক্টর PC ও ইন্টারনেট পরীক্ষা করুন।";
 
@@ -53,6 +79,8 @@ export class AttendanceDeviceJobsService {
   private absentRunning = false;
   private alertRunning = false;
   private timers: NodeJS.Timeout[] = [];
+  /** "madrasaId:date" already logged as waiting (one log line per day, not per pass). */
+  private waitLogged = new Set<string>();
 
   constructor(
     private readonly repository: AttendanceDeviceJobsRepository = attendanceDeviceJobsRepository,
@@ -109,6 +137,33 @@ export class AttendanceDeviceJobsService {
     if (cutoff === null || localMinutesOfDay(now, this.tz) < cutoff) return null;
     const day = await this.settings.dayInfo(madrasaId, today, rules);
     if (day.off) return null;
+
+    // Offline safety: punches made before the cutoff may still sit in a
+    // connector's queue (internet down, PC off). Wait for every device to
+    // catch up - up to autoAbsentMaxWaitMinutes past the cutoff - so nobody
+    // who punched in gets an ABSENT row and SMS. Re-checked every pass.
+    const cutoffAt = new Date(localDayRangeUtc(today, this.tz).start.getTime() + cutoff * 60_000);
+    const waiting = unsettledDevices(await this.repository.findActiveDevices(madrasaId), cutoffAt, now);
+    if (waiting.length > 0) {
+      const deadline = cutoffAt.getTime() + Math.max(0, rules.autoAbsentMaxWaitMinutes) * 60_000;
+      if (now.getTime() < deadline) {
+        if (!this.waitLogged.has(`${madrasaId}:${today}`)) {
+          this.waitLogged.add(`${madrasaId}:${today}`);
+          logger.warn("Auto absent waiting for devices to sync", {
+            madrasaId,
+            date: today,
+            devices: waiting.map((d) => ({ id: d.id, queuePending: d.queuePending, lastContact: d.lastDeviceContactAt })),
+            waitUntil: new Date(deadline).toISOString(),
+          });
+        }
+        return null;
+      }
+      logger.warn("Auto absent running although devices are not synced (max wait reached)", {
+        madrasaId,
+        date: today,
+        devices: waiting.map((d) => d.id),
+      });
+    }
 
     const date = dateOnly(today);
     const [maps, existing] = await Promise.all([

@@ -28,7 +28,15 @@ export const deviceSettingsText = defineText({
       title: "স্বয়ংক্রিয় অনুপস্থিত",
       hint: "এই সময়ের মধ্যে যারা পাঞ্চ করেনি (যাদের ডিভাইস আইডি আছে), তাদের স্বয়ংক্রিয়ভাবে অনুপস্থিত ধরা হবে। পরে পাঞ্চ করলে উপস্থিত/দেরি হয়ে যাবে। ছুটির দিনে চলে না।",
       cutoff: "অনুপস্থিত ধরার সময়",
+      maxWait: "ডিভাইস সিঙ্কের জন্য সর্বোচ্চ অপেক্ষা (মিনিট)",
+      maxWaitHelp: "ইন্টারনেট বন্ধ থাকলে বা ডিভাইসে পাঞ্চ জমে থাকলে অনুপস্থিত ধরা এই সময় পর্যন্ত পিছিয়ে যাবে, যাতে পাঞ্চ করা কেউ ভুলে অনুপস্থিত না হয়। ০ = অপেক্ষা নয়।",
+      maxWaitInvalid: "০ থেকে ৪৮০ এর মধ্যে মিনিট দিন",
       smsHint: "অভিভাবককে অনুপস্থিতির SMS পাঠাতে চালু করুন:",
+    },
+    manualSms: {
+      title: "হাতে নেওয়া হাজিরায় SMS",
+      hint: "\"হাজিরা নিন\" পেজ থেকে আজকের হাজিরা দিলে বা বদলালে অভিভাবক ডিভাইসের মতোই উপস্থিত/অনুপস্থিত SMS পাবেন। একই দিনে একই SMS একবারই যাবে, ডিভাইসে পাঞ্চ করলেও আবার যাবে না। পুরনো তারিখের এডিটে SMS যায় না।",
+      smsHint: "SMS-এর লেখা ও চালু/বন্ধ (উপস্থিত, অনুপস্থিত) এখান থেকে:",
     },
     checkout: {
       title: "চেক-আউট",
@@ -123,7 +131,15 @@ export const deviceSettingsText = defineText({
       title: "Auto absent",
       hint: "Everyone with a device ID who hasn't punched by this time is marked absent automatically. A later punch upgrades it to present/late. Doesn't run on holidays.",
       cutoff: "Mark absent at",
+      maxWait: "Max wait for device sync (minutes)",
+      maxWaitHelp: "While the internet is down or a device still has queued punches, marking absent waits up to this long, so nobody who punched in is wrongly marked absent. 0 = don't wait.",
+      maxWaitInvalid: "Enter 0 to 480 minutes",
       smsHint: "To SMS guardians about absence, turn it on in:",
+    },
+    manualSms: {
+      title: "SMS for attendance marked by hand",
+      hint: "When today's attendance is marked or changed on the \"Take attendance\" page, guardians get the same present/absent SMS as with the device. Each SMS goes at most once a day, also when the student punches. Edits of past days never send SMS.",
+      smsHint: "SMS text and on/off (present, absent) are set in:",
     },
     checkout: {
       title: "Check-out",

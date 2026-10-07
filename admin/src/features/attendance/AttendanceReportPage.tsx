@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { History, Settings2 } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { History, LayoutDashboard, Search, Settings2 } from "lucide-react";
 import { cachedGet } from "../../services/api";
+import DataExportPrintActions from "../../components/common/DataExportPrintActions";
 import {
   attendanceApi,
   type AttendanceCalendar,
@@ -50,6 +51,11 @@ const formatBnDate = (iso: string, lang: Lang) => {
   return formatDate(date, lang, { year: "numeric", month: "long", day: "numeric" });
 };
 
+type StudentSort = "roll" | "rate_asc" | "rate_desc";
+
+const linkButtonClass =
+  "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800";
+
 const normalizeArray = (payload: any) => {
   const data = payload?.data?.data || payload?.data || [];
   return Array.isArray(data) ? data.filter((item) => item && typeof item === "object") : [];
@@ -60,15 +66,23 @@ const AttendanceReportPage = () => {
   const tx = useText(attendanceText);
   const t = tx.report;
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const num = (n: number) => formatNumber(n, lang);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [allClasses, setAllClasses] = useState<ClassItem[]>([]);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
 
-  const [selectedDivision, setSelectedDivision] = useState("");
-  const [selectedClass, setSelectedClass] = useState("");
-  const [month, setMonth] = useState(currentMonth());
+  // Filters start from the URL so the dashboard (or a shared link) can open
+  // a specific class/month directly.
+  const [selectedDivision, setSelectedDivision] = useState(searchParams.get("division") || "");
+  const [selectedClass, setSelectedClass] = useState(searchParams.get("class") || "");
+  const [month, setMonth] = useState(() => {
+    const m = searchParams.get("month") || "";
+    return /^\d{4}-\d{2}$/.test(m) && m <= currentMonth() ? m : currentMonth();
+  });
+  const [studentSearch, setStudentSearch] = useState("");
+  const [studentSort, setStudentSort] = useState<StudentSort>("roll");
   const [academicYear] = useState(String(new Date().getFullYear()));
 
   const [classLoading, setClassLoading] = useState(false);
@@ -131,15 +145,7 @@ const AttendanceReportPage = () => {
     })();
   }, [divisions]);
 
-  const loadClassesByDivision = async (divisionId: string) => {
-    setSelectedClass("");
-    setRecords([]);
-
-    if (!divisionId) {
-      setClasses([]);
-      return;
-    }
-
+  const fetchClasses = useCallback(async (divisionId: string) => {
     try {
       setClassLoading(true);
       const res = await cachedGet(`/madrasa-classes?division_id=${divisionId}`);
@@ -150,7 +156,45 @@ const AttendanceReportPage = () => {
     } finally {
       setClassLoading(false);
     }
+  }, []);
+
+  const loadClassesByDivision = async (divisionId: string) => {
+    setSelectedClass("");
+    setRecords([]);
+    if (!divisionId) {
+      setClasses([]);
+      return;
+    }
+    await fetchClasses(divisionId);
   };
+
+  // Division came from the URL - fill its class dropdown without clearing the
+  // class that came with it.
+  useEffect(() => {
+    const initial = searchParams.get("division");
+    if (initial) fetchClasses(initial);
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A link with only ?class= - resolve its division once every class is known.
+  useEffect(() => {
+    if (!selectedClass || selectedDivision || allClasses.length === 0) return;
+    const match = allClasses.find((c) => String(c.class_id) === selectedClass);
+    if (match?.division_id == null) return;
+    const divisionId = String(match.division_id);
+    setSelectedDivision(divisionId);
+    fetchClasses(divisionId);
+  }, [selectedClass, selectedDivision, allClasses, fetchClasses]);
+
+  // Keep the URL in step with the filters (shareable, survives refresh).
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (selectedDivision) params.set("division", selectedDivision);
+    if (selectedClass) params.set("class", selectedClass);
+    if (month !== currentMonth()) params.set("month", month);
+    setSearchParams(params, { replace: true });
+  }, [selectedDivision, selectedClass, month, setSearchParams]);
 
   // Drill down from the class-wise dashboard row straight into that class's
   // day-wise detail (and edit capability), without making the admin re-pick
@@ -282,13 +326,23 @@ const AttendanceReportPage = () => {
     };
   }, [stats]);
 
-  const statsRows = useMemo(
-    () =>
-      stats
-        .map((row) => ({ ...row, info: studentNameById.get(String(row.attendee_id)) }))
-        .sort((a, b) => Number(a.info?.roll ?? 0) - Number(b.info?.roll ?? 0)),
-    [stats, studentNameById],
-  );
+  const statsRows = useMemo(() => {
+    const query = studentSearch.trim().toLowerCase();
+    return stats
+      .map((row) => ({ ...row, info: studentNameById.get(String(row.attendee_id)) }))
+      .filter(
+        (row) =>
+          !query ||
+          String(row.info?.name ?? "").toLowerCase().includes(query) ||
+          String(row.info?.roll ?? "") === query,
+      )
+      .sort((a, b) => {
+        const byRoll = Number(a.info?.roll ?? 0) - Number(b.info?.roll ?? 0);
+        if (studentSort === "roll") return byRoll;
+        const diff = Number(a.percentage || 0) - Number(b.percentage || 0);
+        return (studentSort === "rate_asc" ? diff : -diff) || byRoll;
+      });
+  }, [stats, studentNameById, studentSearch, studentSort]);
 
   const openMarkPage = (date: string) => {
     const params = new URLSearchParams({ type: "STUDENT", date });
@@ -380,27 +434,62 @@ const AttendanceReportPage = () => {
       .sort((a, b) => a.className.localeCompare(b.className, "bn"));
   }, [records, studentClassById, classNameById, allClasses, selectedClass, t]);
 
-  const topAbsentees = useMemo(() => {
-    const byStudent = new Map<string, number>();
-    for (const row of records) {
-      if (row.status !== "ABSENT") continue;
-      const key = String(row.attendeeId);
-      byStudent.set(key, (byStudent.get(key) || 0) + 1);
-    }
-    return Array.from(byStudent.entries())
-      .map(([studentId, absentCount]) => {
-        const classId = studentClassById.get(studentId);
-        return {
-          studentId,
-          absentCount,
-          info: studentNameById.get(studentId),
-          className: classId ? classNameById.get(classId) : undefined,
-        };
-      })
-      .filter((row) => row.info)
-      .sort((a, b) => b.absentCount - a.absentCount)
-      .slice(0, 5);
-  }, [records, studentNameById, studentClassById, classNameById]);
+  // Export follows what is on screen: student-wise for one class, class-wise
+  // for the whole madrasa.
+  const selectedClassName = selectedClass
+    ? classNameById.get(selectedClass) || classes.find((c) => String(c.class_id) === selectedClass)?.class_name_bn || ""
+    : "";
+  const monthLabel = formatDate(new Date(`${month}-01T00:00:00`), lang, { year: "numeric", month: "long" });
+  const exportTitle = t.exportTitle(selectedClassName || t.wholeInstitution, monthLabel);
+
+  const exportConfig: {
+    columns: Array<{ header: string; key: string }>;
+    data: Array<Record<string, string | number>>;
+  } = selectedClass
+    ? {
+        columns: [
+          { header: t.roll, key: "roll" },
+          { header: t.name, key: "name" },
+          { header: tx.common.present, key: "present" },
+          { header: tx.common.late, key: "late" },
+          { header: tx.common.absent, key: "absent" },
+          { header: tx.common.leave, key: "leave" },
+          { header: t.unmarked, key: "unmarked" },
+          { header: t.latePenalty, key: "latePenalty" },
+          { header: t.rateShort, key: "rate" },
+        ],
+        data: statsRows.map((row) => ({
+          roll: row.info?.roll ?? "-",
+          name: row.info?.name || `#${row.attendee_id}`,
+          present: num(row.PRESENT),
+          late: num(row.LATE),
+          absent: num(row.ABSENT),
+          leave: num(row.LEAVE),
+          unmarked: num(row.unmarked),
+          latePenalty: num(row.late_penalty),
+          rate: `${num(Number(row.percentage || 0))}%`,
+        })),
+      }
+    : {
+        columns: [
+          { header: t.class, key: "className" },
+          { header: tx.common.present, key: "present" },
+          { header: tx.common.late, key: "late" },
+          { header: tx.common.absent, key: "absent" },
+          { header: tx.common.leave, key: "leave" },
+          { header: t.rateShort, key: "rate" },
+          { header: t.attendanceDays, key: "days" },
+        ],
+        data: classSummary.map((row) => ({
+          className: row.className,
+          present: num(row.PRESENT),
+          late: num(row.LATE),
+          absent: num(row.ABSENT),
+          leave: num(row.LEAVE),
+          rate: `${num(row.rate)}%`,
+          days: num(row.days),
+        })),
+      };
 
   return (
     <div className="space-y-6">
@@ -408,13 +497,16 @@ const AttendanceReportPage = () => {
         title={t.title}
         subtitle={t.subtitle}
         actions={
-          <Link
-            to="/attendance/policy"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            <Settings2 size={15} />
-            {t.policyLink}
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link to="/attendance/dashboard" className={linkButtonClass}>
+              <LayoutDashboard size={15} />
+              {t.dashboardLink}
+            </Link>
+            <Link to="/attendance/policy" className={linkButtonClass}>
+              <Settings2 size={15} />
+              {t.policyLink}
+            </Link>
+          </div>
         }
       />
 
@@ -459,6 +551,16 @@ const AttendanceReportPage = () => {
             onChange={(event) => setMonth(event.target.value)}
             className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-[160px]"
           />
+
+          <div className="sm:ms-auto">
+            <DataExportPrintActions
+              title={exportTitle}
+              columns={exportConfig.columns}
+              data={exportConfig.data}
+              fileName={`attendance-${selectedClass ? `class-${selectedClass}` : "all"}-${month}`}
+              hidePrintOptions
+            />
+          </div>
         </div>
       </div>
 
@@ -499,10 +601,10 @@ const AttendanceReportPage = () => {
             )}
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div>
             {selectedClass ? (
               /* Day-wise summary for the one selected class, with per-day edit */
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:col-span-2">
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
                 <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                   <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{t.daily}</h2>
                 </div>
@@ -566,7 +668,7 @@ const AttendanceReportPage = () => {
             ) : (
               /* Class-wise summary across the whole madrasa - click a row to drill
                  into that class's day-wise detail and edit capability. */
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:col-span-2">
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
                 <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                   <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{t.classWise}</h2>
                 </div>
@@ -622,40 +724,41 @@ const AttendanceReportPage = () => {
               </div>
             )}
 
-            {/* Top absentees */}
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-              <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{t.topAbsent}</h2>
-              </div>
-              {topAbsentees.length === 0 ? (
-                <div className="p-6 text-center text-sm text-slate-400">{t.noAbsence}</div>
-              ) : (
-                <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {topAbsentees.map((row) => (
-                    <li key={row.studentId} className="flex items-center justify-between gap-2 px-5 py-2.5 text-sm">
-                      <span className="min-w-0 truncate text-slate-700 dark:text-slate-300">
-                        <span className="me-2 text-slate-400">{row.info?.roll}</span>
-                        {row.info?.name}
-                        {row.className && (
-                          <span className="ms-2 text-xs text-slate-400">({row.className})</span>
-                        )}
-                      </span>
-                      <span className="shrink-0 font-semibold text-red-700 dark:text-red-400">
-                        {t.dayCount(num(row.absentCount))}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
           </div>
 
           {/* Student-wise working-day statistics */}
           {selectedClass && (
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
               <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{t.studentWise}</h2>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{t.studentWiseHint}</p>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{t.studentWise}</h2>
+                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{t.studentWiseHint}</p>
+                  </div>
+                  <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                    <label className="relative flex-1 sm:w-[200px] sm:flex-none">
+                      <Search size={14} className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="search"
+                        value={studentSearch}
+                        onChange={(event) => setStudentSearch(event.target.value)}
+                        placeholder={t.search}
+                        aria-label={t.search}
+                        className="h-8 w-full rounded-md border border-gray-300 ps-8 pe-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                      />
+                    </label>
+                    <select
+                      value={studentSort}
+                      onChange={(event) => setStudentSort(event.target.value as StudentSort)}
+                      aria-label={t.sortBy}
+                      className="h-8 rounded-md border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    >
+                      <option value="roll">{t.sortRoll}</option>
+                      <option value="rate_asc">{t.sortRateAsc}</option>
+                      <option value="rate_desc">{t.sortRateDesc}</option>
+                    </select>
+                  </div>
+                </div>
               </div>
               {statsLoading ? (
                 <div className="p-4">
@@ -664,7 +767,7 @@ const AttendanceReportPage = () => {
               ) : statsFailed ? (
                 <div className="p-8 text-center text-sm text-rose-600 dark:text-rose-400">{t.statsFailed}</div>
               ) : statsRows.length === 0 ? (
-                <div className="p-8 text-center text-sm text-slate-400">{t.noStats}</div>
+                <div className="p-8 text-center text-sm text-slate-400">{stats.length > 0 ? t.noMatch : t.noStats}</div>
               ) : (
                 <div className="max-h-[520px] overflow-auto">
                   <table className="w-full min-w-[640px] text-sm">

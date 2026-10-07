@@ -4,7 +4,9 @@ import {
   AlertTriangle,
   Briefcase,
   CalendarOff,
+  ClipboardCheck,
   ExternalLink,
+  FileBarChart,
   GraduationCap,
   Phone,
   RefreshCw,
@@ -24,6 +26,7 @@ import {
   alertsApi,
   analyticsApi,
   currentMonth,
+  loadAllClasses,
   localIso,
   monthStartIso,
   type ConsecutiveAbsence,
@@ -51,6 +54,28 @@ export default function AttendanceDashboardPage() {
 
   // Focused class (click a row in the class table) - drives trend + low list.
   const [focus, setFocus] = useState<{ id: number; name: string } | null>(null);
+
+  // class_id -> division_id, so report / mark links open with both filters set.
+  const [divisionOf, setDivisionOf] = useState<Map<number, number>>(new Map());
+  useEffect(() => {
+    loadAllClasses()
+      .then((rows) => {
+        const map = new Map<number, number>();
+        for (const c of rows) if (c.division_id != null) map.set(c.class_id, c.division_id);
+        setDivisionOf(map);
+      })
+      .catch(() => setDivisionOf(new Map()));
+  }, []);
+
+  const classParams = (classId: number, extra: Record<string, string>) => {
+    const params = new URLSearchParams(extra);
+    const division = divisionOf.get(classId);
+    if (division != null) params.set("division", String(division));
+    params.set("class", String(classId));
+    return params.toString();
+  };
+  const reportLink = (classId: number) => `/attendance/report?${classParams(classId, { month: date.slice(0, 7) })}`;
+  const markLink = (classId: number) => `/attendance/mark?${classParams(classId, { type: "STUDENT", date })}`;
 
   const loadOverview = useCallback(async () => {
     setOverviewLoading(true);
@@ -85,6 +110,18 @@ export default function AttendanceDashboardPage() {
     [overview],
   );
 
+  // Classes with students but not a single mark for the date - the one thing
+  // an admin has to chase every morning.
+  const pending = useMemo(
+    () =>
+      overview && !overview.off_day
+        ? overview.classes
+            .filter((c) => c.total > 0 && c.unmarked >= c.total)
+            .sort((a, b) => a.class_name.localeCompare(b.class_name))
+        : [],
+    [overview],
+  );
+
   return (
     <div className="mx-auto max-w-7xl space-y-5 p-3 sm:p-4 md:p-6">
       <PageHeader
@@ -103,6 +140,13 @@ export default function AttendanceDashboardPage() {
             <Button variant="secondary" className="h-10" onClick={loadOverview} title={t.refresh}>
               <RefreshCw size={16} className={overviewLoading ? "animate-spin" : ""} />
             </Button>
+            <Link
+              to={`/attendance/report?month=${date.slice(0, 7)}`}
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <FileBarChart size={16} />
+              <span className="hidden sm:inline">{t.fullReport}</span>
+            </Link>
           </div>
         }
       />
@@ -158,6 +202,31 @@ export default function AttendanceDashboardPage() {
             </div>
           )}
 
+          {pending.length > 0 && (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/50 dark:bg-rose-950/20">
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-rose-800 dark:text-rose-300">
+                <ClipboardCheck size={18} />
+                {t.pending}
+                <span className="font-normal text-rose-700/80 dark:text-rose-300/80">
+                  · {t.pendingHint(n(pending.length))}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {pending.map((c) => (
+                  <Link
+                    key={c.class_id}
+                    to={markLink(c.class_id)}
+                    title={t.takeAttendance}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white px-3 py-1 text-sm text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 dark:border-rose-900/60 dark:bg-slate-900 dark:text-rose-300 dark:hover:bg-rose-950/40"
+                  >
+                    {c.class_name}
+                    <span className="text-xs text-rose-500/80">({n(c.total)})</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Class-wise */}
           <Panel title={t.classWise} actions={<span className="text-xs text-slate-400">{t.selectClassHint}</span>}>
             {overviewLoading && !overview ? (
@@ -205,7 +274,7 @@ export default function AttendanceDashboardPage() {
                           </td>
                           <td className={`${tdClass} text-end`}>
                             <Link
-                              to="/attendance/report"
+                              to={reportLink(c.class_id)}
                               onClick={(e) => e.stopPropagation()}
                               className="inline-flex rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800"
                               title={t.openReport}

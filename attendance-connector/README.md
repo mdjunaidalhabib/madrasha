@@ -147,6 +147,7 @@ v1.1 additions (same headers):
 * `GET /commands?wait=15` (long-poll) -> `{enrollment:{id, device_user_id, name, card_number|null, attendee_type, expires_at}|null, users_version, server_time}`. A 404 (older backend) disables enrollment and is retried every 5 min; punch syncing is unaffected.
 * `POST /enrollments/:id` `{device_id, status:'waiting'|'captured'|'failed'|'expired', card_number?, message?}` -> `{ok, status, message?, user?}`. `ok:false` means stop (cancelled, expired, card already used by someone else).
 * `POST /heartbeat` additionally carries `clock_drift_sec` (device - PC, every heartbeat once known) and, once after each user-sync attempt, `users_synced_version` + `user_sync_error:null` + `device_user_count` (success) or `user_sync_error` (failure).
+* **v1.2:** every heartbeat carries `queue_pending` (pending + syncing events in the local queue). The cloud holds auto-absent back while a device still has queued punches or was not read after the cutoff (up to the madrasa's `auto_absent_max_wait_minutes`), so an internet outage never marks people absent who punched in.
 
 **Event id** = first 32 hex chars of `sha256(deviceId|deviceUserId|timestamp|verifyType|inOut)`. Re-reading the same punch from the K40 always gives the same id, so re-fetching the whole device log every cycle never duplicates anything.
 

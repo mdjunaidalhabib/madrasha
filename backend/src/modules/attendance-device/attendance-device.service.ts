@@ -89,6 +89,7 @@ export const toDeviceDto = (d: AttendanceDevice, now: Date, usersVersion: string
     last_user_sync_at: iso(d.lastUserSyncAt),
     user_sync_error: d.userSyncError ?? null,
     device_user_count: d.deviceUserCount ?? null,
+    queue_pending: d.queuePending ?? null,
     offline_alerted_at: iso(d.offlineAlertedAt),
     created_at: iso(d.createdAt),
     updated_at: iso(d.updatedAt),

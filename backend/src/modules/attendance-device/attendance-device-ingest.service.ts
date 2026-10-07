@@ -5,6 +5,7 @@ import {
   ATTENDANCE_SMS_RULES,
   CHECKOUT_MIN_GAP_MS,
   DEVICE_ATTENDANCE_SOURCE,
+  MANUAL_ATTENDANCE_SOURCE,
   MAX_FUTURE_SKEW_MS,
   MAX_PUNCH_AGE_MS,
 } from "./attendance-device.constants";
@@ -178,6 +179,7 @@ export class AttendanceDeviceIngestService {
     }
     if (dto.user_sync_error !== undefined) data.userSyncError = sanitizeShortText(dto.user_sync_error, 200) || null;
     if (dto.device_user_count !== undefined && dto.device_user_count !== null) data.deviceUserCount = dto.device_user_count;
+    if (dto.queue_pending !== undefined && dto.queue_pending !== null) data.queuePending = dto.queue_pending;
     // One offline alert per outage: re-armed as soon as the device is reachable again.
     if (dto.device_status === "online") data.offlineAlertedAt = null;
 
@@ -508,6 +510,28 @@ export class AttendanceDeviceIngestService {
         checkoutSms: false,
         checkInAt: punchedAt,
         checkOutAt: null,
+        date,
+      };
+    }
+
+    // A person marked ABSENT by hand AFTER this punch happened: the punch only
+    // reached the cloud late (offline queue). The later human decision wins
+    // (e.g. punched in and left) - the row stays ABSENT, no SMS.
+    if (
+      existing.status === "ABSENT" &&
+      existing.source === MANUAL_ATTENDANCE_SOURCE &&
+      !!existing.updatedAt &&
+      existing.updatedAt.getTime() > punchedAt.getTime()
+    ) {
+      return {
+        attendanceId: existing.id,
+        created: false,
+        upgraded: false,
+        status: existing.status,
+        presentSms: false,
+        checkoutSms: false,
+        checkInAt: punchedAt,
+        checkOutAt: existing.checkOutAt ?? null,
         date,
       };
     }

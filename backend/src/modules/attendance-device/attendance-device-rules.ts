@@ -17,6 +17,8 @@ export const DEFAULT_DEVICE_RULES: DeviceRules = {
   autoAbsentEnabled: false,
   absentCutoffTime: "10:30",
   lastAutoAbsentDate: null,
+  autoAbsentMaxWaitMinutes: 120,
+  manualSms: false,
   checkoutEnabled: false,
   checkoutAfterTime: "12:00",
   // No settings row yet = no weekly off day, so existing madrasas keep getting

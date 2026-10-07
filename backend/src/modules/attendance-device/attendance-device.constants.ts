@@ -19,6 +19,8 @@ export const MAX_PUNCH_AGE_MS = 400 * 24 * 60 * 60 * 1000;
 
 /** Attendance.source written for device punches. */
 export const DEVICE_ATTENDANCE_SOURCE = "k40";
+/** Attendance.source of a row written by hand (attendance module). */
+export const MANUAL_ATTENDANCE_SOURCE = "manual";
 
 /** SMS rule name used in the dedupe key: attn:{madrasaId}:{studentId}:{date}:{rule}. */
 export const ATTENDANCE_SMS_RULE = "present";

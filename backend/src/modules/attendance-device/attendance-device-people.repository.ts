@@ -205,6 +205,16 @@ export class AttendanceDevicePeopleRepository {
     return row ? staffToPerson(ref.type, row) : null;
   }
 
+  /** Several students at once (manual-mark SMS). */
+  async findStudents(madrasaId: number, ids: number[]): Promise<Person[]> {
+    if (ids.length === 0) return [];
+    const rows = await prisma.student.findMany({
+      where: { madrasaId, id: { in: ids } },
+      select: studentPersonSelect(madrasaId),
+    });
+    return rows.map(studentToPerson);
+  }
+
   /** Eligible people of a type (optionally one class) that have no map row yet. */
   async findEligibleWithoutMap(
     madrasaId: number,

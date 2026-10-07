@@ -32,6 +32,8 @@ const normalizeSettings = (s: DeviceSettings, fallbackDays: number[] = []): Devi
   ...s,
   pin_mode: s.pin_mode === "auto" ? "auto" : "registration",
   weekly_off_days: Array.isArray(s.weekly_off_days) ? s.weekly_off_days : fallbackDays,
+  auto_absent_max_wait_minutes: s.auto_absent_max_wait_minutes ?? 120,
+  manual_sms: !!s.manual_sms,
 });
 
 function Field({ label, error, hint, children }: { label: string; error?: string; hint?: string; children: ReactNode }) {
@@ -117,6 +119,8 @@ export default function DeviceSettingsPage() {
     if (!Number.isInteger(grace) || grace < 0 || grace > 180) e.late_grace_minutes = t.late.graceInvalid;
     const mins = Number(f.offline_alert_minutes);
     if (!Number.isInteger(mins) || mins < 5 || mins > 1440) e.offline_alert_minutes = t.offline.minutesInvalid;
+    const wait = Number(f.auto_absent_max_wait_minutes);
+    if (!Number.isInteger(wait) || wait < 0 || wait > 480) e.auto_absent_max_wait_minutes = t.absent.maxWaitInvalid;
     const pin = Number(f.pin_start);
     if (!Number.isInteger(pin) || pin < 1 || pin > 99_999_999) e.pin_start = t.pin.invalid;
     const phone = (f.alert_phone || "").replace(/[\s-]/g, "");
@@ -136,6 +140,7 @@ export default function DeviceSettingsPage() {
         ...form,
         late_grace_minutes: Number(form.late_grace_minutes),
         offline_alert_minutes: Number(form.offline_alert_minutes),
+        auto_absent_max_wait_minutes: Number(form.auto_absent_max_wait_minutes),
         pin_start: Number(form.pin_start),
         alert_phone: phone || null,
         weekly_off_days: [...new Set(form.weekly_off_days)].sort(),
@@ -182,7 +187,7 @@ export default function DeviceSettingsPage() {
     );
   };
 
-  const numInput = (key: "late_grace_minutes" | "offline_alert_minutes" | "pin_start") => ({
+  const numInput = (key: "late_grace_minutes" | "offline_alert_minutes" | "auto_absent_max_wait_minutes" | "pin_start") => ({
     type: "number" as const,
     inputMode: "numeric" as const,
     value: form ? String(form[key] ?? "") : "",
@@ -246,8 +251,21 @@ export default function DeviceSettingsPage() {
               <Field label={t.absent.cutoff} error={errors.absent_cutoff_time}>
                 <Input {...timeInput("absent_cutoff_time")} />
               </Field>
+              <div className="sm:col-span-2">
+                <Field label={t.absent.maxWait} error={errors.auto_absent_max_wait_minutes} hint={t.absent.maxWaitHelp}>
+                  <Input {...numInput("auto_absent_max_wait_minutes")} min={0} max={480} />
+                </Field>
+              </div>
             </div>
             <SmsHint text={t.absent.smsHint} />
+          </SectionCard>
+
+          <SectionCard
+            title={t.manualSms.title}
+            hint={t.manualSms.hint}
+            toggle={{ checked: form.manual_sms, onChange: (v) => set("manual_sms", v) }}
+          >
+            <SmsHint text={t.manualSms.smsHint} />
           </SectionCard>
 
           <SectionCard
