@@ -2,6 +2,8 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 
 export const feeInvoicesText = defineText({
   bn: {
+    progPayTitle: "ফি পরিশোধ রেকর্ড হচ্ছে",
+    progPayItem: (i: string, total: string, title: string) => `${i}/${total} — ${title}`,
     months: ["জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"],
     monthsShort: ["জানু", "ফেব্রু", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্ট", "অক্টো", "নভে", "ডিসে"],
     selectAtLeastOne: "অন্তত একটি ফি নির্বাচন করে পরিমাণ দিন",
@@ -53,6 +55,8 @@ export const feeInvoicesText = defineText({
     confirmPay: (amount: string) => `৳${amount} পেমেন্ট নিশ্চিত করুন`,
   },
   en: {
+    progPayTitle: "Recording fee payments",
+    progPayItem: (i, total, title) => `${i}/${total} — ${title}`,
     months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
     monthsShort: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
     selectAtLeastOne: "Select at least one fee and enter an amount",

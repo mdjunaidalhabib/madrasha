@@ -6,6 +6,9 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { SkeletonTable } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { commonText, formatDateTime, formatNumber, getLang, getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { madrasasText } from "./madrasas.text";
+import { madrasasProgressText } from "./madrasas.progress.text";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 
 type DeleteStats = { students: number; users: number; accounts: number };
 
@@ -29,6 +32,7 @@ export default function SuperAdminMadrasasTrashPage() {
   const [statsLoading, setStatsLoading] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const progressTask = useProgressTask();
 
   const toast = useToastStore();
   const t = useText(madrasasText);
@@ -73,7 +77,11 @@ export default function SuperAdminMadrasasTrashPage() {
   const restore = async (id: number) => {
     setBusyId(id);
     try {
-      const res = await adminApi.post(`/super/madrasas/${id}/restore`);
+      const p = getText(madrasasProgressText);
+      const res = await progressTask.run(
+        { title: p.restoreTitle, estimate: { msPerStep: 800 }, steps: [p.restoreStepRestore, p.restoreStepAccess] },
+        () => adminApi.post(`/super/madrasas/${id}/restore`),
+      );
       toast.push("success", res.data?.message || getText(madrasasText).restored);
       await load();
     } catch (err: any) {
@@ -136,14 +144,38 @@ export default function SuperAdminMadrasasTrashPage() {
 
     // Sequential on purpose — keeps the progress counter meaningful and
     // avoids hammering the server with a burst of cascade-delete transactions.
-    for (const id of ids) {
-      try {
-        await adminApi.delete(`/super/madrasas/${id}/permanent`);
-      } catch {
-        failed.push(id);
-      } finally {
-        setProgress((p) => ({ ...p, done: p.done + 1 }));
-      }
+    const p = getText(madrasasProgressText);
+    const lang = getLang();
+    const single = ids.length === 1;
+    try {
+      await progressTask.run(
+        single
+          ? {
+              title: p.deleteTitle,
+              estimate: { msPerStep: 1600 },
+              steps: [p.deleteStepStudents, p.deleteStepFinance, p.deleteStepUsers, p.deleteStepFinal],
+            }
+          : {
+              title: p.deleteTitle,
+              steps: ids.map((_, i) => p.deleteItem(formatNumber(i + 1, lang), formatNumber(ids.length, lang))),
+            },
+        async ({ advance }) => {
+          for (const id of ids) {
+            try {
+              await adminApi.delete(`/super/madrasas/${id}/permanent`);
+            } catch {
+              failed.push(id);
+            } finally {
+              setProgress((prev) => ({ ...prev, done: prev.done + 1 }));
+              advance();
+            }
+          }
+          // A lone delete that failed should end the overlay in red, not green.
+          if (single && failed.length > 0) throw new Error("permanent delete failed");
+        },
+      );
+    } catch {
+      // per-item failures are collected in `failed`; nothing else throws here
     }
 
     setBulkBusy(false);
@@ -268,6 +300,7 @@ export default function SuperAdminMadrasasTrashPage() {
           onConfirm={confirmPermanentDelete}
         />
       )}
+      <ProgressOverlay {...progressTask.overlayProps} />
     </div>
   );
 }

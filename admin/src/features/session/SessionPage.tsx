@@ -8,7 +8,10 @@ import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { commonText, formatDate as formatLocalDate, getText, useLang, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { sessionText } from "./session.text";
+import { sessionProgressText } from "./session.progress.text";
 
 type Division = { division_id: number; division_name_bn: string };
 
@@ -35,6 +38,8 @@ const formatDate = (value: string, lang: Lang) => {
 const SessionPage = () => {
   const navigate = useNavigate();
   const t = useText(sessionText);
+  const pt = useText(sessionProgressText);
+  const progressTask = useProgressTask();
   const c = useText(commonText);
   const lang = useLang();
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -198,7 +203,10 @@ const SessionPage = () => {
       danger: true,
       onConfirm: async () => {
         try {
-          await sessionApi.remove(session.id);
+          await progressTask.run(
+            { title: pt.deleteTitle, steps: [pt.stepCheck, pt.stepDelete, pt.stepFinish], estimate: true },
+            () => sessionApi.remove(session.id),
+          );
           useToastStore.getState().show(getText(sessionText).deleted, "success");
           setSessions((prev) => prev.filter((s) => s.id !== session.id));
         } catch (err: any) {
@@ -236,7 +244,10 @@ const SessionPage = () => {
       danger: true,
       onConfirm: async () => {
         try {
-          await sessionApi.removeUnusedFeeStructures(session.id);
+          await progressTask.run(
+            { title: pt.feeTitle, steps: [pt.stepFeeCheck, pt.stepFeeDelete, pt.stepFinish], estimate: true },
+            () => sessionApi.removeUnusedFeeStructures(session.id),
+          );
           useToastStore
             .getState()
             .show(getText(sessionText).feeDeleted, "success");
@@ -250,6 +261,7 @@ const SessionPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
+      <ProgressOverlay {...progressTask.overlayProps} />
       <div className="mx-auto max-w-3xl">
         <div className="mb-4">
           <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">{t.title}</h1>

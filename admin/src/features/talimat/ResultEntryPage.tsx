@@ -3,6 +3,8 @@ import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
 import { resultsText } from "./results.text";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
+import ProgressOverlay, { type ProgressStep } from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { useAuthStore } from "../../store/authStore";
@@ -131,6 +133,8 @@ export default function ResultEntryPage() {
   const [sessionStatus, setSessionStatus] = useState<string | null>(null);
   const [correctionReasonOpen, setCorrectionReasonOpen] = useState(false);
   const [correctionSaving, setCorrectionSaving] = useState(false);
+  // Save & process progress overlay (full-screen, shows done/remaining).
+  const progressTask = useProgressTask();
   // The marks exactly as stored when the page loaded - what a correction is
   // diffed against, so only genuinely changed cells are sent.
   const baselineRef = useRef<
@@ -498,11 +502,18 @@ export default function ResultEntryPage() {
       // apply_now the server applies it immediately, but only after
       // independently confirming full result authority - otherwise it stays
       // PENDING for a separate approver and `applied` is false.
-      const res = await api.post(`/results/${resultMasterId}/corrections/batch`, {
-        items: correction.items,
-        reason,
-        apply_now: canApplyCorrectionDirectly,
-      });
+      const res = await progressTask.run(
+        { title: t.progCorrTitle, steps: [t.progCorrStepSubmit] },
+        async ({ advance }) => {
+          const r = await api.post(`/results/${resultMasterId}/corrections/batch`, {
+            items: correction.items,
+            reason,
+            apply_now: canApplyCorrectionDirectly,
+          });
+          advance();
+          return r;
+        },
+      );
 
       setCorrectionReasonOpen(false);
       push(
@@ -537,35 +548,52 @@ export default function ResultEntryPage() {
       return push("error", t.noMarksGiven);
     }
 
+    // Work out every step up-front so the overlay can show an exact
+    // "done / remaining" count before anything is sent.
+    const pendingBooks = isSingleActorWorkflow
+      ? books.filter((book) => {
+          const status = submissions[book.book_id]?.status;
+          return status !== "SUBMITTED" && status !== "VERIFIED";
+        })
+      : [];
+    const bookLabel = (book: Book) => book.book_name_bn || book.name_bn || book.book_name || `#${book.book_id}`;
+    const steps: ProgressStep[] = [
+      { id: "session", label: t.progressStepSession },
+      ...(payload.length > 0 ? [{ id: "marks", label: t.progressStepMarks }] : []),
+      ...pendingBooks.map((book) => ({ id: `book-${book.book_id}`, label: t.progressStepBook(bookLabel(book)) })),
+      { id: "process", label: t.progressStepProcess },
+    ];
     setLoading(true);
 
     try {
-      const sessionRes = await api.post("/results/session", {
-        exam_id: +examId,
-        class_id: +classId,
-      });
-      const masterId = sessionRes.data?.result_master_id;
-      if (!masterId) throw new Error("result_master_id missing");
+      await progressTask.run({ title: t.progressSaveTitle, steps }, async ({ advance }) => {
+        const sessionRes = await api.post("/results/session", {
+          exam_id: +examId,
+          class_id: +classId,
+        });
+        const masterId = sessionRes.data?.result_master_id;
+        if (!masterId) throw new Error("result_master_id missing");
 
-      setResultMasterId(masterId);
+        setResultMasterId(masterId);
+        advance();
 
-      if (payload.length > 0) {
-        await api.post("/results/marks", { result_master_id: masterId, data: payload });
-      }
+        if (payload.length > 0) {
+          await api.post("/results/marks", { result_master_id: masterId, data: payload });
+          advance();
+        }
 
-      if (isSingleActorWorkflow) {
-        for (const book of books) {
-          const status = submissions[book.book_id]?.status;
-          if (status === "SUBMITTED" || status === "VERIFIED") continue;
+        for (const book of pendingBooks) {
           await api.post(`/results/${masterId}/books/${book.book_id}/submit`, {});
           await api.post(`/results/${masterId}/books/${book.book_id}/verify`, {});
+          advance();
         }
-      }
 
-      await api.post("/results/process", {
-        exam_id: +examId,
-        class_id: +classId,
-        result_master_id: masterId,
+        await api.post("/results/process", {
+          exam_id: +examId,
+          class_id: +classId,
+          result_master_id: masterId,
+        });
+        advance();
       });
 
       lastProcessedSnapshotRef.current = marksSnapshot;
@@ -589,9 +617,17 @@ export default function ResultEntryPage() {
 
     setSubmittingBookId(bookId);
     try {
-      const res = await api.post(`/results/${resultMasterId}/books/${bookId}/submit`, {});
+      const res = await progressTask.run(
+        { title: t.progBookSubmitTitle, steps: [t.progBookSubmitStep, t.progressStepRefresh] },
+        async ({ advance }) => {
+          const r = await api.post(`/results/${resultMasterId}/books/${bookId}/submit`, {});
+          advance();
+          await loadSubmissions(resultMasterId);
+          advance();
+          return r;
+        },
+      );
       push("success", res.data?.message || t.subjectSubmitted);
-      await loadSubmissions(resultMasterId);
     } catch (err: any) {
       logger.error("Submit book error:", err);
       push("error", err?.response?.data?.message || t.subjectSubmitFailed);
@@ -603,9 +639,16 @@ export default function ResultEntryPage() {
   const handleVerifyBook = async (bookId: number) => {
     if (!resultMasterId) return;
     try {
-      await api.post(`/results/${resultMasterId}/books/${bookId}/verify`, {});
+      await progressTask.run(
+        { title: t.progBookVerifyTitle, steps: [t.progBookVerifyStep, t.progressStepRefresh] },
+        async ({ advance }) => {
+          await api.post(`/results/${resultMasterId}/books/${bookId}/verify`, {});
+          advance();
+          await loadSubmissions(resultMasterId);
+          advance();
+        },
+      );
       push("success", t.subjectVerified);
-      await loadSubmissions(resultMasterId);
     } catch (err: any) {
       logger.error("Verify book error:", err);
       push("error", err?.response?.data?.message || t.verifyFailed);
@@ -616,9 +659,16 @@ export default function ResultEntryPage() {
     if (!resultMasterId || rejectBookId == null) return;
     setRejectingBook(true);
     try {
-      await api.post(`/results/${resultMasterId}/books/${rejectBookId}/reject`, { reason });
+      await progressTask.run(
+        { title: t.progBookRejectTitle, steps: [t.progBookRejectStep, t.progressStepRefresh] },
+        async ({ advance }) => {
+          await api.post(`/results/${resultMasterId}/books/${rejectBookId}/reject`, { reason });
+          advance();
+          await loadSubmissions(resultMasterId);
+          advance();
+        },
+      );
       push("success", t.subjectRejected);
-      await loadSubmissions(resultMasterId);
       setRejectBookId(null);
     } catch (err: any) {
       logger.error("Reject book error:", err);
@@ -858,6 +908,7 @@ export default function ResultEntryPage() {
         }}
         onConfirm={handleConfirmResetPassword}
       />
+      <ProgressOverlay {...progressTask.overlayProps} />
     </div>
   );
 }

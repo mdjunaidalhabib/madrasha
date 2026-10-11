@@ -18,6 +18,8 @@ import ExamFeeBulkCollectModal from "./ExamFeeBulkCollectModal";
 import { useAuthStore } from "../../store/authStore";
 import { hasPermission } from "../../utils/permissions";
 import { commonText, formatNumber, getLang, getText, localizeDigits, useLang, usePrintText, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { feeInvoicesText } from "./FeeInvoicesPage.text";
 import { invoicePrintText, invoiceStatusText } from "./fee.text";
 
@@ -89,6 +91,7 @@ type PayLine = { selected: boolean; amount: string };
 
 const FeeInvoicesPage = () => {
   const t = useText(feeInvoicesText);
+  const progressTask = useProgressTask();
   const c = useText(commonText);
   const st = useText(invoiceStatusText);
   const printT = usePrintText(invoicePrintText);
@@ -372,23 +375,45 @@ const FeeInvoicesPage = () => {
       setPaying(true);
       let success = 0;
       let failed = 0;
-      for (const [invoiceIdStr, line] of selected) {
-        try {
-          await invoiceApi.pay(Number(invoiceIdStr), {
-            amount: Number(line.amount),
-            method: payCommon.method,
-            transaction_ref: payCommon.transaction_ref.trim() || undefined,
-            payment_method_setting_id: payCommon.payment_method_setting_id
-              ? Number(payCommon.payment_method_setting_id)
-              : undefined,
-            note: payCommon.note.trim() || undefined,
-            paid_at: payCommon.paid_at || undefined,
-          });
-          success += 1;
-        } catch (err) {
-          failed += 1;
-          logger.error("PAY INVOICE ERROR:", err);
+      const payAll = async ({ advance }: { advance: () => void }) => {
+        for (const [invoiceIdStr, line] of selected) {
+          try {
+            await invoiceApi.pay(Number(invoiceIdStr), {
+              amount: Number(line.amount),
+              method: payCommon.method,
+              transaction_ref: payCommon.transaction_ref.trim() || undefined,
+              payment_method_setting_id: payCommon.payment_method_setting_id
+                ? Number(payCommon.payment_method_setting_id)
+                : undefined,
+              note: payCommon.note.trim() || undefined,
+              paid_at: payCommon.paid_at || undefined,
+            });
+            success += 1;
+          } catch (err) {
+            failed += 1;
+            logger.error("PAY INVOICE ERROR:", err);
+          }
+          advance();
         }
+      };
+      // A single payment is quick - only show the overlay for several.
+      if (selected.length > 1) {
+        await progressTask.run(
+          {
+            title: t.progPayTitle,
+            steps: selected.map(([invoiceIdStr], i) => {
+              const inv = payTarget.find((x) => x.id === Number(invoiceIdStr));
+              return t.progPayItem(
+                localizeDigits(i + 1, lang),
+                localizeDigits(selected.length, lang),
+                inv?.title || `#${localizeDigits(invoiceIdStr, lang)}`,
+              );
+            }),
+          },
+          payAll,
+        );
+      } else {
+        await payAll({ advance: () => undefined });
       }
 
       if (failed === 0) {
@@ -492,6 +517,7 @@ const FeeInvoicesPage = () => {
     <div
       className={`min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6 ${checkedInvoices.length > 0 ? "pb-28 sm:pb-20" : ""}`}
     >
+      <ProgressOverlay {...progressTask.overlayProps} />
       <div className="mx-auto max-w-6xl">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>

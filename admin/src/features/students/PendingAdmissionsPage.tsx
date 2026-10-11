@@ -14,6 +14,9 @@ import AdmissionFormPrintButton from "../../components/admission/AdmissionFormPr
 import { normalizeBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { useText, getText, commonText, useIsMadrasa } from "@madrasha/shared-ui/src/i18n";
 import { admissionReviewText } from "./admissionReview.text";
+import { admissionProgressText } from "./admissionReview.progress.text";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 
 type FeeStatus = "NONE" | "DUE" | "WAIVED" | "PAID";
 
@@ -93,6 +96,8 @@ const normalizeArray = (payload: any) => {
 
 const PendingAdmissionsPage = () => {
   const t = useText(admissionReviewText);
+  const pt = useText(admissionProgressText);
+  const progressTask = useProgressTask();
   const c = useText(commonText);
   const isMadrasa = useIsMadrasa();
   const navigate = useNavigate();
@@ -146,7 +151,9 @@ const PendingAdmissionsPage = () => {
       setLoading(true);
       setError("");
       const res = await admissionApi.listPending();
-      setRows(normalizeArray(res));
+      // Oldest application (lowest serial) on top, regardless of the order
+      // the server/cache returned.
+      setRows(normalizeArray(res).sort((a: PendingStudent, b: PendingStudent) => Number(a.id) - Number(b.id)));
     } catch (err) {
       logger.error("LOAD PENDING ADMISSIONS ERROR:", err);
       setRows([]);
@@ -278,7 +285,10 @@ const PendingAdmissionsPage = () => {
   const handleApprove = async (student: PendingStudent) => {
     try {
       setBusyId(student.id);
-      await admissionApi.approve(Number(student.id));
+      await progressTask.run(
+        { title: pt.approveTitle, steps: [pt.stepValidate, pt.stepApprove, pt.stepFees, pt.stepFinish], estimate: true },
+        () => admissionApi.approve(Number(student.id)),
+      );
       useToastStore.getState().show(getText(admissionReviewText).approved, "success");
       removeRows([student.id]);
       refreshSidebarCounts();
@@ -311,9 +321,15 @@ const PendingAdmissionsPage = () => {
       onConfirm: async () => {
         setBulkBusy(true);
         try {
-          const succeededIds = await succeededOf(
-            students,
-            admissionApi.approveBulk(students.map((student) => Number(student.id))),
+          const succeededIds = await progressTask.run(
+            {
+              title: pt.approveBulkTitle,
+              steps: [pt.stepValidate, pt.stepApprove, pt.stepFees, pt.stepFinish],
+              estimate: true,
+              failedWhen: (ids: unknown[]) => ids.length === 0,
+            },
+            () =>
+              succeededOf(students, admissionApi.approveBulk(students.map((student) => Number(student.id)))),
           );
           const failedCount = students.length - succeededIds.length;
           if (succeededIds.length > 0) {
@@ -360,15 +376,25 @@ const PendingAdmissionsPage = () => {
       else setBusyId(rejectTargets[0].id);
 
       // A single reject keeps its own request so its exact error can be shown.
+      const rejectSteps = {
+        title: pt.rejectTitle,
+        steps: [pt.stepValidate, pt.stepReject, pt.stepFinish],
+        estimate: true,
+        failedWhen: (r: any) => (Array.isArray(r) && r[0]?.status ? r[0].status === "rejected" : Array.isArray(r) && r.length === 0),
+      };
       const results = isBulk
         ? []
-        : await Promise.allSettled([admissionApi.reject(Number(rejectTargets[0].id), rejectReason.trim())]);
+        : await progressTask.run(rejectSteps, () =>
+            Promise.allSettled([admissionApi.reject(Number(rejectTargets[0].id), rejectReason.trim())]),
+          );
       const succeededIds = isBulk
-        ? await succeededOf(
-            rejectTargets,
-            admissionApi.rejectBulk(
-              rejectTargets.map((student) => Number(student.id)),
-              rejectReason.trim(),
+        ? await progressTask.run(rejectSteps, () =>
+            succeededOf(
+              rejectTargets,
+              admissionApi.rejectBulk(
+                rejectTargets.map((student) => Number(student.id)),
+                rejectReason.trim(),
+              ),
             ),
           )
         : results[0].status === "fulfilled"
@@ -411,6 +437,7 @@ const PendingAdmissionsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
+      <ProgressOverlay {...progressTask.overlayProps} />
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

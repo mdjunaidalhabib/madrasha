@@ -17,6 +17,8 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { useText, getText } from "@madrasha/shared-ui/src/i18n";
 import { admissionPageText } from "./AdmissionPage.text";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 
 export interface AdmissionFormData {
   name: string;
@@ -188,6 +190,7 @@ const requiredColumns = ["name_bn", "academic_division", "current_class", "acade
 
 const AdmissionPage = () => {
   const t = useText(admissionPageText);
+  const progressTask = useProgressTask();
   const [formData, setFormData] = useState<AdmissionFormData>(initialState);
   const [errors, setErrors] = useState<AdmissionFormErrors>({});
   const [excelStudents, setExcelStudents] = useState<ExcelAdmissionRow[]>([]);
@@ -577,10 +580,14 @@ const AdmissionPage = () => {
 
       // Every row also gets a guardian + fee invoices after the insert, so a
       // few dozen rows easily outlive the client's default 20s timeout.
-      const res = await api.post(
-        "/students/admission/bulk",
-        { students: makeExcelPayload() },
-        { timeout: 300_000 },
+      const res = await progressTask.run(
+        {
+          title: t.progressBulkTitle,
+          steps: [t.progressValidate, t.progressSaveStudent, t.progressSaveGuardian, t.progressFinish],
+          estimate: true,
+        },
+        () =>
+          api.post("/students/admission/bulk", { students: makeExcelPayload() }, { timeout: 300_000 }),
       );
 
       setBulkResult({
@@ -661,7 +668,14 @@ const AdmissionPage = () => {
     try {
       setLoading(true);
 
-      const res = await api.post("/students/admission", payload);
+      const res = await progressTask.run(
+        {
+          title: t.progressSingleTitle,
+          steps: [t.progressValidate, t.progressSaveStudent, t.progressSaveGuardian, t.progressFinish],
+          estimate: true,
+        },
+        () => api.post("/students/admission", payload),
+      );
 
       // Admission fee collection now happens from হিসাব বিভাগ's "ভর্তি ফি
       // পেন্ডিং" page after a Muhtamim reviews the application, not inline
@@ -684,6 +698,7 @@ const AdmissionPage = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-3 sm:p-6">
+      <ProgressOverlay {...progressTask.overlayProps} />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center relative gap-2 sm:gap-3 mb-6">
         <button
           type="button"

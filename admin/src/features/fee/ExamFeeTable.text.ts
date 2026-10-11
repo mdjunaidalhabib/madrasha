@@ -2,6 +2,16 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 
 export const examFeeTableText = defineText({
   bn: {
+    progSaveTitle: "পরীক্ষা ফি সংরক্ষণ চলছে",
+    progSaveStepAmounts: "ফির পরিমাণ সংরক্ষণ করা হচ্ছে",
+    progSaveStepInvoices: "ইনভয়েস তৈরি ও হালনাগাদ করা হচ্ছে",
+    progEnableTitle: "পরীক্ষা ফি চালু হচ্ছে",
+    progEnableStepStatus: "পরীক্ষা ফি চালু করা হচ্ছে",
+    progEnableStepInvoices: "সব {{student}}র ইনভয়েস তৈরি করা হচ্ছে",
+    progEnableStepNotify: "অভিভাবকদের জানানো হচ্ছে",
+    progDisableTitle: "পরীক্ষা ফি বন্ধ হচ্ছে",
+    progDisableStepStatus: "পরীক্ষা ফি বন্ধ করা হচ্ছে",
+    progDisableStepInvoices: "অপরিশোধিত ইনভয়েস সরানো হচ্ছে",
     other: "অন্যান্য",
     saveOrCancelFirst: (name: string) => `আগে "${name}" এর পরিবর্তন সংরক্ষণ বা বাতিল করুন`,
     invalidAmount: "সঠিক পরিমাণ লিখুন",
@@ -61,6 +71,16 @@ export const examFeeTableText = defineText({
     save: "সংরক্ষণ",
   },
   en: {
+    progSaveTitle: "Saving exam fees",
+    progSaveStepAmounts: "Saving fee amounts",
+    progSaveStepInvoices: "Creating and updating invoices",
+    progEnableTitle: "Enabling exam fee",
+    progEnableStepStatus: "Enabling exam fee",
+    progEnableStepInvoices: "Creating invoices for every {{student}}",
+    progEnableStepNotify: "Notifying guardians",
+    progDisableTitle: "Disabling exam fee",
+    progDisableStepStatus: "Disabling exam fee",
+    progDisableStepInvoices: "Removing unpaid invoices",
     other: "Other",
     saveOrCancelFirst: (name) => `Save or discard the changes to "${name}" first`,
     invalidAmount: "Enter a valid amount",

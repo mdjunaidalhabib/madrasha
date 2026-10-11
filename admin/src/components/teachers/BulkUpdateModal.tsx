@@ -6,7 +6,10 @@ import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { TeacherFullRecord } from "../../types/teacher";
 import { downloadLockedWorkbook } from "../../utils/excelSheetLock";
 import { commonText, getText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { teacherStaffText } from "../../features/teachers/teacherStaff.text";
+import { teacherProgressText } from "../../features/teachers/teacherStaff.progress.text";
 
 export interface BulkUpdateExcelRow {
   id?: string | number;
@@ -145,6 +148,8 @@ type PreviewRow = {
 
 const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: BulkUpdateModalProps) => {
   const t = useText(teacherStaffText);
+  const pt = useText(teacherProgressText);
+  const progressTask = useProgressTask();
   const c = useText(commonText);
   const lang = useLang();
   const [excelRows, setExcelRows] = useState<BulkUpdateExcelRow[]>([]);
@@ -298,7 +303,10 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
 
     try {
       setLoading(true);
-      const res = await api.post("/teachers/bulk-update", { teachers: payload });
+      const res = await progressTask.run(
+        { title: pt.bulkUpdateTitle, steps: [pt.stepValidate, pt.stepSave, pt.stepCompare, pt.stepFinish], estimate: true },
+        () => api.post("/teachers/bulk-update", { teachers: payload }),
+      );
       setResult({
         updated: res.data?.updated || 0,
         unchanged: res.data?.unchanged || 0,
@@ -319,6 +327,7 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <ProgressOverlay {...progressTask.overlayProps} />
       <div className="w-full max-w-7xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
         <div className="flex items-center justify-between border-b px-6 py-4 dark:border-slate-700">
           <div>

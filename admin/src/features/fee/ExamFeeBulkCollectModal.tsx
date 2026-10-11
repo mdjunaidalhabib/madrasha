@@ -22,6 +22,8 @@ import {
   type PaymentMethodSetting,
 } from "../../services/phase2Api";
 import { commonText, formatDate, formatNumber, getLang, getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { examFeeBulkText } from "./ExamFeeBulkCollectModal.text";
 
 type Props = {
@@ -69,6 +71,7 @@ const labelCls = "mb-1 block text-xs font-medium text-gray-600 dark:text-slate-4
 
 const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods }: Props) => {
   const t = useText(examFeeBulkText);
+  const progressTask = useProgressTask();
   const c = useText(commonText);
   const lang = useLang();
   const METHOD_LABELS = t.methods;
@@ -273,19 +276,29 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
     submittingRef.current = true;
     setSubmitting(true);
     try {
-      const res = await examFeeCollectApi.bulkPay({
-        exam_id: examId,
-        class_id: classId,
-        invoice_ids: selectedRows.map((r) => r.invoice_id),
-        method: form.method,
-        payment_method_setting_id: form.payment_method_setting_id
-          ? Number(form.payment_method_setting_id)
-          : undefined,
-        transaction_ref: form.method !== "CASH" ? form.transaction_ref.trim() || undefined : undefined,
-        note: form.note.trim() || undefined,
-        paid_at: form.paid_at || undefined,
-        notify_guardian: notifyGuardian,
-      });
+      const res = await progressTask.run(
+        {
+          title: t.progTitle,
+          steps: notifyGuardian
+            ? [t.progStepPay, t.progStepReceipt, t.progStepNotify]
+            : [t.progStepPay, t.progStepReceipt],
+          estimate: true,
+        },
+        () =>
+          examFeeCollectApi.bulkPay({
+            exam_id: examId,
+            class_id: classId,
+            invoice_ids: selectedRows.map((r) => r.invoice_id),
+            method: form.method,
+            payment_method_setting_id: form.payment_method_setting_id
+              ? Number(form.payment_method_setting_id)
+              : undefined,
+            transaction_ref: form.method !== "CASH" ? form.transaction_ref.trim() || undefined : undefined,
+            note: form.note.trim() || undefined,
+            paid_at: form.paid_at || undefined,
+            notify_guardian: notifyGuardian,
+          }),
+      );
       const data = res.data?.data;
       if (!data) throw new Error("Empty bulk-pay response");
       setResult(data);
@@ -801,9 +814,12 @@ const ExamFeeBulkCollectModal = ({ open, onClose, onCompleted, configuredMethods
         : t.titleDefault;
 
   return (
-    <Modal open={open} title={title} onClose={handleClose} maxWidthClassName="max-w-3xl">
-      {renderBody()}
-    </Modal>
+    <>
+      <ProgressOverlay {...progressTask.overlayProps} />
+      <Modal open={open} title={title} onClose={handleClose} maxWidthClassName="max-w-3xl">
+        {renderBody()}
+      </Modal>
+    </>
   );
 };
 

@@ -43,6 +43,9 @@ import InstitutionSection, {
 } from "../../../components/super-admin/create-madrasa/InstitutionSection";
 import { createMadrasaText } from "../../../components/super-admin/create-madrasa/createMadrasa.text";
 import { madrasasText } from "./madrasas.text";
+import { madrasasProgressText } from "./madrasas.progress.text";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 
 export type Madrasa = {
   id: number;
@@ -99,6 +102,7 @@ export default function SuperAdminMadrasasPage() {
   const [items, setItems] = useState<Madrasa[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const progressTask = useProgressTask();
 
   const [q, setQ] = useState("");
   const dq = useDebounce(q, 350);
@@ -192,8 +196,22 @@ export default function SuperAdminMadrasasPage() {
   ============================== */
 
   const onCreate = async (payload: CreateMadrasaPayload) => {
+    const p = getText(madrasasProgressText);
     try {
-      await createMadrasa(payload);
+      await progressTask.run(
+        {
+          title: p.createTitle,
+          estimate: { msPerStep: 1300 },
+          steps: [
+            p.createStepValidate,
+            p.createStepInstitution,
+            p.createStepPlan,
+            p.createStepSetup,
+            p.createStepUsers,
+          ],
+        },
+        () => createMadrasa(payload),
+      );
 
       setOpenCreate(false);
       setPage(1);
@@ -270,7 +288,11 @@ export default function SuperAdminMadrasasPage() {
         setBusyId(m.id);
 
         try {
-          await trashMadrasa(m.id);
+          const p = getText(madrasasProgressText);
+          await progressTask.run(
+            { title: p.trashTitle, estimate: { msPerStep: 700 }, steps: [p.trashStepSuspend, p.trashStepMove] },
+            () => trashMadrasa(m.id),
+          );
           await fetchAll();
         } catch (err) {
           logger.error("Delete madrasa failed:", err);
@@ -293,7 +315,15 @@ export default function SuperAdminMadrasasPage() {
     if (!cleaningTarget) return;
     setCleanBusy(true);
     try {
-      await cleanMadrasaData(cleaningTarget.id, payload);
+      const p = getText(madrasasProgressText);
+      await progressTask.run(
+        {
+          title: p.cleanTitle,
+          estimate: { msPerStep: 1500 },
+          steps: [p.cleanStepVerify, p.cleanStepWipe, p.cleanStepFinal],
+        },
+        () => cleanMadrasaData(cleaningTarget.id, payload),
+      );
       useToastStore.getState().show(getText(madrasasText).cleanSuccess, "success");
       setCleaningTarget(null);
       await fetchAll();
@@ -340,7 +370,25 @@ export default function SuperAdminMadrasasPage() {
         setBulkBusy(true);
 
         try {
-          await Promise.allSettled(ids.map((id) => trashMadrasa(id)));
+          const p = getText(madrasasProgressText);
+          const lang = getLang();
+          // Sequential so the counter is real: "3 / 8" means 3 are in the trash.
+          await progressTask.run(
+            {
+              title: p.trashTitle,
+              steps: ids.map((_, i) => p.trashItem(formatNumber(i + 1, lang), formatNumber(ids.length, lang))),
+            },
+            async ({ advance }) => {
+              for (const id of ids) {
+                try {
+                  await trashMadrasa(id);
+                } catch (err) {
+                  logger.error("Bulk delete item failed:", err);
+                }
+                advance();
+              }
+            },
+          );
           setSelectedIds(new Set());
           await fetchAll();
         } catch (err) {
@@ -512,6 +560,7 @@ export default function SuperAdminMadrasasPage() {
         />
       )}
 
+      <ProgressOverlay {...progressTask.overlayProps} />
     </div>
   );
 }

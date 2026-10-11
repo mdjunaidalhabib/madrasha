@@ -2,6 +2,10 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 
 export const examFeeBulkText = defineText({
   bn: {
+    progTitle: "পরীক্ষা ফি একসাথে নেওয়া হচ্ছে",
+    progStepPay: "নির্বাচিত ফি পরিশোধ রেকর্ড করা হচ্ছে",
+    progStepReceipt: "রসিদ প্রস্তুত করা হচ্ছে",
+    progStepNotify: "অভিভাবকদের জানানো হচ্ছে",
     methods: {
       CASH: "ক্যাশ (হাতে নগদ)",
       BKASH: "বিকাশ",
@@ -68,6 +72,10 @@ export const examFeeBulkText = defineText({
     titleDefault: "পরীক্ষার ফি — {{class}}ভিত্তিক গ্রহণ",
   },
   en: {
+    progTitle: "Collecting exam fees",
+    progStepPay: "Recording selected payments",
+    progStepReceipt: "Preparing receipts",
+    progStepNotify: "Notifying guardians",
     methods: {
       CASH: "Cash (in hand)",
       BKASH: "bKash",

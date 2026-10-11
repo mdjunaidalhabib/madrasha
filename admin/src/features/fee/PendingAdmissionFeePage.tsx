@@ -15,6 +15,8 @@ import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { normalizeBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { commonText, formatNumber, getLang, getText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { pendingAdmissionFeeText } from "./PendingAdmissionFeePage.text";
 import { overdueText } from "./fee.text";
 import { feeInvoicesText } from "./FeeInvoicesPage.text";
@@ -55,6 +57,7 @@ const PAYMENT_METHODS: PaymentMethod[] = ["CASH", "BKASH", "NAGAD", "BANK", "ONL
 const PendingAdmissionFeePage = () => {
   const navigate = useNavigate();
   const t = useText(pendingAdmissionFeeText);
+  const progressTask = useProgressTask();
   const pg = useText(overdueText);
   const fi = useText(feeInvoicesText);
   const c = useText(commonText);
@@ -195,20 +198,40 @@ const PendingAdmissionFeePage = () => {
     if (targets.length === 0) return;
     try {
       setBulkPaying(true);
-      const results = await Promise.allSettled(
-        targets.map((row) =>
-          invoiceApi.pay(row.id, {
-            amount: remainingDue(row),
-            method: bulkMethod,
-            transaction_ref: bulkTransactionRef.trim() || undefined,
-            payment_method_setting_id: bulkMethodSettingId ? Number(bulkMethodSettingId) : undefined,
-            note: bulkNote.trim() || undefined,
-            paid_at: bulkDate || undefined,
-          }),
-        ),
+      const outcomes = await progressTask.run(
+        {
+          title: t.progBulkPayTitle,
+          steps: targets.map((row, i) =>
+            t.progBulkPayItem(
+              toBanglaDigits(i + 1),
+              toBanglaDigits(targets.length),
+              row.student?.nameBn || t.studentFallback(String(row.studentId)),
+            ),
+          ),
+        },
+        async ({ advance }) => {
+          const done: boolean[] = [];
+          for (const row of targets) {
+            try {
+              await invoiceApi.pay(row.id, {
+                amount: remainingDue(row),
+                method: bulkMethod,
+                transaction_ref: bulkTransactionRef.trim() || undefined,
+                payment_method_setting_id: bulkMethodSettingId ? Number(bulkMethodSettingId) : undefined,
+                note: bulkNote.trim() || undefined,
+                paid_at: bulkDate || undefined,
+              });
+              done.push(true);
+            } catch {
+              done.push(false);
+            }
+            advance();
+          }
+          return done;
+        },
       );
-      const failed = results.filter((r) => r.status === "rejected").length;
-      const succeeded = results.length - failed;
+      const failed = outcomes.filter((ok) => !ok).length;
+      const succeeded = outcomes.length - failed;
       if (failed === 0) {
         useToastStore
           .getState()
@@ -312,6 +335,7 @@ const PendingAdmissionFeePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
+      <ProgressOverlay {...progressTask.overlayProps} />
       <div className="mx-auto max-w-4xl">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>

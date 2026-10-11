@@ -2,6 +2,13 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 
 export const trashText = defineText({
   bn: {
+    progRestoreTitle: "পুনরুদ্ধার চলছে",
+    progRestoreOneStep1: "তথ্য পুনরুদ্ধার করা হচ্ছে",
+    progRestoreOneStep2: "সংশ্লিষ্ট ফলাফল হালনাগাদ করা হচ্ছে",
+    progBulkRestoreTitle: "একসাথে পুনরুদ্ধার চলছে",
+    progBulkDeleteTitle: "স্থায়ীভাবে মুছে ফেলা হচ্ছে",
+    progItemRestore: (name: string, i: string, total: string) => `${i}/${total} — ${name} পুনরুদ্ধার`,
+    progItemDelete: (name: string, i: string, total: string) => `${i}/${total} — ${name} মুছে ফেলা`,
     tabs: {
       students: "{{student}}",
       teachers: "{{teacher}}",
@@ -56,6 +63,13 @@ export const trashText = defineText({
     permanentDelete: "স্থায়ী মুছুন",
   },
   en: {
+    progRestoreTitle: "Restoring",
+    progRestoreOneStep1: "Restoring record",
+    progRestoreOneStep2: "Updating related results",
+    progBulkRestoreTitle: "Restoring selected items",
+    progBulkDeleteTitle: "Deleting permanently",
+    progItemRestore: (name, i, total) => `${i}/${total} — restoring ${name}`,
+    progItemDelete: (name, i, total) => `${i}/${total} — deleting ${name}`,
     tabs: {
       students: "{{student}}s",
       teachers: "{{teacher}}s",

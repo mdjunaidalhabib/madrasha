@@ -11,7 +11,10 @@ import api, { cachedGet } from "../../services/api";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { getText, useText } from "@madrasha/shared-ui/src/i18n";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { teacherStaffText } from "./teacherStaff.text";
+import { teacherProgressText } from "./teacherStaff.progress.text";
 
 export interface TeacherFormData {
   name_bn: string;
@@ -116,6 +119,8 @@ const calculateAge = (dob?: string) => {
 
 const TeacherPage: React.FC = () => {
   const t = useText(teacherStaffText);
+  const pt = useText(teacherProgressText);
+  const progressTask = useProgressTask();
   const [formData, setFormData] = useState<TeacherFormData>(initialState);
   const [errors, setErrors] = useState<TeacherFormErrors>({});
   const [excelTeachers, setExcelTeachers] = useState<ExcelTeacherRow[]>([]);
@@ -381,7 +386,10 @@ const TeacherPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const res = await api.post("/teachers/bulk", { teachers: makeExcelPayload() });
+      const res = await progressTask.run(
+        { title: pt.bulkUploadTitle, steps: [pt.stepValidate, pt.stepSave, pt.stepFinish], estimate: true },
+        () => api.post("/teachers/bulk", { teachers: makeExcelPayload() }),
+      );
       useToastStore.getState().show(
         getText(teacherStaffText).bulkUploadSuccess(String(res.data?.inserted || 0), String(res.data?.updated || 0)),
         "success",
@@ -415,6 +423,7 @@ const TeacherPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
+      <ProgressOverlay {...progressTask.overlayProps} />
       <div className="relative mb-6">
         <h1 className="text-3xl font-bold text-center dark:text-slate-100">{t.teacherRegistration}</h1>
 

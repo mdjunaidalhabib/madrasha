@@ -41,6 +41,7 @@ export const peopleToolsText = defineText({
 
     // bulk photo upload
     bulkTitle: "একসাথে অনেক ছবি আপলোড",
+    bulkProgressTitle: "ছবি আপলোড চলছে",
     fileNameRule: (by: string, scope: string) => `ফাইলের নাম = ${by} (যেমন 1045.jpg) · পরিসর: ${scope}`,
     registrationNo: "রেজিস্ট্রেশন নম্বর",
     rollNo: "রোল নম্বর",
@@ -140,6 +141,7 @@ export const peopleToolsText = defineText({
     removePhoto: "Remove photo",
 
     bulkTitle: "Bulk Photo Upload",
+    bulkProgressTitle: "Uploading photos",
     fileNameRule: (by, scope) => `File name = ${by} (e.g. 1045.jpg) · Scope: ${scope}`,
     registrationNo: "registration no.",
     rollNo: "roll no.",

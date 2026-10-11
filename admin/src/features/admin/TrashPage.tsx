@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import api from "../../services/api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonTable } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { commonText, formatDate as formatLangDate, localizeDigits, useLang, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
@@ -137,6 +139,7 @@ export default function TrashPage() {
   const c = useText(commonText);
   const lang = useLang();
   const n = (value: number) => localizeDigits(value, lang);
+  const progressTask = useProgressTask();
   const [activeTab, setActiveTab] = useState<TabKey>("students");
   const [rowsByTab, setRowsByTab] = useState<Record<TabKey, TrashRow[]>>({
     students: [],
@@ -267,7 +270,18 @@ export default function TrashPage() {
       onConfirm: async () => {
         try {
           setBusyId(row.id);
-          const res = await api.post(`/trash/${tab}/${row.id}/restore`);
+          const res = await progressTask.run(
+            {
+              title: t.progRestoreTitle,
+              steps: tab === "students" ? [t.progRestoreOneStep1, t.progRestoreOneStep2] : [t.progRestoreOneStep1],
+              estimate: tab === "students",
+            },
+            async ({ advance }) => {
+              const r = await api.post(`/trash/${tab}/${row.id}/restore`);
+              advance();
+              return r;
+            },
+          );
           const reopened = res.data?.data?.reopened;
           useToastStore
             .getState()
@@ -333,13 +347,28 @@ export default function TrashPage() {
       onConfirm: async () => {
         setBulkBusy(true);
         try {
-          const results = await Promise.allSettled(
-            targetRows.map((row) => api.post(`/trash/${tab}/${row.id}/restore`)),
+          const succeededIds = await progressTask.run(
+            {
+              title: t.progBulkRestoreTitle,
+              steps: targetRows.map((row, i) =>
+                t.progItemRestore(getRowName(tab, row) || String(row.id), n(i + 1), n(targetRows.length)),
+              ),
+            },
+            async ({ advance }) => {
+              const ok: Array<TrashRow["id"]> = [];
+              for (const row of targetRows) {
+                try {
+                  await api.post(`/trash/${tab}/${row.id}/restore`);
+                  ok.push(row.id);
+                } catch {
+                  // counted as failed below
+                }
+                advance();
+              }
+              return ok;
+            },
           );
-          const succeededIds = targetRows
-            .filter((_, i) => results[i].status === "fulfilled")
-            .map((row) => row.id);
-          const failedCount = results.length - succeededIds.length;
+          const failedCount = targetRows.length - succeededIds.length;
           if (succeededIds.length > 0) removeRows(tab, succeededIds);
           if (failedCount === 0) {
             useToastStore.getState().show(t.restored, "success");
@@ -370,13 +399,28 @@ export default function TrashPage() {
       onConfirm: async () => {
         setBulkBusy(true);
         try {
-          const results = await Promise.allSettled(
-            targetRows.map((row) => api.delete(`/trash/${tab}/${row.id}`)),
+          const succeededIds = await progressTask.run(
+            {
+              title: t.progBulkDeleteTitle,
+              steps: targetRows.map((row, i) =>
+                t.progItemDelete(getRowName(tab, row) || String(row.id), n(i + 1), n(targetRows.length)),
+              ),
+            },
+            async ({ advance }) => {
+              const ok: Array<TrashRow["id"]> = [];
+              for (const row of targetRows) {
+                try {
+                  await api.delete(`/trash/${tab}/${row.id}`);
+                  ok.push(row.id);
+                } catch {
+                  // counted as failed below
+                }
+                advance();
+              }
+              return ok;
+            },
           );
-          const succeededIds = targetRows
-            .filter((_, i) => results[i].status === "fulfilled")
-            .map((row) => row.id);
-          const failedCount = results.length - succeededIds.length;
+          const failedCount = targetRows.length - succeededIds.length;
           if (succeededIds.length > 0) removeRows(tab, succeededIds);
           if (failedCount === 0) {
             useToastStore.getState().show(t.deletedForever, "success");
@@ -404,6 +448,7 @@ export default function TrashPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
+      <ProgressOverlay {...progressTask.overlayProps} />
       <div className="mx-auto max-w-6xl">
         <div className="mb-4">
           <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">🗑️ {t.title}</h1>

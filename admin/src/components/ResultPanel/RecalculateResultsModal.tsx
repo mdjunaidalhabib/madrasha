@@ -5,6 +5,8 @@ import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { commonText, getText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { resultPanelText } from "./resultPanel.text";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { resultStatusBadge } from "./resultStatus";
 
@@ -50,6 +52,7 @@ export default function RecalculateResultsModal({ open, onClose, resultMasterId,
   const push = useToastStore((state) => state.push);
   const lang = useLang();
   const t = useText(resultPanelText).recalc;
+  const progressTask = useProgressTask();
   const c = useText(commonText);
   const num = (value: number | string) => localizeDigits(value, lang);
   const single = Boolean(resultMasterId);
@@ -100,10 +103,18 @@ export default function RecalculateResultsModal({ open, onClose, resultMasterId,
   const handleApply = async () => {
     try {
       setApplying(true);
-      const res = await api.post("/results/recalculate", {
-        ...(resultMasterId ? { result_master_id: resultMasterId } : {}),
-        include_published: single || includePublished,
-      });
+      const res = await progressTask.run(
+        {
+          title: t.progTitle,
+          steps: [t.progStepLoad, t.progStepCalc, t.progStepSave, t.progStepFinish],
+          estimate: true,
+        },
+        () =>
+          api.post("/results/recalculate", {
+            ...(resultMasterId ? { result_master_id: resultMasterId } : {}),
+            include_published: single || includePublished,
+          }),
+      );
       const applied: RecalcTotals | undefined = res.data?.totals;
       const failed = applied?.failed ?? 0;
 
@@ -126,6 +137,8 @@ export default function RecalculateResultsModal({ open, onClose, resultMasterId,
   const nothingToDo = !loading && !loadError && affected.length === 0;
 
   return (
+    <>
+    <ProgressOverlay {...progressTask.overlayProps} />
     <Modal
       open={open}
       title={single ? t.titleOne : t.titleAll}
@@ -243,5 +256,6 @@ export default function RecalculateResultsModal({ open, onClose, resultMasterId,
         </div>
       </div>
     </Modal>
+    </>
   );
 }

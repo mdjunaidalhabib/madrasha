@@ -9,6 +9,8 @@ import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { normalizeBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { commonText, formatNumber, getLang, useText } from "@madrasha/shared-ui/src/i18n";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { examFeeTableText } from "./ExamFeeTable.text";
 
 // Digits follow the current UI language (the table re-renders on a language
@@ -67,6 +69,7 @@ const cellKey = (examId: number, classId: number) => `${examId}:${classId}`;
  */
 export default function ExamFeeTable() {
   const t = useText(examFeeTableText);
+  const progressTask = useProgressTask();
   const c = useText(commonText);
   const [data, setData] = useState<ExamFeeOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -172,7 +175,14 @@ export default function ExamFeeTable() {
 
     try {
       setSavingExamId(exam.id);
-      const res = await examFeeApi.setAmounts(exam.id, amounts);
+      const res = await progressTask.run(
+        {
+          title: t.progSaveTitle,
+          steps: [t.progSaveStepAmounts, t.progSaveStepInvoices],
+          estimate: true,
+        },
+        () => examFeeApi.setAmounts(exam.id, amounts),
+      );
       const result = res.data?.data;
       useToastStore
         .getState()
@@ -221,7 +231,16 @@ export default function ExamFeeTable() {
       onConfirm: async () => {
         try {
           setTogglingExamId(exam.id);
-          const res = await examFeeApi.setStatus(exam.id, next);
+          const res = await progressTask.run(
+            {
+              title: next ? t.progEnableTitle : t.progDisableTitle,
+              steps: next
+                ? [t.progEnableStepStatus, t.progEnableStepInvoices, t.progEnableStepNotify]
+                : [t.progDisableStepStatus, t.progDisableStepInvoices],
+              estimate: true,
+            },
+            () => examFeeApi.setStatus(exam.id, next),
+          );
           const result = res.data?.data;
           useToastStore
             .getState()
@@ -333,6 +352,7 @@ export default function ExamFeeTable() {
 
   return (
     <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
+      <ProgressOverlay {...progressTask.overlayProps} />
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <ClipboardList size={16} className="shrink-0 text-gray-400 dark:text-slate-500" />

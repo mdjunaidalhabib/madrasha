@@ -136,7 +136,8 @@ export class StudentRepository {
     const rows = await prisma.student.findMany({
       where: { madrasaId, admissionStatus: "PENDING", deletedAt: null },
       include: { classRef: { select: tenantClassNameSelect(madrasaId) } },
-      orderBy: { id: "desc" },
+      // Oldest application (lowest serial) first - first come, first served.
+      orderBy: { id: "asc" },
     });
     return rows.map(withTenantClassRef);
   }

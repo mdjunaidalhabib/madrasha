@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { commonText, getText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { admissionReviewText } from "./admissionReview.text";
+import { admissionProgressText } from "./admissionReview.progress.text";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { studentPath } from "./studentRoute";
 import { admissionApi } from "../../services/phase1Api";
@@ -83,6 +86,8 @@ const normalizeFeePreviewArray = (payload: any): FeePreviewRow[] => {
 
 const RejectedAdmissionsPage = () => {
   const t = useText(admissionReviewText);
+  const pt = useText(admissionProgressText);
+  const progressTask = useProgressTask();
   const c = useText(commonText);
   const lang = useLang();
   const navigate = useNavigate();
@@ -201,7 +206,10 @@ const RejectedAdmissionsPage = () => {
       onConfirm: async () => {
         try {
           setBusyId(student.id);
-          await admissionApi.approve(Number(student.id));
+          await progressTask.run(
+            { title: pt.reapproveTitle, steps: [pt.stepValidate, pt.stepApprove, pt.stepFees, pt.stepFinish], estimate: true as const },
+            () => admissionApi.approve(Number(student.id)),
+          );
           useToastStore.getState().show(t.reapproved, "success");
           removeRows([student.id]);
           refreshSidebarCounts();
@@ -228,7 +236,10 @@ const RejectedAdmissionsPage = () => {
         try {
           let done = new Set<number>();
           try {
-            const res = await admissionApi.approveBulk(students.map((student) => Number(student.id)));
+            const res = await progressTask.run(
+              { title: pt.reapproveTitle, steps: [pt.stepValidate, pt.stepApprove, pt.stepFees, pt.stepFinish], estimate: true as const },
+              () => admissionApi.approveBulk(students.map((student) => Number(student.id))),
+            );
             done = new Set((res.data?.data?.succeeded ?? []).map(Number));
           } catch (err) {
             logger.error("Bulk re-approve rejected applications failed:", err);
@@ -264,7 +275,10 @@ const RejectedAdmissionsPage = () => {
       onConfirm: async () => {
         try {
           setBusyId(student.id);
-          await admissionApi.permanentlyDeleteRejected(Number(student.id));
+          await progressTask.run(
+            { title: pt.deleteTitle, steps: [pt.stepValidate, pt.stepDelete, pt.stepFinish], estimate: true as const },
+            () => admissionApi.permanentlyDeleteRejected(Number(student.id)),
+          );
           useToastStore.getState().show(t.deletedForever, "success");
           removeRows([student.id]);
         } catch (err: any) {
@@ -290,7 +304,10 @@ const RejectedAdmissionsPage = () => {
           // One request (and one activity-log row) for the whole selection.
           let done = new Set<number>();
           try {
-            const res = await admissionApi.permanentlyDeleteRejectedBulk(students.map((student) => Number(student.id)));
+            const res = await progressTask.run(
+              { title: pt.deleteTitle, steps: [pt.stepValidate, pt.stepDelete, pt.stepFinish], estimate: true as const },
+              () => admissionApi.permanentlyDeleteRejectedBulk(students.map((student) => Number(student.id))),
+            );
             done = new Set((res.data?.data?.succeeded ?? []).map(Number));
           } catch (err) {
             logger.error("Bulk delete rejected applications failed:", err);
@@ -316,6 +333,7 @@ const RejectedAdmissionsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
+      <ProgressOverlay {...progressTask.overlayProps} />
       <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

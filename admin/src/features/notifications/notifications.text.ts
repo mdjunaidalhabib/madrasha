@@ -5,6 +5,10 @@ type EventLabel = { title: string; hint: string };
 /** SMS/email pages. SMS bodies sent to guardians are data, not UI. */
 export const notificationsText = defineText({
   bn: {
+    progBulkTitle: "বার্তা পাঠানো হচ্ছে",
+    progBulkStepPrepare: "প্রাপকদের তালিকা ও বার্তা প্রস্তুত করা হচ্ছে",
+    progBulkStepSend: "প্রাপকদের কাছে বার্তা পাঠানো হচ্ছে",
+    progBulkStepResult: "পাঠানোর ফলাফল সংগ্রহ করা হচ্ছে",
     events: {
       ADMISSION: {
         title: "ভর্তি অনুমোদনের পর",
@@ -121,6 +125,10 @@ export const notificationsText = defineText({
     roll: "রোল",
   },
   en: {
+    progBulkTitle: "Sending messages",
+    progBulkStepPrepare: "Preparing recipients and message",
+    progBulkStepSend: "Sending to recipients",
+    progBulkStepResult: "Collecting delivery results",
     events: {
       ADMISSION: { title: "After admission approval", hint: "When the {{head}} approves a student's admission, the guardian gets an SMS automatically" },
       INFO_UPDATE: { title: "After student info update", hint: "When a student's info is edited and saved, the guardian gets an SMS automatically" },

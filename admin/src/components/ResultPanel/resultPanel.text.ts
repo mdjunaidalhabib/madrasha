@@ -121,7 +121,7 @@ export const resultPanelText = defineText({
       resultState: "অবস্থা",
       rank: "মেধাক্রম",
       place: "মেধাস্থান",
-      placeTitle: "সমান নম্বর/জিপিএ হলে একই মেধাস্থান (যেমন ১, ২, ২, ৪)",
+      placeTitle: "সমান নম্বর/জিপিএ হলে একই মেধাস্থান (যেমন ১, ১, ২, ৩)",
       actions: "কার্যক্রম",
       noResult: "কোনো ফলাফল পাওয়া যায়নি",
       view: "দেখুন",
@@ -190,6 +190,11 @@ export const resultPanelText = defineText({
       done: (updated: string, students: string) =>
         `${updated}টি ফলাফল পুনঃগণনা হয়েছে (${students} জন {{student}}র ফলাফল বদলেছে)`,
       failed: "পুনঃগণনা করা যায়নি",
+      progTitle: "ফলাফল পুনঃগণনা চলছে",
+      progStepLoad: "ফলাফল ও নম্বর সংগ্রহ করা হচ্ছে",
+      progStepCalc: "মোট, গ্রেড ও মেধাক্রম পুনঃগণনা",
+      progStepSave: "পরিবর্তিত ফলাফল সংরক্ষণ করা হচ্ছে",
+      progStepFinish: "সম্পন্ন করা হচ্ছে",
       titleOne: "🔄 ফলাফল পুনঃগণনা",
       titleAll: "🔄 সব ফলাফল পুনঃগণনা",
       intro:
@@ -215,6 +220,11 @@ export const resultPanelText = defineText({
       apply: (results: string, students: string) => `প্রয়োগ করুন (${results}টি ফলাফল, ${students} জন)`,
     },
     corrections: {
+      progApproveTitle: "সংশোধন প্রয়োগ হচ্ছে",
+      progRejectTitle: "সংশোধন বাতিল হচ্ছে",
+      progStepDecide: "সিদ্ধান্ত সংরক্ষণ করা হচ্ছে",
+      progStepApply: "নম্বর হালনাগাদ ও ফলাফল প্রয়োগ",
+      progStepRefresh: "হালনাগাদ তালিকা লোড করা হচ্ছে",
       fields: {
         mark: "নম্বর",
         is_absent: "অনুপস্থিতি",
@@ -416,7 +426,7 @@ export const resultPanelText = defineText({
       resultState: "Status",
       rank: "Merit Rank",
       place: "Merit Position",
-      placeTitle: "Equal marks/GPA share the same position (e.g. 1, 2, 2, 4)",
+      placeTitle: "Equal marks/GPA share the same position (e.g. 1, 1, 2, 3)",
       actions: "Actions",
       noResult: "No result found",
       view: "View",
@@ -483,6 +493,11 @@ export const resultPanelText = defineText({
       partialFail: (updated, failed) => `${updated} result(s) updated, ${failed} failed`,
       done: (updated, students) => `${updated} result(s) recalculated (${students} {{student}}(s) changed)`,
       failed: "Could not recalculate",
+      progTitle: "Recalculating results",
+      progStepLoad: "Collecting results and marks",
+      progStepCalc: "Recalculating totals, grades and merit positions",
+      progStepSave: "Saving changed results",
+      progStepFinish: "Finalising",
       titleOne: "🔄 Recalculate Result",
       titleAll: "🔄 Recalculate All Results",
       intro:
@@ -508,6 +523,11 @@ export const resultPanelText = defineText({
       apply: (results, students) => `Apply (${results} result(s), ${students} student(s))`,
     },
     corrections: {
+      progApproveTitle: "Applying correction",
+      progRejectTitle: "Rejecting correction",
+      progStepDecide: "Saving decision",
+      progStepApply: "Updating marks and applying to result",
+      progStepRefresh: "Loading updated list",
       fields: {
         mark: "Mark",
         is_absent: "Absence",

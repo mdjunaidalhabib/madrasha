@@ -11,6 +11,8 @@ import { attendanceDeviceApi } from "../../services/attendanceDeviceApi";
 import { ProgressSummary, SegmentedFilter } from "../students/photo-manager/PeopleToolbar";
 import { useClassTree, useDeviceStatus } from "./hooks";
 import { ATTENDEE_TYPES, type AttendeeType, type CardPerson } from "./types";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { deviceCardsText } from "./cards/deviceCards.text";
 import { DevicePicker } from "./cards/cardParts";
 import { useEnrollDevice } from "./cards/useEnrollDevice";
@@ -35,6 +37,7 @@ const rollNum = (v: unknown) => {
  */
 export default function DeviceCardsPage() {
   const t = useText(deviceCardsText);
+  const progressTask = useProgressTask();
   const lang = useLang();
   const n = (v: string | number) => localizeDigits(v, lang);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -247,14 +250,30 @@ export default function DeviceCardsPage() {
         setAssigning(true);
         try {
           let created = 0;
-          for (const cls of targetClasses) {
-            const res = await attendanceDeviceApi.assignPins({ attendee_type: tab, class_id: cls });
-            created += Number(res?.created ?? 0);
-          }
-          useToastStore
-            .getState()
-            .show(created > 0 ? tx.assignPinsDone(localizeDigits(created, lang)) : tx.assignPinsNone, "success");
-          await load(tab);
+          const stepLabels = targetClasses.map((cls, i) =>
+            cls === undefined
+              ? tx.progPinsStepAll
+              : tx.progPinsStepClass(
+                  classes.find((cl) => cl.id === cls)?.name ?? String(cls),
+                  localizeDigits(i + 1, lang),
+                  localizeDigits(targetClasses.length, lang),
+                ),
+          );
+          await progressTask.run(
+            { title: tx.progPinsTitle, steps: [...stepLabels, tx.progPinsStepRefresh] },
+            async ({ advance }) => {
+              for (const cls of targetClasses) {
+                const res = await attendanceDeviceApi.assignPins({ attendee_type: tab, class_id: cls });
+                created += Number(res?.created ?? 0);
+                advance();
+              }
+              useToastStore
+                .getState()
+                .show(created > 0 ? tx.assignPinsDone(localizeDigits(created, lang)) : tx.assignPinsNone, "success");
+              await load(tab);
+              advance();
+            },
+          );
         } catch {
           // interceptor toast
         } finally {
@@ -274,6 +293,7 @@ export default function DeviceCardsPage() {
 
   return (
     <div className="flex min-h-full flex-col bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
+      <ProgressOverlay {...progressTask.overlayProps} />
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4">
         {/* Header */}
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">

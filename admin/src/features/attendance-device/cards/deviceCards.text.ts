@@ -3,6 +3,10 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 /** কার্ড এনরোলমেন্ট page, the single-person card modal and the series mode. */
 export const deviceCardsText = defineText({
   bn: {
+    progPinsTitle: "পিন বরাদ্দ চলছে",
+    progPinsStepAll: "পিন বরাদ্দ করা হচ্ছে",
+    progPinsStepClass: (name: string, i: string, total: string) => `${i}/${total} — ${name}`,
+    progPinsStepRefresh: "হালনাগাদ তালিকা লোড করা হচ্ছে",
     title: "কার্ড এনরোলমেন্ট",
     subtitle:
       "প্রত্যেকের ডিভাইস আইডি স্বয়ংক্রিয়ভাবে তৈরি হয়। কার্ড যুক্ত করতে \"মেশিনে কার্ড দিন\" চাপুন, তারপর কার্ডটি K40 মেশিনে ছোঁয়ান — নম্বর নিজে থেকেই যুক্ত হবে।",
@@ -126,6 +130,10 @@ export const deviceCardsText = defineText({
     },
   },
   en: {
+    progPinsTitle: "Assigning PINs",
+    progPinsStepAll: "Assigning PINs",
+    progPinsStepClass: (name, i, total) => `${i}/${total} — ${name}`,
+    progPinsStepRefresh: "Loading updated list",
     title: "Card Enrollment",
     subtitle:
       "Everyone gets a device ID automatically. To add a card press \"Enroll on machine\", then tap the card on the K40 — the number is linked automatically.",

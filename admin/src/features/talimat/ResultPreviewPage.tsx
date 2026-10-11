@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { cachedGet } from "../../services/api";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { ABSENT_MARK } from "@madrasha/shared-ui/src/utils/reportUtils";
@@ -158,6 +160,7 @@ export default function ResultPreviewPage() {
   );
   const [editingStudent, setEditingStudent] = useState<SummaryItem | null>(null);
   const [studentSaving, setStudentSaving] = useState(false);
+  const progressTask = useProgressTask();
 
   const loadOverview = useCallback(async () => {
     try {
@@ -297,15 +300,25 @@ export default function ResultPreviewPage() {
     setStudentSaving(true);
 
     try {
-      await api.post("/results/marks", { result_master_id: resultMasterId, data: payload });
-      await api.post("/results/process", {
-        exam_id: +examId,
-        class_id: +classId,
-        result_master_id: resultMasterId,
-      });
-
-      await loadSummary();
-      await loadOverview();
+      await progressTask.run(
+        {
+          title: t.progressStudentTitle,
+          steps: [t.progressStepMarks, t.progressStepProcess, t.progressStepRefresh],
+        },
+        async ({ advance }) => {
+          await api.post("/results/marks", { result_master_id: resultMasterId, data: payload });
+          advance();
+          await api.post("/results/process", {
+            exam_id: +examId,
+            class_id: +classId,
+            result_master_id: resultMasterId,
+          });
+          advance();
+          await loadSummary();
+          await loadOverview();
+          advance();
+        },
+      );
 
       setEditingStudent(null);
       push("success", t.marksUpdated);
@@ -352,17 +365,27 @@ export default function ResultPreviewPage() {
       // apply_now the server applies it immediately - but only if it
       // independently confirms full result authority; otherwise it is left
       // PENDING for a separate approver and `applied` comes back false.
-      const res = await api.post(`/results/${resultMasterId}/corrections/batch`, {
-        items: requests,
-        reason,
-        apply_now: canApplyCorrectionDirectly,
-      });
+      const res = await progressTask.run(
+        { title: t.progCorrTitle, steps: [t.progCorrStepSubmit, t.progressStepRefresh] },
+        async ({ advance }) => {
+          const r = await api.post(`/results/${resultMasterId}/corrections/batch`, {
+            items: requests,
+            reason,
+            apply_now: canApplyCorrectionDirectly,
+          });
+          advance();
+          if (r.data?.applied) {
+            await loadSummary();
+            await loadOverview();
+          }
+          advance();
+          return r;
+        },
+      );
 
       setEditingStudent(null);
       if (res.data?.applied) {
         push("success", t.correctionApplied);
-        await loadSummary();
-        await loadOverview();
       } else {
         push("success", t.correctionRequested);
       }
@@ -385,14 +408,22 @@ export default function ResultPreviewPage() {
 
     try {
       setVerifyingResult(true);
-      const res = await api.post(`/results/${resultMasterId}/verify-result`, {});
+      const res = await progressTask.run(
+        { title: t.progVerifyTitle, steps: [t.progVerifyStep, t.progressStepRefresh] },
+        async ({ advance }) => {
+          const r = await api.post(`/results/${resultMasterId}/verify-result`, {});
+          advance();
+          await loadSummary();
+          await loadOverview();
+          advance();
+          return r;
+        },
+      );
       if (res.data?.valid === false) {
         push("error", (res.data?.issues || []).join(" | ") || t.resultIssues);
       } else {
         push("success", t.resultVerified);
       }
-      await loadSummary();
-      await loadOverview();
     } catch (err: any) {
       logger.error("Verify result error:", err);
       push("error", err?.response?.data?.message || t.verifyFailed);
@@ -406,9 +437,16 @@ export default function ResultPreviewPage() {
 
     try {
       setApproving(true);
-      await api.post(`/results/${resultMasterId}/approve`, { approve: true });
-      await loadSummary();
-      await loadOverview();
+      await progressTask.run(
+        { title: t.progApproveTitle, steps: [t.progApproveStep, t.progressStepRefresh] },
+        async ({ advance }) => {
+          await api.post(`/results/${resultMasterId}/approve`, { approve: true });
+          advance();
+          await loadSummary();
+          await loadOverview();
+          advance();
+        },
+      );
       push("success", t.resultApproved);
     } catch (err: any) {
       logger.error("Approve result error:", err);
@@ -423,9 +461,16 @@ export default function ResultPreviewPage() {
 
     try {
       setApproving(true);
-      await api.post(`/results/${resultMasterId}/approve`, { approve: false, remarks: reason });
-      await loadSummary();
-      await loadOverview();
+      await progressTask.run(
+        { title: t.progRejectTitle, steps: [t.progRejectStep, t.progressStepRefresh] },
+        async ({ advance }) => {
+          await api.post(`/results/${resultMasterId}/approve`, { approve: false, remarks: reason });
+          advance();
+          await loadSummary();
+          await loadOverview();
+          advance();
+        },
+      );
       setRejectResultOpen(false);
       push("success", t.resultRejected);
     } catch (err: any) {
@@ -441,9 +486,16 @@ export default function ResultPreviewPage() {
 
     try {
       setPublishing(true);
-      await api.post("/results/publish", { result_master_id: resultMasterId });
-      await loadSummary();
-      await loadOverview();
+      await progressTask.run(
+        { title: t.progPublishTitle, steps: [t.progPublishStep, t.progressStepRefresh] },
+        async ({ advance }) => {
+          await api.post("/results/publish", { result_master_id: resultMasterId });
+          advance();
+          await loadSummary();
+          await loadOverview();
+          advance();
+        },
+      );
       push("success", t.resultPublished);
     } catch (err: any) {
       logger.error("Publish error:", err);
@@ -460,9 +512,16 @@ export default function ResultPreviewPage() {
 
     try {
       setUnpublishing(true);
-      await api.post(`/results/${resultMasterId}/unpublish`, {});
-      await loadSummary();
-      await loadOverview();
+      await progressTask.run(
+        { title: t.progUnpublishTitle, steps: [t.progUnpublishStep, t.progressStepRefresh] },
+        async ({ advance }) => {
+          await api.post(`/results/${resultMasterId}/unpublish`, {});
+          advance();
+          await loadSummary();
+          await loadOverview();
+          advance();
+        },
+      );
       push("success", t.resultUnpublished);
     } catch (err: any) {
       logger.error("Unpublish error:", err);
@@ -493,9 +552,16 @@ export default function ResultPreviewPage() {
           onConfirm: async () => {
             try {
               setApplyingRoll(true);
-              await api.post("/results/apply-roll-by-rank", { result_master_id: resultMasterId });
-              await loadSummary();
-              await loadOverview();
+              await progressTask.run(
+                { title: t.progRollTitle, steps: [t.progRollStep, t.progressStepRefresh] },
+                async ({ advance }) => {
+                  await api.post("/results/apply-roll-by-rank", { result_master_id: resultMasterId });
+                  advance();
+                  await loadSummary();
+                  await loadOverview();
+                  advance();
+                },
+              );
               push("success", t.rollUpdated);
             } catch (err: any) {
               logger.error("Apply roll by rank error:", err);
@@ -523,9 +589,16 @@ export default function ResultPreviewPage() {
       onConfirm: async () => {
         try {
           setApplyingRoll(true);
-          await api.post("/results/undo-roll-by-rank", { result_master_id: resultMasterId });
-          await loadSummary();
-          await loadOverview();
+          await progressTask.run(
+            { title: t.progRollUndoTitle, steps: [t.progRollUndoStep, t.progressStepRefresh] },
+            async ({ advance }) => {
+              await api.post("/results/undo-roll-by-rank", { result_master_id: resultMasterId });
+              advance();
+              await loadSummary();
+              await loadOverview();
+              advance();
+            },
+          );
           push("success", t.rollRestored);
         } catch (err: any) {
           logger.error("Undo roll by rank error:", err);
@@ -671,6 +744,7 @@ export default function ResultPreviewPage() {
         onCancel={() => setRejectResultOpen(false)}
         onConfirm={handleConfirmRejectResult}
       />
+      <ProgressOverlay {...progressTask.overlayProps} />
     </div>
   );
 }

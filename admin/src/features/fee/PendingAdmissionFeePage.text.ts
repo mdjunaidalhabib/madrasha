@@ -2,6 +2,8 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 
 export const pendingAdmissionFeeText = defineText({
   bn: {
+    progBulkPayTitle: "ভর্তি ফি একসাথে নেওয়া হচ্ছে",
+    progBulkPayItem: (i: string, total: string, name: string) => `${i}/${total} — ${name}`,
     clearTitle: "পুরো তালিকা ক্লিয়ার করবেন?",
     clearMessage:
       "এই তালিকার সবগুলো এখান থেকে সরে যাবে (সবার জন্য)। ভর্তি ফি বাতিল হবে না — পরে \"ফি গ্রহণ\" পেজ থেকে সেগুলো নেওয়া যাবে।",
@@ -46,6 +48,8 @@ export const pendingAdmissionFeeText = defineText({
     confirmAll: "সবার পেমেন্ট নিশ্চিত করুন",
   },
   en: {
+    progBulkPayTitle: "Collecting admission fees",
+    progBulkPayItem: (i, total, name) => `${i}/${total} — ${name}`,
     clearTitle: "Clear the whole list?",
     clearMessage:
       "Everything in this list will be removed from here (for everyone). Admission fees are not cancelled — they can still be collected later from the \"Collect Fee\" page.",

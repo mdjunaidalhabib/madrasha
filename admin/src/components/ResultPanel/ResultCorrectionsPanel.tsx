@@ -4,6 +4,8 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { commonText, formatDate, getLang, getText, localizeDigits, useText } from "@madrasha/shared-ui/src/i18n";
 import { resultPanelText } from "./resultPanel.text";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import ReasonPromptModal from "./ReasonPromptModal";
 import { correctionStatusBadge } from "./resultStatus";
@@ -87,6 +89,7 @@ export default function ResultCorrectionsPanel({
 }: Props) {
   const push = useToastStore((state) => state.push);
   const t = useText(resultPanelText).corrections;
+  const progressTask = useProgressTask();
   const c = useText(commonText);
   const num = (value: number | string) => localizeDigits(value, getLang());
   const [rows, setRows] = useState<CorrectionRow[]>([]);
@@ -127,12 +130,22 @@ export default function ResultCorrectionsPanel({
   const decide = async (id: number, approve: boolean, note?: string) => {
     try {
       setDecidingId(id);
-      await api.post(`/results/corrections/${id}/decide`, {
-        approve,
-        ...(note ? { decision_note: note } : {}),
-      });
-      push("success", approve ? t.applied : t.rejected);
-      await load();
+      await progressTask.run(
+        {
+          title: approve ? t.progApproveTitle : t.progRejectTitle,
+          steps: approve ? [t.progStepApply, t.progStepRefresh] : [t.progStepDecide, t.progStepRefresh],
+        },
+        async ({ advance }) => {
+          await api.post(`/results/corrections/${id}/decide`, {
+            approve,
+            ...(note ? { decision_note: note } : {}),
+          });
+          advance();
+          push("success", approve ? t.applied : t.rejected);
+          await load();
+          advance();
+        },
+      );
       if (approve) onApplied();
     } catch (err: any) {
       logger.error("Decide correction error:", err);
@@ -166,6 +179,7 @@ export default function ResultCorrectionsPanel({
 
   return (
     <div className="bg-white shadow-md rounded-xl p-3 sm:p-4 mt-4 dark:bg-slate-900">
+      <ProgressOverlay {...progressTask.overlayProps} />
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div>
           <h2 className="text-base sm:text-lg font-semibold dark:text-slate-100">{t.title}</h2>

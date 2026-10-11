@@ -6,6 +6,9 @@ import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { StudentFullRecord } from "../../types/student";
 import { downloadLockedWorkbook } from "../../utils/excelSheetLock";
 import { useText, getText, commonText } from "@madrasha/shared-ui/src/i18n";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
+import { bulkUpdateProgressText } from "./bulkUpdate.progress.text";
 import { bulkUpdateText, type BulkUpdateFieldKey } from "./bulkUpdate.text";
 
 export interface BulkUpdateExcelRow {
@@ -160,6 +163,8 @@ type PreviewRow = {
 
 const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSuccess }: BulkUpdateModalProps) => {
   const t = useText(bulkUpdateText);
+  const pt = useText(bulkUpdateProgressText);
+  const progressTask = useProgressTask();
   const c = useText(commonText);
   const [excelRows, setExcelRows] = useState<BulkUpdateExcelRow[]>([]);
   const [result, setResult] = useState<BulkUpdateResultData | null>(null);
@@ -354,7 +359,10 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
 
     try {
       setLoading(true);
-      const res = await api.post("/students/bulk-update", { students: payload });
+      const res = await progressTask.run(
+        { title: pt.title, steps: [pt.stepValidate, pt.stepSave, pt.stepCompare, pt.stepFinish], estimate: true },
+        () => api.post("/students/bulk-update", { students: payload }),
+      );
       setResult({
         updated: res.data?.updated || 0,
         unchanged: res.data?.unchanged || 0,
@@ -375,6 +383,7 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <ProgressOverlay {...progressTask.overlayProps} />
       <div className="w-full max-w-7xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
         <div className="flex items-center justify-between border-b px-6 py-4 dark:border-slate-700">
           <div>

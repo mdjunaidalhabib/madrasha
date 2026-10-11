@@ -19,6 +19,13 @@ export const uiText = defineText({
     // ConfirmDialog
     confirmQuestion: "আপনি কি নিশ্চিত?",
     pleaseWait: "অপেক্ষা করুন...",
+    // ProgressOverlay
+    progressPercentDone: (p: string) => `${p}% সম্পন্ন`,
+    progressStepsDone: (done: string, total: string) => `${done} / ${total} ধাপ সম্পন্ন`,
+    progressStepsLeft: (n: string) => `বাকি ${n}টি ধাপ`,
+    progressAllDone: "সব ধাপ সম্পন্ন",
+    progressDoNotClose: "অনুগ্রহ করে পেজ বন্ধ বা রিফ্রেশ করবেন না",
+    progressFailedStep: "এই ধাপে সমস্যা হয়েছে",
     // ScriptInput
     onlyBangla: "শুধু বাংলায় লিখুন",
     onlyArabic: "শুধু আরবিতে লিখুন",
@@ -57,6 +64,13 @@ export const uiText = defineText({
     retry: "Retry",
     confirmQuestion: "Are you sure?",
     pleaseWait: "Please wait...",
+    // ProgressOverlay
+    progressPercentDone: (p: string) => `${p}% complete`,
+    progressStepsDone: (done: string, total: string) => `${done} of ${total} steps done`,
+    progressStepsLeft: (n: string) => `${n} step(s) left`,
+    progressAllDone: "All steps complete",
+    progressDoNotClose: "Please do not close or refresh this page",
+    progressFailedStep: "This step failed",
     onlyBangla: "Write in Bangla only",
     onlyArabic: "Write in Arabic only",
     onlyEnglish: "Write in English only",

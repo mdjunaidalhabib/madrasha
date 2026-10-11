@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlertCircle, CheckCircle2, FolderUp, Images, Loader2, Upload, X } from "lucide-react";
 import { useText, useLang, localizeDigits, commonText } from "@madrasha/shared-ui/src/i18n";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { peopleToolsText } from "./peopleTools.text";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { fileToPortraitDataUrl } from "../../../components/photo/PhotoPicker";
@@ -55,6 +57,7 @@ const buildRows = (files: File[], scope: PhotoPerson[], by: MatchBy, previews: s
  */
 export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, scopeLabel, onSave }: Props) {
   const pt = useText(peopleToolsText);
+  const progressTask = useProgressTask();
   const c = useText(commonText);
   const lang = useLang();
   const toBanglaDigits = (v: string | number) => localizeDigits(v, lang);
@@ -114,6 +117,9 @@ export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, 
     if (!jobs.length) return;
     setRunning(true);
     let cursor = 0;
+    await progressTask.run(
+      { title: pt.bulkProgressTitle, steps: jobs.map(({ r }) => r.file.name) },
+      async ({ advance }) => {
     const worker = async () => {
       while (cursor < jobs.length) {
         const { r, i } = jobs[cursor++];
@@ -125,9 +131,12 @@ export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, 
           logger.error("BULK PHOTO READ ERROR:", err);
         }
         setStatuses((prev) => ({ ...prev, [i]: ok ? "saved" : "error" }));
+        advance();
       }
     };
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, jobs.length) }, worker));
+      },
+    );
     setRunning(false);
   };
 
@@ -140,7 +149,10 @@ export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, 
         : "text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
     }`;
 
-  return createPortal(
+  return (
+    <>
+      <ProgressOverlay {...progressTask.overlayProps} />
+      {createPortal(
     <div
       className="fixed inset-0 z-[1000] flex items-stretch justify-center bg-slate-900/70 backdrop-blur-sm sm:items-center sm:p-4"
       onMouseDown={(e) => e.target === e.currentTarget && !running && onClose()}
@@ -325,5 +337,7 @@ export default function BulkPhotoUploadModal({ open, onClose, scope, allowRoll, 
       </div>
     </div>,
     document.body,
+      )}
+    </>
   );
 }

@@ -1,4 +1,6 @@
 import { commonText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { notificationsText } from "./notifications.text";
 import { useEffect, useMemo, useState } from "react";
 import { cachedGet } from "../../services/api";
@@ -38,6 +40,7 @@ const normalizeArray = (payload: any) => {
 
 const BulkSendPage = () => {
   const t = useText(notificationsText);
+  const progressTask = useProgressTask();
   const c = useText(commonText);
   const lang = useLang();
   const [mode, setMode] = useState<AudienceMode>("all_students");
@@ -138,12 +141,20 @@ const BulkSendPage = () => {
         to: r.to,
         vars: r.vars,
       }));
-      const res = await notificationApi.send({
-        channel,
-        recipients: payloadRecipients,
-        subject: channel === "EMAIL" ? subject.trim() : undefined,
-        message: message.trim(),
-      });
+      const res = await progressTask.run(
+        {
+          title: t.progBulkTitle,
+          steps: [t.progBulkStepPrepare, t.progBulkStepSend, t.progBulkStepResult],
+          estimate: true,
+        },
+        () =>
+          notificationApi.send({
+            channel,
+            recipients: payloadRecipients,
+            subject: channel === "EMAIL" ? subject.trim() : undefined,
+            message: message.trim(),
+          }),
+      );
       const data = (res.data as any)?.data;
       useToastStore
         .getState()
@@ -160,6 +171,7 @@ const BulkSendPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 dark:bg-slate-950 sm:p-4 md:p-6">
+      <ProgressOverlay {...progressTask.overlayProps} />
       <div className="mx-auto max-w-3xl">
         <div className="mb-4">
           <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100 sm:text-2xl">{t.bulkTitle}</h1>
