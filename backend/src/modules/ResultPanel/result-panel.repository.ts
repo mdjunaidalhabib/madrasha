@@ -559,10 +559,54 @@ export class ResultPanelRepository {
    * completeness-scoping rule used by getMarkCompleteness (this module) and
    * result-workflow.repository.ts's findStudentsMissingMarkForBook - do not
    * re-derive this fallback elsewhere. */
-  async findRequiredStudentsInClass(madrasaId: number, examId: number, classId: number) {
+  async findRequiredStudentsInClass(
+    madrasaId: number,
+    examId: number,
+    classId: number,
+    resultMasterId?: number,
+  ) {
     const candidates = await this.findParticipatingCandidatesInClass(madrasaId, examId, classId);
     if (candidates.length) return candidates;
-    return this.findActiveStudentsInClass(madrasaId, classId);
+    const students = await this.findActiveStudentsInClass(madrasaId, classId);
+    if (!resultMasterId) return students;
+    return this.excludeStudentsAdmittedAfterProcessing(resultMasterId, madrasaId, classId, students);
+  }
+
+  /** "নতুন ভর্তি পুরনো ফলাফলে ঢুকবে না" rule for the legacy (no ExamCandidate
+   * rows) roster: once a result session has been processed, a student whose
+   * record was created AFTER that moment is a new admission, not someone the
+   * exam was ever meant to cover - so they must not count as "marks missing"
+   * (which would otherwise clear/un-publish the whole class result). A late
+   * student who already has marks in this session is kept. `processedAt` is
+   * deliberately never reset when a result is re-opened, so the cutoff stays
+   * the original processing time. A session never processed has no cutoff. */
+  private async excludeStudentsAdmittedAfterProcessing<T extends { id: number }>(
+    resultMasterId: number,
+    madrasaId: number,
+    classId: number,
+    students: T[],
+  ): Promise<T[]> {
+    const master = await prisma.resultMaster.findFirst({
+      where: { id: resultMasterId, madrasaId },
+      select: { processedAt: true },
+    });
+    if (!master?.processedAt) return students;
+
+    const lateRows = await prisma.student.findMany({
+      where: { madrasaId, classId, deletedAt: null, createdAt: { gt: master.processedAt } },
+      select: { id: true },
+    });
+    if (!lateRows.length) return students;
+
+    const lateIds = lateRows.map((r) => r.id);
+    const withMarks = await prisma.mark.findMany({
+      where: { resultMasterId, studentId: { in: lateIds } },
+      select: { studentId: true },
+      distinct: ["studentId"],
+    });
+    const keep = new Set(withMarks.map((m) => m.studentId));
+    const exclude = new Set(lateIds.filter((id) => !keep.has(id)));
+    return students.filter((s) => !exclude.has(s.id));
   }
 
   /** Reassigns roll numbers in a single transaction using a two-phase

@@ -88,7 +88,7 @@ export class ResultWorkflowRepository {
     bookId: number,
   ) {
     const [students, entered] = await Promise.all([
-      resultPanelRepository.findRequiredStudentsInClass(madrasaId, examId, classId),
+      resultPanelRepository.findRequiredStudentsInClass(madrasaId, examId, classId, resultMasterId),
       prisma.mark.findMany({
         where: { resultMasterId, bookId },
         select: { studentId: true },

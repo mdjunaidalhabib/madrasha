@@ -11,6 +11,7 @@ import {
   getTrashedBooks,
   getTrashedResults,
   restoreStudent,
+  getStudentRestoreImpact,
   restoreTeacher,
   restoreExam,
   restoreDivision,
@@ -35,6 +36,7 @@ router.use(tenantMiddleware, authMiddleware);
 
 /* ================= STUDENTS ================= */
 router.get("/students", rbacMiddleware("students.delete"), getTrashedStudents);
+router.get("/students/:id/restore-impact", rbacMiddleware("students.delete"), getStudentRestoreImpact);
 router.post("/students/:id/restore", rbacMiddleware("students.delete"), restoreStudent);
 router.delete("/students/:id", rbacMiddleware("students.delete"), permanentDeleteStudent);
 

@@ -1,5 +1,13 @@
 import { prisma } from "../../shared/database/prisma";
+import { resultPanelRepository } from "../ResultPanel/result-panel.repository";
 import { tenantClassNameSelect, tenantDivisionNameSelect, withTenantClassName, withTenantDivisionName } from "../../shared/utils/tenant-name.util";
+
+export interface RestoreImpactMaster {
+  id: number;
+  status: string;
+  examName: string;
+  examYear: string | null;
+}
 
 export class TrashRepository {
   /* ================= LIST ================= */
@@ -74,6 +82,116 @@ export class TrashRepository {
     return prisma.student.updateMany({
       where: { id, madrasaId, deletedAt: { not: null } },
       data: { deletedAt: null },
+    });
+  }
+
+  /** Result sessions of the student's class that a restore would affect:
+   * processed (or further) sessions in which the student has NO summary row
+   * yet, and for which the student is an "old" student (record created at or
+   * before the session was processed - a student admitted afterwards is a new
+   * admission and never enters an old result). With ExamCandidate rows
+   * present for the exam, only a registered candidate is affected (same
+   * roster rule as ResultPanelRepository.findRequiredStudentsInClass).
+   * Returns null when the student is not in the trash. */
+  async findStudentRestoreImpact(id: number, madrasaId: number) {
+    const student = await prisma.student.findFirst({
+      where: { id, madrasaId, deletedAt: { not: null } },
+      select: { id: true, classId: true, createdAt: true, isActive: true, admissionStatus: true },
+    });
+    if (!student) return null;
+
+    // An inactive / not-approved student is not part of any marks roster, so
+    // bringing them back cannot disturb a result.
+    if (student.isActive !== 1 || student.admissionStatus !== "APPROVED") {
+      return { student, masters: [] as RestoreImpactMaster[] };
+    }
+
+    const candidates = await prisma.resultMaster.findMany({
+      where: {
+        madrasaId,
+        classId: student.classId,
+        deletedAt: null,
+        status: { not: "DRAFT" },
+        summary: { none: { studentId: id } },
+      },
+      select: {
+        id: true,
+        examId: true,
+        classId: true,
+        status: true,
+        processedAt: true,
+        exam: { select: { name: true, year: true } },
+      },
+      orderBy: { id: "asc" },
+    });
+
+    const masters: RestoreImpactMaster[] = [];
+    for (const m of candidates) {
+      // New admission: created after this result was processed.
+      if (m.processedAt && student.createdAt > m.processedAt) continue;
+
+      const participants = await resultPanelRepository.findParticipatingCandidatesInClass(
+        madrasaId,
+        m.examId,
+        m.classId,
+      );
+      if (participants.length && !participants.some((p) => p.id === id)) continue;
+
+      masters.push({
+        id: m.id,
+        status: m.status,
+        examName: m.exam?.name ?? "",
+        examYear: m.exam?.year ?? null,
+      });
+    }
+    return { student, masters };
+  }
+
+  /** Restores the student AND re-opens the given result sessions in ONE
+   * transaction (all-or-nothing): each session's summary is removed, its
+   * sign-off timestamps cleared, status set back to DRAFT (guardians only
+   * read PUBLISHED/LOCKED, so it disappears from the portal immediately) and
+   * every SUBMITTED/VERIFIED subject submission goes back to DRAFT so marks
+   * can be entered for the returning student and re-verified. Marks of every
+   * other student are untouched. `processedAt` is kept on purpose (it is the
+   * new-admission cutoff). LOCKED sessions are never passed in here. */
+  restoreStudentAndReopenResults(
+    id: number,
+    madrasaId: number,
+    reopenResultMasterIds: number[],
+    note: string,
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const restored = await tx.student.updateMany({
+        where: { id, madrasaId, deletedAt: { not: null } },
+        data: { deletedAt: null },
+      });
+      if (!restored.count || !reopenResultMasterIds.length) return restored;
+
+      await tx.resultSummary.deleteMany({
+        where: { resultMasterId: { in: reopenResultMasterIds } },
+      });
+      await tx.markSubmission.updateMany({
+        where: {
+          resultMasterId: { in: reopenResultMasterIds },
+          status: { in: ["SUBMITTED", "VERIFIED"] },
+        },
+        data: { status: "DRAFT", comment: note },
+      });
+      await tx.resultMaster.updateMany({
+        where: { id: { in: reopenResultMasterIds }, madrasaId, status: { not: "LOCKED" } },
+        data: {
+          status: "DRAFT",
+          publishedAt: null,
+          publishedBy: null,
+          approvedAt: null,
+          approvedBy: null,
+          resultVerifiedAt: null,
+          resultVerifiedBy: null,
+          remarks: note,
+        },
+      });
+      return restored;
     });
   }
 

@@ -1,4 +1,5 @@
 import { NotFoundError } from "../../shared/errors";
+import { logActivity } from "../../shared/utils/activity.util";
 import { trashRepository, TrashRepository } from "./trash.repository";
 import { toStudentApiDto } from "../students/student.mapper";
 import { toTeacherApiDto } from "../teacher/teacher.mapper";
@@ -101,9 +102,69 @@ export class TrashService {
 
   /* ================= RESTORE ================= */
 
-  async restoreStudent(id: number, madrasaId: number) {
-    const result = await this.repository.restoreStudent(id, madrasaId);
+  /** Which result sessions bringing this student back would touch - shown in
+   * the confirm dialog BEFORE restoring. `will_reopen: false` means the
+   * session is LOCKED: it stays frozen and the student simply is not in it
+   * (a locked result can only change through the correction process). */
+  async getStudentRestoreImpact(id: number, madrasaId: number) {
+    const impact = await this.repository.findStudentRestoreImpact(id, madrasaId);
+    if (!impact) throw new NotFoundError(t({ bn: "ট্র্যাশে শিক্ষার্থী পাওয়া যায়নি", en: "Trashed student not found" }));
+    return impact.masters.map((m) => ({
+      result_master_id: m.id,
+      exam_name: m.examName,
+      exam_year: m.examYear,
+      status: m.status,
+      will_reopen: m.status !== "LOCKED",
+    }));
+  }
+
+  /** Restore a student. Old results are never silently left inconsistent:
+   * every processed/published result of the student's class that does not
+   * contain the student yet is re-opened (summary removed, status DRAFT,
+   * hidden from the guardian portal, subject submissions back to DRAFT) so
+   * marks can be entered and the whole class result re-verified and
+   * re-published - the returning student shifts merit positions, so the full
+   * class must be re-checked. New admissions (created after the result was
+   * processed) and LOCKED results are never touched. */
+  async restoreStudent(id: number, madrasaId: number, userId?: number | null) {
+    const impact = await this.repository.findStudentRestoreImpact(id, madrasaId);
+    if (!impact) throw new NotFoundError(t({ bn: "ট্র্যাশে শিক্ষার্থী পাওয়া যায়নি", en: "Trashed student not found" }));
+
+    const toReopen = impact.masters.filter((m) => m.status !== "LOCKED");
+    const skippedLocked = impact.masters.filter((m) => m.status === "LOCKED");
+
+    const note = t({
+      bn: "শিক্ষার্থী ট্র্যাশ থেকে ফিরিয়ে আনায় ফলাফল পুনর্যাচাইয়ের জন্য খোলা হয়েছে",
+      en: "Re-opened for re-verification because a student was restored from the trash",
+    });
+
+    const result = await this.repository.restoreStudentAndReopenResults(
+      id,
+      madrasaId,
+      toReopen.map((m) => m.id),
+      note,
+    );
     if (!result.count) throw new NotFoundError(t({ bn: "ট্র্যাশে শিক্ষার্থী পাওয়া যায়নি", en: "Trashed student not found" }));
+
+    for (const m of toReopen) {
+      await logActivity({
+        madrasa_id: madrasaId,
+        user_id: userId ?? null,
+        action: "REOPEN",
+        entity: "results/reopen",
+        entity_id: m.id,
+        details: JSON.stringify({
+          reason: "STUDENT_RESTORED",
+          student_id: id,
+          previous_status: m.status,
+        }),
+      });
+    }
+
+    return {
+      reopened: toReopen.map((m) => ({ result_master_id: m.id, exam_name: m.examName, exam_year: m.examYear })),
+      locked_skipped: skippedLocked.map((m) => ({ result_master_id: m.id, exam_name: m.examName, exam_year: m.examYear })),
+    };
   }
 
   async restoreTeacher(id: number, madrasaId: number) {

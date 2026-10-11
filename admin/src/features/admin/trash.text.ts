@@ -27,6 +27,12 @@ export const trashText = defineText({
     deleteFailed: "মুছে ফেলা যায়নি",
     bulkRestoreMessage: (n: string) => `নির্বাচিত ${n}টি আইটেম ট্র্যাশ থেকে ফিরিয়ে আনতে চান? এগুলো আগের মতোই সক্রিয় হয়ে যাবে।`,
     bulkRestorePartial: (ok: string, fail: string) => `${ok}টি ফিরিয়ে আনা হয়েছে, ${fail}টি ব্যর্থ হয়েছে`,
+    restoreImpactReopen: (exams: string) =>
+      `\n\n⚠ এই শিক্ষার্থীর শ্রেণির এসব ফলাফলে তিনি নেই: ${exams}। ফিরিয়ে আনলে এই ফলাফলগুলো অভিভাবক পোর্টাল থেকে সরে যাবে এবং আবার নম্বর যাচাই করে প্রকাশ করতে হবে (পুরো শ্রেণির মেধাক্রম বদলাতে পারে)।`,
+    restoreImpactLocked: (exams: string) =>
+      `\n\nলক করা ফলাফলে তিনি যুক্ত হবেন না: ${exams}। লক করা ফলাফল শুধু সংশোধন প্রক্রিয়ায় বদলানো যায়।`,
+    restoredReopened: (count: string) =>
+      `ফিরিয়ে আনা হয়েছে। ${count}টি ফলাফল পুনর্যাচাইয়ের জন্য খোলা হয়েছে — নম্বর দিয়ে আবার যাচাই ও প্রকাশ করুন।`,
     bulkDeleteMessage: (n: string) =>
       `নির্বাচিত ${n}টি আইটেম স্থায়ীভাবে মুছে ফেলতে চান? এই কাজটি আর ফিরিয়ে আনা যাবে না — সম্পর্কিত সব তথ্য (রেজাল্ট, মার্কস ইত্যাদি) একসাথে মুছে যাবে।`,
     bulkDeletePartial: (ok: string, fail: string) => `${ok}টি মুছে ফেলা হয়েছে, ${fail}টি ব্যর্থ হয়েছে`,
@@ -75,6 +81,12 @@ export const trashText = defineText({
     deleteFailed: "Could not delete",
     bulkRestoreMessage: (n) => `Restore ${n} selected items from the trash? They will become active again as before.`,
     bulkRestorePartial: (ok, fail) => `${ok} restored, ${fail} failed`,
+    restoreImpactReopen: (exams) =>
+      `\n\n⚠ This student is not in these results of their class: ${exams}. Restoring will take them off the guardian portal and they must be re-verified and published again (merit positions of the whole class may change).`,
+    restoreImpactLocked: (exams) =>
+      `\n\nThe student will NOT be added to these locked results: ${exams}. A locked result can only change through the correction process.`,
+    restoredReopened: (count) =>
+      `Restored. ${count} result(s) were re-opened for re-verification — enter the marks, then verify and publish again.`,
     bulkDeleteMessage: (n) =>
       `Permanently delete ${n} selected items? This cannot be undone — all related data (results, marks, etc.) will be deleted too.`,
     bulkDeletePartial: (ok, fail) => `${ok} deleted, ${fail} failed`,

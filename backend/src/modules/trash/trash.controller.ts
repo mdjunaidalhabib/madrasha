@@ -50,9 +50,17 @@ export const getTrashedResults = asyncHandler(async (req: Request, res: Response
 
 /* ================= RESTORE ================= */
 
+export const getStudentRestoreImpact = asyncHandler(async (req: Request, res: Response) => {
+  const data = await trashService.getStudentRestoreImpact(Number(req.params.id), getMadrasaId(req));
+  return ApiResponse.success(res, { data });
+});
+
 export const restoreStudent = asyncHandler(async (req: Request, res: Response) => {
-  await trashService.restoreStudent(Number(req.params.id), getMadrasaId(req));
-  return ApiResponse.message(res, t({ bn: "শিক্ষার্থী পুনরুদ্ধার করা হয়েছে", en: "Student restored successfully" }));
+  const data = await trashService.restoreStudent(Number(req.params.id), getMadrasaId(req), req.user?.id ?? null);
+  return ApiResponse.success(res, {
+    data,
+    message: t({ bn: "শিক্ষার্থী পুনরুদ্ধার করা হয়েছে", en: "Student restored successfully" }),
+  });
 });
 
 export const restoreTeacher = asyncHandler(async (req: Request, res: Response) => {

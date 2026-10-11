@@ -228,17 +228,55 @@ export default function TrashPage() {
     });
   };
 
-  const handleRestore = (tab: TabKey, row: TrashRow) => {
+  type RestoreImpactRow = {
+    result_master_id: number;
+    exam_name: string;
+    exam_year: string | null;
+    will_reopen: boolean;
+  };
+
+  // A restored student is missing from already-processed results of their
+  // class; the server re-opens those results. Ask what would be affected
+  // first so the confirm dialog can warn (best effort - a failed lookup
+  // just falls back to the plain confirm message).
+  const fetchStudentRestoreImpact = async (id: number | string): Promise<RestoreImpactRow[]> => {
+    try {
+      const res = await api.get(`/trash/students/${id}/restore-impact`);
+      return Array.isArray(res.data?.data) ? res.data.data : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const examLabel = (r: RestoreImpactRow) => (r.exam_year ? `${r.exam_name} (${r.exam_year})` : r.exam_name);
+
+  const handleRestore = async (tab: TabKey, row: TrashRow) => {
     const name = getRowName(tab, row);
+    let message = t.restoreMessage(name || "");
+    if (tab === "students") {
+      const impact = await fetchStudentRestoreImpact(row.id);
+      const reopen = impact.filter((r) => r.will_reopen).map(examLabel);
+      const locked = impact.filter((r) => !r.will_reopen).map(examLabel);
+      if (reopen.length) message += t.restoreImpactReopen(reopen.join(", "));
+      if (locked.length) message += t.restoreImpactLocked(locked.join(", "));
+    }
     useConfirmStore.getState().show({
       title: t.restoreTitle,
-      message: t.restoreMessage(name || ""),
+      message,
       confirmText: t.restore,
       onConfirm: async () => {
         try {
           setBusyId(row.id);
-          await api.post(`/trash/${tab}/${row.id}/restore`);
-          useToastStore.getState().show(t.restored, "success");
+          const res = await api.post(`/trash/${tab}/${row.id}/restore`);
+          const reopened = res.data?.data?.reopened;
+          useToastStore
+            .getState()
+            .show(
+              Array.isArray(reopened) && reopened.length
+                ? t.restoredReopened(n(reopened.length))
+                : t.restored,
+              "success",
+            );
           removeRow(tab, row.id);
         } catch (err: any) {
           useToastStore
@@ -275,11 +313,22 @@ export default function TrashPage() {
     });
   };
 
-  const handleBulkRestore = (tab: TabKey, targetRows: TrashRow[]) => {
+  const handleBulkRestore = async (tab: TabKey, targetRows: TrashRow[]) => {
     if (targetRows.length === 0) return;
+    let message = t.bulkRestoreMessage(n(targetRows.length));
+    if (tab === "students") {
+      // Same class => same results; list each affected result only once.
+      const impacts = (await Promise.all(targetRows.map((r) => fetchStudentRestoreImpact(r.id)))).flat();
+      const seen = new Set<number>();
+      const unique = impacts.filter((r) => (seen.has(r.result_master_id) ? false : (seen.add(r.result_master_id), true)));
+      const reopen = unique.filter((r) => r.will_reopen).map(examLabel);
+      const locked = unique.filter((r) => !r.will_reopen).map(examLabel);
+      if (reopen.length) message += t.restoreImpactReopen(reopen.join(", "));
+      if (locked.length) message += t.restoreImpactLocked(locked.join(", "));
+    }
     useConfirmStore.getState().show({
       title: t.restoreTitle,
-      message: t.bulkRestoreMessage(n(targetRows.length)),
+      message,
       confirmText: t.restore,
       onConfirm: async () => {
         setBulkBusy(true);

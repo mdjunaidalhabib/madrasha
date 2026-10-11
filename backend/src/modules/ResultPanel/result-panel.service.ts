@@ -116,7 +116,7 @@ export class ResultPanelService {
       // fail-open fallback to the old "every active student" behavior for
       // exams that predate candidate registration (zero ExamCandidate
       // rows) - see findRequiredStudentsInClass.
-      this.repository.findRequiredStudentsInClass(madrasaId, examId, classId),
+      this.repository.findRequiredStudentsInClass(madrasaId, examId, classId, resultMasterId),
       this.repository.groupMarksByStudent(madrasaId, examId, classId, resultMasterId),
     ]);
 
