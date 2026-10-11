@@ -555,6 +555,42 @@ export class ResultWorkflowService {
 
     return { message: t({ bn: "ফলাফল লক করা হয়েছে", en: "Result locked" }), result_master_id: resultMasterId };
   }
+
+  /** প্রকাশিত ফলাফল অপ্রকাশিত করা: PUBLISHED -> APPROVED। অভিভাবক পোর্টাল শুধু
+   * PUBLISHED/LOCKED পড়ে, তাই এরপর ফলাফল আর দেখা যায় না। নম্বর/প্রসেসড সামারি
+   * অক্ষত থাকে, ফলে আবার "প্রকাশ করুন" চাপলেই পুনঃপ্রকাশ হয়। লকড ফলাফল আগে
+   * আনলক না করলে অপ্রকাশিত করা যায় না। */
+  async unpublish(madrasaId: number, userId: number, resultMasterId: number) {
+    const master = await this.assertMaster(madrasaId, resultMasterId);
+
+    if (master.status === "LOCKED") {
+      throw new ConflictError(t({ bn: "লক করা ফলাফল অপ্রকাশিত করা যাবে না।", en: "A locked result cannot be unpublished." }));
+    }
+    if (master.status !== "PUBLISHED") {
+      throw new ConflictError(t({ bn: "ফলাফল প্রকাশিত না থাকলে অপ্রকাশিত করা যাবে না।", en: "Only a PUBLISHED result can be unpublished." }));
+    }
+
+    const ok = await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, ["PUBLISHED"], {
+      status: "APPROVED",
+      publishedAt: null,
+      publishedBy: null,
+    });
+    if (!ok) {
+      throw new ConflictError(
+        t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again." }),
+      );
+    }
+
+    await logActivity({
+      madrasa_id: madrasaId,
+      user_id: userId,
+      action: "UNPUBLISH",
+      entity: "results/unpublish",
+      entity_id: resultMasterId,
+    });
+
+    return { message: t({ bn: "ফলাফল অপ্রকাশিত করা হয়েছে", en: "Result unpublished" }), result_master_id: resultMasterId };
+  }
 }
 
 export const resultWorkflowService = new ResultWorkflowService();

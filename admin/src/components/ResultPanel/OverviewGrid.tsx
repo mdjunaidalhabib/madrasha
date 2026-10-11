@@ -25,9 +25,11 @@ interface StatusItem {
   division_id: number;
   exam_id: number;
   result_master_id: number | null;
-  publish_status: "DRAFT" | "PUBLISHED" | null;
+  publish_status: string | null;
   total_students: number;
   entered_students: number;
+  /** অন্তত একটি বিষয়ের নম্বর এন্ট্রি হয়েছে এমন শিক্ষার্থী (আংশিক এন্ট্রি ধরার জন্য)। */
+  started_students?: number;
 }
 
 interface Props {
@@ -44,13 +46,15 @@ const getBadge = (s: StatusItem | undefined, lang: Lang) => {
   if (!s) {
     return { label: t.notEntered, classes: "bg-gray-100 text-gray-500 border-gray-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600" };
   }
-  if (s.publish_status === "PUBLISHED") {
+  if (s.publish_status === "PUBLISHED" || s.publish_status === "LOCKED") {
     return { label: t.published, classes: "bg-green-100 text-green-700 border-green-300 dark:bg-green-950/40 dark:text-green-400 dark:border-green-800" };
   }
+  // "সম্পন্ন" শুধু তখনই, যখন প্রতিটি শিক্ষার্থীর সব বিষয়ের নম্বর এন্ট্রি হয়েছে।
   if (s.entered_students > 0 && s.total_students > 0 && s.entered_students >= s.total_students) {
     return { label: t.complete, classes: "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800" };
   }
-  if (s.entered_students > 0) {
+  // আংশিক: কিছু নম্বর এন্ট্রি হয়েছে কিন্তু সব শিক্ষার্থীর সব বিষয় পূর্ণ হয়নি।
+  if ((s.started_students ?? s.entered_students) > 0) {
     return {
       label: t.partial(localizeDigits(s.entered_students, lang), localizeDigits(s.total_students, lang)),
       classes: "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-950/40 dark:text-yellow-400 dark:border-yellow-800",

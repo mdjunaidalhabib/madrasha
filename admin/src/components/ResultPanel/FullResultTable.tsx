@@ -4,6 +4,7 @@ import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { SkeletonTable } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { formatReportValue } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { commonText, localizeDigits, useIsMadrasa, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { ToggleSwitch } from "../settings/ToggleSwitch";
 import { resultStatusBadge } from "./resultStatus";
 import { resultPanelText } from "./resultPanel.text";
 
@@ -18,6 +19,8 @@ interface Summary {
   result_master_id?: number;
   student_id: number;
   registration_no: number;
+  /** পরীক্ষার সময়ের রোল। */
+  roll?: number | null;
   name_bn: string;
   total: number;
   average: number;
@@ -55,6 +58,9 @@ interface Props {
   onEditStudent?: (student_id: number) => void;
   onDelete?: (result_master_id: number) => void;
   onPublish?: () => void;
+  /** প্রকাশিত ফলাফল অপ্রকাশিত (অভিভাবক পোর্টাল থেকে সরানো) করার কন্ট্রোল। */
+  onUnpublish?: () => void;
+  unpublishing?: boolean;
   onApplyRollByRank?: () => void;
   onUndoRollByRank?: () => void;
   canVerifyResult?: boolean;
@@ -82,6 +88,8 @@ export default function FullResultTable({
   onEditStudent,
   onDelete,
   onPublish,
+  onUnpublish,
+  unpublishing = false,
   onApplyRollByRank,
   onUndoRollByRank,
   canVerifyResult = false,
@@ -100,7 +108,7 @@ export default function FullResultTable({
   const isMadrasa = useIsMadrasa();
   const num = (value: number | string) => localizeDigits(value, lang);
   // Madrasa-grade column only for madrasas - schools/colleges see general grades.
-  const columnCount = (Array.isArray(books) ? books.length : 0) + (isMadrasa ? 10 : 9);
+  const columnCount = (Array.isArray(books) ? books.length : 0) + (isMadrasa ? 11 : 10);
   const statusLabel = (status: string) =>
     rt.resultStatus[String(status || "").toUpperCase()] ?? localizeDigits(formatReportValue(status), lang);
   const dataList = Array.isArray(summary) ? summary : [];
@@ -108,6 +116,8 @@ export default function FullResultTable({
 
   const rawStatus = dataList[0]?.publish_status;
   const alreadyPublished = rawStatus === "PUBLISHED" || rawStatus === "LOCKED";
+  // লক করা ফলাফল আগে আনলক না করলে অপ্রকাশিত করা যায় না (ব্যাকএন্ডও আটকায়)।
+  const canUnpublishNow = rawStatus === "PUBLISHED";
   const isProcessing = rawStatus === "PROCESSING";
   const isResultVerified = rawStatus === "RESULT_VERIFIED";
   const isApproved = rawStatus === "APPROVED";
@@ -129,6 +139,18 @@ export default function FullResultTable({
       confirmText: c.delete,
       danger: true,
       onConfirm: () => onDelete(resultMasterId),
+    });
+  };
+
+  const handleUnpublish = () => {
+    if (!onUnpublish) return;
+
+    useConfirmStore.getState().show({
+      title: t.unpublishConfirmTitle,
+      message: t.unpublishConfirmMessage,
+      confirmText: t.unpublishConfirmButton,
+      danger: true,
+      onConfirm: () => onUnpublish(),
     });
   };
 
@@ -253,14 +275,33 @@ export default function FullResultTable({
             </button>
           )}
 
-          {onPublish && canPublishNow && !alreadyPublished && (
-            <button
-              onClick={onPublish}
-              disabled={publishing}
-              className="flex-1 sm:flex-none bg-green-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
+          {/* প্রকাশ নিয়ন্ত্রণ: ON = প্রকাশিত, OFF = অপ্রকাশিত। ON করলে প্রকাশ হয়,
+              OFF করলে (নিশ্চিতকরণের পর) অভিভাবক পোর্টাল থেকে সরে যায়। */}
+          {(alreadyPublished || (onPublish && canPublishNow)) && (
+            <label
+              className={`flex items-center gap-2 rounded border px-3 py-2 text-sm dark:border-slate-700 ${
+                alreadyPublished
+                  ? "border-green-300 bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
+                  : "border-gray-300 bg-gray-50 text-gray-600 dark:bg-slate-800 dark:text-slate-300"
+              }`}
+              title={rawStatus === "LOCKED" ? t.lockedPublishTitle : alreadyPublished ? t.unpublishTitle : undefined}
             >
-              {publishing ? t.publishing : t.publish}
-            </button>
+              <span className="font-semibold">
+                {publishing ? t.publishing : unpublishing ? t.unpublishing : alreadyPublished ? t.published : t.notPublished}
+              </span>
+              <ToggleSwitch
+                checked={alreadyPublished}
+                disabled={
+                  publishing ||
+                  unpublishing ||
+                  (alreadyPublished ? !(onUnpublish && canUnpublishNow) : !onPublish)
+                }
+                onChange={(on) => {
+                  if (on) onPublish?.();
+                  else handleUnpublish();
+                }}
+              />
+            </label>
           )}
         </div>
       </div>
@@ -278,6 +319,7 @@ export default function FullResultTable({
         <thead className="bg-gray-100 dark:bg-slate-800">
           <tr>
             <th className="border px-2 py-2 text-center dark:border-slate-800">{t.regNo}</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">{t.roll}</th>
             <th className="border px-2 py-2 text-center dark:border-slate-800">{t.studentName}</th>
 
             {subjectList.map((b) => (
@@ -303,8 +345,8 @@ export default function FullResultTable({
             <th className="border px-2 py-2 text-center dark:border-slate-800">{t.generalGrade}</th>
             {isMadrasa && <th className="border px-2 py-2 text-center dark:border-slate-800">{t.madrasaGrade}</th>}
             <th className="border px-2 py-2 text-center dark:border-slate-800">{t.resultState}</th>
-            <th className="border px-2 py-2 text-center dark:border-slate-800">{t.rank}</th>
             <th className="border px-2 py-2 text-center dark:border-slate-800" title={t.placeTitle}>{t.place}</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800">{t.rank}</th>
             <th className="border px-2 py-2 text-center dark:border-slate-800">{t.actions}</th>
           </tr>
         </thead>
@@ -334,6 +376,9 @@ export default function FullResultTable({
                 <td className="border px-2 py-2 text-center break-words">
                   {num(s.registration_no)}
                 </td>
+                <td className="border px-2 py-2 text-center break-words">
+                  {s.roll == null ? "-" : num(s.roll)}
+                </td>
                 <td className="border px-2 py-2 text-center break-words">{s.name_bn}</td>
 
                 {subjectList.map((b) => (
@@ -361,10 +406,10 @@ export default function FullResultTable({
                   {statusLabel(s.status)}
                 </td>
                 <td className="border px-2 py-2 text-center font-bold break-words">
-                  {num(s.rank_no)}
+                  {s.place_no == null ? "-" : num(s.place_no)}
                 </td>
                 <td className="border px-2 py-2 text-center font-bold break-words">
-                  {s.place_no == null ? "-" : num(s.place_no)}
+                  {num(s.rank_no)}
                 </td>
 
                 <td className="border px-2 py-2 text-center break-words">

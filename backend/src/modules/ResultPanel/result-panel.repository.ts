@@ -717,9 +717,27 @@ export class ResultPanelRepository {
            WHERE st.madrasa_id = ${madrasaId} AND st.class_id = c.id AND st.division_id = ${divisionId}
              AND st.deleted_at IS NULL AND st.is_active = 1 AND st.admission_status = 'APPROVED'
         ) AS total_students,
+        -- entered_students: শুধু সেই শিক্ষার্থীরা যাদের সব সক্রিয় বিষয়ের নম্বর
+        -- এন্ট্রি হয়েছে (পূর্ণ এন্ট্রি)। আংশিক এন্ট্রিকে আর "সম্পন্ন" ধরা হয় না।
+        (SELECT COUNT(*) FROM students st2
+           WHERE rm.id IS NOT NULL
+             AND st2.madrasa_id = ${madrasaId} AND st2.class_id = c.id AND st2.deleted_at IS NULL
+             AND st2.is_active = 1 AND st2.admission_status = 'APPROVED'
+             AND (SELECT COUNT(*) FROM madrasa_books mb2
+                    JOIN books b2 ON b2.id = mb2.book_id
+                   WHERE mb2.madrasa_id = ${madrasaId} AND mb2.is_active = 1 AND b2.class_id = c.id) > 0
+             AND (SELECT COUNT(DISTINCT m.book_id) FROM marks m
+                    JOIN madrasa_books mb ON mb.book_id = m.book_id
+                     AND mb.madrasa_id = ${madrasaId} AND mb.is_active = 1
+                   WHERE m.result_master_id = rm.id AND m.student_id = st2.id)
+                 >= (SELECT COUNT(*) FROM madrasa_books mb3
+                       JOIN books b3 ON b3.id = mb3.book_id
+                      WHERE mb3.madrasa_id = ${madrasaId} AND mb3.is_active = 1 AND b3.class_id = c.id)
+        ) AS entered_students,
+        -- started_students: অন্তত একটি বিষয়ের নম্বর পাওয়া গেছে এমন শিক্ষার্থী।
         (SELECT COUNT(DISTINCT m.student_id) FROM marks m
            WHERE m.result_master_id = rm.id
-        ) AS entered_students
+        ) AS started_students
       FROM madrasa_classes mc
       JOIN classes c ON c.id = mc.class_id
       LEFT JOIN results_master rm
@@ -774,9 +792,27 @@ export class ResultPanelRepository {
            WHERE st.madrasa_id = ${madrasaId} AND st.class_id = c.id AND st.deleted_at IS NULL
              AND st.is_active = 1 AND st.admission_status = 'APPROVED'
         ) AS total_students,
+        -- entered_students: শুধু সেই শিক্ষার্থীরা যাদের সব সক্রিয় বিষয়ের নম্বর
+        -- এন্ট্রি হয়েছে (পূর্ণ এন্ট্রি)। আংশিক এন্ট্রিকে আর "সম্পন্ন" ধরা হয় না।
+        (SELECT COUNT(*) FROM students st2
+           WHERE rm.id IS NOT NULL
+             AND st2.madrasa_id = ${madrasaId} AND st2.class_id = c.id AND st2.deleted_at IS NULL
+             AND st2.is_active = 1 AND st2.admission_status = 'APPROVED'
+             AND (SELECT COUNT(*) FROM madrasa_books mb2
+                    JOIN books b2 ON b2.id = mb2.book_id
+                   WHERE mb2.madrasa_id = ${madrasaId} AND mb2.is_active = 1 AND b2.class_id = c.id) > 0
+             AND (SELECT COUNT(DISTINCT m.book_id) FROM marks m
+                    JOIN madrasa_books mb ON mb.book_id = m.book_id
+                     AND mb.madrasa_id = ${madrasaId} AND mb.is_active = 1
+                   WHERE m.result_master_id = rm.id AND m.student_id = st2.id)
+                 >= (SELECT COUNT(*) FROM madrasa_books mb3
+                       JOIN books b3 ON b3.id = mb3.book_id
+                      WHERE mb3.madrasa_id = ${madrasaId} AND mb3.is_active = 1 AND b3.class_id = c.id)
+        ) AS entered_students,
+        -- started_students: অন্তত একটি বিষয়ের নম্বর পাওয়া গেছে এমন শিক্ষার্থী।
         (SELECT COUNT(DISTINCT m.student_id) FROM marks m
            WHERE m.result_master_id = rm.id
-        ) AS entered_students
+        ) AS started_students
       FROM madrasa_classes mc
       JOIN classes c ON c.id = mc.class_id
       JOIN exams e ON e.madrasa_id = ${madrasaId} AND e.deleted_at IS NULL
@@ -1064,12 +1100,14 @@ export class ResultPanelRepository {
         status: true,
         rankNo: true,
         placeNo: true,
+        roll: true,
         resultMaster: { select: { status: true } },
         student: {
           select: {
             id: true,
             nameBn: true,
             registrationNo: true,
+            roll: true,
             marks: {
               where: {
                 resultMasterId,

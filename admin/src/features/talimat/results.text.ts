@@ -27,6 +27,8 @@ export const resultsText = defineText({
     resultRejected: "ফলাফল প্রত্যাখ্যান করা হয়েছে",
     rejectFailed: "প্রত্যাখ্যান করা যায়নি",
     resultPublished: "ফলাফল প্রকাশিত হয়েছে",
+    resultUnpublished: "ফলাফল অপ্রকাশিত করা হয়েছে",
+    unpublishFailed: "ফলাফল অপ্রকাশিত করা যায়নি",
     publishFailed: "ফলাফল প্রকাশ করা যায়নি",
     rollConfirmTitle: "রোল আপডেট নিশ্চিত করুন (১/২)",
     rollConfirmMessage:
@@ -127,6 +129,8 @@ export const resultsText = defineText({
     resultRejected: "Result rejected",
     rejectFailed: "Could not reject",
     resultPublished: "Result published successfully",
+    resultUnpublished: "Result unpublished",
+    unpublishFailed: "Could not unpublish the result",
     publishFailed: "Could not publish the result",
     rollConfirmTitle: "Confirm roll update (1/2)",
     rollConfirmMessage:

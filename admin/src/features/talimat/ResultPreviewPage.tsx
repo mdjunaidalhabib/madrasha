@@ -42,9 +42,10 @@ interface StatusItem {
   division_id: number;
   exam_id: number;
   result_master_id: number | null;
-  publish_status: "DRAFT" | "PUBLISHED" | null;
+  publish_status: string | null;
   total_students: number;
   entered_students: number;
+  started_students?: number;
 }
 interface SummaryMark {
   book_id: number;
@@ -56,6 +57,7 @@ interface SummaryItem {
   result_master_id: number;
   student_id: number;
   registration_no: number;
+  roll?: number | null;
   name_bn: string;
   total: number;
   average: number;
@@ -116,6 +118,10 @@ export default function ResultPreviewPage() {
   // or the exam-department head): such an actor may apply a correction on
   // the spot instead of waiting for a second approver.
   const canApplyCorrectionDirectly = canVerifyResult && canApprove;
+  // ব্যাকএন্ডের /unpublish রুটের মতোই: result.publish অথবা legacy result.manage।
+  const canUnpublish =
+    hasPermission(user, permissions, RESULT_PERMISSIONS.resultPublish) ||
+    hasPermission(user, permissions, RESULT_PERMISSIONS.legacyFallback);
 
   const examId = searchParams.get("examId") || "";
   const classId = searchParams.get("classId") || "";
@@ -131,6 +137,7 @@ export default function ResultPreviewPage() {
   const [resultMasterId, setResultMasterId] = useState<number | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [unpublishing, setUnpublishing] = useState(false);
   const [applyingRoll, setApplyingRoll] = useState(false);
   const [canUndoRoll, setCanUndoRoll] = useState(false);
   const [verifyingResult, setVerifyingResult] = useState(false);
@@ -225,7 +232,8 @@ export default function ResultPreviewPage() {
   // teacher straight to Number Entry instead of a page that just shows empty.
   const handleSelectFromGrid = (selExamId: number, selClassId: number) => {
     const status = statuses.find((s) => s.exam_id === selExamId && s.class_id === selClassId);
-    const notEnteredYet = !status || status.entered_students <= 0;
+    // আংশিক এন্ট্রিও "এন্ট্রি শুরু হয়েছে" — তাই শুধু একদমই নম্বর না থাকলে এন্ট্রি পেজে পাঠানো হয়।
+    const notEnteredYet = !status || (status.started_students ?? status.entered_students) <= 0;
 
     if (notEnteredYet) {
       const params = new URLSearchParams({ examId: String(selExamId), classId: String(selClassId) });
@@ -445,6 +453,25 @@ export default function ResultPreviewPage() {
     }
   };
 
+  // প্রকাশিত ফলাফল অপ্রকাশিত করা: PUBLISHED -> APPROVED। অভিভাবক পোর্টাল থেকে
+  // সরে যায়, নম্বর/সামারি অক্ষত থাকে; "প্রকাশ করুন" চাপলেই আবার প্রকাশ হয়।
+  const handleUnpublish = async () => {
+    if (!resultMasterId) return push("error", t.noProcessedResult);
+
+    try {
+      setUnpublishing(true);
+      await api.post(`/results/${resultMasterId}/unpublish`, {});
+      await loadSummary();
+      await loadOverview();
+      push("success", t.resultUnpublished);
+    } catch (err: any) {
+      logger.error("Unpublish error:", err);
+      push("error", err?.response?.data?.message || t.unpublishFailed);
+    } finally {
+      setUnpublishing(false);
+    }
+  };
+
   // Reassigns every roll in the class at once and can't be targeted back to
   // just one student, so this asks twice before running - the second,
   // sterner prompt is the actual point of no casual return; the first just
@@ -570,6 +597,8 @@ export default function ResultPreviewPage() {
             onEditStudent={isPublished && !canRequestCorrection ? undefined : handleEditStudent}
             onPublish={handlePublish}
             publishing={publishing}
+            onUnpublish={canUnpublish ? handleUnpublish : undefined}
+            unpublishing={unpublishing}
             onApplyRollByRank={handleApplyRollByRank}
             applyingRoll={applyingRoll}
             canUndoRoll={canUndoRoll}

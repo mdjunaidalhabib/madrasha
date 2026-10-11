@@ -1204,6 +1204,7 @@ export class ResultPanelService {
       ...row,
       total_students: Number(row.total_students),
       entered_students: Number(row.entered_students),
+      started_students: Number(row.started_students),
     }));
   }
 
@@ -1233,6 +1234,7 @@ export class ResultPanelService {
       ...row,
       total_students: Number(row.total_students),
       entered_students: Number(row.entered_students),
+      started_students: Number(row.started_students),
     }));
 
     return { divisions, exams: examRows, classes, statuses };
@@ -1308,7 +1310,7 @@ export class ResultPanelService {
         statusBreakdown: { pass: 0, fail: 0, absent: 0 },
         attendance: { present: 0, absent: 0, slotsTaken: 0 },
         gradeDistribution: [] as { grade: string; count: number }[],
-        classStatus: [] as { class_id: number; division_id: number; total_students: number; entered_students: number }[],
+        classStatus: [] as { class_id: number; division_id: number; total_students: number; entered_students: number; started_students: number }[],
       };
     }
 
@@ -1342,6 +1344,7 @@ export class ResultPanelService {
         ...row,
         total_students: Number(row.total_students),
         entered_students: Number(row.entered_students),
+        started_students: Number(row.started_students),
       }));
 
     return {
@@ -1745,6 +1748,8 @@ export class ResultPanelService {
         result_master_id: row.resultMasterId,
         student_id: row.student.id,
         registration_no: row.student.registrationNo,
+        // পরীক্ষার সময়ের রোল (প্রসেসের সময় সংরক্ষিত); পুরনো ফলাফলে না থাকলে বর্তমান রোল।
+        roll: row.roll ?? row.student.roll ?? null,
         name_bn: row.student.nameBn,
         total: Number(row.total || 0),
         average: Number(row.average || 0),

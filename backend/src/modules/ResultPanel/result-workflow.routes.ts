@@ -11,6 +11,7 @@ import {
   verifyResult,
   decideApproval,
   lockResult,
+  unpublishResult,
 } from "./result-workflow.controller";
 import {
   submitBookSchema,
@@ -73,6 +74,12 @@ router.post(
   requireAnyPermission("result.lock", "result.manage"),
   validate(lockResultSchema),
   lockResult,
+);
+router.post(
+  "/:resultMasterId/unpublish",
+  requireAnyPermission("result.publish", "result.manage"),
+  validate(lockResultSchema),
+  unpublishResult,
 );
 
 export default router;

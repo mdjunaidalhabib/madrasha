@@ -15,6 +15,7 @@ export interface ClassStatusRow {
   publish_status: string | null;
   total_students: number | bigint;
   entered_students: number | bigint;
+  started_students: number | bigint;
 }
 
 export interface OverviewStatusRow {
@@ -25,4 +26,5 @@ export interface OverviewStatusRow {
   publish_status: string | null;
   total_students: number | bigint;
   entered_students: number | bigint;
+  started_students: number | bigint;
 }

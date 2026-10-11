@@ -134,3 +134,18 @@ export const lockResult = async (req: Request, res: Response) => {
     respondError(res, error, "lockResult error:", "Failed to lock result");
   }
 };
+
+/* ================= UNPUBLISH ================= */
+export const unpublishResult = async (req: Request, res: Response) => {
+  try {
+    const madrasa_id = getMadrasaId(req);
+    const result = await resultWorkflowService.unpublish(
+      madrasa_id,
+      req.user!.id,
+      toNumber(req.params.resultMasterId),
+    );
+    res.json({ success: true, ...result });
+  } catch (error) {
+    respondError(res, error, "unpublishResult error:", "Failed to unpublish result");
+  }
+};
