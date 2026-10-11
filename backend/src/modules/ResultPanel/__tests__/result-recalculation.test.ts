@@ -278,8 +278,10 @@ function buildTwoClassScenario(opts: {
   generalGrades: GradeFixture[];
   madrasaGrades: GradeFixture[];
   miyari?: { passMark: number | null };
+  /** Per-student total override (defaults to 90 / 40 / 34). */
+  marks?: Record<number, number>;
 }) {
-  const marksByStudent: Record<number, number> = { 1: 90, 2: 40, 3: 34 };
+  const marksByStudent: Record<number, number> = opts.marks ?? { 1: 90, 2: 40, 3: 34 };
   const replacedByMaster = new Map<number, any[]>();
   const calls = { generalGrades: 0, madrasaGrades: 0, settings: 0 };
   const miyariPassMarks: Map<number, number>[] = [];
@@ -495,10 +497,31 @@ describe("ResultPanelService - per-division grading", () => {
 
     for (const masterId of [100, 101]) {
       const rows = byStudent(replacedByMaster.get(masterId)!);
-      expect(rows[1]).toMatchObject({ status: "PASS", generalGrade: "A+", madrasaGrade: "মুমতায", rankNo: 1 });
-      expect(rows[2]).toMatchObject({ status: "PASS", generalGrade: "D", madrasaGrade: "মাকবুল", rankNo: 2 });
-      expect(rows[3]).toMatchObject({ status: "FAIL", generalGrade: "F", madrasaGrade: "রাসিব", rankNo: 3 });
+      expect(rows[1]).toMatchObject({ status: "PASS", generalGrade: "A+", madrasaGrade: "মুমতায", rankNo: 1, placeNo: 1 });
+      expect(rows[2]).toMatchObject({ status: "PASS", generalGrade: "D", madrasaGrade: "মাকবুল", rankNo: 2, placeNo: 2 });
+      expect(rows[3]).toMatchObject({ status: "FAIL", generalGrade: "F", madrasaGrade: "রাসিব", rankNo: 3, placeNo: 3 });
     }
+  });
+
+  it("মেধাস্থান: equal totals share a place while মেধাক্রম stays unique", async () => {
+    const { service, replacedByMaster } = buildTwoClassScenario({
+      globalFailMark: 35,
+      divisionFailMarks: {},
+      classDivision: { 20: 1, 21: 1 },
+      generalGrades: DEFAULT_GENERAL,
+      madrasaGrades: DEFAULT_MADRASA,
+      marks: { 1: 90, 2: 70, 3: 70 },
+    });
+
+    await service.recalculateResults(1, 7, {});
+
+    const rows = byStudent(replacedByMaster.get(100)!);
+    expect(rows[1]).toMatchObject({ rankNo: 1, placeNo: 1 });
+    // two students on 70: different rank numbers, same place
+    expect(rows[2].rankNo).not.toBe(rows[3].rankNo);
+    expect(rows[2].placeNo).toBe(2);
+    expect(rows[3].placeNo).toBe(2);
+    expect([rows[2].rankNo, rows[3].rankNo].sort()).toEqual([2, 3]);
   });
 
   it("lets a miyari subject's own pass mark win over the division fail mark, else falls back to it", async () => {

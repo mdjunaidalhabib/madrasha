@@ -50,7 +50,7 @@ const buildReports: ReportBuilder = (t, col): ReportMenuItem[] => [
       { header: col.total, key: "total", className: smallCol },
       { header: col.average, key: "average", className: smallCol },
       { header: col.grade, key: "madrasa_grade", className: smallCol },
-      { header: col.rank, key: "rank_no", className: smallCol },
+      { header: col.place, key: "place_no", className: smallCol },
     ],
   },
   {

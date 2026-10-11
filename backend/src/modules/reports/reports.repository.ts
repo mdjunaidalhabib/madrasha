@@ -236,6 +236,7 @@ export class ReportsRepository {
         gpa: null,
         madrasa_grade: null,
         rank_no: null,
+        place_no: null,
         status: "ফলাফল প্রকাশ হয়নি",
         publish_status: "DRAFT",
         subjects: [],
@@ -327,6 +328,7 @@ export class ReportsRepository {
         rs.madrasa_grade,
         rs.status,
         rs.rank_no,
+        rs.place_no,
         rm.status AS publish_status,
         rm.id AS result_master_id,
         COUNT(*) OVER()::int AS total_count,
@@ -391,6 +393,7 @@ export class ReportsRepository {
         rs.madrasa_grade,
         rs.status,
         rs.rank_no,
+        rs.place_no,
         rm.status,
         rm.id
       ${orderByClause}
@@ -448,6 +451,7 @@ export class ReportsRepository {
         rs.madrasa_grade,
         rs.status,
         rs.rank_no,
+        rs.place_no,
         rm.status AS publish_status,
         rm.id AS result_master_id
       FROM results_summary rs
@@ -683,7 +687,8 @@ export class ReportsRepository {
         rs.madrasa_grade,
         rs.general_grade,
         rs.gpa,
-        rs.rank_no
+        rs.rank_no,
+        rs.place_no
       FROM results_summary rs
       INNER JOIN students s ON s.id = rs.student_id
       INNER JOIN results_master rm ON rm.id = rs.result_master_id
@@ -1385,7 +1390,8 @@ export class ReportsRepository {
         rs.general_grade,
         rs.gpa,
         rs.status,
-        rs.rank_no
+        rs.rank_no,
+        rs.place_no
       FROM results_summary rs
       INNER JOIN students s ON s.id = rs.student_id
       INNER JOIN results_master rm ON rm.id = rs.result_master_id
@@ -1640,6 +1646,7 @@ export class ReportsRepository {
         rs.madrasa_grade,
         rs.status,
         rs.rank_no,
+        rs.place_no,
         rm.status AS publish_status,
         COALESCE(
           jsonb_agg(
@@ -1710,6 +1717,7 @@ export class ReportsRepository {
         rs.madrasa_grade,
         rs.status,
         rs.rank_no,
+        rs.place_no,
         rm.status,
         rm.id
       ORDER BY rm.id DESC, COALESCE(rs.roll, s.roll) ASC NULLS LAST, s.id ASC

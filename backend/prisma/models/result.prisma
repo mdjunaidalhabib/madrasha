@@ -294,7 +294,13 @@ model ResultSummary {
   madrasaGrade String? @map("madrasa_grade") @db.VarChar(50)
 
   status ResultRowStatus?
+  /// মেধাক্রম - always unique and sequential (1, 2, 3, 4 ...); equal scores
+  /// still get different numbers (kept exactly as it always was).
   rankNo Int?             @map("rank_no")
+  /// মেধাস্থান - tie-aware merit position: students with the same score
+  /// (same GPA + same total) share one place, and the next place is skipped
+  /// (1, 2, 2, 4 ...). Null for fully-absent students, like rankNo.
+  placeNo Int?            @map("place_no")
 
   /// Snapshot of the student's roll number at the moment this result was
   /// processed. `students.roll` gets overwritten every academic year on

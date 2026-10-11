@@ -15,6 +15,7 @@ import {
   MARK_STATUS,
 } from "./result-panel.constants";
 import { GradeRow } from "./result-panel.types";
+import { nextMeritPlace, type MeritPlaceCursor } from "./merit-place";
 import { ClassGradingConfig, MadrasaGradingConfig } from "./result-grading-config";
 import { MarkRowDto, ProcessResultRequestDto, SaveMarksRequestDto } from "./result-panel.dto";
 import { linkName, tenantClassName } from "../../shared/utils/tenant-name.util";
@@ -347,6 +348,9 @@ export class ResultPanelService {
     // students who actually sat the exam, so "১ম" always means the best
     // performing student who was present, not just first in sort order.
     let rankCounter = 0;
+    // মেধাস্থান: same GPA + same total share one place (1,2,2,4). Only ranked
+    // (non-absent) students take part, exactly like rankCounter.
+    let placeCursor: MeritPlaceCursor | null = null;
 
     const summaryData = sorted.map((row) => {
       const studentId = Number(row.studentId);
@@ -377,6 +381,17 @@ export class ResultPanelService {
           ? !gpaResult.failed
           : average >= config.failMark && !studentsFailingMiyari.has(studentId));
 
+      const rankNo = fullyAbsent ? null : ++rankCounter;
+      let placeNo: number | null = null;
+      if (rankNo !== null) {
+        placeCursor = nextMeritPlace(
+          placeCursor,
+          { gpa: gpaByStudent.get(studentId)?.gpa ?? 0, total },
+          rankNo,
+        );
+        placeNo = placeCursor.place;
+      }
+
       return {
         resultMasterId,
         studentId,
@@ -396,7 +411,8 @@ export class ResultPanelService {
             ? getGradeFast(average, config.madrasaGrades, DEFAULT_MADRASA_GRADE_FALLBACK)
             : DEFAULT_MADRASA_GRADE_FALLBACK,
         status: fullyAbsent ? MARK_STATUS.ABSENT : passed ? MARK_STATUS.PASS : MARK_STATUS.FAIL,
-        rankNo: fullyAbsent ? null : ++rankCounter,
+        rankNo,
+        placeNo,
         roll: rollOverrides?.has(studentId)
           ? (rollOverrides.get(studentId) ?? null)
           : (rollByStudentId.get(studentId) ?? null),
@@ -1419,6 +1435,7 @@ export class ResultPanelService {
       madrasa_grade: r.madrasaGrade,
       status: r.status,
       rank_no: r.rankNo,
+      place_no: r.placeNo ?? null,
       publish_status: r.resultMaster.status,
       has_roll_snapshot: Boolean(
         Array.isArray(r.resultMaster.previousRollSnapshot) && r.resultMaster.previousRollSnapshot.length,
@@ -1736,6 +1753,7 @@ export class ResultPanelService {
         madrasa_grade: row.madrasaGrade || "",
         status: row.status || "",
         rank_no: row.rankNo || 0,
+        place_no: row.placeNo ?? null,
         publish_status: row.resultMaster.status || RESULT_STATUS.DRAFT,
         marks,
       };

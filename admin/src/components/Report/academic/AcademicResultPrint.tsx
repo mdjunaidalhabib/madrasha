@@ -55,6 +55,9 @@ export const buildAcademicResultColumnOptions = (t: Pick<ReportText, "col">): Re
   // point (matching রোল/নম্বর's natural space-driven wrap) instead of
   // letting overflow-wrap: anywhere pick an arbitrary mid-syllable break
   // when the column is too narrow for one line.
+  // মেধাস্থান (tie-aware: equal marks share a place) is what prints by default;
+  // মেধাক্রম (unique running number) stays available from the "কলাম" menu.
+  { header: t.col.placeWrap, key: "place_no", className: "min-w-24 text-center" },
   { header: t.col.rankWrap, key: "rank_no", className: "min-w-24 text-center" },
 ];
 
@@ -65,7 +68,7 @@ const DEFAULT_RESULT_COLUMN_KEYS = new Set([
   "total",
   "average",
   "madrasa_grade",
-  "rank_no",
+  "place_no",
 ]);
 
 // What the report shows until the user changes it from the "কলাম" menu.
@@ -159,6 +162,7 @@ const RESULT_SUMMARY_COLUMN_KEYS = new Set([
   "general_grade",
   "madrasa_grade",
   "status",
+  "place_no",
   "rank_no",
 ]);
 
@@ -188,9 +192,10 @@ const COLUMN_WEIGHTS: Record<string, number> = {
   madrasa_grade: 1.55,
   status: 1.05,
   rank_no: 1.35,
+  place_no: 1.35,
 };
 
-const NUMERIC_COLUMN_KEYS = new Set(["roll", "registration_no", "total", "average", "rank_no"]);
+const NUMERIC_COLUMN_KEYS = new Set(["roll", "registration_no", "total", "average", "rank_no", "place_no"]);
 
 const getColumnWeight = (column: PrintableColumn) =>
   column.subjectKey ? 0.66 : COLUMN_WEIGHTS[column.key] || 1;
@@ -332,6 +337,8 @@ const AcademicResultPrint = ({
       return printCell(row, "class_name") || printCell(row, "class_name_bn");
     }
     if (column.key === "rank_no") return printMeritRank(row?.rank_no);
+    // Results processed before মেধাস্থান existed have no place_no - fall back to the rank.
+    if (column.key === "place_no") return printMeritRank(row?.place_no ?? row?.rank_no);
     // The স্ট্যাটাস column is narrow (matches মোট/গড়/গ্রেড's width), and
     // "অনুপস্থিত" alone doesn't fit on one line there, wrapping to a
     // second line and breaking the row height/alignment. Every other
@@ -476,7 +483,7 @@ const AcademicResultPrint = ({
                       key={`academic-header-${column.key}`}
                       rowSpan={subjectColumns.length ? 2 : 1}
                       className={`academic-result-standard-header border border-black px-0.5 py-1 text-base font-bold leading-tight text-center text-black ${
-                        column.key === "rank_no" ? "academic-result-rank-header" : ""
+                        column.key === "rank_no" || column.key === "place_no" ? "academic-result-rank-header" : ""
                       } ${column.key === "student_name" ? "academic-result-student-name-header" : ""}`}
                     >
                       {column.header}
@@ -512,7 +519,7 @@ const AcademicResultPrint = ({
               const rowStatus = String(row?.status || "").toUpperCase();
               const failed = rowStatus === "FAIL";
               const isAbsentRow = rowStatus === "ABSENT";
-              const rankValue = Number(row?.rank_no);
+              const rankValue = Number(row?.place_no ?? row?.rank_no);
               const isTopRankRow = Number.isInteger(rankValue) && rankValue >= 1 && rankValue <= 3;
               const rowClass = [
                 failed ? "academic-result-fail-row" : "",
@@ -532,7 +539,7 @@ const AcademicResultPrint = ({
                       column.key === "student_name" || column.key === "father_name"
                         ? "academic-result-student-name text-start font-semibold"
                         : "",
-                      column.key === "rank_no" ? "academic-result-rank-cell font-bold" : "",
+                      column.key === "rank_no" || column.key === "place_no" ? "academic-result-rank-cell font-bold" : "",
                       column.key === "total"
                         ? "academic-result-total-cell text-base font-semibold"
                         : "",
@@ -550,7 +557,7 @@ const AcademicResultPrint = ({
                         key={`academic-value-${row.student_id || row.id || index}-${column.key}`}
                         className={`border border-black text-base text-center text-black ${columnClass}`}
                       >
-                        {column.key === "rank_no" ? (
+                        {column.key === "rank_no" || column.key === "place_no" ? (
                           <span className="academic-result-rank-value text-base font-semibold text-black">
                             {getValue(row, column)}
                           </span>

@@ -63,6 +63,7 @@ interface SummaryItem {
   madrasa_grade?: string;
   status: string;
   rank_no: number;
+  place_no?: number | null;
   publish_status?: string;
   marks?: SummaryMark[];
 }

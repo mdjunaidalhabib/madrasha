@@ -27,6 +27,8 @@ interface Summary {
   madrasa_grade?: string;
   status: string;
   rank_no: number;
+  /** Tie-aware merit position (1,2,2,4) - null for absent / not yet re-processed. */
+  place_no?: number | null;
   publish_status?: string;
   marks?: SummaryMark[];
 }
@@ -98,7 +100,7 @@ export default function FullResultTable({
   const isMadrasa = useIsMadrasa();
   const num = (value: number | string) => localizeDigits(value, lang);
   // Madrasa-grade column only for madrasas - schools/colleges see general grades.
-  const columnCount = (Array.isArray(books) ? books.length : 0) + (isMadrasa ? 9 : 8);
+  const columnCount = (Array.isArray(books) ? books.length : 0) + (isMadrasa ? 10 : 9);
   const statusLabel = (status: string) =>
     rt.resultStatus[String(status || "").toUpperCase()] ?? localizeDigits(formatReportValue(status), lang);
   const dataList = Array.isArray(summary) ? summary : [];
@@ -302,6 +304,7 @@ export default function FullResultTable({
             {isMadrasa && <th className="border px-2 py-2 text-center dark:border-slate-800">{t.madrasaGrade}</th>}
             <th className="border px-2 py-2 text-center dark:border-slate-800">{t.resultState}</th>
             <th className="border px-2 py-2 text-center dark:border-slate-800">{t.rank}</th>
+            <th className="border px-2 py-2 text-center dark:border-slate-800" title={t.placeTitle}>{t.place}</th>
             <th className="border px-2 py-2 text-center dark:border-slate-800">{t.actions}</th>
           </tr>
         </thead>
@@ -359,6 +362,9 @@ export default function FullResultTable({
                 </td>
                 <td className="border px-2 py-2 text-center font-bold break-words">
                   {num(s.rank_no)}
+                </td>
+                <td className="border px-2 py-2 text-center font-bold break-words">
+                  {s.place_no == null ? "-" : num(s.place_no)}
                 </td>
 
                 <td className="border px-2 py-2 text-center break-words">

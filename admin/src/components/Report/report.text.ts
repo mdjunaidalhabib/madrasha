@@ -41,6 +41,9 @@ export const reportText = defineText({
       // point in the narrow result-sheet column.
       rankWrap: "মেধা​ক্রম",
       rank: "মেধাক্রম",
+      // মেধাস্থান = tie-aware position (equal marks share one place: ১, ২, ২, ৪).
+      placeWrap: "মেধা​স্থান",
+      place: "মেধাস্থান",
       meritPosition: "মেধাস্থান",
       mobile: "মোবাইল",
       mobileNo: "মোবাইল নম্বর",
@@ -193,8 +196,10 @@ export const reportText = defineText({
       resultDivision: "Result Division",
       status: "Status",
       state: "Status",
-      rankWrap: "Merit​Position",
-      rank: "Merit Position",
+      rankWrap: "Merit​Rank",
+      rank: "Merit Rank",
+      placeWrap: "Merit​Position",
+      place: "Merit Position",
       meritPosition: "Merit Position",
       mobile: "Mobile",
       mobileNo: "Mobile No.",

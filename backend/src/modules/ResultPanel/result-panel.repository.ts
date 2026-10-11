@@ -641,6 +641,7 @@ export class ResultPanelRepository {
         madrasaGrade: true,
         status: true,
         rankNo: true,
+        placeNo: true,
         roll: true,
       },
     });
@@ -802,6 +803,7 @@ export class ResultPanelRepository {
         madrasaGrade: true,
         status: true,
         rankNo: true,
+        placeNo: true,
         resultMaster: { select: { status: true, previousRollSnapshot: true } },
         student: { select: { nameBn: true } },
       },
@@ -1061,6 +1063,7 @@ export class ResultPanelRepository {
         madrasaGrade: true,
         status: true,
         rankNo: true,
+        placeNo: true,
         resultMaster: { select: { status: true } },
         student: {
           select: {

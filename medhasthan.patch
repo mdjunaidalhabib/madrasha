@@ -1,0 +1,635 @@
+diff --git a/admin/src/components/Report/academic/AcademicResultPrint.tsx b/admin/src/components/Report/academic/AcademicResultPrint.tsx
+index c590f67..5451418 100644
+--- a/admin/src/components/Report/academic/AcademicResultPrint.tsx
++++ b/admin/src/components/Report/academic/AcademicResultPrint.tsx
+@@ -55,6 +55,9 @@ export const buildAcademicResultColumnOptions = (t: Pick<ReportText, "col">): Re
+   // point (matching রোল/নম্বর's natural space-driven wrap) instead of
+   // letting overflow-wrap: anywhere pick an arbitrary mid-syllable break
+   // when the column is too narrow for one line.
++  // মেধাস্থান (tie-aware: equal marks share a place) is what prints by default;
++  // মেধাক্রম (unique running number) stays available from the "কলাম" menu.
++  { header: t.col.placeWrap, key: "place_no", className: "min-w-24 text-center" },
+   { header: t.col.rankWrap, key: "rank_no", className: "min-w-24 text-center" },
+ ];
+ 
+@@ -65,7 +68,7 @@ const DEFAULT_RESULT_COLUMN_KEYS = new Set([
+   "total",
+   "average",
+   "madrasa_grade",
+-  "rank_no",
++  "place_no",
+ ]);
+ 
+ // What the report shows until the user changes it from the "কলাম" menu.
+@@ -159,6 +162,7 @@ const RESULT_SUMMARY_COLUMN_KEYS = new Set([
+   "general_grade",
+   "madrasa_grade",
+   "status",
++  "place_no",
+   "rank_no",
+ ]);
+ 
+@@ -188,9 +192,10 @@ const COLUMN_WEIGHTS: Record<string, number> = {
+   madrasa_grade: 1.55,
+   status: 1.05,
+   rank_no: 1.35,
++  place_no: 1.35,
+ };
+ 
+-const NUMERIC_COLUMN_KEYS = new Set(["roll", "registration_no", "total", "average", "rank_no"]);
++const NUMERIC_COLUMN_KEYS = new Set(["roll", "registration_no", "total", "average", "rank_no", "place_no"]);
+ 
+ const getColumnWeight = (column: PrintableColumn) =>
+   column.subjectKey ? 0.66 : COLUMN_WEIGHTS[column.key] || 1;
+@@ -332,6 +337,8 @@ const AcademicResultPrint = ({
+       return printCell(row, "class_name") || printCell(row, "class_name_bn");
+     }
+     if (column.key === "rank_no") return printMeritRank(row?.rank_no);
++    // Results processed before মেধাস্থান existed have no place_no - fall back to the rank.
++    if (column.key === "place_no") return printMeritRank(row?.place_no ?? row?.rank_no);
+     // The স্ট্যাটাস column is narrow (matches মোট/গড়/গ্রেড's width), and
+     // "অনুপস্থিত" alone doesn't fit on one line there, wrapping to a
+     // second line and breaking the row height/alignment. Every other
+@@ -476,7 +483,7 @@ const AcademicResultPrint = ({
+                       key={`academic-header-${column.key}`}
+                       rowSpan={subjectColumns.length ? 2 : 1}
+                       className={`academic-result-standard-header border border-black px-0.5 py-1 text-base font-bold leading-tight text-center text-black ${
+-                        column.key === "rank_no" ? "academic-result-rank-header" : ""
++                        column.key === "rank_no" || column.key === "place_no" ? "academic-result-rank-header" : ""
+                       } ${column.key === "student_name" ? "academic-result-student-name-header" : ""}`}
+                     >
+                       {column.header}
+@@ -512,7 +519,7 @@ const AcademicResultPrint = ({
+               const rowStatus = String(row?.status || "").toUpperCase();
+               const failed = rowStatus === "FAIL";
+               const isAbsentRow = rowStatus === "ABSENT";
+-              const rankValue = Number(row?.rank_no);
++              const rankValue = Number(row?.place_no ?? row?.rank_no);
+               const isTopRankRow = Number.isInteger(rankValue) && rankValue >= 1 && rankValue <= 3;
+               const rowClass = [
+                 failed ? "academic-result-fail-row" : "",
+@@ -532,7 +539,7 @@ const AcademicResultPrint = ({
+                       column.key === "student_name" || column.key === "father_name"
+                         ? "academic-result-student-name text-start font-semibold"
+                         : "",
+-                      column.key === "rank_no" ? "academic-result-rank-cell font-bold" : "",
++                      column.key === "rank_no" || column.key === "place_no" ? "academic-result-rank-cell font-bold" : "",
+                       column.key === "total"
+                         ? "academic-result-total-cell text-base font-semibold"
+                         : "",
+@@ -550,7 +557,7 @@ const AcademicResultPrint = ({
+                         key={`academic-value-${row.student_id || row.id || index}-${column.key}`}
+                         className={`border border-black text-base text-center text-black ${columnClass}`}
+                       >
+-                        {column.key === "rank_no" ? (
++                        {column.key === "rank_no" || column.key === "place_no" ? (
+                           <span className="academic-result-rank-value text-base font-semibold text-black">
+                             {getValue(row, column)}
+                           </span>
+diff --git a/admin/src/components/Report/academic/ResultNoticeList.tsx b/admin/src/components/Report/academic/ResultNoticeList.tsx
+index 152d5e2..cb43498 100644
+--- a/admin/src/components/Report/academic/ResultNoticeList.tsx
++++ b/admin/src/components/Report/academic/ResultNoticeList.tsx
+@@ -17,7 +17,7 @@ export const buildResultNoticeColumns = (t: Pick<ReportText, "col">): ReportColu
+   { header: t.col.average, key: "average", className: "min-w-20 text-center" },
+   { header: t.col.grade, key: "madrasa_grade", className: "min-w-28 text-center" },
+   { header: " Grade", key: "general_grade", className: "min-w-20 text-center" },
+-  { header: t.col.rank, key: "rank_no", className: "min-w-20 text-center" },
++  { header: t.col.place, key: "place_no", className: "min-w-20 text-center" },
+   { header: t.col.status, key: "status", className: "min-w-24 text-center" },
+ ];
+ 
+@@ -38,6 +38,7 @@ const COLUMN_WEIGHTS: Record<string, number> = {
+   average: 0.72,
+   general_grade: 0.75,
+   rank_no: 1.0,
++  place_no: 1.0,
+   status: 0.9,
+ };
+ 
+@@ -56,6 +57,7 @@ const formatCellValue = (row: Record<string, any>, key: string) => {
+   }
+ 
+   if (key === "rank_no") return printMeritRank(row?.rank_no);
++  if (key === "place_no") return printMeritRank(row?.place_no ?? row?.rank_no);
+ 
+   return printCell(row, key);
+ };
+@@ -145,7 +147,7 @@ const ResultNoticeList = ({
+                     column.key === "student_name"
+                       ? "result-notice-student-name text-start font-semibold"
+                       : "text-center"
+-                  } ${column.key === "rank_no" ? "result-notice-rank-cell font-bold" : ""}`}
++                  } ${column.key === "rank_no" || column.key === "place_no" ? "result-notice-rank-cell font-bold" : ""}`}
+                 >
+                   {formatCellValue(row, column.key)}
+                 </td>
+diff --git a/admin/src/components/Report/report.text.ts b/admin/src/components/Report/report.text.ts
+index 963483d..92cff17 100644
+--- a/admin/src/components/Report/report.text.ts
++++ b/admin/src/components/Report/report.text.ts
+@@ -41,6 +41,9 @@ export const reportText = defineText({
+       // point in the narrow result-sheet column.
+       rankWrap: "মেধা​ক্রম",
+       rank: "মেধাক্রম",
++      // মেধাস্থান = tie-aware position (equal marks share one place: ১, ২, ২, ৪).
++      placeWrap: "মেধা​স্থান",
++      place: "মেধাস্থান",
+       meritPosition: "মেধাস্থান",
+       mobile: "মোবাইল",
+       mobileNo: "মোবাইল নম্বর",
+@@ -193,8 +196,10 @@ export const reportText = defineText({
+       resultDivision: "Result Division",
+       status: "Status",
+       state: "Status",
+-      rankWrap: "Merit​Position",
+-      rank: "Merit Position",
++      rankWrap: "Merit​Rank",
++      rank: "Merit Rank",
++      placeWrap: "Merit​Position",
++      place: "Merit Position",
+       meritPosition: "Merit Position",
+       mobile: "Mobile",
+       mobileNo: "Mobile No.",
+diff --git a/admin/src/components/Report/student/MarksheetList.tsx b/admin/src/components/Report/student/MarksheetList.tsx
+index a699524..2741e43 100644
+--- a/admin/src/components/Report/student/MarksheetList.tsx
++++ b/admin/src/components/Report/student/MarksheetList.tsx
+@@ -69,7 +69,7 @@ const INFO_FIELD_DEFS: Record<string, { label: keyof ReportText["col"]; value: (
+   madrasa_grade: { label: "resultDivision", value: (row) => printCell(row, "madrasa_grade") },
+   general_grade: { label: "grade", value: (row) => printCell(row, "general_grade") },
+   status: { label: "status", value: (row) => printCell(row, "status") },
+-  rank_no: { label: "meritPosition", value: (row) => printMeritRank(row?.rank_no) },
++  rank_no: { label: "meritPosition", value: (row) => printMeritRank(row?.place_no ?? row?.rank_no) },
+ };
+ 
+ // Applies the tenant's saved visibility + order on top of INFO_FIELD_DEFS -
+diff --git a/admin/src/components/ResultPanel/FullResultTable.tsx b/admin/src/components/ResultPanel/FullResultTable.tsx
+index 25b42be..823d163 100644
+--- a/admin/src/components/ResultPanel/FullResultTable.tsx
++++ b/admin/src/components/ResultPanel/FullResultTable.tsx
+@@ -27,6 +27,8 @@ interface Summary {
+   madrasa_grade?: string;
+   status: string;
+   rank_no: number;
++  /** Tie-aware merit position (1,2,2,4) - null for absent / not yet re-processed. */
++  place_no?: number | null;
+   publish_status?: string;
+   marks?: SummaryMark[];
+ }
+@@ -98,7 +100,7 @@ export default function FullResultTable({
+   const isMadrasa = useIsMadrasa();
+   const num = (value: number | string) => localizeDigits(value, lang);
+   // Madrasa-grade column only for madrasas - schools/colleges see general grades.
+-  const columnCount = (Array.isArray(books) ? books.length : 0) + (isMadrasa ? 9 : 8);
++  const columnCount = (Array.isArray(books) ? books.length : 0) + (isMadrasa ? 10 : 9);
+   const statusLabel = (status: string) =>
+     rt.resultStatus[String(status || "").toUpperCase()] ?? localizeDigits(formatReportValue(status), lang);
+   const dataList = Array.isArray(summary) ? summary : [];
+@@ -302,6 +304,7 @@ export default function FullResultTable({
+             {isMadrasa && <th className="border px-2 py-2 text-center dark:border-slate-800">{t.madrasaGrade}</th>}
+             <th className="border px-2 py-2 text-center dark:border-slate-800">{t.resultState}</th>
+             <th className="border px-2 py-2 text-center dark:border-slate-800">{t.rank}</th>
++            <th className="border px-2 py-2 text-center dark:border-slate-800" title={t.placeTitle}>{t.place}</th>
+             <th className="border px-2 py-2 text-center dark:border-slate-800">{t.actions}</th>
+           </tr>
+         </thead>
+@@ -360,6 +363,9 @@ export default function FullResultTable({
+                 <td className="border px-2 py-2 text-center font-bold break-words">
+                   {num(s.rank_no)}
+                 </td>
++                <td className="border px-2 py-2 text-center font-bold break-words">
++                  {s.place_no == null ? "-" : num(s.place_no)}
++                </td>
+ 
+                 <td className="border px-2 py-2 text-center break-words">
+                   <div className="flex gap-2 justify-center flex-wrap">
+diff --git a/admin/src/components/ResultPanel/resultPanel.text.ts b/admin/src/components/ResultPanel/resultPanel.text.ts
+index 8fc7ff0..35d9a27 100644
+--- a/admin/src/components/ResultPanel/resultPanel.text.ts
++++ b/admin/src/components/ResultPanel/resultPanel.text.ts
+@@ -110,6 +110,8 @@ export const resultPanelText = defineText({
+       madrasaGrade: "মাদরাসা গ্রেড",
+       resultState: "অবস্থা",
+       rank: "মেধাক্রম",
++      place: "মেধাস্থান",
++      placeTitle: "সমান নম্বর/জিপিএ হলে একই মেধাস্থান (যেমন ১, ২, ২, ৪)",
+       actions: "কার্যক্রম",
+       noResult: "কোনো ফলাফল পাওয়া যায়নি",
+       view: "দেখুন",
+@@ -393,6 +395,8 @@ export const resultPanelText = defineText({
+       madrasaGrade: "Madrasa Grade",
+       resultState: "Status",
+       rank: "Merit Rank",
++      place: "Merit Position",
++      placeTitle: "Equal marks/GPA share the same position (e.g. 1, 2, 2, 4)",
+       actions: "Actions",
+       noResult: "No result found",
+       view: "View",
+diff --git a/admin/src/features/reports/AcademicReportPage.tsx b/admin/src/features/reports/AcademicReportPage.tsx
+index ca0d809..addbf98 100644
+--- a/admin/src/features/reports/AcademicReportPage.tsx
++++ b/admin/src/features/reports/AcademicReportPage.tsx
+@@ -50,7 +50,7 @@ const buildReports: ReportBuilder = (t, col): ReportMenuItem[] => [
+       { header: col.total, key: "total", className: smallCol },
+       { header: col.average, key: "average", className: smallCol },
+       { header: col.grade, key: "madrasa_grade", className: smallCol },
+-      { header: col.rank, key: "rank_no", className: smallCol },
++      { header: col.place, key: "place_no", className: smallCol },
+     ],
+   },
+   {
+diff --git a/admin/src/features/reports/DocumentsReportPage.tsx b/admin/src/features/reports/DocumentsReportPage.tsx
+index e8fd730..62e5109 100644
+--- a/admin/src/features/reports/DocumentsReportPage.tsx
++++ b/admin/src/features/reports/DocumentsReportPage.tsx
+@@ -36,7 +36,7 @@ const buildReports: ReportBuilder = (t, col, isMadrasa): ReportMenuItem[] => [
+       { header: col.grade, key: "general_grade" },
+       // মাদরাসা গ্রেড (মুমতাজ...) কলাম শুধু মাদরাসায় দেখানো হয় - ডাটা যেমন ছিল তেমনই।
+       ...(isMadrasa ? [{ header: col.madrasaGrade, key: "madrasa_grade" }] : []),
+-      { header: col.rank, key: "rank_no" },
++      { header: col.place, key: "place_no" },
+       { header: col.status, key: "status" },
+     ],
+   },
+diff --git a/admin/src/features/talimat/ResultPreviewPage.tsx b/admin/src/features/talimat/ResultPreviewPage.tsx
+index cb7cf94..f07e7fa 100644
+--- a/admin/src/features/talimat/ResultPreviewPage.tsx
++++ b/admin/src/features/talimat/ResultPreviewPage.tsx
+@@ -63,6 +63,7 @@ interface SummaryItem {
+   madrasa_grade?: string;
+   status: string;
+   rank_no: number;
++  place_no?: number | null;
+   publish_status?: string;
+   marks?: SummaryMark[];
+ }
+diff --git a/backend/prisma/migrations/20261008100000_add_result_summary_place_no/migration.sql b/backend/prisma/migrations/20261008100000_add_result_summary_place_no/migration.sql
+new file mode 100644
+index 0000000..30d630b
+--- /dev/null
++++ b/backend/prisma/migrations/20261008100000_add_result_summary_place_no/migration.sql
+@@ -0,0 +1,22 @@
++-- মেধাস্থান (tie-aware merit position) alongside the existing মেধাক্রম.
++-- rank_no stays unique/sequential (1,2,3,4); place_no lets equal scores share
++-- one place (1,2,2,4).
++ALTER TABLE "results_summary" ADD COLUMN IF NOT EXISTS "place_no" INTEGER;
++
++-- Backfill already-processed results with the same ordering the grading
++-- engine uses (GPA desc, then total desc). Fully-absent students have a NULL
++-- rank_no and are left NULL here too.
++UPDATE "results_summary" rs
++SET "place_no" = ranked.place
++FROM (
++  SELECT
++    id,
++    RANK() OVER (
++      PARTITION BY result_master_id
++      ORDER BY COALESCE(gpa, 0) DESC, total DESC
++    )::int AS place
++  FROM "results_summary"
++  WHERE rank_no IS NOT NULL
++) ranked
++WHERE rs.id = ranked.id
++  AND rs.place_no IS NULL;
+diff --git a/backend/prisma/models/result.prisma b/backend/prisma/models/result.prisma
+index ea25858..19e3ed2 100644
+--- a/backend/prisma/models/result.prisma
++++ b/backend/prisma/models/result.prisma
+@@ -294,7 +294,13 @@ model ResultSummary {
+   madrasaGrade String? @map("madrasa_grade") @db.VarChar(50)
+ 
+   status ResultRowStatus?
++  /// মেধাক্রম - always unique and sequential (1, 2, 3, 4 ...); equal scores
++  /// still get different numbers (kept exactly as it always was).
+   rankNo Int?             @map("rank_no")
++  /// মেধাস্থান - tie-aware merit position: students with the same score
++  /// (same GPA + same total) share one place, and the next place is skipped
++  /// (1, 2, 2, 4 ...). Null for fully-absent students, like rankNo.
++  placeNo Int?            @map("place_no")
+ 
+   /// Snapshot of the student's roll number at the moment this result was
+   /// processed. `students.roll` gets overwritten every academic year on
+diff --git a/backend/src/modules/ResultPanel/__tests__/merit-place.test.ts b/backend/src/modules/ResultPanel/__tests__/merit-place.test.ts
+new file mode 100644
+index 0000000..7f4d97d
+--- /dev/null
++++ b/backend/src/modules/ResultPanel/__tests__/merit-place.test.ts
+@@ -0,0 +1,45 @@
++import { describe, expect, it } from "vitest";
++import { nextMeritPlace, sameMeritScore, type MeritPlaceCursor, type MeritScore } from "../merit-place";
++
++/** Mirrors computeSummaryRows: rank is a running counter, place uses the helper. */
++const placesFor = (scores: MeritScore[]) => {
++  let cursor: MeritPlaceCursor | null = null;
++  let rank = 0;
++  return scores.map((score) => {
++    rank += 1;
++    cursor = nextMeritPlace(cursor, score, rank);
++    return { rank, place: cursor.place };
++  });
++};
++
++const t = (total: number, gpa = 0): MeritScore => ({ gpa, total });
++
++describe("মেধাস্থান (tie-aware place)", () => {
++  it("gives distinct places when every score differs", () => {
++    expect(placesFor([t(500), t(450), t(400)]).map((r) => r.place)).toEqual([1, 2, 3]);
++  });
++
++  it("shares a place on equal totals and skips the next one (1,2,2,4)", () => {
++    const result = placesFor([t(500), t(450), t(450), t(400)]);
++    expect(result.map((r) => r.place)).toEqual([1, 2, 2, 4]);
++    // মেধাক্রম stays unique and sequential
++    expect(result.map((r) => r.rank)).toEqual([1, 2, 3, 4]);
++  });
++
++  it("handles a 3-way tie at the top (1,1,1,4)", () => {
++    expect(placesFor([t(500), t(500), t(500), t(300)]).map((r) => r.place)).toEqual([1, 1, 1, 4]);
++  });
++
++  it("with GPA, same total but different GPA is NOT a tie", () => {
++    expect(placesFor([t(480, 5), t(480, 4.5)]).map((r) => r.place)).toEqual([1, 2]);
++  });
++
++  it("with GPA, same GPA and same total IS a tie", () => {
++    expect(placesFor([t(480, 5), t(480, 5), t(470, 5)]).map((r) => r.place)).toEqual([1, 1, 3]);
++  });
++
++  it("tolerates floating point noise in totals", () => {
++    expect(sameMeritScore(t(0.1 + 0.2), t(0.3))).toBe(true);
++    expect(placesFor([t(0.1 + 0.2), t(0.3)]).map((r) => r.place)).toEqual([1, 1]);
++  });
++});
+diff --git a/backend/src/modules/ResultPanel/__tests__/result-recalculation.test.ts b/backend/src/modules/ResultPanel/__tests__/result-recalculation.test.ts
+index 25feccb..a36bc49 100644
+--- a/backend/src/modules/ResultPanel/__tests__/result-recalculation.test.ts
++++ b/backend/src/modules/ResultPanel/__tests__/result-recalculation.test.ts
+@@ -278,8 +278,10 @@ function buildTwoClassScenario(opts: {
+   generalGrades: GradeFixture[];
+   madrasaGrades: GradeFixture[];
+   miyari?: { passMark: number | null };
++  /** Per-student total override (defaults to 90 / 40 / 34). */
++  marks?: Record<number, number>;
+ }) {
+-  const marksByStudent: Record<number, number> = { 1: 90, 2: 40, 3: 34 };
++  const marksByStudent: Record<number, number> = opts.marks ?? { 1: 90, 2: 40, 3: 34 };
+   const replacedByMaster = new Map<number, any[]>();
+   const calls = { generalGrades: 0, madrasaGrades: 0, settings: 0 };
+   const miyariPassMarks: Map<number, number>[] = [];
+@@ -495,12 +497,33 @@ describe("ResultPanelService - per-division grading", () => {
+ 
+     for (const masterId of [100, 101]) {
+       const rows = byStudent(replacedByMaster.get(masterId)!);
+-      expect(rows[1]).toMatchObject({ status: "PASS", generalGrade: "A+", madrasaGrade: "মুমতায", rankNo: 1 });
+-      expect(rows[2]).toMatchObject({ status: "PASS", generalGrade: "D", madrasaGrade: "মাকবুল", rankNo: 2 });
+-      expect(rows[3]).toMatchObject({ status: "FAIL", generalGrade: "F", madrasaGrade: "রাসিব", rankNo: 3 });
++      expect(rows[1]).toMatchObject({ status: "PASS", generalGrade: "A+", madrasaGrade: "মুমতায", rankNo: 1, placeNo: 1 });
++      expect(rows[2]).toMatchObject({ status: "PASS", generalGrade: "D", madrasaGrade: "মাকবুল", rankNo: 2, placeNo: 2 });
++      expect(rows[3]).toMatchObject({ status: "FAIL", generalGrade: "F", madrasaGrade: "রাসিব", rankNo: 3, placeNo: 3 });
+     }
+   });
+ 
++  it("মেধাস্থান: equal totals share a place while মেধাক্রম stays unique", async () => {
++    const { service, replacedByMaster } = buildTwoClassScenario({
++      globalFailMark: 35,
++      divisionFailMarks: {},
++      classDivision: { 20: 1, 21: 1 },
++      generalGrades: DEFAULT_GENERAL,
++      madrasaGrades: DEFAULT_MADRASA,
++      marks: { 1: 90, 2: 70, 3: 70 },
++    });
++
++    await service.recalculateResults(1, 7, {});
++
++    const rows = byStudent(replacedByMaster.get(100)!);
++    expect(rows[1]).toMatchObject({ rankNo: 1, placeNo: 1 });
++    // two students on 70: different rank numbers, same place
++    expect(rows[2].rankNo).not.toBe(rows[3].rankNo);
++    expect(rows[2].placeNo).toBe(2);
++    expect(rows[3].placeNo).toBe(2);
++    expect([rows[2].rankNo, rows[3].rankNo].sort()).toEqual([2, 3]);
++  });
++
+   it("lets a miyari subject's own pass mark win over the division fail mark, else falls back to it", async () => {
+     const shared = {
+       globalFailMark: 35,
+diff --git a/backend/src/modules/ResultPanel/merit-place.ts b/backend/src/modules/ResultPanel/merit-place.ts
+new file mode 100644
+index 0000000..4e20984
+--- /dev/null
++++ b/backend/src/modules/ResultPanel/merit-place.ts
+@@ -0,0 +1,47 @@
++/**
++ * মেধাস্থান (tie-aware merit position).
++ *
++ * rankNo (মেধাক্রম) is a plain running counter - every ranked student gets a
++ * different number even on equal scores. placeNo (মেধাস্থান) instead lets
++ * students with the SAME score share one place, and skips the places that
++ * were taken ("standard competition ranking"): scores 100, 90, 90, 80 give
++ * places 1, 2, 2, 4.
++ *
++ * "Same score" is exactly the key the result sort uses: GPA (0 when the
++ * tenant has no GPA mode) and then the total marks.
++ */
++
++export interface MeritScore {
++  gpa: number;
++  total: number;
++}
++
++export interface MeritPlaceCursor {
++  score: MeritScore;
++  place: number;
++}
++
++// Marks can carry fractions (e.g. 0.5 steps) so totals are compared with a
++// tiny tolerance instead of strict ===. GPA is already rounded to 2 decimals.
++const EPSILON = 1e-6;
++
++export function sameMeritScore(a: MeritScore, b: MeritScore): boolean {
++  return Math.abs(a.gpa - b.gpa) < EPSILON && Math.abs(a.total - b.total) < EPSILON;
++}
++
++/**
++ * Place for the next ranked student. `previous` is the cursor of the student
++ * ranked immediately above (null for the first), `rankNo` is this student's
++ * own sequential rank. Tied with the previous one -> same place; otherwise
++ * the place is simply their rank number.
++ */
++export function nextMeritPlace(
++  previous: MeritPlaceCursor | null,
++  score: MeritScore,
++  rankNo: number,
++): MeritPlaceCursor {
++  if (previous && sameMeritScore(previous.score, score)) {
++    return { score, place: previous.place };
++  }
++  return { score, place: rankNo };
++}
+diff --git a/backend/src/modules/ResultPanel/result-panel.repository.ts b/backend/src/modules/ResultPanel/result-panel.repository.ts
+index 6132acc..61cb686 100644
+--- a/backend/src/modules/ResultPanel/result-panel.repository.ts
++++ b/backend/src/modules/ResultPanel/result-panel.repository.ts
+@@ -641,6 +641,7 @@ export class ResultPanelRepository {
+         madrasaGrade: true,
+         status: true,
+         rankNo: true,
++        placeNo: true,
+         roll: true,
+       },
+     });
+@@ -802,6 +803,7 @@ export class ResultPanelRepository {
+         madrasaGrade: true,
+         status: true,
+         rankNo: true,
++        placeNo: true,
+         resultMaster: { select: { status: true, previousRollSnapshot: true } },
+         student: { select: { nameBn: true } },
+       },
+@@ -1061,6 +1063,7 @@ export class ResultPanelRepository {
+         madrasaGrade: true,
+         status: true,
+         rankNo: true,
++        placeNo: true,
+         resultMaster: { select: { status: true } },
+         student: {
+           select: {
+diff --git a/backend/src/modules/ResultPanel/result-panel.service.ts b/backend/src/modules/ResultPanel/result-panel.service.ts
+index 7d6fd36..4497302 100644
+--- a/backend/src/modules/ResultPanel/result-panel.service.ts
++++ b/backend/src/modules/ResultPanel/result-panel.service.ts
+@@ -15,6 +15,7 @@ import {
+   MARK_STATUS,
+ } from "./result-panel.constants";
+ import { GradeRow } from "./result-panel.types";
++import { nextMeritPlace, type MeritPlaceCursor } from "./merit-place";
+ import { ClassGradingConfig, MadrasaGradingConfig } from "./result-grading-config";
+ import { MarkRowDto, ProcessResultRequestDto, SaveMarksRequestDto } from "./result-panel.dto";
+ import { linkName, tenantClassName } from "../../shared/utils/tenant-name.util";
+@@ -347,6 +348,9 @@ export class ResultPanelService {
+     // students who actually sat the exam, so "১ম" always means the best
+     // performing student who was present, not just first in sort order.
+     let rankCounter = 0;
++    // মেধাস্থান: same GPA + same total share one place (1,2,2,4). Only ranked
++    // (non-absent) students take part, exactly like rankCounter.
++    let placeCursor: MeritPlaceCursor | null = null;
+ 
+     const summaryData = sorted.map((row) => {
+       const studentId = Number(row.studentId);
+@@ -377,6 +381,17 @@ export class ResultPanelService {
+           ? !gpaResult.failed
+           : average >= config.failMark && !studentsFailingMiyari.has(studentId));
+ 
++      const rankNo = fullyAbsent ? null : ++rankCounter;
++      let placeNo: number | null = null;
++      if (rankNo !== null) {
++        placeCursor = nextMeritPlace(
++          placeCursor,
++          { gpa: gpaByStudent.get(studentId)?.gpa ?? 0, total },
++          rankNo,
++        );
++        placeNo = placeCursor.place;
++      }
++
+       return {
+         resultMasterId,
+         studentId,
+@@ -396,7 +411,8 @@ export class ResultPanelService {
+             ? getGradeFast(average, config.madrasaGrades, DEFAULT_MADRASA_GRADE_FALLBACK)
+             : DEFAULT_MADRASA_GRADE_FALLBACK,
+         status: fullyAbsent ? MARK_STATUS.ABSENT : passed ? MARK_STATUS.PASS : MARK_STATUS.FAIL,
+-        rankNo: fullyAbsent ? null : ++rankCounter,
++        rankNo,
++        placeNo,
+         roll: rollOverrides?.has(studentId)
+           ? (rollOverrides.get(studentId) ?? null)
+           : (rollByStudentId.get(studentId) ?? null),
+@@ -1419,6 +1435,7 @@ export class ResultPanelService {
+       madrasa_grade: r.madrasaGrade,
+       status: r.status,
+       rank_no: r.rankNo,
++      place_no: r.placeNo ?? null,
+       publish_status: r.resultMaster.status,
+       has_roll_snapshot: Boolean(
+         Array.isArray(r.resultMaster.previousRollSnapshot) && r.resultMaster.previousRollSnapshot.length,
+@@ -1736,6 +1753,7 @@ export class ResultPanelService {
+         madrasa_grade: row.madrasaGrade || "",
+         status: row.status || "",
+         rank_no: row.rankNo || 0,
++        place_no: row.placeNo ?? null,
+         publish_status: row.resultMaster.status || RESULT_STATUS.DRAFT,
+         marks,
+       };
+diff --git a/backend/src/modules/reports/reports.repository.ts b/backend/src/modules/reports/reports.repository.ts
+index dbef207..3284071 100644
+--- a/backend/src/modules/reports/reports.repository.ts
++++ b/backend/src/modules/reports/reports.repository.ts
+@@ -236,6 +236,7 @@ export class ReportsRepository {
+         gpa: null,
+         madrasa_grade: null,
+         rank_no: null,
++        place_no: null,
+         status: "ফলাফল প্রকাশ হয়নি",
+         publish_status: "DRAFT",
+         subjects: [],
+@@ -327,6 +328,7 @@ export class ReportsRepository {
+         rs.madrasa_grade,
+         rs.status,
+         rs.rank_no,
++        rs.place_no,
+         rm.status AS publish_status,
+         rm.id AS result_master_id,
+         COUNT(*) OVER()::int AS total_count,
+@@ -391,6 +393,7 @@ export class ReportsRepository {
+         rs.madrasa_grade,
+         rs.status,
+         rs.rank_no,
++        rs.place_no,
+         rm.status,
+         rm.id
+       ${orderByClause}
+@@ -448,6 +451,7 @@ export class ReportsRepository {
+         rs.madrasa_grade,
+         rs.status,
+         rs.rank_no,
++        rs.place_no,
+         rm.status AS publish_status,
+         rm.id AS result_master_id
+       FROM results_summary rs
+@@ -683,7 +687,8 @@ export class ReportsRepository {
+         rs.madrasa_grade,
+         rs.general_grade,
+         rs.gpa,
+-        rs.rank_no
++        rs.rank_no,
++        rs.place_no
+       FROM results_summary rs
+       INNER JOIN students s ON s.id = rs.student_id
+       INNER JOIN results_master rm ON rm.id = rs.result_master_id
+@@ -1385,7 +1390,8 @@ export class ReportsRepository {
+         rs.general_grade,
+         rs.gpa,
+         rs.status,
+-        rs.rank_no
++        rs.rank_no,
++        rs.place_no
+       FROM results_summary rs
+       INNER JOIN students s ON s.id = rs.student_id
+       INNER JOIN results_master rm ON rm.id = rs.result_master_id
+@@ -1640,6 +1646,7 @@ export class ReportsRepository {
+         rs.madrasa_grade,
+         rs.status,
+         rs.rank_no,
++        rs.place_no,
+         rm.status AS publish_status,
+         COALESCE(
+           jsonb_agg(
+@@ -1710,6 +1717,7 @@ export class ReportsRepository {
+         rs.madrasa_grade,
+         rs.status,
+         rs.rank_no,
++        rs.place_no,
+         rm.status,
+         rm.id
+       ORDER BY rm.id DESC, COALESCE(rs.roll, s.roll) ASC NULLS LAST, s.id ASC

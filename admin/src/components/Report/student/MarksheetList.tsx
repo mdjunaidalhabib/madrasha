@@ -69,7 +69,7 @@ const INFO_FIELD_DEFS: Record<string, { label: keyof ReportText["col"]; value: (
   madrasa_grade: { label: "resultDivision", value: (row) => printCell(row, "madrasa_grade") },
   general_grade: { label: "grade", value: (row) => printCell(row, "general_grade") },
   status: { label: "status", value: (row) => printCell(row, "status") },
-  rank_no: { label: "meritPosition", value: (row) => printMeritRank(row?.rank_no) },
+  rank_no: { label: "meritPosition", value: (row) => printMeritRank(row?.place_no ?? row?.rank_no) },
 };
 
 // Applies the tenant's saved visibility + order on top of INFO_FIELD_DEFS -

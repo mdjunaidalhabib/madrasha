@@ -17,7 +17,7 @@ export const buildResultNoticeColumns = (t: Pick<ReportText, "col">): ReportColu
   { header: t.col.average, key: "average", className: "min-w-20 text-center" },
   { header: t.col.grade, key: "madrasa_grade", className: "min-w-28 text-center" },
   { header: " Grade", key: "general_grade", className: "min-w-20 text-center" },
-  { header: t.col.rank, key: "rank_no", className: "min-w-20 text-center" },
+  { header: t.col.place, key: "place_no", className: "min-w-20 text-center" },
   { header: t.col.status, key: "status", className: "min-w-24 text-center" },
 ];
 
@@ -38,6 +38,7 @@ const COLUMN_WEIGHTS: Record<string, number> = {
   average: 0.72,
   general_grade: 0.75,
   rank_no: 1.0,
+  place_no: 1.0,
   status: 0.9,
 };
 
@@ -56,6 +57,7 @@ const formatCellValue = (row: Record<string, any>, key: string) => {
   }
 
   if (key === "rank_no") return printMeritRank(row?.rank_no);
+  if (key === "place_no") return printMeritRank(row?.place_no ?? row?.rank_no);
 
   return printCell(row, key);
 };
@@ -145,7 +147,7 @@ const ResultNoticeList = ({
                     column.key === "student_name"
                       ? "result-notice-student-name text-start font-semibold"
                       : "text-center"
-                  } ${column.key === "rank_no" ? "result-notice-rank-cell font-bold" : ""}`}
+                  } ${column.key === "rank_no" || column.key === "place_no" ? "result-notice-rank-cell font-bold" : ""}`}
                 >
                   {formatCellValue(row, column.key)}
                 </td>

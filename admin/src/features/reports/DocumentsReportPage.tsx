@@ -36,7 +36,7 @@ const buildReports: ReportBuilder = (t, col, isMadrasa): ReportMenuItem[] => [
       { header: col.grade, key: "general_grade" },
       // মাদরাসা গ্রেড (মুমতাজ...) কলাম শুধু মাদরাসায় দেখানো হয় - ডাটা যেমন ছিল তেমনই।
       ...(isMadrasa ? [{ header: col.madrasaGrade, key: "madrasa_grade" }] : []),
-      { header: col.rank, key: "rank_no" },
+      { header: col.place, key: "place_no" },
       { header: col.status, key: "status" },
     ],
   },
