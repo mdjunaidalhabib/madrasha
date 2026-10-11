@@ -298,8 +298,8 @@ model ResultSummary {
   /// still get different numbers (kept exactly as it always was).
   rankNo Int?             @map("rank_no")
   /// মেধাস্থান - tie-aware merit position: students with the same score
-  /// (same GPA + same total) share one place, and the next place is skipped
-  /// (1, 2, 2, 4 ...). Null for fully-absent students, like rankNo.
+  /// (same GPA + same total) share one place, and the next score takes the next place (no gap)
+  /// (1, 1, 2, 3 ...). Null for fully-absent students, like rankNo.
   placeNo Int?            @map("place_no")
 
   /// Snapshot of the student's roll number at the moment this result was

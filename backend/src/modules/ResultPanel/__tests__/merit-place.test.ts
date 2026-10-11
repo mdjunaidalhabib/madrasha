@@ -19,15 +19,15 @@ describe("মেধাস্থান (tie-aware place)", () => {
     expect(placesFor([t(500), t(450), t(400)]).map((r) => r.place)).toEqual([1, 2, 3]);
   });
 
-  it("shares a place on equal totals and skips the next one (1,2,2,4)", () => {
+  it("shares a place on equal totals and the next place has no gap (1,2,2,3)", () => {
     const result = placesFor([t(500), t(450), t(450), t(400)]);
-    expect(result.map((r) => r.place)).toEqual([1, 2, 2, 4]);
+    expect(result.map((r) => r.place)).toEqual([1, 2, 2, 3]);
     // মেধাক্রম stays unique and sequential
     expect(result.map((r) => r.rank)).toEqual([1, 2, 3, 4]);
   });
 
-  it("handles a 3-way tie at the top (1,1,1,4)", () => {
-    expect(placesFor([t(500), t(500), t(500), t(300)]).map((r) => r.place)).toEqual([1, 1, 1, 4]);
+  it("handles a 3-way tie at the top (1,1,1,2)", () => {
+    expect(placesFor([t(500), t(500), t(500), t(300)]).map((r) => r.place)).toEqual([1, 1, 1, 2]);
   });
 
   it("with GPA, same total but different GPA is NOT a tie", () => {
@@ -35,7 +35,11 @@ describe("মেধাস্থান (tie-aware place)", () => {
   });
 
   it("with GPA, same GPA and same total IS a tie", () => {
-    expect(placesFor([t(480, 5), t(480, 5), t(470, 5)]).map((r) => r.place)).toEqual([1, 1, 3]);
+    expect(placesFor([t(480, 5), t(480, 5), t(470, 5)]).map((r) => r.place)).toEqual([1, 1, 2]);
+  });
+
+  it("two tied at the top then distinct scores gives 1,1,2,3", () => {
+    expect(placesFor([t(500), t(500), t(490), t(480)]).map((r) => r.place)).toEqual([1, 1, 2, 3]);
   });
 
   it("tolerates floating point noise in totals", () => {

@@ -3,9 +3,9 @@
  *
  * rankNo (মেধাক্রম) is a plain running counter - every ranked student gets a
  * different number even on equal scores. placeNo (মেধাস্থান) instead lets
- * students with the SAME score share one place, and skips the places that
- * were taken ("standard competition ranking"): scores 100, 90, 90, 80 give
- * places 1, 2, 2, 4.
+ * students with the SAME score share one place, and the next lower score
+ * simply takes the next place number, with no gaps ("dense ranking"):
+ * scores 100, 100, 90, 80 give places 1, 1, 2, 3.
  *
  * "Same score" is exactly the key the result sort uses: GPA (0 when the
  * tenant has no GPA mode) and then the total marks.
@@ -31,17 +31,17 @@ export function sameMeritScore(a: MeritScore, b: MeritScore): boolean {
 
 /**
  * Place for the next ranked student. `previous` is the cursor of the student
- * ranked immediately above (null for the first), `rankNo` is this student's
- * own sequential rank. Tied with the previous one -> same place; otherwise
- * the place is simply their rank number.
+ * ranked immediately above (null for the first). Tied with the previous one
+ * -> same place; otherwise the place is the previous place + 1 (no gaps).
+ * `rankNo` is kept in the signature for callers but no longer affects the place.
  */
 export function nextMeritPlace(
   previous: MeritPlaceCursor | null,
   score: MeritScore,
-  rankNo: number,
+  _rankNo?: number,
 ): MeritPlaceCursor {
   if (previous && sameMeritScore(previous.score, score)) {
     return { score, place: previous.place };
   }
-  return { score, place: rankNo };
+  return { score, place: previous ? previous.place + 1 : 1 };
 }
