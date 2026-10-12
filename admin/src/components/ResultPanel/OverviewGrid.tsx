@@ -2,6 +2,7 @@ import { examCoversDivision } from "../ExamPanel/examDivisionScope";
 import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { getText, localizeDigits, useLang, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
 import { resultPanelText } from "./resultPanel.text";
+import { getEntryProgress, isEntryComplete, isEntryStarted } from "./entryProgress";
 
 interface Division {
   division_id: number;
@@ -30,6 +31,10 @@ interface StatusItem {
   entered_students: number;
   /** অন্তত একটি বিষয়ের নম্বর এন্ট্রি হয়েছে এমন শিক্ষার্থী (আংশিক এন্ট্রি ধরার জন্য)। */
   started_students?: number;
+  /** ক্লাসের সক্রিয় বিষয় সংখ্যা। */
+  total_subjects?: number;
+  /** যে বিষয়ে ক্লাসের সব শিক্ষার্থীর নম্বর এন্ট্রি হয়েছে। */
+  completed_subjects?: number;
 }
 
 interface Props {
@@ -49,14 +54,17 @@ const getBadge = (s: StatusItem | undefined, lang: Lang) => {
   if (s.publish_status === "PUBLISHED" || s.publish_status === "LOCKED") {
     return { label: t.published, classes: "bg-green-100 text-green-700 border-green-300 dark:bg-green-950/40 dark:text-green-400 dark:border-green-800" };
   }
-  // "সম্পন্ন" শুধু তখনই, যখন প্রতিটি শিক্ষার্থীর সব বিষয়ের নম্বর এন্ট্রি হয়েছে।
-  if (s.entered_students > 0 && s.total_students > 0 && s.entered_students >= s.total_students) {
+  // "সম্পন্ন" শুধু তখনই, যখন প্রতিটি বিষয়ে সব শিক্ষার্থীর নম্বর এন্ট্রি হয়েছে।
+  if (isEntryComplete(s)) {
     return { label: t.complete, classes: "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800" };
   }
-  // আংশিক: কিছু নম্বর এন্ট্রি হয়েছে কিন্তু সব শিক্ষার্থীর সব বিষয় পূর্ণ হয়নি।
-  if ((s.started_students ?? s.entered_students) > 0) {
+  // আংশিক: কিছু নম্বর এন্ট্রি হয়েছে — কয়টি বিষয়ের মধ্যে কয়টি সম্পূর্ণ তা দেখানো হয়।
+  if (isEntryStarted(s)) {
+    const p = getEntryProgress(s);
+    const done = localizeDigits(p.done, lang);
+    const total = localizeDigits(p.total, lang);
     return {
-      label: t.partial(localizeDigits(s.entered_students, lang), localizeDigits(s.total_students, lang)),
+      label: p.unit === "subject" ? t.partial(done, total) : t.partialStudents(done, total),
       classes: "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-950/40 dark:text-yellow-400 dark:border-yellow-800",
     };
   }

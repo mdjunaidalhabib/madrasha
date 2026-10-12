@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BookOpen, ClipboardEdit, GraduationCap, UserCheck, UserX, Users } from "lucide-react";
 import { cachedGet } from "../../services/api";
+import { getEntryProgress } from "../../components/ResultPanel/entryProgress";
 import Card from "@madrasha/shared-ui/src/components/ui/Card";
 import ChartCard from "@madrasha/shared-ui/src/components/ui/ChartCard";
 import Badge, { BadgeTone } from "@madrasha/shared-ui/src/components/ui/Badge";
@@ -39,6 +40,9 @@ type TalimatDashboardData = {
     exam_id: number;
     total_students: number;
     entered_students: number;
+    started_students?: number;
+    total_subjects?: number;
+    completed_subjects?: number;
   }[];
 };
 
@@ -347,7 +351,9 @@ export default function TalimatDashboardPage() {
             <p className="px-5 py-6 text-center text-sm text-slate-400 dark:text-slate-500">{c.noData}</p>
           )}
           {classStatusRows.map((row) => {
-            const pct = row.total_students > 0 ? Math.round((row.entered_students / row.total_students) * 100) : 0;
+            // বিষয় অনুযায়ী অগ্রগতি: কয়টি বিষয়ের মধ্যে কয়টিতে সব শিক্ষার্থীর নম্বর এন্ট্রি হয়েছে।
+            const progress = getEntryProgress(row);
+            const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
             return (
               <div key={row.class_id} className="flex items-center gap-4 px-5 py-3">
                 <span className="w-32 shrink-0 truncate text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -359,8 +365,8 @@ export default function TalimatDashboardPage() {
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <span className="w-24 shrink-0 text-end text-xs text-slate-500 dark:text-slate-400">
-                  {bn(row.entered_students)} / {bn(row.total_students)}
+                <span className="w-32 shrink-0 text-end text-xs text-slate-500 dark:text-slate-400">
+                  {bn(progress.done)} / {bn(progress.total)}{progress.unit === "subject" ? ` ${lang === "en" ? "subjects" : "বিষয়"}` : ""}
                 </span>
               </div>
             );

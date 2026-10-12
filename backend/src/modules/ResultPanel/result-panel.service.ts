@@ -1205,6 +1205,8 @@ export class ResultPanelService {
       total_students: Number(row.total_students),
       entered_students: Number(row.entered_students),
       started_students: Number(row.started_students),
+      total_subjects: Number(row.total_subjects),
+      completed_subjects: Number(row.completed_subjects),
     }));
   }
 
@@ -1235,6 +1237,8 @@ export class ResultPanelService {
       total_students: Number(row.total_students),
       entered_students: Number(row.entered_students),
       started_students: Number(row.started_students),
+      total_subjects: Number(row.total_subjects),
+      completed_subjects: Number(row.completed_subjects),
     }));
 
     return { divisions, exams: examRows, classes, statuses };
@@ -1310,7 +1314,7 @@ export class ResultPanelService {
         statusBreakdown: { pass: 0, fail: 0, absent: 0 },
         attendance: { present: 0, absent: 0, slotsTaken: 0 },
         gradeDistribution: [] as { grade: string; count: number }[],
-        classStatus: [] as { class_id: number; division_id: number; total_students: number; entered_students: number; started_students: number }[],
+        classStatus: [] as { class_id: number; division_id: number; total_students: number; entered_students: number; started_students: number; total_subjects: number; completed_subjects: number }[],
       };
     }
 
@@ -1345,6 +1349,8 @@ export class ResultPanelService {
         total_students: Number(row.total_students),
         entered_students: Number(row.entered_students),
         started_students: Number(row.started_students),
+      total_subjects: Number(row.total_subjects),
+      completed_subjects: Number(row.completed_subjects),
       }));
 
     return {

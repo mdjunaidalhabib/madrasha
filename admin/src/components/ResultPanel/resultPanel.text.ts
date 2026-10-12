@@ -155,7 +155,8 @@ export const resultPanelText = defineText({
       notEntered: "⚪ এন্ট্রি হয়নি",
       published: "✅ প্রকাশিত",
       complete: "🟢 এন্ট্রি সম্পন্ন",
-      partial: (done: string, total: string) => `🟡 আংশিক (${done}/${total})`,
+      partial: (done: string, total: string) => `🟡 আংশিক (${done}/${total} বিষয়)`,
+      partialStudents: (done: string, total: string) => `🟡 আংশিক (${done}/${total})`,
       empty: "কোনো পরীক্ষা বা {{division}} পাওয়া যায়নি। প্রথমে পরীক্ষা ও {{division}} যোগ করুন।",
     },
     password: {
@@ -460,7 +461,8 @@ export const resultPanelText = defineText({
       notEntered: "⚪ Not entered",
       published: "✅ Published",
       complete: "🟢 Entry complete",
-      partial: (done, total) => `🟡 Partial (${done}/${total})`,
+      partial: (done, total) => `🟡 Partial (${done}/${total} subjects)`,
+      partialStudents: (done, total) => `🟡 Partial (${done}/${total})`,
       empty: "No exam or {{division}} found. Add an exam and a {{division}} first.",
     },
     password: {

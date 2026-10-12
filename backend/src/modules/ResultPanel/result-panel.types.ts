@@ -16,6 +16,8 @@ export interface ClassStatusRow {
   total_students: number | bigint;
   entered_students: number | bigint;
   started_students: number | bigint;
+  total_subjects: number | bigint;
+  completed_subjects: number | bigint;
 }
 
 export interface OverviewStatusRow {
@@ -27,4 +29,6 @@ export interface OverviewStatusRow {
   total_students: number | bigint;
   entered_students: number | bigint;
   started_students: number | bigint;
+  total_subjects: number | bigint;
+  completed_subjects: number | bigint;
 }

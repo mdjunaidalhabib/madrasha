@@ -781,7 +781,27 @@ export class ResultPanelRepository {
         -- started_students: অন্তত একটি বিষয়ের নম্বর পাওয়া গেছে এমন শিক্ষার্থী।
         (SELECT COUNT(DISTINCT m.student_id) FROM marks m
            WHERE m.result_master_id = rm.id
-        ) AS started_students
+        ) AS started_students,
+        -- total_subjects: এই ক্লাসের সক্রিয় বিষয় (বই) সংখ্যা।
+        (SELECT COUNT(*) FROM madrasa_books mbs
+           JOIN books bs ON bs.id = mbs.book_id
+          WHERE mbs.madrasa_id = ${madrasaId} AND mbs.is_active = 1 AND bs.class_id = c.id
+        ) AS total_subjects,
+        -- completed_subjects: যে বিষয়ে ক্লাসের প্রতিটি শিক্ষার্থীর নম্বর এন্ট্রি হয়েছে।
+        (SELECT COUNT(*) FROM madrasa_books mbc
+           JOIN books bc ON bc.id = mbc.book_id
+          WHERE rm.id IS NOT NULL
+            AND mbc.madrasa_id = ${madrasaId} AND mbc.is_active = 1 AND bc.class_id = c.id
+            AND EXISTS (SELECT 1 FROM students sx
+                         WHERE sx.madrasa_id = ${madrasaId} AND sx.class_id = c.id AND sx.division_id = ${divisionId}
+                           AND sx.deleted_at IS NULL AND sx.is_active = 1 AND sx.admission_status = 'APPROVED')
+            AND NOT EXISTS (SELECT 1 FROM students sy
+                             WHERE sy.madrasa_id = ${madrasaId} AND sy.class_id = c.id AND sy.division_id = ${divisionId}
+                               AND sy.deleted_at IS NULL AND sy.is_active = 1 AND sy.admission_status = 'APPROVED'
+                               AND NOT EXISTS (SELECT 1 FROM marks mk
+                                                WHERE mk.result_master_id = rm.id
+                                                  AND mk.book_id = bc.id AND mk.student_id = sy.id))
+        ) AS completed_subjects
       FROM madrasa_classes mc
       JOIN classes c ON c.id = mc.class_id
       LEFT JOIN results_master rm
@@ -856,7 +876,27 @@ export class ResultPanelRepository {
         -- started_students: অন্তত একটি বিষয়ের নম্বর পাওয়া গেছে এমন শিক্ষার্থী।
         (SELECT COUNT(DISTINCT m.student_id) FROM marks m
            WHERE m.result_master_id = rm.id
-        ) AS started_students
+        ) AS started_students,
+        -- total_subjects: এই ক্লাসের সক্রিয় বিষয় (বই) সংখ্যা।
+        (SELECT COUNT(*) FROM madrasa_books mbs
+           JOIN books bs ON bs.id = mbs.book_id
+          WHERE mbs.madrasa_id = ${madrasaId} AND mbs.is_active = 1 AND bs.class_id = c.id
+        ) AS total_subjects,
+        -- completed_subjects: যে বিষয়ে ক্লাসের প্রতিটি শিক্ষার্থীর নম্বর এন্ট্রি হয়েছে।
+        (SELECT COUNT(*) FROM madrasa_books mbc
+           JOIN books bc ON bc.id = mbc.book_id
+          WHERE rm.id IS NOT NULL
+            AND mbc.madrasa_id = ${madrasaId} AND mbc.is_active = 1 AND bc.class_id = c.id
+            AND EXISTS (SELECT 1 FROM students sx
+                         WHERE sx.madrasa_id = ${madrasaId} AND sx.class_id = c.id
+                           AND sx.deleted_at IS NULL AND sx.is_active = 1 AND sx.admission_status = 'APPROVED')
+            AND NOT EXISTS (SELECT 1 FROM students sy
+                             WHERE sy.madrasa_id = ${madrasaId} AND sy.class_id = c.id
+                               AND sy.deleted_at IS NULL AND sy.is_active = 1 AND sy.admission_status = 'APPROVED'
+                               AND NOT EXISTS (SELECT 1 FROM marks mk
+                                                WHERE mk.result_master_id = rm.id
+                                                  AND mk.book_id = bc.id AND mk.student_id = sy.id))
+        ) AS completed_subjects
       FROM madrasa_classes mc
       JOIN classes c ON c.id = mc.class_id
       JOIN exams e ON e.madrasa_id = ${madrasaId} AND e.deleted_at IS NULL

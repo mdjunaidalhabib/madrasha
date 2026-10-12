@@ -10,6 +10,7 @@ import { useAuthStore } from "../../store/authStore";
 import { hasPermission } from "../../utils/permissions";
 
 import OverviewGrid from "../../components/ResultPanel/OverviewGrid";
+import { isEntryComplete } from "../../components/ResultPanel/entryProgress";
 import FullResultTable from "../../components/ResultPanel/FullResultTable";
 import StudentMarksEditModal from "../../components/ResultPanel/StudentMarksEditModal";
 import ResultStatsCards from "../../components/ResultPanel/ResultStatsCards";
@@ -48,6 +49,8 @@ interface StatusItem {
   total_students: number;
   entered_students: number;
   started_students?: number;
+  total_subjects?: number;
+  completed_subjects?: number;
 }
 interface SummaryMark {
   book_id: number;
@@ -235,8 +238,10 @@ export default function ResultPreviewPage() {
   // teacher straight to Number Entry instead of a page that just shows empty.
   const handleSelectFromGrid = (selExamId: number, selClassId: number) => {
     const status = statuses.find((s) => s.exam_id === selExamId && s.class_id === selClassId);
-    // আংশিক এন্ট্রিও "এন্ট্রি শুরু হয়েছে" — তাই শুধু একদমই নম্বর না থাকলে এন্ট্রি পেজে পাঠানো হয়।
-    const notEnteredYet = !status || (status.started_students ?? status.entered_students) <= 0;
+    // শুধু সম্পূর্ণ এন্ট্রি (বা প্রকাশিত/লকড) হলে ফলাফল প্রিভিউ খোলে; এন্ট্রি হয়নি বা আংশিক
+    // হলে সরাসরি নম্বর এন্ট্রি পেজে পাঠানো হয়, যাতে বাকি বিষয়ের নম্বর দেওয়া যায়।
+    const isPublished = status?.publish_status === "PUBLISHED" || status?.publish_status === "LOCKED";
+    const notEnteredYet = !status || (!isPublished && !isEntryComplete(status));
 
     if (notEnteredYet) {
       const params = new URLSearchParams({ examId: String(selExamId), classId: String(selClassId) });
