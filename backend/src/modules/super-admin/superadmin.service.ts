@@ -205,216 +205,14 @@ export class SuperAdminService {
       });
       const madrasaId = madrasa.id;
 
-      /* ========================= ROLES ========================= */
-      const roleMap: Record<string, number> = {};
-      const requestedRoleKeys = new Set(default_users.map((u) => u.role?.toUpperCase()));
-      const rolesToCreate = DEFAULT_MADRASA_ROLES.filter(
-        (r) => ALWAYS_PROVISIONED_ROLE_KEYS.includes(r.key) || requestedRoleKeys.has(r.key),
-      );
-      for (const r of rolesToCreate) {
-        const role = await this.repository.createRoleOnTx(tx, madrasaId, r.key, r.name);
-        roleMap[r.key] = role.id;
-
-        // MUHTAMIM bypasses permission checks entirely (isMuhtamimRole
-        // short-circuit) and can never actually be restricted by these rows -
-        // it's seeded with the full catalog purely so the Roles & Permissions
-        // UI shows an accurate "all permissions" count instead of a
-        // misleading empty one. TALIMAT/ACCOUNTANT get their real, editable
-        // default set from DEFAULT_ROLE_PERMISSION_KEYS.
-        const permissionRows = isMuhtamimRole(r.key)
-          ? await this.repository.findAllPermissionIdsOnTx(tx)
-          : DEFAULT_ROLE_PERMISSION_KEYS[r.key]?.length
-            ? await this.repository.findPermissionIdsByKeysOnTx(tx, DEFAULT_ROLE_PERMISSION_KEYS[r.key])
-            : [];
-
-        if (permissionRows.length) {
-          await this.repository.setRolePermissionsOnTx(
-            tx,
-            role.id,
-            permissionRows.map((p) => p.id),
-          );
-        }
-      }
-
-      /* ========================= USERS ========================= */
-      for (const u of default_users) {
-        const roleKey = u.role?.toUpperCase();
-        const roleId = roleMap[roleKey];
-        if (!roleId) continue;
-
-        const hashed = await hashPassword(u.password);
-
-        await this.repository.createUserOnTx(tx, {
-          madrasaId,
-          name: u.name || roleKey,
-          email: u.email,
-          passwordHash: hashed,
-          roleId,
-          isActive: 1,
-        });
-      }
-
-      await this.seedAndActivate(tx, madrasaId, divisionIds, moduleIds, classIds, bookIds);
-
-      /* ================= SEEDED PROVISIONING TEMPLATES =================
-         prisma seed stores reusable defaults only; it never creates a
-         madrasa. Every new madrasa receives a snapshot of the active
-         templates, so later seed changes affect future madrasas only. */
-      const defaultExams = await this.repository.findDefaultExamsOnTx(tx);
-      const defaultGeneralGrades = await this.repository.findDefaultGeneralGradesOnTx(tx);
-      const defaultMadrasaGrades = await this.repository.findDefaultMadrasaGradesOnTx(tx);
-      const defaultSettings = await this.repository.findDefaultSettingsOnTx(tx);
-
-      const templatesReady =
-        defaultExams.length > 0 &&
-        defaultGeneralGrades.length > 0 &&
-        defaultMadrasaGrades.length > 0 &&
-        defaultSettings.some((setting) => setting.name === "fail_mark");
-      if (!templatesReady) {
-        throw new BadRequestError(
-          t({ bn: "নতুন প্রতিষ্ঠানের টেমপ্লেট নেই। প্রতিষ্ঠান তৈরির আগে npx prisma db seed চালান।", en: "New-institution templates are missing. Run npx prisma db seed before creating an institution." }),
-        );
-      }
-
-      const currentYear = String(new Date().getFullYear());
-      await this.repository.createDefaultExamsOnTx(
-        tx,
-        madrasaId,
-        defaultExams.map((exam) => exam.name),
-        currentYear,
-      );
-      await this.repository.createDefaultGeneralGradesOnTx(tx, madrasaId, defaultGeneralGrades);
-      // মুমতাজ-ধরনের madrasa grade শুধু মাদ্রাসার জন্য; স্কুল/কলেজ/কিন্ডারগার্টেন কেবল general grade পায়।
-      if (institutionType === "MADRASA") {
-        await this.repository.createDefaultMadrasaGradesOnTx(tx, madrasaId, defaultMadrasaGrades);
-      }
-      await this.repository.createDefaultSettingsOnTx(tx, madrasaId, defaultSettings);
-
-      // Which just-created Exam.id(s) every পরীক্ষার ফি structure below should
-      // link to. Fanned out one dormant row per exam so each activates
-      // independently once that specific exam is scheduled/activated - see
-      // DormantExams spec §3.
-      const createdExams = await this.repository.findExamsByNamesOnTx(
-        tx,
-        madrasaId,
-        defaultExams.map((exam) => exam.name),
-      );
-
-      /* ================= DEFAULT SESSION =================
-         Every madrasa needs at least one Session before students can be
-         admitted or fee structures attached - seed "the current calendar
-         year" and mark it current. */
-      // Colleges run a July-June academic year ("2026-2027"); everyone else a
-      // calendar year.
-      const defaultSession = await this.repository.createDefaultSessionOnTx(
-        tx,
-        madrasaId,
-        currentYear,
-        institutionType === "COLLEGE" ? 6 : 0,
-      );
-
-      /* ================= DEFAULT FEE STRUCTURE TEMPLATES =================
-         Optional, unlike the templates above - an empty set never blocks
-         madrasa creation. Only copies class-specific templates for classes
-         this madrasa actually activated (classIds); generic ones
-         (classId null) always copy.
-
-         পরীক্ষার ফি is laid out exactly like ExamFeeService keeps it later
-         (dynamic, বিভাগভিত্তিক): one dormant row (isActive: false) per
-         created exam x activated class, each linked to its own Exam.id and
-         class - the class's own template amount, else the generic one. A
-         new student is never billed for an exam that hasn't been scheduled
-         yet, and each exam's fee activates independently of the others,
-         only by ইহতেমাম (PATCH /fee-structures/exam-fees/:examId/status),
-         and only while তা'লীমাত has the exam itself switched on - an
-         exam's first routine switches the exam on, never its fee.
-         Default exams cover সকল বিভাগ, so every
-         activated class gets a row. */
-      const defaultFeeStructures = await this.repository.findDefaultFeeStructuresOnTx(tx);
-      const examFeeTemplates = defaultFeeStructures.filter((s) => s.feeType === EXAM_FEE_CATEGORY_NAME);
-      const examFeeRows = createdExams.flatMap((exam) =>
-        classIds.flatMap((classId) => {
-          const template =
-            examFeeTemplates.find((t) => t.classId === classId) ?? examFeeTemplates.find((t) => t.classId === null);
-          return template ? [{ ...template, classId, examId: exam.id, isActive: false }] : [];
-        }),
-      );
-      const relevantFeeStructures = [
-        ...defaultFeeStructures.filter(
-          (s) => s.feeType !== EXAM_FEE_CATEGORY_NAME && (s.classId === null || classIds.includes(s.classId)),
-        ),
-        ...examFeeRows,
-      ];
-      if (relevantFeeStructures.length) {
-        await this.repository.createDefaultFeeStructuresOnTx(
-          tx,
-          madrasaId,
-          relevantFeeStructures,
-          currentYear,
-          defaultSession.id,
-        );
-      }
-
-      /* ================= DEFAULT EXAM ROUTINE (DEMO) =================
-         Gives every freshly created madrasa a ready-to-edit exam schedule
-         instead of a blank one - one placeholder routine per class/subject
-         per default exam, spaced a month+ apart so the four exams don't
-         collide on the calendar. Deliberately does NOT touch Exam.isActive:
-         these default exams stay dormant (see DormantExams note above)
-         until an admin genuinely activates one, exactly like today - a demo
-         routine existing is not the same as an admin scheduling a real one,
-         so it must never itself trigger fee/invoice/guardian-notification
-         side effects. Written straight to the DB (not through
-         routineService.createExamRoutine) specifically to bypass those
-         hooks. All rows land as DRAFT so nothing looks "published" to
-         students/guardians until an admin reviews and publishes it. */
-      const routineSeedBooks = await this.repository.findBooksForRoutineSeedOnTx(tx, bookIds);
-      const booksByClassId = new Map<number, { subject: string; divisionId: number | null }[]>();
-      for (const b of routineSeedBooks) {
-        const list = booksByClassId.get(b.classId) ?? [];
-        list.push({ subject: b.nameBn || b.name || "বিষয়", divisionId: b.class?.divisionId ?? null });
-        booksByClassId.set(b.classId, list);
-      }
-
-      const examIdByName = new Map(createdExams.map((e) => [e.name, e.id]));
-      // Days from madrasa-creation date to that exam's first demo day - kept
-      // a month+ apart purely so the four exams don't overlap on the
-      // calendar; admins are expected to edit these to real dates anyway.
-      const DEMO_EXAM_START_OFFSET_DAYS: Record<string, number> = {
-        monthly: 7,
-        first_term: 45,
-        second_term: 135,
-        annual: 225,
-      };
-
-      const routineRows: Prisma.ExamRoutineCreateManyInput[] = [];
-      for (const defExam of defaultExams) {
-        const examId = examIdByName.get(defExam.name);
-        if (!examId) continue;
-
-        const baseDate = new Date();
-        baseDate.setDate(baseDate.getDate() + (DEMO_EXAM_START_OFFSET_DAYS[defExam.keyName] ?? 30));
-
-        for (const [classId, books] of booksByClassId) {
-          books.forEach((book, dayIndex) => {
-            const examDate = new Date(baseDate);
-            examDate.setDate(examDate.getDate() + dayIndex);
-            routineRows.push({
-              madrasaId,
-              examId,
-              classId,
-              divisionId: book.divisionId,
-              subject: book.subject,
-              examDate,
-              startTime: "10:00",
-              endTime: "12:00",
-              status: "DRAFT",
-            });
-          });
-        }
-      }
-
-      await this.repository.createExamRoutinesOnTx(tx, routineRows);
+      await this.provisionTenantOnTx(tx, madrasaId, {
+        institutionType,
+        divisionIds,
+        moduleIds,
+        classIds,
+        bookIds,
+        users: default_users,
+      });
 
       /* ========================= PLAN ========================= */
       if (dto.plan_id) {
@@ -449,6 +247,244 @@ export class SuperAdminService {
     });
 
     return result;
+  }
+
+  /** Everything a freshly created institution receives AFTER its Madrasa row
+   * exists: default roles + permissions, default users, the division/module/
+   * class/book selection, the seeded exam/grade/setting/session/fee-structure
+   * templates and the demo exam routines.
+   *
+   * Single source of truth, used by BOTH createMadrasa and the Super Admin
+   * "ক্লিন → সব কিছু (ফ্যাক্টরি রিসেট)" flow (madrasa-clean.service.ts), so a
+   * factory-reset institution is rebuilt by exactly the code that built it
+   * the first time and the two can never drift apart. Plan/subscription
+   * handling stays with the caller (createMadrasa assigns one; a reset keeps
+   * the existing one). Must run on an institution with none of these rows. */
+  async provisionTenantOnTx(
+    tx: TransactionClient,
+    madrasaId: number,
+    input: {
+      institutionType: NonNullable<ReturnType<typeof parseInstitutionType>>;
+      divisionIds: number[];
+      moduleIds: number[];
+      classIds: number[];
+      bookIds: number[];
+      users: { role: string; name?: string; email: string; password?: string; passwordHash?: string }[];
+    },
+  ) {
+    const { institutionType, divisionIds, moduleIds, classIds, bookIds } = input;
+    const default_users = input.users;
+
+    /* ========================= ROLES ========================= */
+    const roleMap: Record<string, number> = {};
+    const requestedRoleKeys = new Set(default_users.map((u) => u.role?.toUpperCase()));
+    const rolesToCreate = DEFAULT_MADRASA_ROLES.filter(
+      (r) => ALWAYS_PROVISIONED_ROLE_KEYS.includes(r.key) || requestedRoleKeys.has(r.key),
+    );
+    for (const r of rolesToCreate) {
+      const role = await this.repository.createRoleOnTx(tx, madrasaId, r.key, r.name);
+      roleMap[r.key] = role.id;
+
+      // MUHTAMIM bypasses permission checks entirely (isMuhtamimRole
+      // short-circuit) and can never actually be restricted by these rows -
+      // it's seeded with the full catalog purely so the Roles & Permissions
+      // UI shows an accurate "all permissions" count instead of a
+      // misleading empty one. TALIMAT/ACCOUNTANT get their real, editable
+      // default set from DEFAULT_ROLE_PERMISSION_KEYS.
+      const permissionRows = isMuhtamimRole(r.key)
+        ? await this.repository.findAllPermissionIdsOnTx(tx)
+        : DEFAULT_ROLE_PERMISSION_KEYS[r.key]?.length
+          ? await this.repository.findPermissionIdsByKeysOnTx(tx, DEFAULT_ROLE_PERMISSION_KEYS[r.key])
+          : [];
+
+      if (permissionRows.length) {
+        await this.repository.setRolePermissionsOnTx(
+          tx,
+          role.id,
+          permissionRows.map((p) => p.id),
+        );
+      }
+    }
+
+    /* ========================= USERS ========================= */
+    for (const u of default_users) {
+      const roleKey = u.role?.toUpperCase();
+      const roleId = roleMap[roleKey];
+      if (!roleId) continue;
+
+      const hashed = u.passwordHash ?? (await hashPassword(u.password as string));
+
+      await this.repository.createUserOnTx(tx, {
+        madrasaId,
+        name: u.name || roleKey,
+        email: u.email,
+        passwordHash: hashed,
+        roleId,
+        isActive: 1,
+      });
+    }
+
+    await this.seedAndActivate(tx, madrasaId, divisionIds, moduleIds, classIds, bookIds);
+
+    /* ================= SEEDED PROVISIONING TEMPLATES =================
+       prisma seed stores reusable defaults only; it never creates a
+       madrasa. Every new madrasa receives a snapshot of the active
+       templates, so later seed changes affect future madrasas only. */
+    const defaultExams = await this.repository.findDefaultExamsOnTx(tx);
+    const defaultGeneralGrades = await this.repository.findDefaultGeneralGradesOnTx(tx);
+    const defaultMadrasaGrades = await this.repository.findDefaultMadrasaGradesOnTx(tx);
+    const defaultSettings = await this.repository.findDefaultSettingsOnTx(tx);
+
+    const templatesReady =
+      defaultExams.length > 0 &&
+      defaultGeneralGrades.length > 0 &&
+      defaultMadrasaGrades.length > 0 &&
+      defaultSettings.some((setting) => setting.name === "fail_mark");
+    if (!templatesReady) {
+      throw new BadRequestError(
+        t({ bn: "নতুন প্রতিষ্ঠানের টেমপ্লেট নেই। প্রতিষ্ঠান তৈরির আগে npx prisma db seed চালান।", en: "New-institution templates are missing. Run npx prisma db seed before creating an institution." }),
+      );
+    }
+
+    const currentYear = String(new Date().getFullYear());
+    await this.repository.createDefaultExamsOnTx(
+      tx,
+      madrasaId,
+      defaultExams.map((exam) => exam.name),
+      currentYear,
+    );
+    await this.repository.createDefaultGeneralGradesOnTx(tx, madrasaId, defaultGeneralGrades);
+    // মুমতাজ-ধরনের madrasa grade শুধু মাদ্রাসার জন্য; স্কুল/কলেজ/কিন্ডারগার্টেন কেবল general grade পায়।
+    if (institutionType === "MADRASA") {
+      await this.repository.createDefaultMadrasaGradesOnTx(tx, madrasaId, defaultMadrasaGrades);
+    }
+    await this.repository.createDefaultSettingsOnTx(tx, madrasaId, defaultSettings);
+
+    // Which just-created Exam.id(s) every পরীক্ষার ফি structure below should
+    // link to. Fanned out one dormant row per exam so each activates
+    // independently once that specific exam is scheduled/activated - see
+    // DormantExams spec §3.
+    const createdExams = await this.repository.findExamsByNamesOnTx(
+      tx,
+      madrasaId,
+      defaultExams.map((exam) => exam.name),
+    );
+
+    /* ================= DEFAULT SESSION =================
+       Every madrasa needs at least one Session before students can be
+       admitted or fee structures attached - seed "the current calendar
+       year" and mark it current. */
+    // Colleges run a July-June academic year ("2026-2027"); everyone else a
+    // calendar year.
+    const defaultSession = await this.repository.createDefaultSessionOnTx(
+      tx,
+      madrasaId,
+      currentYear,
+      institutionType === "COLLEGE" ? 6 : 0,
+    );
+
+    /* ================= DEFAULT FEE STRUCTURE TEMPLATES =================
+       Optional, unlike the templates above - an empty set never blocks
+       madrasa creation. Only copies class-specific templates for classes
+       this madrasa actually activated (classIds); generic ones
+       (classId null) always copy.
+
+       পরীক্ষার ফি is laid out exactly like ExamFeeService keeps it later
+       (dynamic, বিভাগভিত্তিক): one dormant row (isActive: false) per
+       created exam x activated class, each linked to its own Exam.id and
+       class - the class's own template amount, else the generic one. A
+       new student is never billed for an exam that hasn't been scheduled
+       yet, and each exam's fee activates independently of the others,
+       only by ইহতেমাম (PATCH /fee-structures/exam-fees/:examId/status),
+       and only while তা'লীমাত has the exam itself switched on - an
+       exam's first routine switches the exam on, never its fee.
+       Default exams cover সকল বিভাগ, so every
+       activated class gets a row. */
+    const defaultFeeStructures = await this.repository.findDefaultFeeStructuresOnTx(tx);
+    const examFeeTemplates = defaultFeeStructures.filter((s) => s.feeType === EXAM_FEE_CATEGORY_NAME);
+    const examFeeRows = createdExams.flatMap((exam) =>
+      classIds.flatMap((classId) => {
+        const template =
+          examFeeTemplates.find((t) => t.classId === classId) ?? examFeeTemplates.find((t) => t.classId === null);
+        return template ? [{ ...template, classId, examId: exam.id, isActive: false }] : [];
+      }),
+    );
+    const relevantFeeStructures = [
+      ...defaultFeeStructures.filter(
+        (s) => s.feeType !== EXAM_FEE_CATEGORY_NAME && (s.classId === null || classIds.includes(s.classId)),
+      ),
+      ...examFeeRows,
+    ];
+    if (relevantFeeStructures.length) {
+      await this.repository.createDefaultFeeStructuresOnTx(
+        tx,
+        madrasaId,
+        relevantFeeStructures,
+        currentYear,
+        defaultSession.id,
+      );
+    }
+
+    /* ================= DEFAULT EXAM ROUTINE (DEMO) =================
+       Gives every freshly created madrasa a ready-to-edit exam schedule
+       instead of a blank one - one placeholder routine per class/subject
+       per default exam, spaced a month+ apart so the four exams don't
+       collide on the calendar. Deliberately does NOT touch Exam.isActive:
+       these default exams stay dormant (see DormantExams note above)
+       until an admin genuinely activates one, exactly like today - a demo
+       routine existing is not the same as an admin scheduling a real one,
+       so it must never itself trigger fee/invoice/guardian-notification
+       side effects. Written straight to the DB (not through
+       routineService.createExamRoutine) specifically to bypass those
+       hooks. All rows land as DRAFT so nothing looks "published" to
+       students/guardians until an admin reviews and publishes it. */
+    const routineSeedBooks = await this.repository.findBooksForRoutineSeedOnTx(tx, bookIds);
+    const booksByClassId = new Map<number, { subject: string; divisionId: number | null }[]>();
+    for (const b of routineSeedBooks) {
+      const list = booksByClassId.get(b.classId) ?? [];
+      list.push({ subject: b.nameBn || b.name || "বিষয়", divisionId: b.class?.divisionId ?? null });
+      booksByClassId.set(b.classId, list);
+    }
+
+    const examIdByName = new Map(createdExams.map((e) => [e.name, e.id]));
+    // Days from madrasa-creation date to that exam's first demo day - kept
+    // a month+ apart purely so the four exams don't overlap on the
+    // calendar; admins are expected to edit these to real dates anyway.
+    const DEMO_EXAM_START_OFFSET_DAYS: Record<string, number> = {
+      monthly: 7,
+      first_term: 45,
+      second_term: 135,
+      annual: 225,
+    };
+
+    const routineRows: Prisma.ExamRoutineCreateManyInput[] = [];
+    for (const defExam of defaultExams) {
+      const examId = examIdByName.get(defExam.name);
+      if (!examId) continue;
+
+      const baseDate = new Date();
+      baseDate.setDate(baseDate.getDate() + (DEMO_EXAM_START_OFFSET_DAYS[defExam.keyName] ?? 30));
+
+      for (const [classId, books] of booksByClassId) {
+        books.forEach((book, dayIndex) => {
+          const examDate = new Date(baseDate);
+          examDate.setDate(examDate.getDate() + dayIndex);
+          routineRows.push({
+            madrasaId,
+            examId,
+            classId,
+            divisionId: book.divisionId,
+            subject: book.subject,
+            examDate,
+            startTime: "10:00",
+            endTime: "12:00",
+            status: "DRAFT",
+          });
+        });
+      }
+    }
+
+    await this.repository.createExamRoutinesOnTx(tx, routineRows);
   }
 
   private async seedAndActivate(

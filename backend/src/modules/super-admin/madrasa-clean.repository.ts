@@ -7,7 +7,7 @@ export class MadrasaCleanRepository {
   }
 
   findMadrasaForClean(id: number) {
-    return prisma.madrasa.findUnique({ where: { id }, select: { id: true, name: true, deletedAt: true } });
+    return prisma.madrasa.findUnique({ where: { id }, select: { id: true, name: true, deletedAt: true, institutionType: true } });
   }
 
   countCleanStats(id: number) {
@@ -27,7 +27,8 @@ export class MadrasaCleanRepository {
    * ledger, attendance, exams/results, library issues, routines,
    * admission applications, notifications, activity log - while leaving
    * the madrasa's settings, academic structure (division/class/book
-   * mapping), staff/teacher rosters, user logins and roles untouched. Safe
+   * mapping), user logins and roles untouched. Staff/teachers (and their
+   * payroll/assignments) ARE wiped here too. Safe
    * to run repeatedly (each step is a scoped deleteMany). Order matters:
    * dependents are deleted before anything a Restrict-type FK still points
    * at (e.g. ResultMaster/Mark before Exam, SeatAllocation before
@@ -68,6 +69,14 @@ export class MadrasaCleanRepository {
       // Attendance
       await tx.attendance.deleteMany({ where: { madrasaId: id } });
 
+      // Teachers / staff / payroll (children first; device user-maps and
+      // library borrow rows cascade from Teacher/Staff, class routines are
+      // already gone above). Their login Users and roles are NOT touched.
+      await tx.payrollRecord.deleteMany({ where: { madrasaId: id } });
+      await tx.teacherAssignment.deleteMany({ where: { madrasaId: id } });
+      await tx.teacher.deleteMany({ where: { madrasaId: id } });
+      await tx.staff.deleteMany({ where: { madrasaId: id } });
+
       // Promotion history
       await tx.promotionRecord.deleteMany({ where: { batch: { madrasaId: id } } });
       await tx.promotionBatch.deleteMany({ where: { madrasaId: id } });
@@ -84,11 +93,18 @@ export class MadrasaCleanRepository {
       // Notifications & activity log
       await tx.notificationLog.deleteMany({ where: { madrasaId: id } });
       await tx.activityLog.deleteMany({ where: { madrasaId: id } });
+
+      // Registration numbers: every student is gone, so each class block must
+      // start over from regNoStart. regNoLastIssued is the "never reuse a
+      // freed number" high-water mark (see registration-no.allocator.ts) -
+      // left alone it would keep the next student at e.g. 38 instead of 1.
+      // The block ranges themselves (regNoStart/regNoEnd) are config and stay.
+      await tx.madrasaClass.updateMany({ where: { madrasaId: id }, data: { regNoLastIssued: null } });
     })();
   }
 
   /** Factory-reset: everything wipeOperationalDataOnTx removes, PLUS
-   * settings, academic structure, staff/teacher rosters, website/branding
+   * settings, academic structure, website/branding
    * content, document templates and every login (users/roles). Only the
    * Madrasa row itself and its plan/subscription/billing history survive -
    * afterwards nobody can log into this tenant until a super admin creates
@@ -103,11 +119,6 @@ export class MadrasaCleanRepository {
       await tx.libraryBook.deleteMany({ where: { madrasaId: id } });
       await tx.libraryBookCategory.deleteMany({ where: { madrasaId: id } });
 
-      // Staff / teachers / payroll
-      await tx.payrollRecord.deleteMany({ where: { madrasaId: id } });
-      await tx.teacherAssignment.deleteMany({ where: { madrasaId: id } });
-      await tx.teacher.deleteMany({ where: { madrasaId: id } });
-      await tx.staff.deleteMany({ where: { madrasaId: id } });
       // Biometric (K40) devices + their punch logs, user maps, card
       // enrollments, attendance rules/holidays, SMS queue.
       await tx.attendanceDeviceLog.deleteMany({ where: { madrasaId: id } });
