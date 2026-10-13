@@ -9,6 +9,7 @@ import {
   deleteWebsiteGalleryItem,
   deleteWebsiteNotice,
   deleteWebsiteSlide,
+  getPublicBrandIcon,
   getPublicWebsite,
   getWebsiteSettings,
   resolveDomain,
@@ -33,6 +34,7 @@ const router = Router();
 // slug can never collide with this literal route.
 router.get("/resolve-domain", resolveDomain);
 router.get("/public/:slug", getPublicWebsite);
+router.get("/public/:slug/icon/:file", getPublicBrandIcon);
 router.post("/public/:slug/admission", submitAdmissionApplication);
 router.post("/public/:slug/admission-full", submitFullAdmissionApplication);
 const adminGuard = [tenantMiddleware, authMiddleware, rbacMiddleware("website.manage")];

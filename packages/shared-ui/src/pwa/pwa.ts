@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { applyBrandFavicon, brandIconUrl, brandManifestIcons, type BrandIconSource } from "./brandIcons";
 
 /**
  * PWA install plumbing shared by the admin panel and the public website.
@@ -23,9 +24,11 @@ interface PwaState {
   installed: boolean;
   /** Set by setPwaManifest() - lets the banner show the tenant's own name. */
   appName: string | null;
+  /** The madrasa's own 192px icon (from its logo) - null when it has no logo. */
+  iconUrl: string | null;
 }
 
-let state: PwaState = { deferredPrompt: null, installed: false, appName: null };
+let state: PwaState = { deferredPrompt: null, installed: false, appName: null, iconUrl: null };
 const listeners = new Set<() => void>();
 
 const setState = (patch: Partial<PwaState>) => {
@@ -68,6 +71,12 @@ export function setupPwa() {
   }
 }
 
+/** For pages that keep a static (non-tenant) manifest, e.g. the platform's own
+ * landing page: tells the install banner which icon that manifest carries. */
+export const setStaticPwaIcon = (iconUrl: string | null) => {
+  if (state.iconUrl !== iconUrl) setState({ iconUrl });
+};
+
 /** Opens the browser's native install dialog. Returns true if the user accepted. */
 export async function promptInstall(): Promise<boolean> {
   const evt = state.deferredPrompt;
@@ -92,6 +101,11 @@ export interface PwaManifestOptions {
   description?: string;
   /** Path the installed app opens at, e.g. "/m/darul-uloom". */
   startUrl?: string;
+  /** The madrasa's logo-derived icons. Omitted/null => no icons at all (no default). */
+  icons?: BrandIconSource | null;
+  /** Default true: also hand `name` to the install banner. Pass false where the
+   * banner already has its own label (the admin panel's "QMS Admin"). */
+  announceName?: boolean;
 }
 
 /**
@@ -99,8 +113,17 @@ export interface PwaManifestOptions {
  * multi-tenant public website so the installed app carries the madrasa's own
  * name and opens at that madrasa's page instead of the platform root.
  * Everything is absolute because a data: manifest has no base URL of its own.
+ * Icons come ONLY from the madrasa's logo (see brandIcons.ts); without one the
+ * manifest and favicon are left empty on purpose.
  */
-export function setPwaManifest({ name, shortName, description, startUrl = "/" }: PwaManifestOptions) {
+export function setPwaManifest({
+  name,
+  shortName,
+  description,
+  startUrl = "/",
+  icons = null,
+  announceName = true,
+}: PwaManifestOptions) {
   const origin = window.location.origin;
   const abs = (p: string) => new URL(p, origin).href;
   const manifest = {
@@ -115,11 +138,7 @@ export function setPwaManifest({ name, shortName, description, startUrl = "/" }:
     orientation: "any",
     background_color: "#ffffff",
     theme_color: "#059669",
-    icons: [
-      { src: abs("/icons/icon-192.png"), sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: abs("/icons/icon-512.png"), sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: abs("/icons/maskable-512.png"), sizes: "512x512", type: "image/png", purpose: "maskable" },
-    ],
+    icons: brandManifestIcons(icons),
   };
 
   let link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
@@ -133,5 +152,10 @@ export function setPwaManifest({ name, shortName, description, startUrl = "/" }:
 
   const appleTitle = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
   if (appleTitle) appleTitle.content = manifest.short_name;
-  if (state.appName !== name) setState({ appName: name });
+  // Browser tab / iOS home-screen icon follow the same logo as the manifest.
+  applyBrandFavicon(icons);
+
+  const iconUrl = icons ? brandIconUrl(icons, "icon-192.png") : null;
+  const nextName = announceName ? name : state.appName;
+  if (state.appName !== nextName || state.iconUrl !== iconUrl) setState({ appName: nextName, iconUrl });
 }

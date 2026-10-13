@@ -9,10 +9,12 @@ import { setupChunkReloadOnPreloadError } from "@madrasha/shared-ui/src/utils/ch
 import { installReportFontFace } from "@madrasha/shared-ui/src/utils/reportFontFace";
 import InstallPrompt from "@madrasha/shared-ui/src/pwa/InstallPrompt";
 import { setupPwa } from "@madrasha/shared-ui/src/pwa/pwa";
+import { setupBrandIcons } from "./utils/brandIcons";
 
 setupChunkReloadOnPreloadError();
 installReportFontFace();
 setupPwa();
+setupBrandIcons();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

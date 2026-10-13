@@ -193,3 +193,22 @@ get identical controls.
   warning, `useBlocker` confirmation on in-app navigation / Back, and a
   confirmation before Refresh. Currently wired into AdmissionPage, TeacherPage
   and StaffPage - add the one-line hook to any other form.
+
+## Favicon & PWA icons (per madrasa)
+
+A madrasa's favicon, apple-touch-icon and PWA icons are its **Branding Settings
+logo** (`madrasa.reportLogo`) - nothing else, and never a platform default.
+
+- Backend: `GET /api/website/public/:slug/icon/:file` (public, see
+  `backend/src/modules/public-website/brand-icon.service.ts`) renders PNGs from
+  the logo: `favicon-32.png`, `apple-touch-icon.png`, `icon-192.png`,
+  `icon-512.png`, `maskable-512.png`. No logo => 404 => the madrasa has no icon.
+- `packages/shared-ui/src/pwa/brandIcons.ts` builds the icon URLs
+  (`?v=<hash of the logo>` busts caches when the logo changes or is removed) and
+  rewrites the `<link rel="icon">` tags; `setPwaManifest()` puts the same icons
+  into the runtime manifest.
+- `admin/`: `src/utils/brandIcons.ts` follows the logged-in madrasa's branding
+  store, so saving/replacing/deleting the logo updates the icons immediately.
+- `frontend/`: `src/utils/pwaManifest.ts` (`setTenantBrand`) does the same for a
+  madrasa's public website / admission pages. Only the platform's own landing
+  page keeps the static `/icons/*` files.

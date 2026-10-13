@@ -24,7 +24,7 @@ import { getPublicWebsite } from "../../services/publicWebsiteApi";
 import { getResolvedDomainSlugSync } from "../../services/domainResolve";
 import { getTenantGuardianBase } from "../../utils/tenantSlug";
 import { useCustomDomainRedirect } from "../../utils/useCustomDomainRedirect";
-import { setTenantManifestName } from "../../utils/pwaManifest";
+import { setTenantBrand } from "../../utils/pwaManifest";
 import { accentStrong, accentText, initials, mixHex, pickTextOn, withAlpha } from "./colorUtils";
 import HeroSlider from "./HeroSlider";
 import ContactSection from "./ContactSection";
@@ -319,8 +319,11 @@ export default function PublicWebsitePage({
 
   const madrasa = data?.madrasa;
   useCustomDomainRedirect(madrasa?.custom_domain);
-  // Installed app (PWA) should carry this madrasa's name, not a generic one.
-  useEffect(() => setTenantManifestName(madrasa?.name), [madrasa?.name]);
+  // Installed app (PWA) should carry this madrasa's name, and its logo as the
+  // favicon / app icon (no logo => no icon).
+  useEffect(() => {
+    if (madrasa) setTenantBrand({ name: madrasa.name, slug: madrasa.slug, logo: madrasa.logo_url });
+  }, [madrasa?.name, madrasa?.slug, madrasa?.logo_url]);
   const settings = data?.settings || {};
   const notices = data?.notices || [];
   const teachers = data?.teachers || [];

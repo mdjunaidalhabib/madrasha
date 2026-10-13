@@ -32,7 +32,7 @@ export default function InstallPrompt({
   storageKey = "pwa:install-dismissed-at",
   hideOnPaths,
 }: InstallPromptProps) {
-  const { deferredPrompt, installed, appName: manifestName } = usePwaInstall();
+  const { deferredPrompt, installed, appName: manifestName, iconUrl } = usePwaInstall();
   const t = useText(pwaText);
   const c = useText(commonText);
   const lang = useLang();
@@ -96,11 +96,13 @@ export default function InstallPrompt({
         </button>
 
         <div className="flex items-start gap-3 pe-6">
-          <img
-            src="/icons/icon-192.png"
-            alt=""
-            className="h-12 w-12 shrink-0 rounded-xl shadow-sm"
-          />
+          {iconUrl && (
+            <img
+              src={iconUrl}
+              alt=""
+              className="h-12 w-12 shrink-0 rounded-xl object-contain shadow-sm"
+            />
+          )}
           <div className="min-w-0">
             <p className="truncate text-[15px] font-semibold text-slate-900 dark:text-slate-100">
               {t.installApp(manifestName || appName)}

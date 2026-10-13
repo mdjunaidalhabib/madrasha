@@ -4,6 +4,7 @@ import { CheckCircle2, ChevronLeft, GraduationCap, Loader2 } from "lucide-react"
 import { getPublicWebsite, submitFullAdmissionApplication } from "../../services/publicWebsiteApi";
 import { useCustomDomainRedirect } from "../../utils/useCustomDomainRedirect";
 import { useTenantSlug } from "../../utils/useTenantSlug";
+import { setTenantBrand } from "../../utils/pwaManifest";
 import { accentStrong, accentText, initials, pickTextOn } from "./colorUtils";
 import { resolveTheme } from "./themes";
 import CustomDatePicker from "@madrasha/shared-ui/src/components/ui/CustomDatePicker";
@@ -96,6 +97,9 @@ export default function AdmissionApplyPage() {
 
   const madrasa = data?.madrasa;
   useCustomDomainRedirect(madrasa?.custom_domain);
+  useEffect(() => {
+    if (madrasa) setTenantBrand({ name: madrasa.name, slug: madrasa.slug, logo: madrasa.logo_url });
+  }, [madrasa?.name, madrasa?.slug, madrasa?.logo_url]);
   const settings = data?.settings || {};
   const divisions: DivisionItem[] = data?.divisions || [];
   const allClasses: ClassItem[] = data?.classes || [];

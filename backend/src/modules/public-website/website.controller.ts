@@ -4,6 +4,7 @@ import { HttpStatus } from "../../shared/constants";
 import { websiteService, resolveTenantId } from "./website.service";
 import { normalizeHost } from "../../shared/utils/host.util";
 import { t } from "../../shared/i18n";
+import { brandIconService } from "./brand-icon.service";
 
 const respondError = (res: Response, error: unknown) => {
   if (error instanceof ApiError) {
@@ -17,6 +18,28 @@ export const getPublicWebsite = async (req: Request, res: Response) => {
     const slug = String(req.params.slug || "").trim();
     const data = await websiteService.getPublicWebsite(slug);
     res.json({ data });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+/**
+ * Public, unauthenticated: the madrasa's favicon / PWA icon, rendered from the
+ * logo in Branding Settings. 404 when the madrasa has no logo (no default icon).
+ * `?v=<hash of the logo>` is added by the clients purely as a cache-buster, so a
+ * versioned URL can be cached forever while an unversioned one revalidates.
+ */
+export const getPublicBrandIcon = async (req: Request, res: Response) => {
+  try {
+    const png = await brandIconService.getIcon(String(req.params.slug || ""), String(req.params.file || ""));
+    // The global /api middleware marks everything no-store; icons are the one
+    // thing that must be cacheable, and (via helmet's default CORP) must also
+    // be loadable from the admin/frontend origins, which differ from the API's.
+    res.removeHeader("Pragma");
+    res.removeHeader("Expires");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("Cache-Control", req.query.v ? "public, max-age=31536000, immutable" : "no-cache");
+    res.type("image/png").send(png);
   } catch (error) {
     respondError(res, error);
   }
