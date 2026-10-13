@@ -118,10 +118,10 @@ index 885521e..a31ab03 100644
                <span className="font-semibold">
                  {publishing ? t.publishing : unpublishing ? t.unpublishing : alreadyPublished ? t.published : t.notPublished}
 diff --git a/admin/src/components/ResultPanel/OverviewGrid.tsx b/admin/src/components/ResultPanel/OverviewGrid.tsx
-index 25df84e..2b997da 100644
+index 94fde09..e33ffcc 100644
 --- a/admin/src/components/ResultPanel/OverviewGrid.tsx
 +++ b/admin/src/components/ResultPanel/OverviewGrid.tsx
-@@ -46,7 +46,7 @@ const getBadge = (s: StatusItem | undefined, lang: Lang) => {
+@@ -51,7 +51,7 @@ const getBadge = (s: StatusItem | undefined, lang: Lang) => {
    if (!s) {
      return { label: t.notEntered, classes: "bg-gray-100 text-gray-500 border-gray-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600" };
    }
@@ -129,12 +129,12 @@ index 25df84e..2b997da 100644
 +  if (s.publish_status === "PUBLISHED") {
      return { label: t.published, classes: "bg-green-100 text-green-700 border-green-300 dark:bg-green-950/40 dark:text-green-400 dark:border-green-800" };
    }
-   // "সম্পন্ন" শুধু তখনই, যখন প্রতিটি শিক্ষার্থীর সব বিষয়ের নম্বর এন্ট্রি হয়েছে।
+   // "সম্পন্ন" শুধু তখনই, যখন প্রতিটি বিষয়ে সব শিক্ষার্থীর নম্বর এন্ট্রি হয়েছে।
 diff --git a/admin/src/components/ResultPanel/RecalculateResultsModal.tsx b/admin/src/components/ResultPanel/RecalculateResultsModal.tsx
-index dea01da..e0f8c7c 100644
+index 40c5aa2..8257173 100644
 --- a/admin/src/components/ResultPanel/RecalculateResultsModal.tsx
 +++ b/admin/src/components/ResultPanel/RecalculateResultsModal.tsx
-@@ -43,7 +43,7 @@ interface Props {
+@@ -45,7 +45,7 @@ interface Props {
   * তালিমাত sees exactly which sessions and how many students would change
   * before anything is written - fail mark is one global setting, so applying
   * a new value is never a blind operation. Unpublished sessions are safe to
@@ -144,10 +144,10 @@ index dea01da..e0f8c7c 100644
   * user picked that session on purpose. */
  export default function RecalculateResultsModal({ open, onClose, resultMasterId, onApplied }: Props) {
 diff --git a/admin/src/components/ResultPanel/ResultCorrectionsPanel.tsx b/admin/src/components/ResultPanel/ResultCorrectionsPanel.tsx
-index a107573..596d966 100644
+index 9036ea7..26c43eb 100644
 --- a/admin/src/components/ResultPanel/ResultCorrectionsPanel.tsx
 +++ b/admin/src/components/ResultPanel/ResultCorrectionsPanel.tsx
-@@ -72,7 +72,7 @@ const formatWhen = (iso: string | null) => {
+@@ -74,7 +74,7 @@ const formatWhen = (iso: string | null) => {
    return formatDate(iso, getLang(), { day: "2-digit", month: "2-digit", year: "numeric" });
  };
  
@@ -170,7 +170,7 @@ index f2eac36..b328036 100644
     * request that needs a reason and only takes effect once approved. */
    correctionMode?: boolean;
 diff --git a/admin/src/components/ResultPanel/resultPanel.text.ts b/admin/src/components/ResultPanel/resultPanel.text.ts
-index f71e67b..7db5c27 100644
+index 58218e6..8d9f655 100644
 --- a/admin/src/components/ResultPanel/resultPanel.text.ts
 +++ b/admin/src/components/ResultPanel/resultPanel.text.ts
 @@ -7,13 +7,8 @@ export const resultPanelText = defineText({
@@ -208,7 +208,7 @@ index f71e67b..7db5c27 100644
        unpublishTitle: "ফলাফলটি অভিভাবক পোর্টাল থেকে সরিয়ে নিন (পরে আবার প্রকাশ করা যাবে)",
        unpublishConfirmTitle: "ফলাফল অপ্রকাশিত করবেন?",
        unpublishConfirmMessage: "অভিভাবকেরা আর এই ফলাফল দেখতে পাবেন না। নম্বর ও প্রসেস করা ফলাফল অক্ষত থাকবে এবং যেকোনো সময় আবার \"প্রকাশ করুন\" চেপে প্রকাশ করা যাবে।",
-@@ -203,11 +189,11 @@ export const resultPanelText = defineText({
+@@ -209,11 +195,11 @@ export const resultPanelText = defineText({
        state: "অবস্থা",
        willChange: "বদলাবে",
        people: (changed: string, total: string) => `${changed} / ${total} জন`,
@@ -222,7 +222,7 @@ index f71e67b..7db5c27 100644
        singlePublishedNote: "এটি প্রকাশিত ফলাফল — আপনি নিজে এটি বেছে নিয়েছেন বলে প্রয়োগ হবে; প্রকাশিত অবস্থা বজায় থাকবে।",
        skipped: (n: string) => `⚠️ ${n}টি ফলাফলে সব নম্বর পূর্ণ নেই বলে বাদ দেওয়া হয়েছে: `,
        totalsFailed: (n: string) => `${n}টি ফলাফল যাচাই করা যায়নি।`,
-@@ -302,13 +288,8 @@ export const resultPanelText = defineText({
+@@ -313,13 +299,8 @@ export const resultPanelText = defineText({
      status: {
        result: {
          DRAFT: "Draft",
@@ -237,7 +237,7 @@ index f71e67b..7db5c27 100644
        },
        submission: {
          DRAFT: "Draft",
-@@ -384,19 +365,10 @@ export const resultPanelText = defineText({
+@@ -395,19 +376,10 @@ export const resultPanelText = defineText({
        rollByRank: "🏆 Roll by Merit",
        undoRollTitle: "Restores the roll numbers from just before the merit-based rolls",
        undoRoll: "↩️ Restore Previous Rolls",
@@ -257,7 +257,7 @@ index f71e67b..7db5c27 100644
        unpublishTitle: "Withdraw this result from the guardian portal (it can be published again later)",
        unpublishConfirmTitle: "Unpublish this result?",
        unpublishConfirmMessage: "Guardians will no longer be able to see this result. Marks and the processed result stay intact, and you can publish it again any time.",
-@@ -496,11 +468,11 @@ export const resultPanelText = defineText({
+@@ -513,11 +485,11 @@ export const resultPanelText = defineText({
        state: "Status",
        willChange: "Will change",
        people: (changed, total) => `${changed} / ${total}`,
@@ -362,10 +362,10 @@ index 7cf49f0..fa474bc 100644
    legacyFallback: "result.manage",
  } as const;
 diff --git a/admin/src/features/admin/TrashPage.tsx b/admin/src/features/admin/TrashPage.tsx
-index 71f1b18..3fa305b 100644
+index eee6e7d..6c55969 100644
 --- a/admin/src/features/admin/TrashPage.tsx
 +++ b/admin/src/features/admin/TrashPage.tsx
-@@ -232,7 +232,6 @@ export default function TrashPage() {
+@@ -235,7 +235,6 @@ export default function TrashPage() {
      result_master_id: number;
      exam_name: string;
      exam_year: string | null;
@@ -373,7 +373,7 @@ index 71f1b18..3fa305b 100644
    };
  
    // A restored student is missing from already-processed results of their
-@@ -255,10 +254,8 @@ export default function TrashPage() {
+@@ -258,10 +257,8 @@ export default function TrashPage() {
      let message = t.restoreMessage(name || "");
      if (tab === "students") {
        const impact = await fetchStudentRestoreImpact(row.id);
@@ -385,7 +385,7 @@ index 71f1b18..3fa305b 100644
      }
      useConfirmStore.getState().show({
        title: t.restoreTitle,
-@@ -321,10 +318,8 @@ export default function TrashPage() {
+@@ -335,10 +332,8 @@ export default function TrashPage() {
        const impacts = (await Promise.all(targetRows.map((r) => fetchStudentRestoreImpact(r.id)))).flat();
        const seen = new Set<number>();
        const unique = impacts.filter((r) => (seen.has(r.result_master_id) ? false : (seen.add(r.result_master_id), true)));
@@ -398,10 +398,10 @@ index 71f1b18..3fa305b 100644
      useConfirmStore.getState().show({
        title: t.restoreTitle,
 diff --git a/admin/src/features/admin/trash.text.ts b/admin/src/features/admin/trash.text.ts
-index 33adfaf..8ede867 100644
+index e301abc..2a794c0 100644
 --- a/admin/src/features/admin/trash.text.ts
 +++ b/admin/src/features/admin/trash.text.ts
-@@ -29,8 +29,6 @@ export const trashText = defineText({
+@@ -36,8 +36,6 @@ export const trashText = defineText({
      bulkRestorePartial: (ok: string, fail: string) => `${ok}টি ফিরিয়ে আনা হয়েছে, ${fail}টি ব্যর্থ হয়েছে`,
      restoreImpactReopen: (exams: string) =>
        `\n\n⚠ এই শিক্ষার্থীর শ্রেণির এসব ফলাফলে তিনি নেই: ${exams}। ফিরিয়ে আনলে এই ফলাফলগুলো অভিভাবক পোর্টাল থেকে সরে যাবে এবং আবার নম্বর যাচাই করে প্রকাশ করতে হবে (পুরো শ্রেণির মেধাক্রম বদলাতে পারে)।`,
@@ -410,7 +410,7 @@ index 33adfaf..8ede867 100644
      restoredReopened: (count: string) =>
        `ফিরিয়ে আনা হয়েছে। ${count}টি ফলাফল পুনর্যাচাইয়ের জন্য খোলা হয়েছে — নম্বর দিয়ে আবার যাচাই ও প্রকাশ করুন।`,
      bulkDeleteMessage: (n: string) =>
-@@ -83,8 +81,6 @@ export const trashText = defineText({
+@@ -97,8 +95,6 @@ export const trashText = defineText({
      bulkRestorePartial: (ok, fail) => `${ok} restored, ${fail} failed`,
      restoreImpactReopen: (exams) =>
        `\n\n⚠ This student is not in these results of their class: ${exams}. Restoring will take them off the guardian portal and they must be re-verified and published again (merit positions of the whole class may change).`,
@@ -420,10 +420,10 @@ index 33adfaf..8ede867 100644
        `Restored. ${count} result(s) were re-opened for re-verification — enter the marks, then verify and publish again.`,
      bulkDeleteMessage: (n) =>
 diff --git a/admin/src/features/talimat/ResultEntryPage.tsx b/admin/src/features/talimat/ResultEntryPage.tsx
-index 2d51dd6..33d9029 100644
+index b370ebe..599ec61 100644
 --- a/admin/src/features/talimat/ResultEntryPage.tsx
 +++ b/admin/src/features/talimat/ResultEntryPage.tsx
-@@ -88,7 +88,7 @@ export default function ResultEntryPage() {
+@@ -90,7 +90,7 @@ export default function ResultEntryPage() {
    // for madrasas that actually staff it.
    const isSingleActorWorkflow = canSubmitSubject && canVerifySubject;
  
@@ -432,7 +432,7 @@ index 2d51dd6..33d9029 100644
    // so this page switches to "সংশোধন" mode: the same whole-class grid, but
    // saving sends only the changed cells as a correction (see
    // handleSubmitCorrection). Whoever holds full result authority - তালিমাত /
-@@ -136,7 +136,7 @@ export default function ResultEntryPage() {
+@@ -140,7 +140,7 @@ export default function ResultEntryPage() {
    const baselineRef = useRef<
      Record<number, Record<number, { mark: number; is_absent: boolean; note: string }>>
    >({});
@@ -441,7 +441,7 @@ index 2d51dd6..33d9029 100644
    const isPublishedRef = useRef(false);
    isPublishedRef.current = isPublished;
  
-@@ -441,7 +441,7 @@ export default function ResultEntryPage() {
+@@ -445,7 +445,7 @@ export default function ResultEntryPage() {
  
    const handleCellCommit = () => scheduleAutosave(150);
  
@@ -451,10 +451,10 @@ index 2d51dd6..33d9029 100644
    // requests. A cleared cell can't be corrected (a mark can be changed, not
    // deleted from a published result), and a cell that had no stored mark has
 diff --git a/admin/src/features/talimat/ResultPreviewPage.tsx b/admin/src/features/talimat/ResultPreviewPage.tsx
-index 9e9c475..e9cf5f2 100644
+index 298b467..399b102 100644
 --- a/admin/src/features/talimat/ResultPreviewPage.tsx
 +++ b/admin/src/features/talimat/ResultPreviewPage.tsx
-@@ -11,7 +11,6 @@ import OverviewGrid from "../../components/ResultPanel/OverviewGrid";
+@@ -14,7 +14,6 @@ import { isEntryComplete } from "../../components/ResultPanel/entryProgress";
  import FullResultTable from "../../components/ResultPanel/FullResultTable";
  import StudentMarksEditModal from "../../components/ResultPanel/StudentMarksEditModal";
  import ResultStatsCards from "../../components/ResultPanel/ResultStatsCards";
@@ -462,7 +462,7 @@ index 9e9c475..e9cf5f2 100644
  import ResultCorrectionsPanel from "../../components/ResultPanel/ResultCorrectionsPanel";
  import RecalculateResultsModal from "../../components/ResultPanel/RecalculateResultsModal";
  import { correctionItemsForCell, type CorrectionItem } from "../../components/ResultPanel/correctionDiff";
-@@ -140,9 +139,6 @@ export default function ResultPreviewPage() {
+@@ -145,9 +144,6 @@ export default function ResultPreviewPage() {
    const [unpublishing, setUnpublishing] = useState(false);
    const [applyingRoll, setApplyingRoll] = useState(false);
    const [canUndoRoll, setCanUndoRoll] = useState(false);
@@ -472,7 +472,19 @@ index 9e9c475..e9cf5f2 100644
    const [correctionReloadKey, setCorrectionReloadKey] = useState(0);
    // null = closed; { masterId: null } = review every session; { masterId: n } = just that one.
    const [recalcTarget, setRecalcTarget] = useState<{ masterId: number | null } | null>(null);
-@@ -317,7 +313,7 @@ export default function ResultPreviewPage() {
+@@ -238,9 +234,9 @@ export default function ResultPreviewPage() {
+   // teacher straight to Number Entry instead of a page that just shows empty.
+   const handleSelectFromGrid = (selExamId: number, selClassId: number) => {
+     const status = statuses.find((s) => s.exam_id === selExamId && s.class_id === selClassId);
+-    // শুধু সম্পূর্ণ এন্ট্রি (বা প্রকাশিত/লকড) হলে ফলাফল প্রিভিউ খোলে; এন্ট্রি হয়নি বা আংশিক
++    // শুধু সম্পূর্ণ এন্ট্রি (বা প্রকাশিত) হলে ফলাফল প্রিভিউ খোলে; এন্ট্রি হয়নি বা আংশিক
+     // হলে সরাসরি নম্বর এন্ট্রি পেজে পাঠানো হয়, যাতে বাকি বিষয়ের নম্বর দেওয়া যায়।
+-    const isPublished = status?.publish_status === "PUBLISHED" || status?.publish_status === "LOCKED";
++    const isPublished = status?.publish_status === "PUBLISHED";
+     const notEnteredYet = !status || (!isPublished && !isEntryComplete(status));
+ 
+     if (notEnteredYet) {
+@@ -335,7 +331,7 @@ export default function ResultPreviewPage() {
      }
    };
  
@@ -481,7 +493,7 @@ index 9e9c475..e9cf5f2 100644
    // (saveMarks / processResult) - the only way to change a mark is a
    // correction request, which is applied only once someone approves it in
    // ResultCorrectionsPanel. One request per changed field: an absent<->number
-@@ -375,67 +371,6 @@ export default function ResultPreviewPage() {
+@@ -403,89 +399,6 @@ export default function ResultPreviewPage() {
      }
    };
  
@@ -495,14 +507,22 @@ index 9e9c475..e9cf5f2 100644
 -
 -    try {
 -      setVerifyingResult(true);
--      const res = await api.post(`/results/${resultMasterId}/verify-result`, {});
+-      const res = await progressTask.run(
+-        { title: t.progVerifyTitle, steps: [t.progVerifyStep, t.progressStepRefresh] },
+-        async ({ advance }) => {
+-          const r = await api.post(`/results/${resultMasterId}/verify-result`, {});
+-          advance();
+-          await loadSummary();
+-          await loadOverview();
+-          advance();
+-          return r;
+-        },
+-      );
 -      if (res.data?.valid === false) {
 -        push("error", (res.data?.issues || []).join(" | ") || t.resultIssues);
 -      } else {
 -        push("success", t.resultVerified);
 -      }
--      await loadSummary();
--      await loadOverview();
 -    } catch (err: any) {
 -      logger.error("Verify result error:", err);
 -      push("error", err?.response?.data?.message || t.verifyFailed);
@@ -516,9 +536,16 @@ index 9e9c475..e9cf5f2 100644
 -
 -    try {
 -      setApproving(true);
--      await api.post(`/results/${resultMasterId}/approve`, { approve: true });
--      await loadSummary();
--      await loadOverview();
+-      await progressTask.run(
+-        { title: t.progApproveTitle, steps: [t.progApproveStep, t.progressStepRefresh] },
+-        async ({ advance }) => {
+-          await api.post(`/results/${resultMasterId}/approve`, { approve: true });
+-          advance();
+-          await loadSummary();
+-          await loadOverview();
+-          advance();
+-        },
+-      );
 -      push("success", t.resultApproved);
 -    } catch (err: any) {
 -      logger.error("Approve result error:", err);
@@ -533,9 +560,16 @@ index 9e9c475..e9cf5f2 100644
 -
 -    try {
 -      setApproving(true);
--      await api.post(`/results/${resultMasterId}/approve`, { approve: false, remarks: reason });
--      await loadSummary();
--      await loadOverview();
+-      await progressTask.run(
+-        { title: t.progRejectTitle, steps: [t.progRejectStep, t.progressStepRefresh] },
+-        async ({ advance }) => {
+-          await api.post(`/results/${resultMasterId}/approve`, { approve: false, remarks: reason });
+-          advance();
+-          await loadSummary();
+-          await loadOverview();
+-          advance();
+-        },
+-      );
 -      setRejectResultOpen(false);
 -      push("success", t.resultRejected);
 -    } catch (err: any) {
@@ -549,7 +583,7 @@ index 9e9c475..e9cf5f2 100644
    const handlePublish = async () => {
      if (!resultMasterId) return push("error", t.noProcessedResult);
  
-@@ -453,7 +388,7 @@ export default function ResultPreviewPage() {
+@@ -510,7 +423,7 @@ export default function ResultPreviewPage() {
      }
    };
  
@@ -558,7 +592,7 @@ index 9e9c475..e9cf5f2 100644
    // সরে যায়, নম্বর/সামারি অক্ষত থাকে; "প্রকাশ করুন" চাপলেই আবার প্রকাশ হয়।
    const handleUnpublish = async () => {
      if (!resultMasterId) return push("error", t.noProcessedResult);
-@@ -538,7 +473,7 @@ export default function ResultPreviewPage() {
+@@ -616,7 +529,7 @@ export default function ResultPreviewPage() {
    };
  
    const currentPublishStatus = summary[0]?.publish_status;
@@ -567,7 +601,7 @@ index 9e9c475..e9cf5f2 100644
  
    const selectedClassName = classes.find((c) => String(c.class_id) === classId)?.class_name_bn;
    const selectedExamName = exams.find((e) => String(e.id) === examId)?.name;
-@@ -603,13 +538,6 @@ export default function ResultPreviewPage() {
+@@ -681,13 +594,6 @@ export default function ResultPreviewPage() {
              applyingRoll={applyingRoll}
              canUndoRoll={canUndoRoll}
              onUndoRollByRank={handleUndoRollByRank}
@@ -581,7 +615,7 @@ index 9e9c475..e9cf5f2 100644
              onRecalculate={canRecalculate && resultMasterId ? () => setRecalcTarget({ masterId: resultMasterId }) : undefined}
            />
  
-@@ -661,16 +589,6 @@ export default function ResultPreviewPage() {
+@@ -739,16 +645,6 @@ export default function ResultPreviewPage() {
          }}
        />
  
@@ -595,11 +629,11 @@ index 9e9c475..e9cf5f2 100644
 -        onCancel={() => setRejectResultOpen(false)}
 -        onConfirm={handleConfirmRejectResult}
 -      />
+       <ProgressOverlay {...progressTask.overlayProps} />
      </div>
    );
- }
 diff --git a/admin/src/features/talimat/results.text.ts b/admin/src/features/talimat/results.text.ts
-index 547a4d8..038721e 100644
+index 1be20da..1dcc8bb 100644
 --- a/admin/src/features/talimat/results.text.ts
 +++ b/admin/src/features/talimat/results.text.ts
 @@ -20,12 +20,6 @@ export const resultsText = defineText({
@@ -626,7 +660,20 @@ index 547a4d8..038721e 100644
      // entry
      notAllEntered: "সব {{student}}ের সব {{subject}}ের নম্বর (বা অনুপস্থিত/অব্যাহতি/স্থগিত চিহ্ন) এখনও দেওয়া হয়নি",
      noNewChanges: "কোনো নতুন পরিবর্তন নেই — আগের এন্ট্রি ইতিমধ্যে সংরক্ষণ ও প্রসেস করা হয়েছে",
-@@ -122,12 +112,6 @@ export const resultsText = defineText({
+@@ -77,12 +67,6 @@ export const resultsText = defineText({
+     progBookRejectStep: "বাতিলের কারণসহ সংরক্ষণ করা হচ্ছে",
+     progCorrTitle: "সংশোধনের অনুরোধ জমা হচ্ছে",
+     progCorrStepSubmit: "সংশোধনের অনুরোধ জমা ও প্রয়োগ",
+-    progVerifyTitle: "ফলাফল যাচাই চলছে",
+-    progVerifyStep: "ফলাফলের তথ্য যাচাই করা হচ্ছে",
+-    progApproveTitle: "ফলাফল অনুমোদন চলছে",
+-    progApproveStep: "অনুমোদন সংরক্ষণ করা হচ্ছে",
+-    progRejectTitle: "ফলাফল বাতিল করা হচ্ছে",
+-    progRejectStep: "বাতিলের কারণসহ সংরক্ষণ করা হচ্ছে",
+     progPublishTitle: "ফলাফল প্রকাশ চলছে",
+     progPublishStep: "ফলাফল প্রকাশ করা হচ্ছে",
+     progUnpublishTitle: "ফলাফল অপ্রকাশিত করা হচ্ছে",
+@@ -153,12 +137,6 @@ export const resultsText = defineText({
      reasonRequired: "Enter a reason for the correction",
      noEmptyMark: "No {{subject}} mark may be left empty — enter a mark or \"-\" (absent)",
      correctionApplied: "Correction applied — total, grade and merit position updated",
@@ -639,7 +686,7 @@ index 547a4d8..038721e 100644
      resultPublished: "Result published successfully",
      resultUnpublished: "Result unpublished",
      unpublishFailed: "Could not unpublish the result",
-@@ -148,10 +132,6 @@ export const resultsText = defineText({
+@@ -179,10 +157,6 @@ export const resultsText = defineText({
      recalcTitle: "After changing the fail mark/grades, update all results to the new settings",
      recalcAll: "Recalculate all results",
      viewAll: "View all",
@@ -650,7 +697,20 @@ index 547a4d8..038721e 100644
      notAllEntered: "Marks (or absent/exempt/withheld marks) have not been entered for every {{subject}} of every {{student}} yet",
      noNewChanges: "No new changes — the previous entry is already saved and processed",
      filtersLoadFailed: "Failed to load {{division}}s / exams",
-diff --git a/backend/prisma/migrations/20261013100000_shrink_result_status_to_draft_processing_published/migration.sql b/backend/prisma/migrations/20261013100000_shrink_result_status_to_draft_processing_published/migration.sql
+@@ -209,12 +183,6 @@ export const resultsText = defineText({
+     progBookRejectStep: "Saving rejection with reason",
+     progCorrTitle: "Submitting correction request",
+     progCorrStepSubmit: "Submitting and applying the correction",
+-    progVerifyTitle: "Verifying result",
+-    progVerifyStep: "Checking result data",
+-    progApproveTitle: "Approving result",
+-    progApproveStep: "Saving approval",
+-    progRejectTitle: "Rejecting result",
+-    progRejectStep: "Saving rejection with reason",
+     progPublishTitle: "Publishing result",
+     progPublishStep: "Publishing result",
+     progUnpublishTitle: "Unpublishing result",
+diff --git b/backend/prisma/migrations/20261013100000_shrink_result_status_to_draft_processing_published/migration.sql b/backend/prisma/migrations/20261013100000_shrink_result_status_to_draft_processing_published/migration.sql
 new file mode 100644
 index 0000000..c453049
 --- /dev/null
@@ -1111,7 +1171,7 @@ index a3ca5d7..fe788fc 100644
  
  export const MARK_STATUS = {
 diff --git a/backend/src/modules/ResultPanel/result-panel.repository.ts b/backend/src/modules/ResultPanel/result-panel.repository.ts
-index c0f39b1..320d87b 100644
+index 62145e6..a754c7e 100644
 --- a/backend/src/modules/ResultPanel/result-panel.repository.ts
 +++ b/backend/src/modules/ResultPanel/result-panel.repository.ts
 @@ -230,18 +230,6 @@ export class ResultPanelRepository {
@@ -1213,7 +1273,7 @@ index f146316..5d079d5 100644
    ),
    getResultOverview,
 diff --git a/backend/src/modules/ResultPanel/result-panel.service.ts b/backend/src/modules/ResultPanel/result-panel.service.ts
-index 524aa3f..31515fc 100644
+index be467d9..9c98113 100644
 --- a/backend/src/modules/ResultPanel/result-panel.service.ts
 +++ b/backend/src/modules/ResultPanel/result-panel.service.ts
 @@ -5,7 +5,7 @@ import { logger } from "../../shared/logger/logger";
@@ -1398,7 +1458,7 @@ index 524aa3f..31515fc 100644
      await this.assertAllMarksEntered(
        madrasaId,
        exam_id,
-@@ -1454,42 +1415,22 @@ export class ResultPanelService {
+@@ -1460,42 +1421,22 @@ export class ResultPanelService {
      const master = await this.repository.findResultMasterById(resultMasterId, madrasaId);
      if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found" }));
  

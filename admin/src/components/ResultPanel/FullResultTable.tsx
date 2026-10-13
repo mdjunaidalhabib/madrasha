@@ -63,16 +63,9 @@ interface Props {
   unpublishing?: boolean;
   onApplyRollByRank?: () => void;
   onUndoRollByRank?: () => void;
-  canVerifyResult?: boolean;
-  onVerifyResult?: () => void;
-  verifyingResult?: boolean;
-  canApprove?: boolean;
-  onApprove?: () => void;
-  approving?: boolean;
-  onRequestRejectResult?: () => void;
   /** Re-grade this session against the current fail mark / grade bands.
    * Only offered once a result has been processed (PROCESSING and later,
-   * including PUBLISHED/LOCKED, where /process itself is refused). */
+   * including PUBLISHED, where /process itself is refused). */
   onRecalculate?: () => void;
 }
 
@@ -92,13 +85,6 @@ export default function FullResultTable({
   unpublishing = false,
   onApplyRollByRank,
   onUndoRollByRank,
-  canVerifyResult = false,
-  onVerifyResult,
-  verifyingResult = false,
-  canApprove = false,
-  onApprove,
-  approving = false,
-  onRequestRejectResult,
   onRecalculate,
 }: Props) {
   const lang = useLang();
@@ -115,19 +101,13 @@ export default function FullResultTable({
   const subjectList = Array.isArray(books) ? books : [];
 
   const rawStatus = dataList[0]?.publish_status;
-  const alreadyPublished = rawStatus === "PUBLISHED" || rawStatus === "LOCKED";
-  // লক করা ফলাফল আগে আনলক না করলে অপ্রকাশিত করা যায় না (ব্যাকএন্ডও আটকায়)।
-  const canUnpublishNow = rawStatus === "PUBLISHED";
+  const alreadyPublished = rawStatus === "PUBLISHED";
+  const canUnpublishNow = alreadyPublished;
   const isProcessing = rawStatus === "PROCESSING";
-  const isResultVerified = rawStatus === "RESULT_VERIFIED";
-  const isApproved = rawStatus === "APPROVED";
   const statusBadge = resultStatusBadge(rawStatus);
-  // Backend publishResult auto-chains verify-result -> approve for an actor
-  // holding both result.verify and result.approve (hasFullResultAuthority),
-  // so those users can Publish straight from PROCESSING/RESULT_VERIFIED.
-  // Anyone else must wait for APPROVED.
-  const canPublishNow =
-    isApproved || ((isProcessing || isResultVerified) && canVerifyResult && canApprove);
+  // One person reviews and publishes: a processed (PROCESSING) result can be
+  // published straight away; the backend runs its sanity checks on publish.
+  const canPublishNow = isProcessing;
 
   const handleDelete = () => {
     const resultMasterId = dataList[0]?.result_master_id;
@@ -210,7 +190,7 @@ export default function FullResultTable({
             </button>
           )}
 
-          {onRecalculate && (isProcessing || isResultVerified || isApproved || alreadyPublished) && (
+          {onRecalculate && (isProcessing || alreadyPublished) && (
             <button
               onClick={onRecalculate}
               title={t.recalcTitle}
@@ -242,39 +222,6 @@ export default function FullResultTable({
             </button>
           )}
 
-          {isProcessing && canVerifyResult && onVerifyResult && (
-            <button
-              onClick={onVerifyResult}
-              disabled={verifyingResult}
-              title={t.verifyTitle}
-              className="flex-1 sm:flex-none bg-sky-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
-            >
-              {verifyingResult ? t.verifying : t.verify}
-            </button>
-          )}
-
-          {isResultVerified && canApprove && onApprove && (
-            <button
-              onClick={onApprove}
-              disabled={approving}
-              title={t.approveTitle}
-              className="flex-1 sm:flex-none bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
-            >
-              {approving ? t.approving : t.approve}
-            </button>
-          )}
-
-          {isResultVerified && canApprove && onRequestRejectResult && (
-            <button
-              onClick={onRequestRejectResult}
-              disabled={approving}
-              title={t.rejectTitle}
-              className="flex-1 sm:flex-none bg-red-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
-            >
-              {t.reject}
-            </button>
-          )}
-
           {/* প্রকাশ নিয়ন্ত্রণ: ON = প্রকাশিত, OFF = অপ্রকাশিত। ON করলে প্রকাশ হয়,
               OFF করলে (নিশ্চিতকরণের পর) অভিভাবক পোর্টাল থেকে সরে যায়। */}
           {(alreadyPublished || (onPublish && canPublishNow)) && (
@@ -284,7 +231,7 @@ export default function FullResultTable({
                   ? "border-green-300 bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
                   : "border-gray-300 bg-gray-50 text-gray-600 dark:bg-slate-800 dark:text-slate-300"
               }`}
-              title={rawStatus === "LOCKED" ? t.lockedPublishTitle : alreadyPublished ? t.unpublishTitle : undefined}
+              title={alreadyPublished ? t.unpublishTitle : undefined}
             >
               <span className="font-semibold">
                 {publishing ? t.publishing : unpublishing ? t.unpublishing : alreadyPublished ? t.published : t.notPublished}

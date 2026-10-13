@@ -59,7 +59,6 @@ export const TALIMAT_DEFAULT_PERMISSION_KEYS = [
   "result.verify",
   "result.approve",
   "result.publish",
-  "result.lock",
   "result.correct",
   "notifications.read",
   "notifications.send",

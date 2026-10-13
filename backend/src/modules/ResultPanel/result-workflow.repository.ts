@@ -4,7 +4,7 @@ import { resultPanelRepository } from "./result-panel.repository";
 
 /**
  * Data access for the subject-level submission/verification queue and the
- * result-level verify/approve/publish/lock progression - everything that
+ * pre-publish check and unpublish - everything that
  * reads or writes MarkSubmission plus the workflow columns on ResultMaster.
  * Marks-entry itself (Mark rows, the grading engine) stays owned by
  * result-panel.repository.ts / result-panel.service.ts; this module only

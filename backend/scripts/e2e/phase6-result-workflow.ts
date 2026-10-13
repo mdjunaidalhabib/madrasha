@@ -8,7 +8,7 @@ const CLASS_ID = 1;
 const BOOKS = [2, 3, 4]; // Bangla, English, Gonit
 
 async function main() {
-  console.log("=== Phase 6: Marks -> Result workflow (submit/verify/process/verify/approve/publish/lock) ===");
+  console.log("=== Phase 6: Marks -> Result workflow (submit/verify/process/publish) ===");
 
   const state = readFixtureState() as { examA1Id?: number; studentsA?: number[] };
   if (!state.examA1Id || !state.studentsA?.length) {
@@ -65,28 +65,11 @@ async function main() {
   const processRes = await post("/results/process", { exam_id: EXAM_A1, class_id: CLASS_ID, result_master_id: resultMasterId }, { slug: SLUG_A, token: tokenTalimat });
   check("Process result", processRes.status === 200, { status: processRes.status, body: processRes.body });
 
-  // ---- 7. Verify result (result-level) - use MUHTAMIM again for simplicity ----
-  const verifyResultRes = await post(`/results/${resultMasterId}/verify-result`, {}, { slug: SLUG_A, token: tokenMuhtamim });
-  check("Verify result (result-level)", verifyResultRes.status === 200 && verifyResultRes.body?.valid === true, {
-    status: verifyResultRes.status,
-    body: verifyResultRes.body,
-  });
-
-  // ---- 8. SEPARATION OF DUTIES: MUHTAMIM approving after verifying as
-  // MUHTAMIM is fine (privileged bypass) - but let's confirm TALIMAT
-  // (who did NOT verify) CAN approve, proving separation-of-duties checks
-  // the ACTOR against the verifier, not against a blanket rule ----
-  const approveRes = await post(`/results/${resultMasterId}/approve`, { approve: true }, { slug: SLUG_A, token: tokenTalimat });
-  check("Approve by a DIFFERENT user (TALIMAT) than the verifier (MUHTAMIM) succeeds", approveRes.status === 200, {
-    status: approveRes.status,
-    body: approveRes.body,
-  });
-
-  // ---- 9. Publish ----
+  // ---- 7. Publish (runs the pre-publish sanity check; no separate verify/approve steps) ----
   const publishRes = await post("/results/publish", { result_master_id: resultMasterId }, { slug: SLUG_A, token: tokenTalimat });
   check("Publish result", publishRes.status === 200, { status: publishRes.status, body: publishRes.body });
 
-  // ---- 10. Attempt to edit marks on a PUBLISHED (not yet locked) result -
+  // ---- 8. Attempt to edit marks on a PUBLISHED result -
   // must be BLOCKED by the fix from this session (saveMarks now checks
   // master.status, not just per-book MarkSubmission state) ----
   const editAfterPublish = await post(
@@ -99,36 +82,21 @@ async function main() {
     body: editAfterPublish.body,
   });
 
-  // ---- 11. Lock ----
-  const lockRes = await post(`/results/${resultMasterId}/lock`, {}, { slug: SLUG_A, token: tokenTalimat });
-  check("Lock result", lockRes.status === 200, { status: lockRes.status, body: lockRes.body });
-
-  // ---- 12. Attempt to edit marks on a LOCKED result - must be BLOCKED ----
-  const editAfterLock = await post(
-    "/results/marks",
-    { result_master_id: resultMasterId, data: [{ student_id: STUDENTS_A[0], exam_id: EXAM_A1, class_id: CLASS_ID, book_id: BOOKS[0], mark: 5 }] },
-    { slug: SLUG_A, token: tokenTalimat },
-  );
-  check("Editing marks on a LOCKED result is BLOCKED", editAfterLock.status === 409, {
-    status: editAfterLock.status,
-    body: editAfterLock.body,
+  // ---- 8b. Publishing an already-PUBLISHED result again must be BLOCKED ----
+  const doublePublish = await post("/results/publish", { result_master_id: resultMasterId }, { slug: SLUG_A, token: tokenTalimat });
+  check("Publishing an already-PUBLISHED result is BLOCKED", doublePublish.status === 409, {
+    status: doublePublish.status,
+    body: doublePublish.body,
   });
 
-  // ---- 13. Attempt double-lock (already LOCKED) - must be BLOCKED ----
-  const doubleLock = await post(`/results/${resultMasterId}/lock`, {}, { slug: SLUG_A, token: tokenTalimat });
-  check("Locking an already-LOCKED result is BLOCKED", doubleLock.status === 409, {
-    status: doubleLock.status,
-    body: doubleLock.body,
-  });
-
-  // ---- 14. Correction workflow: request a correction on the locked
+  // ---- 9. Correction workflow: request a correction on the published
   // result, then decide it (as a DIFFERENT user than the requester) ----
   const requestCorrection = await post(
     `/results/${resultMasterId}/corrections`,
     { student_id: STUDENTS_A[0], book_id: BOOKS[0], field: "mark", new_value: "95", reason: "E2E correction test" },
     { slug: SLUG_A, token: tokenTalimat },
   );
-  check("Request a correction on the locked result", requestCorrection.status === 200, {
+  check("Request a correction on the published result", requestCorrection.status === 200, {
     status: requestCorrection.status,
     body: requestCorrection.body,
   });

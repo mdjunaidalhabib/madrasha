@@ -51,7 +51,7 @@ const getBadge = (s: StatusItem | undefined, lang: Lang) => {
   if (!s) {
     return { label: t.notEntered, classes: "bg-gray-100 text-gray-500 border-gray-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600" };
   }
-  if (s.publish_status === "PUBLISHED" || s.publish_status === "LOCKED") {
+  if (s.publish_status === "PUBLISHED") {
     return { label: t.published, classes: "bg-green-100 text-green-700 border-green-300 dark:bg-green-950/40 dark:text-green-400 dark:border-green-800" };
   }
   // "সম্পন্ন" শুধু তখনই, যখন প্রতিটি বিষয়ে সব শিক্ষার্থীর নম্বর এন্ট্রি হয়েছে।

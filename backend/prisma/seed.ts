@@ -974,7 +974,7 @@ async function main() {
     { keyName: "result.manage", name: "ফলাফল ব্যবস্থাপনা" },
 
     // Marks/Result workflow (submission -> verification -> processing ->
-    // result-verification -> approval -> publish -> lock, plus corrections)
+    // publish, plus corrections)
     // - added alongside the pre-existing result.read/result.manage above.
     // Every endpoint gated on these also accepts the legacy result.manage
     // as a fallback (see result-workflow/result-correction/mark-component
@@ -988,7 +988,6 @@ async function main() {
     { keyName: "result.verify", name: "ফলাফল যাচাই" },
     { keyName: "result.approve", name: "ফলাফল অনুমোদন" },
     { keyName: "result.publish", name: "ফলাফল প্রকাশ" },
-    { keyName: "result.lock", name: "ফলাফল লক" },
     { keyName: "result.correct", name: "ফলাফল সংশোধন" },
 
     { keyName: "fee.read", name: "ফি/ইনভয়েস দেখুন" },

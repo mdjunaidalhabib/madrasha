@@ -103,9 +103,8 @@ export class TrashService {
   /* ================= RESTORE ================= */
 
   /** Which result sessions bringing this student back would touch - shown in
-   * the confirm dialog BEFORE restoring. `will_reopen: false` means the
-   * session is LOCKED: it stays frozen and the student simply is not in it
-   * (a locked result can only change through the correction process). */
+   * the confirm dialog BEFORE restoring. Every listed session will be
+   * re-opened. */
   async getStudentRestoreImpact(id: number, madrasaId: number) {
     const impact = await this.repository.findStudentRestoreImpact(id, madrasaId);
     if (!impact) throw new NotFoundError(t({ bn: "ট্র্যাশে শিক্ষার্থী পাওয়া যায়নি", en: "Trashed student not found" }));
@@ -114,7 +113,6 @@ export class TrashService {
       exam_name: m.examName,
       exam_year: m.examYear,
       status: m.status,
-      will_reopen: m.status !== "LOCKED",
     }));
   }
 
@@ -125,13 +123,12 @@ export class TrashService {
    * marks can be entered and the whole class result re-verified and
    * re-published - the returning student shifts merit positions, so the full
    * class must be re-checked. New admissions (created after the result was
-   * processed) and LOCKED results are never touched. */
+   * processed) are never touched. */
   async restoreStudent(id: number, madrasaId: number, userId?: number | null) {
     const impact = await this.repository.findStudentRestoreImpact(id, madrasaId);
     if (!impact) throw new NotFoundError(t({ bn: "ট্র্যাশে শিক্ষার্থী পাওয়া যায়নি", en: "Trashed student not found" }));
 
-    const toReopen = impact.masters.filter((m) => m.status !== "LOCKED");
-    const skippedLocked = impact.masters.filter((m) => m.status === "LOCKED");
+    const toReopen = impact.masters;
 
     const note = t({
       bn: "শিক্ষার্থী ট্র্যাশ থেকে ফিরিয়ে আনায় ফলাফল পুনর্যাচাইয়ের জন্য খোলা হয়েছে",
@@ -163,7 +160,6 @@ export class TrashService {
 
     return {
       reopened: toReopen.map((m) => ({ result_master_id: m.id, exam_name: m.examName, exam_year: m.examYear })),
-      locked_skipped: skippedLocked.map((m) => ({ result_master_id: m.id, exam_name: m.examName, exam_year: m.examYear })),
     };
   }
 

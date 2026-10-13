@@ -2,23 +2,24 @@
 // RESULTS
 // ============================================================
 
-/// Full result-processing lifecycle for a ResultMaster (one exam+class
-/// session). DRAFT and PUBLISHED are the two original values (kept
-/// unchanged so existing data/guardian-portal queries keep working); the
-/// rest are additive states inserted by the marks/verification/approval
-/// workflow. There is deliberately no REJECTED value here - a rejection
-/// (marks-level or result-level) reverts the row to the nearest earlier
-/// resting state and is recorded via ResultMaster.rejectedAt/rejectedBy/
-/// rejectedReason instead, so "rejected" is an event, not a resting status.
+/// Result lifecycle for a ResultMaster (one exam+class session). Only three
+/// resting states exist:
+///   DRAFT      - marks are being entered (or the session was never processed)
+///   PROCESSING - ResultSummary has been produced (graded + ranked) and the
+///                result is waiting to be published
+///   PUBLISHED  - live for guardians; changes go through the correction flow
+/// The old MARKS_SUBMITTED / MARKS_VERIFIED / RESULT_VERIFIED / APPROVED /
+/// LOCKED values were collapsed into these three (see migration
+/// 20261013100000_shrink_result_status_to_draft_processing_published). The
+/// per-subject submit/verify queue (MarkSubmission) is unchanged, but it no
+/// longer moves ResultMaster.status - it is only checked as a precondition
+/// for processing. There is deliberately no REJECTED value: a subject-level
+/// rejection is an event recorded via ResultMaster.rejectedAt/rejectedBy/
+/// rejectedReason, not a resting status.
 enum ResultPublishStatus {
   DRAFT
-  MARKS_SUBMITTED
-  MARKS_VERIFIED
   PROCESSING
-  RESULT_VERIFIED
-  APPROVED
   PUBLISHED
-  LOCKED
 }
 
 enum ResultRowStatus {
@@ -29,9 +30,9 @@ enum ResultRowStatus {
 
 /// Per-subject (book) marks submission/verification inside one ResultMaster.
 /// A teacher/examiner submits marks for a subject; a verifier then approves
-/// or rejects that subject's entries. ResultMaster.status advances to
-/// MARKS_SUBMITTED / MARKS_VERIFIED only once every active subject's
-/// MarkSubmission has reached that stage (see result-workflow.service.ts).
+/// or rejects that subject's entries. Every active subject must be VERIFIED
+/// before a DRAFT result can be processed (see result-workflow.service.ts's
+/// assertAllSubjectsVerified); it does not change ResultMaster.status.
 enum MarkEntryStatus {
   DRAFT
   SUBMITTED
@@ -124,7 +125,7 @@ model MarkComponentValue {
 }
 
 /// Controlled correction workflow for marks/results that have already
-/// passed verification/approval/publish/lock. Every field-level change made
+/// been published. Every field-level change made
 /// through this path is recorded here (old value, new value, reason, who,
 /// when) instead of silently overwriting the live row - see
 /// result-correction.service.ts.
@@ -184,7 +185,7 @@ model ResultCorrection {
 /// publish time (and again on any later authorized correction). Protects
 /// historical published results from silently drifting if grade bands,
 /// fail-mark, or subject full-marks configuration changes afterwards -
-/// marksheets/portal views for a PUBLISHED/LOCKED result should render from
+/// marksheets/portal views for a PUBLISHED result should render from
 /// the latest snapshot rather than recomputing from live config.
 model ResultSnapshot {
   id Int @id @default(autoincrement())
@@ -215,9 +216,10 @@ model ResultMaster {
 
   status ResultPublishStatus @default(DRAFT)
 
-  // ---- workflow timestamps/actors (one column per stage keeps the
-  // submission/verification/approval queue screens a plain status/actor
-  // filter on ResultMaster, with no extra joins) ----
+  // ---- workflow timestamps/actors. processedAt/By and publishedAt/By are
+  // the live stamps. submitted*/marksVerified*/resultVerified*/approved*/
+  // locked* belong to the removed intermediate states: they are no longer
+  // written, and are kept only so historical audit data is not lost. ----
   submittedAt      DateTime? @map("submitted_at")
   submittedBy      Int?      @map("submitted_by")
   marksVerifiedAt  DateTime? @map("marks_verified_at")

@@ -15,7 +15,7 @@ vi.mock("../result-workflow.service", () => ({ resultWorkflowService: {} }));
 import { logActivity } from "../../../shared/utils/activity.util";
 import { ResultPanelService } from "../result-panel.service";
 
-type Status = "DRAFT" | "PROCESSING" | "RESULT_VERIFIED" | "APPROVED" | "PUBLISHED" | "LOCKED";
+type Status = "DRAFT" | "PROCESSING" | "PUBLISHED";
 
 interface StoredRow {
   studentId: number;
@@ -131,20 +131,17 @@ describe("ResultPanelService.recalculateResults", () => {
     expect(logActivity).toHaveBeenCalledTimes(1);
   });
 
-  it("steps an APPROVED result back to PROCESSING and clears the sign-off", async () => {
+  it("skips a DRAFT result - nothing has been processed yet, so nothing can be stale", async () => {
     const { service, replaced } = buildScenario({
       failMark: 35,
-      status: "APPROVED",
+      status: "DRAFT",
       stored: storedUnderFail33(),
     });
 
-    await service.recalculateResults(1, 7, {});
+    const out = await service.recalculateResults(1, 7, {});
 
-    expect(replaced[0].masterData).toMatchObject({
-      status: "PROCESSING",
-      resultVerifiedBy: null,
-      approvedBy: null,
-    });
+    expect(replaced).toHaveLength(0);
+    expect(out.results[0].outcome).toBe("SKIPPED");
   });
 
   it("leaves a PUBLISHED result alone by default and only reports it as pending", async () => {
@@ -180,7 +177,7 @@ describe("ResultPanelService.recalculateResults", () => {
   it("treats a single-session call as an explicit act, so it includes published", async () => {
     const { service, replaced } = buildScenario({
       failMark: 35,
-      status: "LOCKED",
+      status: "PUBLISHED",
       stored: storedUnderFail33(),
     });
 
@@ -188,7 +185,7 @@ describe("ResultPanelService.recalculateResults", () => {
 
     expect(out.include_published).toBe(true);
     expect(replaced).toHaveLength(1);
-    expect(replaced[0].masterData).toEqual({ status: "LOCKED" });
+    expect(replaced[0].masterData).toEqual({ status: "PUBLISHED" });
   });
 
   it("writes nothing on a dry run, even for unpublished sessions", async () => {

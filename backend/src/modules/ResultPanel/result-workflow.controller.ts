@@ -87,54 +87,6 @@ export const rejectBook = async (req: Request, res: Response) => {
   }
 };
 
-/* ================= VERIFY RESULT ================= */
-export const verifyResult = async (req: Request, res: Response) => {
-  try {
-    const madrasa_id = getMadrasaId(req);
-    const result = await resultWorkflowService.verifyResult(
-      madrasa_id,
-      req.user!.id,
-      toNumber(req.params.resultMasterId),
-      req.body?.remarks,
-    );
-    res.json({ success: true, ...result });
-  } catch (error) {
-    respondError(res, error, "verifyResult error:", "Failed to verify result");
-  }
-};
-
-/* ================= APPROVE / REJECT RESULT ================= */
-export const decideApproval = async (req: Request, res: Response) => {
-  try {
-    const madrasa_id = getMadrasaId(req);
-    const result = await resultWorkflowService.decideApproval(
-      madrasa_id,
-      req.user!.id,
-      toNumber(req.params.resultMasterId),
-      Boolean(req.body?.approve),
-      req.body?.remarks,
-    );
-    res.json({ success: true, ...result });
-  } catch (error) {
-    respondError(res, error, "decideApproval error:", "Failed to decide on result approval");
-  }
-};
-
-/* ================= LOCK ================= */
-export const lockResult = async (req: Request, res: Response) => {
-  try {
-    const madrasa_id = getMadrasaId(req);
-    const result = await resultWorkflowService.lock(
-      madrasa_id,
-      req.user!.id,
-      toNumber(req.params.resultMasterId),
-    );
-    res.json({ success: true, ...result });
-  } catch (error) {
-    respondError(res, error, "lockResult error:", "Failed to lock result");
-  }
-};
-
 /* ================= UNPUBLISH ================= */
 export const unpublishResult = async (req: Request, res: Response) => {
   try {

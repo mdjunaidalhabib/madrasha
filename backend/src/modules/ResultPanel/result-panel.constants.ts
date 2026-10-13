@@ -3,20 +3,13 @@ export const FAIL_MARK_SETTING_NAME = "fail_mark";
 export const DEFAULT_GENERAL_GRADE_FALLBACK = "F";
 export const DEFAULT_MADRASA_GRADE_FALLBACK = "রাসিব";
 
-// DRAFT and PUBLISHED are the two original values (kept for compat with any
-// direct string comparisons already in the codebase). The rest are the
-// additive marks/verification/approval workflow states - see
-// ResultPublishStatus in prisma/models/result.prisma for the authoritative
-// definition and the allowed forward progression.
+// The three resting states of a result session: DRAFT (marks being entered),
+// PROCESSING (graded + ranked, waiting to be published) and PUBLISHED. See
+// ResultPublishStatus in prisma/models/result.prisma for the definition.
 export const RESULT_STATUS = {
   DRAFT: "DRAFT",
-  MARKS_SUBMITTED: "MARKS_SUBMITTED",
-  MARKS_VERIFIED: "MARKS_VERIFIED",
   PROCESSING: "PROCESSING",
-  RESULT_VERIFIED: "RESULT_VERIFIED",
-  APPROVED: "APPROVED",
   PUBLISHED: "PUBLISHED",
-  LOCKED: "LOCKED",
 } as const;
 
 export const MARK_STATUS = {

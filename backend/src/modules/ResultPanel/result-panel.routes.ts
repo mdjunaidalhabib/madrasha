@@ -70,7 +70,7 @@ router.post(
   processResult,
 );
 
-/* ================= RECALCULATE (any stage, incl. PUBLISHED/LOCKED) ================= */
+/* ================= RECALCULATE (any stage, incl. PUBLISHED) ================= */
 // Re-grades processed sessions against the CURRENT fail mark / grade bands /
 // subject setup - see ResultPanelService.recalculateResults for the
 // published-result rules. Needs no reprocess-from-scratch, so it works after
@@ -104,7 +104,6 @@ router.get(
     "result.verify",
     "result.approve",
     "result.publish",
-    "result.lock",
     "result.correct",
   ),
   getResultOverview,

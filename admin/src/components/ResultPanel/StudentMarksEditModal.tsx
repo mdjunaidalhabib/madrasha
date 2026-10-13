@@ -34,7 +34,7 @@ interface Props {
   /** Fail mark of the class's division; null = still loading (no colouring). */
   failMark?: number | null;
   saving?: boolean;
-  /** The result is already PUBLISHED/LOCKED: marks can't be overwritten
+  /** The result is already PUBLISHED: marks can't be overwritten
    * directly (backend saveMarks rejects it), so this becomes a correction
    * request that needs a reason and only takes effect once approved. */
   correctionMode?: boolean;

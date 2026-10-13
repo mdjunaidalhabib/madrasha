@@ -74,7 +74,7 @@ const formatWhen = (iso: string | null) => {
   return formatDate(iso, getLang(), { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
-/** Lists every correction request filed against a PUBLISHED/LOCKED result and
+/** Lists every correction request filed against a PUBLISHED result and
  * lets an approver apply or reject the pending ones. The backend only ever
  * mutates live marks on an explicit approve (see
  * result-correction.service.ts's decide()), so this is the second half of the

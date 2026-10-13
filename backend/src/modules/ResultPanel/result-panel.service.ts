@@ -5,7 +5,7 @@ import { logger } from "../../shared/logger/logger";
 import { notificationService } from "../notifications/notification.service";
 import { resultPanelRepository, ResultPanelRepository } from "./result-panel.repository";
 import { logActivity } from "../../shared/utils/activity.util";
-import { hasFullMarksAuthority, hasFullResultAuthority } from "../../shared/utils/rbac.util";
+import { hasFullMarksAuthority } from "../../shared/utils/rbac.util";
 import { resultWorkflowService } from "./result-workflow.service";
 import { assertExamCoversClass } from "../ExamPanel/exam-scope";
 import {
@@ -64,15 +64,9 @@ type ResultCalculationConfig = ClassGradingConfig;
 // changes can leave it stale), and the subset guardians can already see.
 const PROCESSED_RESULT_STATUSES = new Set<ResultPublishStatus>([
   RESULT_STATUS.PROCESSING,
-  RESULT_STATUS.RESULT_VERIFIED,
-  RESULT_STATUS.APPROVED,
   RESULT_STATUS.PUBLISHED,
-  RESULT_STATUS.LOCKED,
 ]);
-const FINAL_RESULT_STATUSES = new Set<ResultPublishStatus>([
-  RESULT_STATUS.PUBLISHED,
-  RESULT_STATUS.LOCKED,
-]);
+const FINAL_RESULT_STATUSES = new Set<ResultPublishStatus>([RESULT_STATUS.PUBLISHED]);
 
 export type RecalcOutcomeKind = "UPDATED" | "WOULD_UPDATE" | "UNCHANGED" | "SKIPPED" | "FAILED";
 
@@ -426,7 +420,7 @@ export class ResultPanelService {
    * miyari, subject added/removed). Incomplete sessions are cleared exactly
    * as before (a new subject with no marks yet must not keep an old partial
    * total). Complete ones are re-graded through the recalculation engine:
-   * unpublished results are refreshed in place, while PUBLISHED/LOCKED ones
+   * unpublished results are refreshed in place, while PUBLISHED ones
    * are left untouched and only counted in `pending_published` - changing a
    * subject's setup must never silently rewrite (or, as this used to do,
    * un-publish) a result guardians can already see. তালিমাত applies it to
@@ -474,14 +468,11 @@ export class ResultPanelService {
   /** Grades one session again with the CURRENT config and, if anything
    * differs from what is stored, swaps the new summary in.
    *
-   * - Not processed yet (DRAFT / marks stages): nothing to be stale - skipped.
+   * - Not processed yet (DRAFT): nothing to be stale - skipped.
    * - Marks no longer complete: skipped, never cleared (a config change must
    *   not gut a result; the entry screens already flag missing marks).
    * - PROCESSING: refreshed in place.
-   * - RESULT_VERIFIED / APPROVED: refreshed and stepped back to PROCESSING,
-   *   because the sign-off no longer describes the numbers (a full-authority
-   *   actor - তালিমাত - re-clears it in the same click as Publish).
-   * - PUBLISHED / LOCKED: refreshed with the status kept, and a RECALCULATE
+   * - PUBLISHED: refreshed with the status kept, and a RECALCULATE
    *   ResultSnapshot + activity log written so the change is auditable.
    * `apply: false` is a dry run (same diff, no writes). */
   private async recalculateMaster(
@@ -558,18 +549,8 @@ export class ResultPanelService {
     let masterData: Prisma.ResultMasterUncheckedUpdateInput;
     if (isFinal) {
       masterData = { status: master.status };
-    } else if (master.status === RESULT_STATUS.PROCESSING) {
-      masterData = { processedAt: new Date(), processedBy: opts.actorId };
     } else {
-      masterData = {
-        status: RESULT_STATUS.PROCESSING,
-        processedAt: new Date(),
-        processedBy: opts.actorId,
-        resultVerifiedAt: null,
-        resultVerifiedBy: null,
-        approvedAt: null,
-        approvedBy: null,
-      };
+      masterData = { processedAt: new Date(), processedBy: opts.actorId };
     }
     await this.repository.replaceResultSummaryInTransaction(master.id, rows, masterData);
 
@@ -607,7 +588,7 @@ export class ResultPanelService {
    * session, what changed.
    *
    * Unpublished sessions are always applied (nobody outside the office has
-   * seen them). PUBLISHED/LOCKED ones are applied only when
+   * seen them). PUBLISHED ones are applied only when
    * `includePublished` is set: fail mark is one global setting, so a new
    * value meant for the next exam must not retroactively flip an old exam
    * that guardians already saw. When it isn't set they are still diffed and
@@ -702,7 +683,7 @@ export class ResultPanelService {
     // students.roll every year - a re-grade must not rewrite history), and
     // pass the session's CURRENT status back in as the override: a
     // correction re-grades content (total/average/grade/rank) but must not
-    // silently rewind an already PUBLISHED/LOCKED result to DRAFT the way a
+    // silently rewind an already PUBLISHED result to DRAFT the way a
     // fresh process run normally would.
     const existing = await this.repository.findResultSummaryForDiff(resultMasterId);
     const rollOverrides = new Map(existing.map((row) => [row.studentId, row.roll]));
@@ -802,9 +783,9 @@ export class ResultPanelService {
     // after this result was published) would otherwise slip past the
     // per-book lock check below — block the whole batch the moment the
     // session itself has moved past marks-editing entirely.
-    if (master.status === RESULT_STATUS.PUBLISHED || master.status === RESULT_STATUS.LOCKED) {
+    if (master.status === RESULT_STATUS.PUBLISHED) {
       throw new ConflictError(
-        t({ bn: "এই ফলাফল ইতিমধ্যে প্রকাশিত/লক করা হয়ে গেছে — সরাসরি নম্বর সম্পাদনা করা যাবে না। প্রয়োজনে 'ফলাফল সংশোধন' (correction) প্রক্রিয়া ব্যবহার করুন।", en: "This result is already published/locked — marks cannot be edited directly. Use the 'result correction' process if needed." }),
+        t({ bn: "এই ফলাফল ইতিমধ্যে প্রকাশিত হয়ে গেছে — সরাসরি নম্বর সম্পাদনা করা যাবে না। প্রয়োজনে 'ফলাফল সংশোধন' (correction) প্রক্রিয়া ব্যবহার করুন।", en: "This result is already published — marks cannot be edited directly. Use the 'result correction' process if needed." }),
       );
     }
 
@@ -830,7 +811,7 @@ export class ResultPanelService {
 
     // Once a subject's marks are SUBMITTED/VERIFIED, ordinary marks.manage
     // edits are locked out — a verifier must reject-and-resubmit, or (once
-    // published/locked) the correction workflow takes over. An actor with
+    // published) the correction workflow takes over. An actor with
     // FULL authority over both submit and verify (see hasFullMarksAuthority
     // - typically the single office/TALIMAT account at a small madrasa with
     // nobody else to hand a maker/checker step to) is let through instead:
@@ -1032,7 +1013,6 @@ export class ResultPanelService {
 
     if (bypassedLock) {
       await this.repository.revertMarkSubmissionsToDraft(resultMasterId, lockedBookIds);
-      await this.repository.revertMasterStatusIfAdvanced(resultMasterId, madrasaId);
     }
 
     return { message: t({ bn: "নম্বর সংরক্ষণ করা হয়েছে", en: "Marks saved successfully" }), result_master_id: resultMasterId };
@@ -1053,7 +1033,7 @@ export class ResultPanelService {
       result_master_id = master.id;
     }
 
-    // The entry screen switches into "সংশোধন" mode for PUBLISHED/LOCKED
+    // The entry screen switches into "সংশোধন" mode for PUBLISHED
     // sessions (direct writes are refused there), so it needs the status.
     const [rows, sessionRow] = await Promise.all([
       this.repository.findMarks(madrasaId, examId, classId, result_master_id),
@@ -1103,39 +1083,20 @@ export class ResultPanelService {
     let master = await this.repository.findResultMasterById(result_master_id, madrasaId);
     if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found" }));
 
-    // The master's status is only advanced by submit/verify events, so a
-    // session can be left at DRAFT/MARKS_SUBMITTED even though every
-    // subject's MarkSubmission is already VERIFIED (e.g. it was reset by an
-    // older subject-config recompute). Re-derive it from the submissions -
-    // the source of truth - before judging whether processing may run.
-    if (master.status === RESULT_STATUS.DRAFT || master.status === RESULT_STATUS.MARKS_SUBMITTED) {
-      await resultWorkflowService.syncStatusFromSubmissions(madrasaId, result_master_id, userId);
-      master = (await this.repository.findResultMasterById(result_master_id, madrasaId)) ?? master;
+    // A published result can't be re-processed: changes go through the
+    // correction workflow ('recalculate' refreshes it after fail-mark/grade
+    // changes).
+    if (master.status === RESULT_STATUS.PUBLISHED) {
+      throw new ConflictError(
+        t({ bn: "এই ফলাফল ইতিমধ্যে প্রকাশিত হয়ে গেছে — নম্বর বদলাতে 'ফলাফল সংশোধন' (correction) এবং ফেল মার্ক/গ্রেড বদলের পর হালনাগাদ করতে 'পুনঃগণনা' ব্যবহার করুন।", en: "This result is already published — use 'result correction' to change marks and 'recalculate' to refresh it after changing fail marks/grades." }),
+      );
     }
 
-    // Reprocessing is fine any time between "marks fully verified" and
-    // "result verified" (inclusive) - but once a result has moved on to
-    // APPROVED/PUBLISHED/LOCKED, further changes must go through the
-    // correction workflow instead of silently rewinding an already
-    // sign-off'd result.
-    const reprocessable: string[] = [
-      RESULT_STATUS.MARKS_VERIFIED,
-      RESULT_STATUS.PROCESSING,
-      RESULT_STATUS.RESULT_VERIFIED,
-    ];
-    if (!reprocessable.includes(master.status)) {
-      if (
-        master.status === RESULT_STATUS.APPROVED ||
-        master.status === RESULT_STATUS.PUBLISHED ||
-        master.status === RESULT_STATUS.LOCKED
-      ) {
-        throw new ConflictError(
-          t({ bn: "এই ফলাফল ইতিমধ্যে অনুমোদিত/প্রকাশিত হয়ে গেছে — নম্বর বদলাতে 'ফলাফল সংশোধন' (correction) এবং ফেল মার্ক/গ্রেড বদলের পর হালনাগাদ করতে 'পুনঃগণনা' ব্যবহার করুন।", en: "This result is already approved/published — use 'result correction' to change marks and 'recalculate' to refresh it after changing fail marks/grades." }),
-        );
-      }
-      throw new ConflictError(
-        t({ bn: "সব বিষয়ের নম্বর জমা ও যাচাই (verify) সম্পন্ন না হওয়া পর্যন্ত ফলাফল প্রসেস করা যাবে না।", en: "The result cannot be processed until marks for all subjects are submitted and verified." }),
-      );
+    // A first process run (DRAFT) needs every subject submitted and
+    // verified. Re-processing an already PROCESSING result skips that check,
+    // as before - it already cleared it once.
+    if (master.status === RESULT_STATUS.DRAFT) {
+      await resultWorkflowService.assertAllSubjectsVerified(madrasaId, result_master_id);
     }
 
     await this.assertAllMarksEntered(
@@ -1460,42 +1421,22 @@ export class ResultPanelService {
     const master = await this.repository.findResultMasterById(resultMasterId, madrasaId);
     if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found" }));
 
-    let status: ResultPublishStatus = master.status;
-
-    // The verify-result -> approve stages exist as their own gated
-    // actions for madrasas that split "checker" from "approver" into
-    // different people. Most তালিমাত offices don't have a second person
-    // for that hand-off, so an actor holding full result authority
-    // (result.verify + result.approve, or Muhtamim/Super Admin) walks
-    // straight through both stages in this same click instead of being
-    // sent to hunt for two more buttons first - every validation those
-    // stages normally run (missing/invalid marks, ExamCandidate holds,
-    // etc. in verifyResult) still executes exactly as before, just
-    // inline. An actor who lacks that full authority still stops here
-    // and needs a separate approver to move the status forward.
-    if (
-      (status === RESULT_STATUS.PROCESSING || status === RESULT_STATUS.RESULT_VERIFIED) &&
-      (await hasFullResultAuthority(userId))
-    ) {
-      if (status === RESULT_STATUS.PROCESSING) {
-        const verifyOutcome = await resultWorkflowService.verifyResult(madrasaId, userId, resultMasterId);
-        if (!verifyOutcome.valid) {
-          throw new ConflictError(
-            t({ bn: `ফলাফল যাচাইয়ে সমস্যা পাওয়া গেছে, তাই প্রকাশ করা যায়নি: ${verifyOutcome.issues[0]}`, en: `Problems were found while verifying the result, so it could not be published: ${verifyOutcome.issues[0]}` }),
-          );
-        }
-        status = RESULT_STATUS.RESULT_VERIFIED;
-      }
-
-      if (status === RESULT_STATUS.RESULT_VERIFIED) {
-        await resultWorkflowService.decideApproval(madrasaId, userId, resultMasterId, true);
-        status = RESULT_STATUS.APPROVED;
-      }
+    if (master.status === RESULT_STATUS.PUBLISHED) {
+      throw new ConflictError(t({ bn: "এই ফলাফল ইতিমধ্যে প্রকাশিত।", en: "This result is already published." }));
+    }
+    if (master.status !== RESULT_STATUS.PROCESSING) {
+      throw new ConflictError(
+        t({ bn: "প্রকাশের আগে ফলাফল প্রসেস করুন।", en: "Process the result before publishing." }),
+      );
     }
 
-    if (status !== RESULT_STATUS.APPROVED) {
+    // One person reviews and publishes. The sanity checks the old separate
+    // verify step ran (missing/invalid marks, grade/status consistency,
+    // ExamCandidate holds) still run here, and block publishing on any issue.
+    const check = await resultWorkflowService.checkResultBeforePublish(madrasaId, resultMasterId);
+    if (!check.valid) {
       throw new ConflictError(
-        t({ bn: "ফলাফল অনুমোদিত (APPROVED) না হওয়া পর্যন্ত প্রকাশ করা যাবে না। এই ফলাফল যাচাই/অনুমোদনের জন্য পৃথক অনুমোদনকারীর কাছে পাঠাতে হবে।", en: "The result cannot be published until it is APPROVED. It must be sent to a separate approver for verification/approval." }),
+        t({ bn: `ফলাফল যাচাইয়ে সমস্যা পাওয়া গেছে, তাই প্রকাশ করা যায়নি: ${check.issues[0]}`, en: `Problems were found while checking the result, so it could not be published: ${check.issues[0]}` }),
       );
     }
 

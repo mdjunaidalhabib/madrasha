@@ -45,7 +45,7 @@ interface Props {
  * তালিমাত sees exactly which sessions and how many students would change
  * before anything is written - fail mark is one global setting, so applying
  * a new value is never a blind operation. Unpublished sessions are safe to
- * refresh; PUBLISHED/LOCKED ones need the explicit checkbox (guardians may
+ * refresh; PUBLISHED ones need the explicit checkbox (guardians may
  * already have seen them). A single-session dialog skips that checkbox: the
  * user picked that session on purpose. */
 export default function RecalculateResultsModal({ open, onClose, resultMasterId, onApplied }: Props) {

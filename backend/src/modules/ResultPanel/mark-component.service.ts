@@ -85,11 +85,11 @@ export class MarkComponentService {
 
     // Changing a component's fullMark changes the effective denominator
     // saveMarks() uses to compute a mark from its component breakdown - if
-    // this book already has marks entered for a PUBLISHED/LOCKED result
+    // this book already has marks entered for a PUBLISHED result
     // (scoped to this exam when exam-specific, or any exam when this is the
     // book-wide fallback config), that result's grading would silently
     // drift out from under it. Block the same way saveMarks blocks direct
-    // edits to a published/locked session. Mark has no `resultMaster`
+    // edits to a published session. Mark has no `resultMaster`
     // relation declared (only the resultMasterId scalar), so this is a
     // manual two-step lookup rather than a nested relation filter.
     const marksForBook = await prisma.mark.findMany({
@@ -101,7 +101,7 @@ export class MarkComponentService {
       ? await prisma.resultMaster.findFirst({
           where: {
             id: { in: marksForBook.map((m) => m.resultMasterId) },
-            status: { in: ["PUBLISHED", "LOCKED"] },
+            status: "PUBLISHED",
             deletedAt: null,
           },
           select: { id: true },
@@ -109,7 +109,7 @@ export class MarkComponentService {
       : null;
     if (affectedPublishedMark) {
       throw new ConflictError(
-        t({ bn: "এই বিষয়ের নম্বর বিভাজন পরিবর্তন করা যাবে না — এটি ইতিমধ্যে প্রকাশিত/লক করা একটি ফলাফলে ব্যবহৃত হয়েছে। প্রয়োজনে 'ফলাফল সংশোধন' (correction) প্রক্রিয়া ব্যবহার করুন।", en: "This subject's mark components cannot be changed — they are already used in a published/locked result. Use the 'result correction' process if needed." }),
+        t({ bn: "এই বিষয়ের নম্বর বিভাজন পরিবর্তন করা যাবে না — এটি ইতিমধ্যে প্রকাশিত একটি ফলাফলে ব্যবহৃত হয়েছে। প্রয়োজনে 'ফলাফল সংশোধন' (correction) প্রক্রিয়া ব্যবহার করুন।", en: "This subject's mark components cannot be changed — they are already used in a published result. Use the 'result correction' process if needed." }),
       );
     }
 

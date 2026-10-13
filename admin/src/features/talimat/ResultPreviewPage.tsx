@@ -14,7 +14,6 @@ import { isEntryComplete } from "../../components/ResultPanel/entryProgress";
 import FullResultTable from "../../components/ResultPanel/FullResultTable";
 import StudentMarksEditModal from "../../components/ResultPanel/StudentMarksEditModal";
 import ResultStatsCards from "../../components/ResultPanel/ResultStatsCards";
-import ReasonPromptModal from "../../components/ResultPanel/ReasonPromptModal";
 import ResultCorrectionsPanel from "../../components/ResultPanel/ResultCorrectionsPanel";
 import RecalculateResultsModal from "../../components/ResultPanel/RecalculateResultsModal";
 import { correctionItemsForCell, type CorrectionItem } from "../../components/ResultPanel/correctionDiff";
@@ -145,9 +144,6 @@ export default function ResultPreviewPage() {
   const [unpublishing, setUnpublishing] = useState(false);
   const [applyingRoll, setApplyingRoll] = useState(false);
   const [canUndoRoll, setCanUndoRoll] = useState(false);
-  const [verifyingResult, setVerifyingResult] = useState(false);
-  const [approving, setApproving] = useState(false);
-  const [rejectResultOpen, setRejectResultOpen] = useState(false);
   const [correctionReloadKey, setCorrectionReloadKey] = useState(0);
   // null = closed; { masterId: null } = review every session; { masterId: n } = just that one.
   const [recalcTarget, setRecalcTarget] = useState<{ masterId: number | null } | null>(null);
@@ -238,9 +234,9 @@ export default function ResultPreviewPage() {
   // teacher straight to Number Entry instead of a page that just shows empty.
   const handleSelectFromGrid = (selExamId: number, selClassId: number) => {
     const status = statuses.find((s) => s.exam_id === selExamId && s.class_id === selClassId);
-    // শুধু সম্পূর্ণ এন্ট্রি (বা প্রকাশিত/লকড) হলে ফলাফল প্রিভিউ খোলে; এন্ট্রি হয়নি বা আংশিক
+    // শুধু সম্পূর্ণ এন্ট্রি (বা প্রকাশিত) হলে ফলাফল প্রিভিউ খোলে; এন্ট্রি হয়নি বা আংশিক
     // হলে সরাসরি নম্বর এন্ট্রি পেজে পাঠানো হয়, যাতে বাকি বিষয়ের নম্বর দেওয়া যায়।
-    const isPublished = status?.publish_status === "PUBLISHED" || status?.publish_status === "LOCKED";
+    const isPublished = status?.publish_status === "PUBLISHED";
     const notEnteredYet = !status || (!isPublished && !isEntryComplete(status));
 
     if (notEnteredYet) {
@@ -335,7 +331,7 @@ export default function ResultPreviewPage() {
     }
   };
 
-  // After PUBLISHED/LOCKED the backend rejects direct mark writes
+  // After PUBLISHED the backend rejects direct mark writes
   // (saveMarks / processResult) - the only way to change a mark is a
   // correction request, which is applied only once someone approves it in
   // ResultCorrectionsPanel. One request per changed field: an absent<->number
@@ -403,89 +399,6 @@ export default function ResultPreviewPage() {
     }
   };
 
-  // Result-level checker steps between "প্রসেস" and "Publish" — a result
-  // must be verified, then approved (by someone other than whoever verified
-  // it, unless they're MUHTAMIM/SUPER_ADMIN — enforced server-side), before
-  // /results/publish will accept it. Both actions already existed as
-  // backend endpoints; this just wires the missing UI for them.
-  const handleVerifyResult = async () => {
-    if (!resultMasterId) return push("error", t.noProcessedResult);
-
-    try {
-      setVerifyingResult(true);
-      const res = await progressTask.run(
-        { title: t.progVerifyTitle, steps: [t.progVerifyStep, t.progressStepRefresh] },
-        async ({ advance }) => {
-          const r = await api.post(`/results/${resultMasterId}/verify-result`, {});
-          advance();
-          await loadSummary();
-          await loadOverview();
-          advance();
-          return r;
-        },
-      );
-      if (res.data?.valid === false) {
-        push("error", (res.data?.issues || []).join(" | ") || t.resultIssues);
-      } else {
-        push("success", t.resultVerified);
-      }
-    } catch (err: any) {
-      logger.error("Verify result error:", err);
-      push("error", err?.response?.data?.message || t.verifyFailed);
-    } finally {
-      setVerifyingResult(false);
-    }
-  };
-
-  const handleApprove = async () => {
-    if (!resultMasterId) return push("error", t.noProcessedResult);
-
-    try {
-      setApproving(true);
-      await progressTask.run(
-        { title: t.progApproveTitle, steps: [t.progApproveStep, t.progressStepRefresh] },
-        async ({ advance }) => {
-          await api.post(`/results/${resultMasterId}/approve`, { approve: true });
-          advance();
-          await loadSummary();
-          await loadOverview();
-          advance();
-        },
-      );
-      push("success", t.resultApproved);
-    } catch (err: any) {
-      logger.error("Approve result error:", err);
-      push("error", err?.response?.data?.message || t.approveFailed);
-    } finally {
-      setApproving(false);
-    }
-  };
-
-  const handleConfirmRejectResult = async (reason: string) => {
-    if (!resultMasterId) return;
-
-    try {
-      setApproving(true);
-      await progressTask.run(
-        { title: t.progRejectTitle, steps: [t.progRejectStep, t.progressStepRefresh] },
-        async ({ advance }) => {
-          await api.post(`/results/${resultMasterId}/approve`, { approve: false, remarks: reason });
-          advance();
-          await loadSummary();
-          await loadOverview();
-          advance();
-        },
-      );
-      setRejectResultOpen(false);
-      push("success", t.resultRejected);
-    } catch (err: any) {
-      logger.error("Reject result error:", err);
-      push("error", err?.response?.data?.message || t.rejectFailed);
-    } finally {
-      setApproving(false);
-    }
-  };
-
   const handlePublish = async () => {
     if (!resultMasterId) return push("error", t.noProcessedResult);
 
@@ -510,7 +423,7 @@ export default function ResultPreviewPage() {
     }
   };
 
-  // প্রকাশিত ফলাফল অপ্রকাশিত করা: PUBLISHED -> APPROVED। অভিভাবক পোর্টাল থেকে
+  // প্রকাশিত ফলাফল অপ্রকাশিত করা: PUBLISHED -> PROCESSING। অভিভাবক পোর্টাল থেকে
   // সরে যায়, নম্বর/সামারি অক্ষত থাকে; "প্রকাশ করুন" চাপলেই আবার প্রকাশ হয়।
   const handleUnpublish = async () => {
     if (!resultMasterId) return push("error", t.noProcessedResult);
@@ -616,7 +529,7 @@ export default function ResultPreviewPage() {
   };
 
   const currentPublishStatus = summary[0]?.publish_status;
-  const isPublished = currentPublishStatus === "PUBLISHED" || currentPublishStatus === "LOCKED";
+  const isPublished = currentPublishStatus === "PUBLISHED";
 
   const selectedClassName = classes.find((c) => String(c.class_id) === classId)?.class_name_bn;
   const selectedExamName = exams.find((e) => String(e.id) === examId)?.name;
@@ -681,13 +594,6 @@ export default function ResultPreviewPage() {
             applyingRoll={applyingRoll}
             canUndoRoll={canUndoRoll}
             onUndoRollByRank={handleUndoRollByRank}
-            canVerifyResult={canVerifyResult}
-            onVerifyResult={handleVerifyResult}
-            verifyingResult={verifyingResult}
-            canApprove={canApprove}
-            onApprove={handleApprove}
-            approving={approving}
-            onRequestRejectResult={() => setRejectResultOpen(true)}
             onRecalculate={canRecalculate && resultMasterId ? () => setRecalcTarget({ masterId: resultMasterId }) : undefined}
           />
 
@@ -739,16 +645,6 @@ export default function ResultPreviewPage() {
         }}
       />
 
-      <ReasonPromptModal
-        open={rejectResultOpen}
-        title={t.rejectResultTitle}
-        message={t.rejectResultMessage}
-        label={t.rejectReason}
-        confirmText={t.rejectConfirm}
-        loading={approving}
-        onCancel={() => setRejectResultOpen(false)}
-        onConfirm={handleConfirmRejectResult}
-      />
       <ProgressOverlay {...progressTask.overlayProps} />
     </div>
   );

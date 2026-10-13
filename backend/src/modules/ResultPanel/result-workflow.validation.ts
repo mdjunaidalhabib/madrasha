@@ -21,21 +21,6 @@ export const rejectBookSchema = z.object({
   }),
 });
 
-export const verifyResultSchema = z.object({
-  params: z.object({ resultMasterId: idSchema }),
-  body: z.object({
-    remarks: z.string().trim().optional(),
-  }),
-});
-
-export const decideApprovalSchema = z.object({
-  params: z.object({ resultMasterId: idSchema }),
-  body: z.object({
-    approve: z.boolean(),
-    remarks: z.string().trim().optional(),
-  }),
-});
-
-export const lockResultSchema = z.object({
+export const unpublishResultSchema = z.object({
   params: z.object({ resultMasterId: idSchema }),
 });

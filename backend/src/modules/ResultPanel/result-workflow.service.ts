@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
 import { logActivity } from "../../shared/utils/activity.util";
-import { hasExamDepartmentAuthority, hasFullResultAuthority } from "../../shared/utils/rbac.util";
+import { hasExamDepartmentAuthority } from "../../shared/utils/rbac.util";
 import { canCandidateParticipate } from "../exam-candidate/exam-candidate.policy";
 import { resultWorkflowRepository, ResultWorkflowRepository } from "./result-workflow.repository";
 import { resultPanelRepository } from "./result-panel.repository";
@@ -14,10 +14,11 @@ const toBanglaDigits = (value: string | number) =>
   currentLanguage() !== "bn" ? String(value) : String(value).replace(/\d/g, (digit) => "০১২৩৪৫৬৭৮৯"[Number(digit)]);
 
 /**
- * Subject-level submission/verification queue (MarkSubmission) and the
- * result-level verify/approve/lock progression on top of it. Marks-entry
- * itself, and the grading engine, stay in result-panel.service.ts - this
- * service only owns the status machine layered on top.
+ * Subject-level submission/verification queue (MarkSubmission), the
+ * pre-publish sanity check, and unpublish. A result session has only three
+ * statuses (DRAFT -> PROCESSING -> PUBLISHED); one reviewer verifies and
+ * publishes it. Marks-entry itself, and the grading engine, stay in
+ * result-panel.service.ts.
  */
 export class ResultWorkflowService {
   constructor(private readonly repository: ResultWorkflowRepository = resultWorkflowRepository) {}
@@ -35,62 +36,25 @@ export class ResultWorkflowService {
     if (!active) throw new BadRequestError(t({ bn: "এই বিষয়টি এই শ্রেণির জন্য সক্রিয় নয়।", en: "This subject is not active for this class." }));
   }
 
-  /** Re-derives ResultMaster.status from the current MarkSubmission states
-   * after a submit or verify event - shared by both since a verify can also
-   * complete the "every subject submitted" milestone (e.g. the last
-   * remaining subject was submitted and verified in the same request
-   * sequence). Only ever advances forward; rejection moves the status
-   * backward separately (see rejectBook). */
-  private async recomputeAfterSubmissionEvent(
-    madrasaId: number,
-    resultMasterId: number,
-    classId: number,
-    actorId: number,
-  ) {
+  /** Precondition for the first process run: every active subject's marks
+   * must have been submitted AND verified. Read straight from the
+   * MarkSubmission rows (the source of truth) - ResultMaster.status no
+   * longer tracks this. */
+  async assertAllSubjectsVerified(madrasaId: number, resultMasterId: number) {
+    const master = await this.assertMaster(madrasaId, resultMasterId);
     const [subjects, submissions] = await Promise.all([
-      resultPanelRepository.findActiveSubjectsForClass(madrasaId, classId),
+      resultPanelRepository.findActiveSubjectsForClass(madrasaId, master.classId),
       this.repository.findMarkSubmissions(resultMasterId),
     ]);
 
     const bookIds = subjects.filter((s) => s.book).map((s) => s.book!.id);
-    if (!bookIds.length) return;
-
     const statusByBook = new Map(submissions.map((s) => [s.bookId, s.status]));
-    const allVerified = bookIds.every((id) => statusByBook.get(id) === "VERIFIED");
-    const allSubmittedOrVerified = bookIds.every((id) => {
-      const st = statusByBook.get(id);
-      return st === "SUBMITTED" || st === "VERIFIED";
-    });
-
-    // Best-effort: only advances while the session is still in the
-    // marks-submission phase, so a race against a later stage (e.g. this
-    // recompute firing just as the result gets published elsewhere) can't
-    // regress an already-advanced status. Not throwing on a missed guard
-    // here - unlike the user-facing transitions below - since this is a
-    // background side-effect of submit/verify, not the primary action the
-    // caller asked for.
-    const inSubmissionPhase = ["DRAFT", "MARKS_SUBMITTED", "MARKS_VERIFIED"];
-    if (allVerified) {
-      await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, inSubmissionPhase, {
-        status: "MARKS_VERIFIED",
-        marksVerifiedAt: new Date(),
-        marksVerifiedBy: actorId,
-      });
-    } else if (allSubmittedOrVerified) {
-      await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, inSubmissionPhase, {
-        status: "MARKS_SUBMITTED",
-        submittedAt: new Date(),
-        submittedBy: actorId,
-      });
+    const allVerified = bookIds.length > 0 && bookIds.every((id) => statusByBook.get(id) === "VERIFIED");
+    if (!allVerified) {
+      throw new ConflictError(
+        t({ bn: "সব বিষয়ের নম্বর জমা ও যাচাই (verify) সম্পন্ন না হওয়া পর্যন্ত ফলাফল প্রসেস করা যাবে না।", en: "The result cannot be processed until marks for all subjects are submitted and verified." }),
+      );
     }
-  }
-
-  /** Public entry to the same status re-derivation submit/verify run, for
-   * callers (ResultPanelService.processResult) that find a session whose
-   * status lags behind its subjects' actual submission states. */
-  async syncStatusFromSubmissions(madrasaId: number, resultMasterId: number, actorId: number) {
-    const master = await this.assertMaster(madrasaId, resultMasterId);
-    await this.recomputeAfterSubmissionEvent(madrasaId, resultMasterId, master.classId, actorId);
   }
 
   async getSubmissions(madrasaId: number, resultMasterId: number) {
@@ -157,7 +121,6 @@ export class ResultWorkflowService {
     }
 
     await this.repository.upsertMarkSubmissionSubmitted(madrasaId, resultMasterId, bookId, userId);
-    await this.recomputeAfterSubmissionEvent(madrasaId, resultMasterId, master.classId, userId);
 
     await logActivity({
       madrasa_id: madrasaId,
@@ -193,7 +156,6 @@ export class ResultWorkflowService {
     }
 
     await this.repository.markSubmissionVerified(resultMasterId, bookId, userId, comment?.trim() || null);
-    await this.recomputeAfterSubmissionEvent(madrasaId, resultMasterId, master.classId, userId);
 
     await logActivity({
       madrasa_id: madrasaId,
@@ -234,9 +196,6 @@ export class ResultWorkflowService {
       rejectedBy: userId,
       rejectedReason: trimmedReason,
     };
-    if (master.status === "MARKS_SUBMITTED" || master.status === "MARKS_VERIFIED") {
-      data.status = "DRAFT";
-    }
     const ok = await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, [master.status], data);
     if (!ok) {
       throw new ConflictError(
@@ -256,22 +215,16 @@ export class ResultWorkflowService {
     return { message: t({ bn: "নম্বর প্রত্যাখ্যান করা হয়েছে", en: "Marks rejected" }), result_master_id: resultMasterId, book_id: bookId };
   }
 
-  /** Result-level verification pass - a read-mostly sanity re-check of the
-   * grading engine's own output (never recomputes grading itself), plus a
-   * fail-open cross-check against ExamCandidate holds. The missing-marks
-   * check itself is scoped to active students who are also participating
-   * ExamCandidates when that roster is non-empty for this exam+class,
-   * falling back to every active student for exams that predate candidate
-   * registration (see the candidateRoster/requiredStudents computation
-   * below). Mutates status only when every check passes. */
-  async verifyResult(madrasaId: number, userId: number, resultMasterId: number, remarks?: string) {
+  /** Pre-publish sanity check - a read-only re-check of the grading
+   * engine's own output (never recomputes grading itself), plus a fail-open
+   * cross-check against ExamCandidate holds. The missing-marks check is
+   * scoped to active students who are also participating ExamCandidates when
+   * that roster is non-empty for this exam+class, falling back to every
+   * active student for exams that predate candidate registration (see the
+   * candidateRoster/requiredStudents computation below). Never mutates
+   * anything: publishResult decides what to do with the outcome. */
+  async checkResultBeforePublish(madrasaId: number, resultMasterId: number) {
     const master = await this.assertMaster(madrasaId, resultMasterId);
-
-    if (master.status !== "PROCESSING" && master.status !== "RESULT_VERIFIED") {
-      throw new ConflictError(
-        t({ bn: "ফলাফল প্রসেস (PROCESSING) অবস্থায় থাকলেই কেবল ফলাফল যাচাই করা যায়।", en: "A result can be verified only while it is in PROCESSING state." }),
-      );
-    }
 
     const [activeStudents, summaries, withheldRows, failMark, candidateRows, candidateRoster] =
       await Promise.all([
@@ -388,34 +341,6 @@ export class ResultWorkflowService {
 
     const valid = issues.length === 0;
 
-    if (valid) {
-      const ok = await this.repository.updateResultMasterStatus(
-        resultMasterId,
-        madrasaId,
-        ["PROCESSING", "RESULT_VERIFIED"],
-        {
-          status: "RESULT_VERIFIED",
-          resultVerifiedAt: new Date(),
-          resultVerifiedBy: userId,
-          ...(remarks !== undefined ? { remarks: remarks || null } : {}),
-        },
-      );
-      if (!ok) {
-        throw new ConflictError(
-          t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again." }),
-        );
-      }
-
-      await logActivity({
-        madrasa_id: madrasaId,
-        user_id: userId,
-        action: "VERIFY_RESULT",
-        entity: "results/verify-result",
-        entity_id: resultMasterId,
-        details: JSON.stringify({ passCount, failCount, absentCount, withheldCount: withheldSet.size }),
-      });
-    }
-
     return {
       valid,
       issues,
@@ -432,146 +357,18 @@ export class ResultWorkflowService {
     };
   }
 
-  async decideApproval(
-    madrasaId: number,
-    userId: number,
-    resultMasterId: number,
-    approve: boolean,
-    remarks?: string,
-  ) {
-    const master = await this.assertMaster(madrasaId, resultMasterId);
-
-    if (master.status !== "RESULT_VERIFIED") {
-      throw new ConflictError(
-        t({ bn: "ফলাফল যাচাই (RESULT_VERIFIED) সম্পন্ন না হলে অনুমোদন/প্রত্যাখ্যান করা যাবে না।", en: "A result cannot be approved/rejected until it is verified (RESULT_VERIFIED)." }),
-      );
-    }
-
-    // Same-person verify+approve is only blocked for a genuine
-    // separate-checker setup. An actor holding both result.verify and
-    // result.approve (the single তালিমাত-office case, or Muhtamim/Super
-    // Admin) has no second person to hand this off to, so they're let
-    // through - exactly like hasFullMarksAuthority does one level down at
-    // the subject submit/verify stage. A role limited to only
-    // result.verify (a genuine separate checker) still hits this gate.
-    if (
-      master.resultVerifiedBy != null &&
-      master.resultVerifiedBy === userId &&
-      !(await hasFullResultAuthority(userId))
-    ) {
-      throw new ConflictError(
-        t({ bn: "নিজে যাচাই করা ফলাফল নিজে অনুমোদন/প্রত্যাখ্যান করা যাবে না — ভিন্ন ব্যবহারকারীর অনুমোদন প্রয়োজন।", en: "You cannot approve/reject a result you verified yourself — a different user must approve it." }),
-      );
-    }
-
-    if (approve) {
-      const ok = await this.repository.updateResultMasterStatus(
-        resultMasterId,
-        madrasaId,
-        ["RESULT_VERIFIED"],
-        {
-          status: "APPROVED",
-          approvedAt: new Date(),
-          approvedBy: userId,
-          ...(remarks !== undefined ? { remarks: remarks || null } : {}),
-        },
-      );
-      if (!ok) {
-        throw new ConflictError(
-          t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again." }),
-        );
-      }
-
-      await logActivity({
-        madrasa_id: madrasaId,
-        user_id: userId,
-        action: "APPROVE",
-        entity: "results/approve",
-        entity_id: resultMasterId,
-        details: JSON.stringify({ remarks: remarks || null }),
-      });
-
-      return { message: t({ bn: "ফলাফল অনুমোদিত হয়েছে", en: "Result approved" }), result_master_id: resultMasterId };
-    }
-
-    if (!remarks || !remarks.trim()) {
-      throw new BadRequestError(t({ bn: "প্রত্যাখ্যানের কারণ (remarks) উল্লেখ করা আবশ্যক।", en: "A reason for rejection (remarks) is required." }));
-    }
-
-    const rejectOk = await this.repository.updateResultMasterStatus(
-      resultMasterId,
-      madrasaId,
-      ["RESULT_VERIFIED"],
-      {
-        status: "PROCESSING",
-        rejectedAt: new Date(),
-        rejectedBy: userId,
-        rejectedReason: remarks.trim(),
-      },
-    );
-    if (!rejectOk) {
-      throw new ConflictError(
-        t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again." }),
-      );
-    }
-
-    await logActivity({
-      madrasa_id: madrasaId,
-      user_id: userId,
-      action: "REJECT",
-      entity: "results/approve",
-      entity_id: resultMasterId,
-      details: JSON.stringify({ reason: remarks.trim() }),
-    });
-
-    return { message: t({ bn: "ফলাফল প্রত্যাখ্যান করা হয়েছে", en: "Result rejected" }), result_master_id: resultMasterId };
-  }
-
-  async lock(madrasaId: number, userId: number, resultMasterId: number) {
-    const master = await this.assertMaster(madrasaId, resultMasterId);
-
-    if (master.status !== "PUBLISHED") {
-      throw new ConflictError(t({ bn: "ফলাফল প্রকাশিত (PUBLISHED) না হলে লক করা যাবে না।", en: "A result cannot be locked until it is PUBLISHED." }));
-    }
-
-    const ok = await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, ["PUBLISHED"], {
-      status: "LOCKED",
-      lockedAt: new Date(),
-      lockedBy: userId,
-    });
-    if (!ok) {
-      throw new ConflictError(
-        t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again." }),
-      );
-    }
-
-    await logActivity({
-      madrasa_id: madrasaId,
-      user_id: userId,
-      action: "LOCK",
-      entity: "results/lock",
-      entity_id: resultMasterId,
-    });
-
-    return { message: t({ bn: "ফলাফল লক করা হয়েছে", en: "Result locked" }), result_master_id: resultMasterId };
-  }
-
-  /** প্রকাশিত ফলাফল অপ্রকাশিত করা: PUBLISHED -> APPROVED। অভিভাবক পোর্টাল শুধু
-   * PUBLISHED/LOCKED পড়ে, তাই এরপর ফলাফল আর দেখা যায় না। নম্বর/প্রসেসড সামারি
-   * অক্ষত থাকে, ফলে আবার "প্রকাশ করুন" চাপলেই পুনঃপ্রকাশ হয়। লকড ফলাফল আগে
-   * আনলক না করলে অপ্রকাশিত করা যায় না। */
+  /** প্রকাশিত ফলাফল অপ্রকাশিত করা: PUBLISHED -> PROCESSING। অভিভাবক পোর্টাল শুধু
+   * PUBLISHED পড়ে, তাই এরপর ফলাফল আর দেখা যায় না। নম্বর/প্রসেসড সামারি
+   * অক্ষত থাকে, ফলে আবার "প্রকাশ করুন" চাপলেই পুনঃপ্রকাশ হয়। */
   async unpublish(madrasaId: number, userId: number, resultMasterId: number) {
     const master = await this.assertMaster(madrasaId, resultMasterId);
 
-    if (master.status === "LOCKED") {
-      throw new ConflictError(t({ bn: "লক করা ফলাফল অপ্রকাশিত করা যাবে না।", en: "A locked result cannot be unpublished." }));
-    }
     if (master.status !== "PUBLISHED") {
       throw new ConflictError(t({ bn: "ফলাফল প্রকাশিত না থাকলে অপ্রকাশিত করা যাবে না।", en: "Only a PUBLISHED result can be unpublished." }));
     }
 
     const ok = await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, ["PUBLISHED"], {
-      status: "APPROVED",
+      status: "PROCESSING",
       publishedAt: null,
       publishedBy: null,
     });

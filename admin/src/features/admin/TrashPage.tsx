@@ -235,7 +235,6 @@ export default function TrashPage() {
     result_master_id: number;
     exam_name: string;
     exam_year: string | null;
-    will_reopen: boolean;
   };
 
   // A restored student is missing from already-processed results of their
@@ -258,10 +257,8 @@ export default function TrashPage() {
     let message = t.restoreMessage(name || "");
     if (tab === "students") {
       const impact = await fetchStudentRestoreImpact(row.id);
-      const reopen = impact.filter((r) => r.will_reopen).map(examLabel);
-      const locked = impact.filter((r) => !r.will_reopen).map(examLabel);
+      const reopen = impact.map(examLabel);
       if (reopen.length) message += t.restoreImpactReopen(reopen.join(", "));
-      if (locked.length) message += t.restoreImpactLocked(locked.join(", "));
     }
     useConfirmStore.getState().show({
       title: t.restoreTitle,
@@ -335,10 +332,8 @@ export default function TrashPage() {
       const impacts = (await Promise.all(targetRows.map((r) => fetchStudentRestoreImpact(r.id)))).flat();
       const seen = new Set<number>();
       const unique = impacts.filter((r) => (seen.has(r.result_master_id) ? false : (seen.add(r.result_master_id), true)));
-      const reopen = unique.filter((r) => r.will_reopen).map(examLabel);
-      const locked = unique.filter((r) => !r.will_reopen).map(examLabel);
+      const reopen = unique.map(examLabel);
       if (reopen.length) message += t.restoreImpactReopen(reopen.join(", "));
-      if (locked.length) message += t.restoreImpactLocked(locked.join(", "));
     }
     useConfirmStore.getState().show({
       title: t.restoreTitle,

@@ -19,7 +19,7 @@ const router = express.Router();
 
 router.use(tenantMiddleware, authMiddleware);
 
-/* ================= CORRECTION REQUEST / LIST (only usable once PUBLISHED/LOCKED) ================= */
+/* ================= CORRECTION REQUEST / LIST (only usable once PUBLISHED) ================= */
 router.post(
   "/:resultMasterId/corrections",
   requireAnyPermission("result.correct", "result.manage"),

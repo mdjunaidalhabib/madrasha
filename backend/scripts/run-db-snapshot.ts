@@ -21,7 +21,7 @@ async function main() {
       (SELECT count(*)::int FROM exam_attendances) AS exam_attendances,
       (SELECT count(*)::int FROM results_master) AS results_master,
       (SELECT count(*)::int FROM results_master WHERE status = 'PUBLISHED') AS results_published,
-      (SELECT count(*)::int FROM results_master WHERE status = 'LOCKED') AS results_locked,
+      (SELECT count(*)::int FROM results_master WHERE status = 'PROCESSING') AS results_processing,
       (SELECT count(*)::int FROM users) AS users,
       (SELECT count(*)::int FROM guardians) AS guardians
   `;

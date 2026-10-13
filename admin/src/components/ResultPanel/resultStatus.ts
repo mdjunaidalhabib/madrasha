@@ -6,16 +6,11 @@ import { resultPanelText } from "./resultPanel.text";
 // MarksTable, and other result status displays). Centralised here so every
 // screen renders the same label/color for the same status instead of each
 // screen inventing its own copy.
+//
+// A result session has exactly three statuses: DRAFT (marks being entered),
+// PROCESSING (graded + ranked, awaiting publish) and PUBLISHED.
 
-export type ResultMasterStatus =
-  | "DRAFT"
-  | "MARKS_SUBMITTED"
-  | "MARKS_VERIFIED"
-  | "PROCESSING"
-  | "RESULT_VERIFIED"
-  | "APPROVED"
-  | "PUBLISHED"
-  | "LOCKED";
+export type ResultMasterStatus = "DRAFT" | "PROCESSING" | "PUBLISHED";
 
 export type SubmissionStatus = "DRAFT" | "SUBMITTED" | "VERIFIED" | "REJECTED";
 
@@ -37,51 +32,21 @@ const badge = (className: string, label: () => string): StatusBadgeInfo => ({
 
 const L = () => getText(resultPanelText).status;
 
-// Forward order of the result lifecycle - used to know which actions are
-// "ahead" of the current status (e.g. to grey out an already-passed step).
-export const RESULT_STATUS_ORDER: ResultMasterStatus[] = [
-  "DRAFT",
-  "MARKS_SUBMITTED",
-  "MARKS_VERIFIED",
-  "PROCESSING",
-  "RESULT_VERIFIED",
-  "APPROVED",
-  "PUBLISHED",
-  "LOCKED",
-];
+// Forward order of the result lifecycle.
+export const RESULT_STATUS_ORDER: ResultMasterStatus[] = ["DRAFT", "PROCESSING", "PUBLISHED"];
 
 export const RESULT_STATUS_MAP: Record<ResultMasterStatus, StatusBadgeInfo> = {
   DRAFT: badge(
     "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300",
     () => L().result.DRAFT,
   ),
-  MARKS_SUBMITTED: badge(
-    "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
-    () => L().result.MARKS_SUBMITTED,
-  ),
-  MARKS_VERIFIED: badge(
-    "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400",
-    () => L().result.MARKS_VERIFIED,
-  ),
   PROCESSING: badge(
-    "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400",
+    "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
     () => L().result.PROCESSING,
   ),
-  RESULT_VERIFIED: badge(
-    "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400",
-    () => L().result.RESULT_VERIFIED,
-  ),
-  APPROVED: badge(
-    "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400",
-    () => L().result.APPROVED,
-  ),
   PUBLISHED: badge(
-    "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
+    "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
     () => L().result.PUBLISHED,
-  ),
-  LOCKED: badge(
-    "bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-400",
-    () => L().result.LOCKED,
   ),
 };
 
@@ -159,7 +124,6 @@ export const RESULT_PERMISSIONS = {
   resultVerify: "result.verify",
   resultApprove: "result.approve",
   resultPublish: "result.publish",
-  resultLock: "result.lock",
   resultCorrect: "result.correct",
   legacyFallback: "result.manage",
 } as const;

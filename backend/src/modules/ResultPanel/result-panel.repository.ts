@@ -230,18 +230,6 @@ export class ResultPanelRepository {
     });
   }
 
-  /** Companion to revertMarkSubmissionsToDraft: once any subject's lock is
-   * overridden, the ResultMaster's own aggregate status ("every subject
-   * submitted/verified") is no longer accurate either, so pull it back to
-   * DRAFT the same way rejectBook does for a normal reject. No-op if the
-   * session hadn't advanced that far yet. */
-  revertMasterStatusIfAdvanced(resultMasterId: number, madrasaId: number) {
-    return prisma.resultMaster.updateMany({
-      where: { id: resultMasterId, madrasaId, status: { in: ["MARKS_SUBMITTED", "MARKS_VERIFIED"] } },
-      data: { status: "DRAFT" },
-    });
-  }
-
   /** MarkComponentConfig rows for a set of books, covering both
    * exam-specific (examId = the given exam) and book-wide (examId = null)
    * rows in one query - callers pick whichever set applies per book (prefer
@@ -415,9 +403,7 @@ export class ResultPanelRepository {
     });
   }
 
-  /** Advances a session to PROCESSING after a (re)process run. Clears any
-   * prior resultVerified/approved marks since the underlying content just
-   * changed and those sign-offs no longer apply to the new numbers.
+  /** Advances a session to PROCESSING after a (re)process run.
    * DB-guarded on `expectedStatuses` (the same reprocessable-status list the
    * caller already checked in JS) so two concurrent process requests can't
    * both apply - returns false instead of writing when the guard misses. */
@@ -433,10 +419,6 @@ export class ResultPanelRepository {
         status: "PROCESSING",
         processedAt: new Date(),
         processedBy,
-        resultVerifiedAt: null,
-        resultVerifiedBy: null,
-        approvedAt: null,
-        approvedBy: null,
       },
     });
     return result.count > 0;
@@ -445,7 +427,7 @@ export class ResultPanelRepository {
   /** Publishes a session and writes an accompanying ResultSnapshot (audit /
    * integrity record only in this phase - no read path renders from it yet)
    * in the same transaction. DB-guarded: only publishes when the row is
-   * still APPROVED at write time - if a concurrent request already moved it
+   * still PROCESSING at write time - if a concurrent request already moved it
    * elsewhere, the update matches zero rows, the snapshot is never created,
    * and the transaction returns false instead of throwing. */
   async publishResultMasterWithSnapshot(
@@ -457,7 +439,7 @@ export class ResultPanelRepository {
     return prisma.$transaction(async (tx) => {
       const now = new Date();
       const updated = await tx.resultMaster.updateMany({
-        where: { id: resultMasterId, madrasaId, status: "APPROVED" },
+        where: { id: resultMasterId, madrasaId, status: "PROCESSING" },
         data: { status: "PUBLISHED", publishedAt: now, publishedBy },
       });
       if (updated.count === 0) return false;
@@ -657,7 +639,7 @@ export class ResultPanelRepository {
    * always lands back in draft for review). `reprocessResultMaster` (the
    * correction-workflow reprocess) is the one caller that passes the
    * session's CURRENT status back in instead, so re-grading after an
-   * approved correction doesn't silently rewind a PUBLISHED/LOCKED result
+   * approved correction doesn't silently rewind a PUBLISHED result
    * to DRAFT. */
   saveResultSummaryInTransaction(
     resultMasterId: number,
@@ -701,7 +683,7 @@ export class ResultPanelRepository {
         madrasaId,
         deletedAt: null,
         ...(resultMasterId ? { id: resultMasterId } : {}),
-        status: { in: ["PROCESSING", "RESULT_VERIFIED", "APPROVED", "PUBLISHED", "LOCKED"] },
+        status: { in: ["PROCESSING", "PUBLISHED"] },
       },
       select: {
         id: true,

@@ -36,12 +36,11 @@ describe("TrashService.restoreStudent - result safety", () => {
 
   it("re-opens every processed/published result the student is missing from", async () => {
     const { service, restoreCalls } = build({
-      impact: { masters: [master(10, "PUBLISHED"), master(11, "APPROVED"), master(12, "PROCESSING")] },
+      impact: { masters: [master(10, "PUBLISHED"), master(11, "PROCESSING"), master(12, "DRAFT")] },
     });
     const out = await service.restoreStudent(5, 1, 9);
     expect(restoreCalls[0].ids).toEqual([10, 11, 12]);
     expect(out.reopened.map((r) => r.result_master_id)).toEqual([10, 11, 12]);
-    expect(out.locked_skipped).toEqual([]);
     expect(logActivity).toHaveBeenCalledTimes(3);
     expect(vi.mocked(logActivity).mock.calls[0][0]).toMatchObject({
       madrasa_id: 1,
@@ -50,15 +49,6 @@ describe("TrashService.restoreStudent - result safety", () => {
       entity: "results/reopen",
       entity_id: 10,
     });
-  });
-
-  it("never re-opens a LOCKED result - it is reported as skipped instead", async () => {
-    const { service, restoreCalls } = build({
-      impact: { masters: [master(10, "LOCKED"), master(11, "PUBLISHED")] },
-    });
-    const out = await service.restoreStudent(5, 1, 9);
-    expect(restoreCalls[0].ids).toEqual([11]);
-    expect(out.locked_skipped.map((r) => r.result_master_id)).toEqual([10]);
   });
 
   it("404s when the student is not in the trash", async () => {
@@ -72,12 +62,12 @@ describe("TrashService.restoreStudent - result safety", () => {
     expect(logActivity).not.toHaveBeenCalled();
   });
 
-  it("restore-impact flags LOCKED results as will_reopen=false", async () => {
-    const { service } = build({ impact: { masters: [master(10, "LOCKED"), master(11, "APPROVED")] } });
+  it("restore-impact lists every session that will be re-opened", async () => {
+    const { service } = build({ impact: { masters: [master(10, "PUBLISHED"), master(11, "PROCESSING")] } });
     const rows = await service.getStudentRestoreImpact(5, 1);
-    expect(rows.map((r) => [r.result_master_id, r.will_reopen])).toEqual([
-      [10, false],
-      [11, true],
+    expect(rows.map((r) => [r.result_master_id, r.status])).toEqual([
+      [10, "PUBLISHED"],
+      [11, "PROCESSING"],
     ]);
   });
 });

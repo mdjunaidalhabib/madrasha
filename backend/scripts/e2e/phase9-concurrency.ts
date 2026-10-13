@@ -84,18 +84,18 @@ async function main() {
   });
 
   // ================= 2. Simultaneous result-status transition (double
-  // publish attempt on the SAME already-locked result must not corrupt
-  // anything - both should fail cleanly since it's already LOCKED) =================
+  // publish attempt on the SAME already-published result must not corrupt
+  // anything - both should fail cleanly since it's already PUBLISHED) =================
   const rm = await prisma.resultMaster.findFirst({ where: { madrasaId: madrasaAId, examId: EXAM_A1, classId: CLASS_ID } });
-  check("Found the Phase 6 result master (already LOCKED)", rm?.status === "LOCKED", { status: rm?.status });
+  check("Found the Phase 6 result master (already PUBLISHED)", rm?.status === "PUBLISHED", { status: rm?.status });
   if (rm) {
-    const [lock1, lock2] = await Promise.all([
-      post(`/results/${rm.id}/lock`, {}, { slug: SLUG_A, token: tokenA }),
-      post(`/results/${rm.id}/lock`, {}, { slug: SLUG_A, token: tokenMuhtamim }),
+    const [publish1, publish2] = await Promise.all([
+      post("/results/publish", { result_master_id: rm.id }, { slug: SLUG_A, token: tokenA }),
+      post("/results/publish", { result_master_id: rm.id }, { slug: SLUG_A, token: tokenMuhtamim }),
     ]);
-    check("Both concurrent lock attempts on an already-LOCKED result fail cleanly (no 200)", lock1.status !== 200 && lock2.status !== 200, {
-      lock1: lock1.status,
-      lock2: lock2.status,
+    check("Both concurrent publish attempts on an already-PUBLISHED result fail cleanly (no 200)", publish1.status !== 200 && publish2.status !== 200, {
+      publish1: publish1.status,
+      publish2: publish2.status,
     });
   }
 

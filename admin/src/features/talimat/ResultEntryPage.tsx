@@ -90,7 +90,7 @@ export default function ResultEntryPage() {
   // for madrasas that actually staff it.
   const isSingleActorWorkflow = canSubmitSubject && canVerifySubject;
 
-  // Once a result is PUBLISHED/LOCKED the backend refuses direct mark writes,
+  // Once a result is PUBLISHED the backend refuses direct mark writes,
   // so this page switches to "সংশোধন" mode: the same whole-class grid, but
   // saving sends only the changed cells as a correction (see
   // handleSubmitCorrection). Whoever holds full result authority - তালিমাত /
@@ -140,7 +140,7 @@ export default function ResultEntryPage() {
   const baselineRef = useRef<
     Record<number, Record<number, { mark: number; is_absent: boolean; note: string }>>
   >({});
-  const isPublished = sessionStatus === "PUBLISHED" || sessionStatus === "LOCKED";
+  const isPublished = sessionStatus === "PUBLISHED";
   const isPublishedRef = useRef(false);
   isPublishedRef.current = isPublished;
 
@@ -445,7 +445,7 @@ export default function ResultEntryPage() {
 
   const handleCellCommit = () => scheduleAutosave(150);
 
-  // ---- সংশোধন mode (PUBLISHED/LOCKED) -------------------------------------
+  // ---- সংশোধন mode (PUBLISHED) -------------------------------------
   // What the user has changed relative to the stored marks, as correction
   // requests. A cleared cell can't be corrected (a mark can be changed, not
   // deleted from a published result), and a cell that had no stored mark has

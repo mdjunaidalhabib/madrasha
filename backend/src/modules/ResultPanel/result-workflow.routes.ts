@@ -8,18 +8,13 @@ import {
   submitBook,
   verifyBook,
   rejectBook,
-  verifyResult,
-  decideApproval,
-  lockResult,
   unpublishResult,
 } from "./result-workflow.controller";
 import {
   submitBookSchema,
   verifyBookSchema,
   rejectBookSchema,
-  verifyResultSchema,
-  decideApprovalSchema,
-  lockResultSchema,
+  unpublishResultSchema,
 } from "./result-workflow.validation";
 
 const router = express.Router();
@@ -56,29 +51,11 @@ router.post(
   rejectBook,
 );
 
-/* ================= RESULT-LEVEL VERIFY / APPROVE / LOCK ================= */
-router.post(
-  "/:resultMasterId/verify-result",
-  requireAnyPermission("result.verify", "result.manage"),
-  validate(verifyResultSchema),
-  verifyResult,
-);
-router.post(
-  "/:resultMasterId/approve",
-  requireAnyPermission("result.approve", "result.manage"),
-  validate(decideApprovalSchema),
-  decideApproval,
-);
-router.post(
-  "/:resultMasterId/lock",
-  requireAnyPermission("result.lock", "result.manage"),
-  validate(lockResultSchema),
-  lockResult,
-);
+/* ================= UNPUBLISH (publishing itself is POST /results/publish) ================= */
 router.post(
   "/:resultMasterId/unpublish",
   requireAnyPermission("result.publish", "result.manage"),
-  validate(lockResultSchema),
+  validate(unpublishResultSchema),
   unpublishResult,
 );
 

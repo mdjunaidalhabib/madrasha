@@ -72,8 +72,8 @@ interface PreparedCorrection {
 }
 
 /**
- * Controlled correction workflow for results that have already passed
- * publish (or lock) - see prisma/models/result.prisma's ResultCorrection
+ * Controlled correction workflow for results that have already been
+ * published - see prisma/models/result.prisma's ResultCorrection
  * model doc comment. A correction is only ever *applied* after an explicit
  * approve decision (or an explicit apply_now by an actor with full result
  * authority); requesting one never touches the live Mark/ResultSummary row.
@@ -86,9 +86,9 @@ export class ResultCorrectionService {
   }
 
   private assertCorrectable(status: string) {
-    if (status !== "PUBLISHED" && status !== "LOCKED") {
+    if (status !== "PUBLISHED") {
       throw new ConflictError(
-        t({ bn: "ফলাফল প্রকাশিত/লক অবস্থায় থাকলেই কেবল সংশোধনের অনুরোধ করা যায় — এখনো প্রকাশ না হলে সরাসরি নম্বর সম্পাদনা করুন।", en: "Corrections can be requested only when the result is published/locked — if it isn't published yet, edit the marks directly." }),
+        t({ bn: "ফলাফল প্রকাশিত অবস্থায় থাকলেই কেবল সংশোধনের অনুরোধ করা যায় — এখনো প্রকাশ না হলে সরাসরি নম্বর সম্পাদনা করুন।", en: "Corrections can be requested only when the result is published — if it isn't published yet, edit the marks directly." }),
       );
     }
   }

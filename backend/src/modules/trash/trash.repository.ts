@@ -149,12 +149,12 @@ export class TrashRepository {
 
   /** Restores the student AND re-opens the given result sessions in ONE
    * transaction (all-or-nothing): each session's summary is removed, its
-   * sign-off timestamps cleared, status set back to DRAFT (guardians only
-   * read PUBLISHED/LOCKED, so it disappears from the portal immediately) and
+   * publish stamps cleared, status set back to DRAFT (guardians only
+   * read PUBLISHED, so it disappears from the portal immediately) and
    * every SUBMITTED/VERIFIED subject submission goes back to DRAFT so marks
    * can be entered for the returning student and re-verified. Marks of every
    * other student are untouched. `processedAt` is kept on purpose (it is the
-   * new-admission cutoff). LOCKED sessions are never passed in here. */
+   * new-admission cutoff). */
   restoreStudentAndReopenResults(
     id: number,
     madrasaId: number,
@@ -179,15 +179,11 @@ export class TrashRepository {
         data: { status: "DRAFT", comment: note },
       });
       await tx.resultMaster.updateMany({
-        where: { id: { in: reopenResultMasterIds }, madrasaId, status: { not: "LOCKED" } },
+        where: { id: { in: reopenResultMasterIds }, madrasaId },
         data: {
           status: "DRAFT",
           publishedAt: null,
           publishedBy: null,
-          approvedAt: null,
-          approvedBy: null,
-          resultVerifiedAt: null,
-          resultVerifiedBy: null,
           remarks: note,
         },
       });

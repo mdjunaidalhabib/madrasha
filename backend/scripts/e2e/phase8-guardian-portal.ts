@@ -14,7 +14,7 @@ async function main() {
     throw new Error("Missing madrasaAId/studentsA in fixture state - run phase0/phase2 first");
   }
   const madrasaAId = state.madrasaAId;
-  const STUDENT_WITH_PUBLISHED_RESULT = state.studentsA[0]; // Exam A1's published/locked result covers this student
+  const STUDENT_WITH_PUBLISHED_RESULT = state.studentsA[0]; // Exam A1's published result covers this student
   const STUDENT_OTHER = state.studentsA[1]; // a different student, NOT this guardian's child
 
   // ---- Fixture: create a guardian directly linked to ONE student only ----
