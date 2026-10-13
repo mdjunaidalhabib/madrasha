@@ -156,6 +156,7 @@ import {
   deletePlatformEmailConfig,
   checkPlatformEmailConnection,
 } from "./platform-settings.controller";
+import { getPlatformAdminLogo, savePlatformAdminLogo, deletePlatformAdminLogo } from "./platform-brand.controller";
 
 const router = Router();
 
@@ -359,5 +360,10 @@ router.get("/platform-settings/email", superAdminMiddleware, getPlatformEmailCon
 router.put("/platform-settings/email", superAdminMiddleware, savePlatformEmailConfig);
 router.delete("/platform-settings/email", superAdminMiddleware, deletePlatformEmailConfig);
 router.get("/platform-settings/email/test", superAdminMiddleware, checkPlatformEmailConnection);
+
+// Main admin panel logo -> its favicon + PWA icons (never touches a madrasa's branding)
+router.get("/platform-settings/logo", superAdminMiddleware, getPlatformAdminLogo);
+router.put("/platform-settings/logo", superAdminMiddleware, savePlatformAdminLogo);
+router.delete("/platform-settings/logo", superAdminMiddleware, deletePlatformAdminLogo);
 
 export default router;

@@ -231,6 +231,33 @@ export async function checkPlatformSmsBalance() {
 }
 
 /* =========================
+   ADMIN PANEL LOGO (Super Admin controlled)
+   Becomes the main admin panel's favicon + PWA app icon. Independent of any
+   madrasa's Branding Settings logo.
+========================= */
+
+export type PlatformAdminLogo =
+  | { configured: false }
+  | { configured: true; logo: string; version: string; updated_at: string };
+
+export async function getPlatformAdminLogo() {
+  // Plain api.get (not cachedGet): the preview must always show what is stored.
+  const res = await api.get("/super/platform-settings/logo");
+  return res.data.data as PlatformAdminLogo;
+}
+
+/** `image` is a base64 data URI (data:image/...;base64,...). */
+export async function savePlatformAdminLogo(image: string) {
+  const res = await api.put("/super/platform-settings/logo", { image });
+  return res.data.data as PlatformAdminLogo;
+}
+
+export async function deletePlatformAdminLogo() {
+  const res = await api.delete("/super/platform-settings/logo");
+  return res.data;
+}
+
+/* =========================
    PLATFORM EMAIL / SMTP (Super Admin controlled - shared by every madrasa)
 ========================= */
 

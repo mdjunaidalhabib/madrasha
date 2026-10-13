@@ -42,6 +42,7 @@ import resultWorkflowRoutes from "../modules/ResultPanel/result-workflow.routes"
 import markComponentRoutes from "../modules/ResultPanel/mark-component.routes";
 import resultCorrectionRoutes from "../modules/ResultPanel/result-correction.routes";
 import websiteRoutes from "../modules/public-website/website.routes";
+import platformBrandRoutes from "../modules/super-admin/platform-brand.routes";
 
 // 🗓️ Phase 1: Attendance, Routine, Promotion
 import attendanceRoutes from "../modules/attendance/attendance.routes";
@@ -90,6 +91,9 @@ import trashRoutes from "../modules/trash/trash.routes";
 const router = Router();
 
 router.use("/website", websiteRoutes);
+
+// Main admin panel favicon / PWA icons (public) - the Super Admin's own logo
+router.use("/platform-brand", platformBrandRoutes);
 
 /* =========================================================
    👑 SUPER ADMIN ROUTES

@@ -70,6 +70,22 @@ model PlatformEmailConfig {
   @@map("platform_email_configs")
 }
 
+/// Platform-wide brand assets of the MAIN ADMIN PANEL (not of any madrasa).
+/// `adminLogo` is the single source for the admin panel's favicon,
+/// apple-touch-icon and PWA app icons. It is NEVER read from, or written to, a
+/// madrasa's Branding Settings (madrasa.reportLogo). NULL / no row => the
+/// admin panel has no icon at all (there is deliberately no default).
+/// "At most one row" singleton, same shape as the Platform*Config rows above.
+model PlatformBrandSetting {
+  id        Int      @id @default(autoincrement())
+  /// Normalised logo as a base64 data URI (PNG, longest side <= 1024px).
+  adminLogo String?  @map("admin_logo") @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("platform_brand_settings")
+}
+
 /// Platform-wide "Hikmah IT" vendor promo card shown in every tenant's
 /// Dashboard sidebar + its detail page - every piece of copy is editable
 /// from Super Admin (see vendor-promo.* in super-admin/) so nothing about

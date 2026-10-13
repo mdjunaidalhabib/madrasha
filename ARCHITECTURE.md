@@ -212,3 +212,24 @@ logo** (`madrasa.reportLogo`) - nothing else, and never a platform default.
 - `frontend/`: `src/utils/pwaManifest.ts` (`setTenantBrand`) does the same for a
   madrasa's public website / admission pages. Only the platform's own landing
   page keeps the static `/icons/*` files.
+
+## Favicon & PWA icons (main admin panel = Super Admin logo)
+
+The `admin/` app's favicon, apple-touch-icon and PWA icons are the **Admin Panel
+Logo** the Super Admin sets in *Super Admin -> Settings*. It is platform-wide and
+completely independent of any madrasa's Branding Settings logo (which is never
+read or changed by it). No logo => no icon at all, never a default.
+
+- Backend: table `platform_brand_settings` (singleton, `admin_logo` = normalised
+  PNG data URI). Super Admin API: `GET/PUT/DELETE /api/super/platform-settings/logo`.
+  Public: `GET /api/platform-brand` (`{ data: { version | null } }`) and
+  `GET /api/platform-brand/icon/:file` (same PNG set as the per-madrasa icons,
+  rendered by `renderBrandIcon`; 404 when no logo). Code:
+  `backend/src/modules/super-admin/platform-brand.*`.
+- `admin/src/utils/brandIcons.ts` reads `/platform-brand`, then rewrites the
+  `<link rel="icon">` tags and the runtime manifest via `setPwaManifest()` with
+  `?v=<version>` URLs. Changing/removing the logo changes the version, so the
+  favicon and manifest icons update (it re-checks on focus, when the tab becomes
+  visible, when back online, and every 5 minutes).
+- `frontend/` (a madrasa's public website) is unchanged: it still uses that
+  madrasa's own logo via `/website/public/:slug/icon/:file`.

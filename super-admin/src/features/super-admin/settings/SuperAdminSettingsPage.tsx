@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Cloud, MessageSquare, Mail, RefreshCw, ShieldCheck, Eye, EyeOff } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Cloud, MessageSquare, Mail, RefreshCw, ShieldCheck, Eye, EyeOff, ImageIcon } from "lucide-react";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import {
@@ -19,6 +19,10 @@ import {
   deactivateSuperAdmin,
   reactivateSuperAdmin,
   type SuperAdminAccountItem,
+  getPlatformAdminLogo,
+  savePlatformAdminLogo,
+  deletePlatformAdminLogo,
+  type PlatformAdminLogo,
 } from "../../../services/superAdminApi";
 import { useAdminAuthStore } from "../../../store/adminAuthStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
@@ -30,6 +34,171 @@ import { logger } from "@madrasha/shared-ui/src/utils/logger";
  * as a list of independent cards so more settings can be added later
  * without restructuring the page.
  */
+
+/**
+ * Logo of the MAIN ADMIN PANEL. Whatever is saved here becomes the admin
+ * panel's browser favicon and its PWA app icon (desktop, mobile browser and
+ * installed app). It is platform-wide and has nothing to do with any
+ * madrasa's own Branding Settings logo - that one is never read or changed.
+ * With no logo saved the admin panel simply has no icon (no default).
+ */
+const LOGO_ACCEPT = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+const LOGO_MAX_BYTES = 5 * 1024 * 1024;
+
+function AdminLogoSettingsCard() {
+  const toast = useToastStore((s) => s.show);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [current, setCurrent] = useState<PlatformAdminLogo>({ configured: false });
+  const [pending, setPending] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPlatformAdminLogo()
+      .then((data) => !cancelled && setCurrent(data))
+      .catch((err) => {
+        logger.error("LOAD ADMIN PANEL LOGO ERROR:", err);
+        toast("লোগোর তথ্য লোড করা যায়নি", "error");
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const pick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!file) return;
+    if (!LOGO_ACCEPT.includes(file.type)) {
+      toast("শুধু PNG, JPG, WebP বা SVG ছবি দিন", "error");
+      return;
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      toast("ছবি ৫ MB-এর বেশি হতে পারবে না", "error");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setPending(typeof reader.result === "string" ? reader.result : null);
+    reader.onerror = () => toast("ছবিটি পড়া যায়নি", "error");
+    reader.readAsDataURL(file);
+  };
+
+  const save = async () => {
+    if (!pending) return;
+    setSaving(true);
+    try {
+      const data = await savePlatformAdminLogo(pending);
+      setCurrent(data);
+      setPending(null);
+      toast("লোগো সেভ হয়েছে — অ্যাডমিন প্যানেলের Favicon ও PWA আইকন আপডেট হবে", "success");
+    } catch (err: any) {
+      logger.error("SAVE ADMIN PANEL LOGO ERROR:", err);
+      toast(err?.response?.data?.message || "লোগো সেভ করা যায়নি", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = () => {
+    useConfirmStore.getState().show({
+      title: "অ্যাডমিন প্যানেলের লোগো মুছুন",
+      message: "লোগো মুছলে অ্যাডমিন প্যানেলের Favicon ও PWA আইকন খালি থাকবে (কোনো ডিফল্ট আইকন দেখানো হবে না)। কোনো মাদ্রাসার ব্র্যান্ডিং লোগো এতে বদলাবে না।",
+      confirmText: "মুছুন",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await deletePlatformAdminLogo();
+          setCurrent({ configured: false });
+          setPending(null);
+          toast("লোগো মুছে ফেলা হয়েছে", "success");
+        } catch (err) {
+          logger.error("DELETE ADMIN PANEL LOGO ERROR:", err);
+          toast("মুছে ফেলা যায়নি", "error");
+        }
+      },
+    });
+  };
+
+  const configured = current.configured;
+  const preview = pending ?? (current.configured ? current.logo : null);
+
+  return (
+    <div className="rounded-2xl border bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <span className="rounded-xl bg-sky-50 p-2 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400">
+            <ImageIcon size={20} />
+          </span>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">অ্যাডমিন প্যানেলের লোগো (Favicon ও PWA আইকন)</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              এই লোগোটিই মূল অ্যাডমিন প্যানেলের ব্রাউজার Favicon এবং PWA অ্যাপ আইকন হিসেবে ব্যবহার হবে। এটি কোনো মাদ্রাসার ব্র্যান্ডিং লোগো
+              বদলায় না।
+            </p>
+          </div>
+        </div>
+        <span
+          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${
+            configured ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" : "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+          }`}
+        >
+          {loading ? "..." : configured ? "লোগো সেট করা আছে" : "লোগো সেট করা নেই"}
+        </span>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-gray-500 dark:text-slate-400">লোড হচ্ছে...</p>
+      ) : (
+        <div className="flex flex-wrap items-center gap-5">
+          <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-gray-300 bg-gray-50 dark:border-slate-600 dark:bg-slate-800">
+            {preview ? (
+              <img src={preview} alt="Admin panel logo" className="max-h-full max-w-full object-contain" />
+            ) : (
+              <span className="px-2 text-center text-xs text-gray-400 dark:text-slate-500">কোনো লোগো নেই</span>
+            )}
+          </div>
+          <div className="min-w-0 flex-1 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+            <p>PNG / JPG / WebP / SVG, সর্বোচ্চ ৫ MB। বর্গাকার (square) ছবি সবচেয়ে ভালো দেখায়; স্বচ্ছ (transparent) PNG দিলে Favicon-এ ব্যাকগ্রাউন্ড থাকবে না।</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400">
+              লোগো না থাকলে অ্যাডমিন প্যানেলে কোনো আইকনই দেখানো হবে না — কোনো ডিফল্ট আইকন নেই। পরিবর্তন ব্রাউজারে কয়েক মিনিটের মধ্যে প্রতিফলিত হয়;
+              ইনস্টল করা PWA-তে আইকন ব্রাউজার/ফোনের নিজস্ব আপডেট চক্র অনুযায়ী বদলায়।
+            </p>
+            {pending && <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">নতুন লোগো বাছাই করা হয়েছে — “সেভ করুন” চাপলে কার্যকর হবে।</p>}
+          </div>
+        </div>
+      )}
+
+      <input ref={fileRef} type="file" accept={LOGO_ACCEPT.join(",")} className="hidden" onChange={pick} />
+
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex gap-2">
+          {configured && (
+            <Button variant="danger" onClick={remove} disabled={loading || saving}>
+              লোগো মুছুন
+            </Button>
+          )}
+          {pending && (
+            <Button variant="secondary" onClick={() => setPending(null)} disabled={saving}>
+              বাতিল
+            </Button>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={loading || saving}>
+            {configured ? "লোগো পরিবর্তন" : "লোগো বাছাই করুন"}
+          </Button>
+          <Button onClick={save} disabled={loading || saving || !pending}>
+            {saving ? "সেভ হচ্ছে..." : "সেভ করুন"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * The single Cloudflare R2 bucket every upload goes to (each madrasa under
@@ -903,6 +1072,7 @@ export default function SuperAdminSettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Settings" subtitle="প্ল্যাটফর্ম-ওয়াইড কনফিগারেশন — নির্দিষ্ট কোনো মাদ্রাসার জন্য নয়" />
+      <AdminLogoSettingsCard />
       <StorageSettingsCard />
       <SmsSettingsCard />
       <EmailSettingsCard />

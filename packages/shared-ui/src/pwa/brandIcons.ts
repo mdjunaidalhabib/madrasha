@@ -14,6 +14,11 @@ export interface BrandIconSource {
 
 export const tenantIconBase = (slug: string) => `${API_BASE_URL}/website/public/${encodeURIComponent(slug)}/icon`;
 
+/** The MAIN ADMIN PANEL's own icons: rendered from the logo the Super Admin set
+ * in Settings (GET /platform-brand/icon/<file>, public). Unrelated to any
+ * madrasa's logo; no logo => 404 => no icon. */
+export const platformIconBase = () => `${API_BASE_URL}/platform-brand/icon`;
+
 /** Short, stable fingerprint of the logo value (data URI / URL). A changed
  * logo => a new URL => browsers refetch the favicon and the PWA icons. */
 export function logoVersion(logo: string): string {
