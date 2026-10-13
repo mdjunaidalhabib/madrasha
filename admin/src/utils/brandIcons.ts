@@ -57,6 +57,7 @@ function render(version: string | null) {
     startUrl: "/",
     icons: source,
     announceName: false,
+    windowControlsOverlay: true,
   });
 }
 

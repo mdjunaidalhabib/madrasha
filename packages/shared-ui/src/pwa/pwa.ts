@@ -106,6 +106,10 @@ export interface PwaManifestOptions {
   /** Default true: also hand `name` to the install banner. Pass false where the
    * banner already has its own label (the admin panel's "QMS Admin"). */
   announceName?: boolean;
+  /** Installed app draws its own content inside the title bar (Window Controls
+   * Overlay) - used by the admin panel to put Back / Refresh in the green bar.
+   * Browsers without support silently fall back to the normal "standalone" bar. */
+  windowControlsOverlay?: boolean;
 }
 
 /**
@@ -123,6 +127,7 @@ export function setPwaManifest({
   startUrl = "/",
   icons = null,
   announceName = true,
+  windowControlsOverlay = false,
 }: PwaManifestOptions) {
   const origin = window.location.origin;
   const abs = (p: string) => new URL(p, origin).href;
@@ -135,6 +140,7 @@ export function setPwaManifest({
     start_url: abs(startUrl),
     scope: abs("/"),
     display: "standalone",
+    ...(windowControlsOverlay ? { display_override: ["window-controls-overlay", "standalone"] } : {}),
     orientation: "any",
     background_color: "#ffffff",
     theme_color: "#059669",
