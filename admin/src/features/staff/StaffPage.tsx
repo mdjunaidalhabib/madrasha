@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useUnsavedChangesGuard } from "@madrasha/shared-ui/src/navigation/unsavedChanges";
 import StaffImageUpload from "../../components/staff-admission/StaffImageUpload";
 import StaffInfo from "../../components/staff-admission/StaffInfo";
 import StaffParentInfo from "../../components/staff-admission/StaffParentInfo";
@@ -106,6 +107,7 @@ const calculateAge = (dob?: string) => {
 const StaffPage: React.FC = () => {
   const t = useText(teacherStaffText);
   const [formData, setFormData] = useState<StaffFormData>(initialState);
+  useUnsavedChangesGuard(formData !== initialState);
   const [errors, setErrors] = useState<StaffFormErrors>({});
   const [loading, setLoading] = useState(false);
 

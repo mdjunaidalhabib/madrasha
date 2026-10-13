@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useUnsavedChangesGuard } from "@madrasha/shared-ui/src/navigation/unsavedChanges";
 import TeacherImageUpload from "../../components/teachers-admission/TeacherImageUpload";
 import TeacherInfo from "../../components/teachers-admission/TeacherInfo";
 import TeacherParentInfo from "../../components/teachers-admission/TeacherParentInfo";
@@ -122,6 +123,7 @@ const TeacherPage: React.FC = () => {
   const pt = useText(teacherProgressText);
   const progressTask = useProgressTask();
   const [formData, setFormData] = useState<TeacherFormData>(initialState);
+  useUnsavedChangesGuard(formData !== initialState);
   const [errors, setErrors] = useState<TeacherFormErrors>({});
   const [excelTeachers, setExcelTeachers] = useState<ExcelTeacherRow[]>([]);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);

@@ -1,13 +1,16 @@
 import { Outlet, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import Sidebar from "../components/sidebar/Sidebar";
 import Topbar from "../components/topbar/Topbar";
 import LockScreen from "../components/lock/LockScreen";
 import RouteErrorBoundary from "@madrasha/shared-ui/src/components/ui/RouteErrorBoundary";
-import Breadcrumbs from "@madrasha/shared-ui/src/components/ui/Breadcrumbs";
+import PageNavBar from "@madrasha/shared-ui/src/navigation/PageNavBar";
+import { useRefreshStore, useRegisterRefresher } from "@madrasha/shared-ui/src/navigation/refreshStore";
 import { Calendar, Clock } from "lucide-react";
 
+import { clearGetCache } from "../services/api";
+import { useBrandingStore } from "../store/brandingStore";
 import { loadSidebar } from "../services/sidebarApi";
 import { getMyPlan } from "../services/planApi";
 import { getMyProfile } from "../services/profileApi";
@@ -36,57 +39,67 @@ export default function DashboardLayout() {
     };
   }, [mobileSidebar]);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await loadSidebar();
-        setItems(data);
-      } catch (err) {
-        logger.error("Sidebar load failed:", err);
-        setItems([]);
-      }
-    };
-
-    load();
+  const loadSidebarData = useCallback(async () => {
+    try {
+      const data = await loadSidebar();
+      setItems(data);
+    } catch (err) {
+      logger.error("Sidebar load failed:", err);
+      setItems([]);
+    }
   }, [setItems]);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await getMyPlan();
-        setPlan(data);
-      } catch (err) {
-        logger.error("Plan load failed:", err);
-      }
-    };
-
-    load();
+  const loadPlanData = useCallback(async () => {
+    try {
+      const data = await getMyPlan();
+      setPlan(data);
+    } catch (err) {
+      logger.error("Plan load failed:", err);
+    }
   }, [setPlan]);
 
   // Re-syncs permissions/modules against the backend on every app load, not
   // just at login - so a sidebar module split (see the ফি ব্যবস্থাপনা split)
   // or a role's permissions being edited reaches an already-logged-in user
   // immediately instead of only after they explicitly log out and back in.
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const profile = await getMyProfile();
-        setAccess(profile.permissions, profile.modules);
-        useLanguageStore.getState().setInstitution(profile.institution);
-        updateUser({
-          name: profile.name,
-          mobile: profile.mobile,
-          photo_url: profile.photo_url,
-          role_key: profile.role_key,
-          role_label: profile.role_label,
-        });
-      } catch (err) {
-        logger.error("Access refresh failed:", err);
-      }
-    };
-
-    load();
+  const loadAccessData = useCallback(async () => {
+    try {
+      const profile = await getMyProfile();
+      setAccess(profile.permissions, profile.modules);
+      useLanguageStore.getState().setInstitution(profile.institution);
+      updateUser({
+        name: profile.name,
+        mobile: profile.mobile,
+        photo_url: profile.photo_url,
+        role_key: profile.role_key,
+        role_label: profile.role_label,
+      });
+    } catch (err) {
+      logger.error("Access refresh failed:", err);
+    }
   }, [setAccess, updateUser]);
+
+  useEffect(() => {
+    void loadSidebarData();
+  }, [loadSidebarData]);
+
+  useEffect(() => {
+    void loadPlanData();
+  }, [loadPlanData]);
+
+  useEffect(() => {
+    void loadAccessData();
+  }, [loadAccessData]);
+
+  // Global Refresh button: drop the short-lived GET cache FIRST (synchronously,
+  // so the remounted page can't read stale data), then re-sync the shell data.
+  // Auth token / session are untouched - nothing here logs the user out.
+  const fetchBranding = useBrandingStore((s) => s.fetchBranding);
+  useRegisterRefresher(() => {
+    clearGetCache();
+    return Promise.all([loadSidebarData(), loadPlanData(), loadAccessData(), fetchBranding(true)]);
+  });
+  const refreshKey = useRefreshStore((s) => s.refreshKey);
 
   return (
     <div className="flex h-screen supports-[height:100dvh]:h-dvh bg-slate-50 overflow-hidden dark:bg-slate-950">
@@ -116,21 +129,23 @@ export default function DashboardLayout() {
         <Topbar openSidebar={() => setMobileSidebar(true)} />
 
         <main className="flex flex-1 flex-col overflow-y-auto px-4 pb-4 pt-2 text-slate-900 dark:text-slate-100 md:p-4">
-          <div className="flex items-center justify-between gap-2">
-            <Breadcrumbs items={breadcrumbs} />
-            <div className="mb-4 me-2 hidden shrink-0 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400 md:me-4 md:flex">
-              <Calendar size={14} className="shrink-0" />
-              <span className="truncate">{today}</span>
-              <span className="h-3.5 w-px bg-emerald-300 dark:bg-emerald-800" />
-              <Clock size={14} className="shrink-0" />
-              <span className="tabular-nums">{nowTime}</span>
-            </div>
-          </div>
+          <PageNavBar
+            breadcrumbs={breadcrumbs}
+            trailing={
+              <div className="mb-4 me-2 hidden shrink-0 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400 md:me-4 md:flex">
+                <Calendar size={14} className="shrink-0" />
+                <span className="truncate">{today}</span>
+                <span className="h-3.5 w-px bg-emerald-300 dark:bg-emerald-800" />
+                <Clock size={14} className="shrink-0" />
+                <span className="tabular-nums">{nowTime}</span>
+              </div>
+            }
+          />
           {/* min-h-0 এখানে জরুরি — নাহলে flex আইটেম হিসেবে এই div ডিফল্টে
               নিজের কন্টেন্টের সমান height claim করবে, ফলে ভেতরের পেজ (যেমন
               ছাত্র তালিকা) main-এর প্রকৃত খালি জায়গা জানতে পারবে না। */}
           <div className="flex min-h-0 flex-1 flex-col">
-            <RouteErrorBoundary key={location.pathname}>
+            <RouteErrorBoundary key={`${location.pathname}:${refreshKey}`}>
               <Outlet />
             </RouteErrorBoundary>
           </div>

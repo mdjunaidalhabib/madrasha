@@ -168,3 +168,28 @@ packages/shared-ui/src/components/DocumentDesigner/   Canvas-based layout editor
 Reachable at Talimat -> Settings -> Documents (`talimat/settings/documents`,
 editor at `talimat/settings/documents/:type/:id/edit`) in the admin app, and
 at `/document-templates` in the super-admin app.
+
+## Global Back & Refresh (`packages/shared-ui/src/navigation/`)
+
+One implementation shared by admin, super-admin and the frontend's guardian
+portal. Each shell layout renders `<PageNavBar>` (Back · breadcrumbs · Refresh)
+instead of a bare `<Breadcrumbs>`, so desktop, mobile browser and installed PWA
+get identical controls.
+
+- **Back** (`GlobalBackButton`, `navHistory.ts`): `navigate(-1)` when React
+  Router's history has an earlier entry of this app (`history.state.idx > 0`)
+  whose path is not an auth page; otherwise `replace`s to the app's dashboard.
+  Browser Back, Alt+Left and Android system Back pop the same stack, so they
+  stay consistent. Nothing intercepts Alt+Left / Ctrl+R / F5.
+- **Refresh** (`GlobalRefreshButton`, `refreshStore.ts`): click = soft refresh -
+  app-level refreshers registered with `useRegisterRefresher` run (admin clears
+  `cachedGet`'s cache and reloads sidebar/plan/profile/branding), then the
+  route outlet remounts via `refreshKey` so every page refetches. A page that
+  can refetch in place may call `usePageRefresh(fn)` to replace the remount.
+  Shift+click / long-press = full `location.reload()`. One refresh runs at a
+  time; the session token is never touched.
+- **Unsaved changes** (`unsavedChanges.ts`, `NavigationController`): a form
+  page calls `useUnsavedChangesGuard(isDirty)`. While dirty: `beforeunload`
+  warning, `useBlocker` confirmation on in-app navigation / Back, and a
+  confirmation before Refresh. Currently wired into AdmissionPage, TeacherPage
+  and StaffPage - add the one-line hook to any other form.

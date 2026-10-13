@@ -5,6 +5,8 @@ import LockButton from "../lock/LockButton";
 import ThemeToggle from "@madrasha/shared-ui/src/components/ui/ThemeToggle";
 import { LanguageSwitcher, useText } from "@madrasha/shared-ui/src/i18n";
 import { shellText } from "./shell.text";
+import GlobalBackButton from "@madrasha/shared-ui/src/navigation/GlobalBackButton";
+import GlobalRefreshButton from "@madrasha/shared-ui/src/navigation/GlobalRefreshButton";
 import PlanBadge from "./PlanBadge";
 import ProfileMenu from "./ProfileMenu";
 import { Calendar, Clock, Menu } from "lucide-react";
@@ -45,10 +47,12 @@ export default function Topbar({ openSidebar }: TopbarProps) {
       {/* মোবাইল/ট্যাবলেট: উপরে লোগো-নাম-মেনু এক সারিতে, নিচে স্লিম অ্যাকশন বার */}
       <div className="md:hidden">
         <div className="flex items-center gap-2 px-3 py-2.5">
+          <GlobalBackButton fallbackPath="/dashboard" size="sm" />
           {logo}
           <div className="min-w-0 flex-1 break-words text-center text-lg font-bold leading-tight text-slate-800 dark:text-slate-100">
             {branding?.name}
           </div>
+          <GlobalRefreshButton size="sm" />
           <button
             onClick={openSidebar}
             className={iconButtonClass}
@@ -74,6 +78,7 @@ export default function Topbar({ openSidebar }: TopbarProps) {
       {/* ডেস্কটপ: বাম পাশে লোগো+নাম (ঠিকানাসহ একই লাইনে), ডান পাশে অ্যাকশন -
           কোনো সেন্টারিং নেই, বাম থেকে সহজভাবে শুরু */}
       <div className="hidden md:flex md:h-20 md:items-center md:gap-3 md:ps-32 md:pe-4">
+        <GlobalBackButton fallbackPath="/dashboard" />
         {logo}
         <div className="min-w-0 flex-1 truncate">
           {branding?.name && (
@@ -90,6 +95,7 @@ export default function Topbar({ openSidebar }: TopbarProps) {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          <GlobalRefreshButton />
           <PlanBadge />
           <LanguageSwitcher />
           <ThemeToggle />

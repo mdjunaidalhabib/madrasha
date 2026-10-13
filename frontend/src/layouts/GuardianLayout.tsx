@@ -1,11 +1,14 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import guardianApi from "../services/guardianApi";
 import { useGuardianAuthStore } from "../store/guardianAuthStore";
 import { getTenantGuardianBase } from "../utils/tenantSlug";
 import { useTenantSlug } from "../utils/useTenantSlug";
 import RouteErrorBoundary from "@madrasha/shared-ui/src/components/ui/RouteErrorBoundary";
-import Breadcrumbs from "@madrasha/shared-ui/src/components/ui/Breadcrumbs";
+import GlobalBackButton from "@madrasha/shared-ui/src/navigation/GlobalBackButton";
+import GlobalRefreshButton from "@madrasha/shared-ui/src/navigation/GlobalRefreshButton";
+import PageNavBar from "@madrasha/shared-ui/src/navigation/PageNavBar";
+import { useRefreshStore, useRegisterRefresher } from "@madrasha/shared-ui/src/navigation/refreshStore";
 import { LanguageSwitcher, useText } from "@madrasha/shared-ui/src/i18n";
 import { guardianText } from "../features/guardian/guardian.text";
 
@@ -35,12 +38,21 @@ export default function GuardianLayout() {
   const selectStudent = useGuardianAuthStore((s) => s.selectStudent);
   const logout = useGuardianAuthStore((s) => s.logout);
 
-  useEffect(() => {
-    (async () => {
-      const res = await guardianApi.get("/guardian/me/children");
-      setChildren(res.data?.data || []);
-    })();
+  const loadChildren = useCallback(async () => {
+    const res = await guardianApi.get("/guardian/me/children");
+    setChildren(res.data?.data || []);
   }, [setChildren]);
+
+  useEffect(() => {
+    void loadChildren().catch(() => {
+      /* unchanged behaviour: a failed first load just leaves the list empty */
+    });
+  }, [loadChildren]);
+
+  // Global Refresh: re-fetch the children list too (a rejection shows the
+  // shared "refresh failed" toast). The session token is not touched.
+  useRegisterRefresher(loadChildren);
+  const refreshKey = useRefreshStore((s) => s.refreshKey);
 
   const breadcrumbs = useMemo(() => {
     const home = { label: t.home, to: `${base}/dashboard` };
@@ -61,9 +73,12 @@ export default function GuardianLayout() {
     <div className="min-h-screen bg-gray-100">
       <header className="border-b bg-white">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-bold text-slate-900">{t.panelTitle}</p>
-            <p className="text-xs text-slate-500">{guardian?.name || guardian?.phone}</p>
+          <div className="flex items-center gap-2">
+            <GlobalBackButton fallbackPath={`${base}/dashboard`} size="sm" />
+            <div>
+              <p className="text-sm font-bold text-slate-900">{t.panelTitle}</p>
+              <p className="text-xs text-slate-500">{guardian?.name || guardian?.phone}</p>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -81,6 +96,7 @@ export default function GuardianLayout() {
                 ))}
               </select>
             )}
+            <GlobalRefreshButton size="sm" />
             <LanguageSwitcher />
             <button
               onClick={handleLogout}
@@ -109,8 +125,8 @@ export default function GuardianLayout() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-6">
-        <Breadcrumbs items={breadcrumbs} />
-        <RouteErrorBoundary key={location.pathname}>
+        <PageNavBar breadcrumbs={breadcrumbs} />
+        <RouteErrorBoundary key={`${location.pathname}:${refreshKey}`}>
           <Outlet />
         </RouteErrorBoundary>
       </main>

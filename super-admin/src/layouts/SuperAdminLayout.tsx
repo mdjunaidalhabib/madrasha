@@ -4,7 +4,8 @@ import { useAdminAuthStore } from "../store/adminAuthStore";
 import SuperAdminSidebar from "../components/sidebar/SuperAdminSidebar";
 import SuperAdminTopbar from "../components/topbar/SuperAdminTopbar";
 import RouteErrorBoundary from "@madrasha/shared-ui/src/components/ui/RouteErrorBoundary";
-import Breadcrumbs from "@madrasha/shared-ui/src/components/ui/Breadcrumbs";
+import PageNavBar from "@madrasha/shared-ui/src/navigation/PageNavBar";
+import { useRefreshStore } from "@madrasha/shared-ui/src/navigation/refreshStore";
 import { useSuperAdminBreadcrumbs } from "../components/sidebar/useSuperAdminBreadcrumbs";
 
 export default function SuperAdminLayout() {
@@ -14,6 +15,7 @@ export default function SuperAdminLayout() {
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const location = useLocation();
   const breadcrumbs = useSuperAdminBreadcrumbs();
+  const refreshKey = useRefreshStore((s) => s.refreshKey);
 
   if (!token) return <Navigate to="/login" replace />;
 
@@ -43,8 +45,8 @@ export default function SuperAdminLayout() {
         <SuperAdminTopbar openSidebar={() => setMobileSidebar(true)} />
 
         <main className="flex-1 overflow-y-auto p-4 text-slate-900 dark:text-slate-100 md:p-8">
-          <Breadcrumbs items={breadcrumbs} />
-          <RouteErrorBoundary key={location.pathname}>
+          <PageNavBar breadcrumbs={breadcrumbs} />
+          <RouteErrorBoundary key={`${location.pathname}:${refreshKey}`}>
             <Outlet />
           </RouteErrorBoundary>
         </main>

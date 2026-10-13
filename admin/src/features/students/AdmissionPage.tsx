@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useUnsavedChangesGuard } from "@madrasha/shared-ui/src/navigation/unsavedChanges";
 import StudentInfo from "../../components/admission/StudentInfo";
 import ParentInfo from "../../components/admission/ParentInfo";
 import OtherInfo from "../../components/admission/OtherInfo";
@@ -198,6 +199,9 @@ const AdmissionPage = () => {
   const [bulkResult, setBulkResult] = useState<BulkAdmissionResultData | null>(null);
   const [loading, setLoading] = useState(false);
   const [successInfo, setSuccessInfo] = useState<AdmissionSuccessInfo | null>(null);
+  // Warn before Back / Refresh / navigation discards a half-filled admission form
+  // (not after a successful submit - the form is already saved by then).
+  useUnsavedChangesGuard(formData !== initialState && !successInfo);
   const newFormButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const [divisions, setDivisions] = useState<DivisionItem[]>([]);
