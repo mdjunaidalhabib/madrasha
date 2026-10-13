@@ -1,0 +1,2185 @@
+diff --git a/admin/src/components/ResultPanel/FullResultTable.tsx b/admin/src/components/ResultPanel/FullResultTable.tsx
+index 885521e..a31ab03 100644
+--- a/admin/src/components/ResultPanel/FullResultTable.tsx
++++ b/admin/src/components/ResultPanel/FullResultTable.tsx
+@@ -63,16 +63,9 @@ interface Props {
+   unpublishing?: boolean;
+   onApplyRollByRank?: () => void;
+   onUndoRollByRank?: () => void;
+-  canVerifyResult?: boolean;
+-  onVerifyResult?: () => void;
+-  verifyingResult?: boolean;
+-  canApprove?: boolean;
+-  onApprove?: () => void;
+-  approving?: boolean;
+-  onRequestRejectResult?: () => void;
+   /** Re-grade this session against the current fail mark / grade bands.
+    * Only offered once a result has been processed (PROCESSING and later,
+-   * including PUBLISHED/LOCKED, where /process itself is refused). */
++   * including PUBLISHED, where /process itself is refused). */
+   onRecalculate?: () => void;
+ }
+ 
+@@ -92,13 +85,6 @@ export default function FullResultTable({
+   unpublishing = false,
+   onApplyRollByRank,
+   onUndoRollByRank,
+-  canVerifyResult = false,
+-  onVerifyResult,
+-  verifyingResult = false,
+-  canApprove = false,
+-  onApprove,
+-  approving = false,
+-  onRequestRejectResult,
+   onRecalculate,
+ }: Props) {
+   const lang = useLang();
+@@ -115,19 +101,13 @@ export default function FullResultTable({
+   const subjectList = Array.isArray(books) ? books : [];
+ 
+   const rawStatus = dataList[0]?.publish_status;
+-  const alreadyPublished = rawStatus === "PUBLISHED" || rawStatus === "LOCKED";
+-  // লক করা ফলাফল আগে আনলক না করলে অপ্রকাশিত করা যায় না (ব্যাকএন্ডও আটকায়)।
+-  const canUnpublishNow = rawStatus === "PUBLISHED";
++  const alreadyPublished = rawStatus === "PUBLISHED";
++  const canUnpublishNow = alreadyPublished;
+   const isProcessing = rawStatus === "PROCESSING";
+-  const isResultVerified = rawStatus === "RESULT_VERIFIED";
+-  const isApproved = rawStatus === "APPROVED";
+   const statusBadge = resultStatusBadge(rawStatus);
+-  // Backend publishResult auto-chains verify-result -> approve for an actor
+-  // holding both result.verify and result.approve (hasFullResultAuthority),
+-  // so those users can Publish straight from PROCESSING/RESULT_VERIFIED.
+-  // Anyone else must wait for APPROVED.
+-  const canPublishNow =
+-    isApproved || ((isProcessing || isResultVerified) && canVerifyResult && canApprove);
++  // One person reviews and publishes: a processed (PROCESSING) result can be
++  // published straight away; the backend runs its sanity checks on publish.
++  const canPublishNow = isProcessing;
+ 
+   const handleDelete = () => {
+     const resultMasterId = dataList[0]?.result_master_id;
+@@ -210,7 +190,7 @@ export default function FullResultTable({
+             </button>
+           )}
+ 
+-          {onRecalculate && (isProcessing || isResultVerified || isApproved || alreadyPublished) && (
++          {onRecalculate && (isProcessing || alreadyPublished) && (
+             <button
+               onClick={onRecalculate}
+               title={t.recalcTitle}
+@@ -242,39 +222,6 @@ export default function FullResultTable({
+             </button>
+           )}
+ 
+-          {isProcessing && canVerifyResult && onVerifyResult && (
+-            <button
+-              onClick={onVerifyResult}
+-              disabled={verifyingResult}
+-              title={t.verifyTitle}
+-              className="flex-1 sm:flex-none bg-sky-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
+-            >
+-              {verifyingResult ? t.verifying : t.verify}
+-            </button>
+-          )}
+-
+-          {isResultVerified && canApprove && onApprove && (
+-            <button
+-              onClick={onApprove}
+-              disabled={approving}
+-              title={t.approveTitle}
+-              className="flex-1 sm:flex-none bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
+-            >
+-              {approving ? t.approving : t.approve}
+-            </button>
+-          )}
+-
+-          {isResultVerified && canApprove && onRequestRejectResult && (
+-            <button
+-              onClick={onRequestRejectResult}
+-              disabled={approving}
+-              title={t.rejectTitle}
+-              className="flex-1 sm:flex-none bg-red-600 text-white px-3 sm:px-4 py-2 rounded text-sm disabled:bg-gray-400"
+-            >
+-              {t.reject}
+-            </button>
+-          )}
+-
+           {/* প্রকাশ নিয়ন্ত্রণ: ON = প্রকাশিত, OFF = অপ্রকাশিত। ON করলে প্রকাশ হয়,
+               OFF করলে (নিশ্চিতকরণের পর) অভিভাবক পোর্টাল থেকে সরে যায়। */}
+           {(alreadyPublished || (onPublish && canPublishNow)) && (
+@@ -284,7 +231,7 @@ export default function FullResultTable({
+                   ? "border-green-300 bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
+                   : "border-gray-300 bg-gray-50 text-gray-600 dark:bg-slate-800 dark:text-slate-300"
+               }`}
+-              title={rawStatus === "LOCKED" ? t.lockedPublishTitle : alreadyPublished ? t.unpublishTitle : undefined}
++              title={alreadyPublished ? t.unpublishTitle : undefined}
+             >
+               <span className="font-semibold">
+                 {publishing ? t.publishing : unpublishing ? t.unpublishing : alreadyPublished ? t.published : t.notPublished}
+diff --git a/admin/src/components/ResultPanel/OverviewGrid.tsx b/admin/src/components/ResultPanel/OverviewGrid.tsx
+index 25df84e..2b997da 100644
+--- a/admin/src/components/ResultPanel/OverviewGrid.tsx
++++ b/admin/src/components/ResultPanel/OverviewGrid.tsx
+@@ -46,7 +46,7 @@ const getBadge = (s: StatusItem | undefined, lang: Lang) => {
+   if (!s) {
+     return { label: t.notEntered, classes: "bg-gray-100 text-gray-500 border-gray-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600" };
+   }
+-  if (s.publish_status === "PUBLISHED" || s.publish_status === "LOCKED") {
++  if (s.publish_status === "PUBLISHED") {
+     return { label: t.published, classes: "bg-green-100 text-green-700 border-green-300 dark:bg-green-950/40 dark:text-green-400 dark:border-green-800" };
+   }
+   // "সম্পন্ন" শুধু তখনই, যখন প্রতিটি শিক্ষার্থীর সব বিষয়ের নম্বর এন্ট্রি হয়েছে।
+diff --git a/admin/src/components/ResultPanel/RecalculateResultsModal.tsx b/admin/src/components/ResultPanel/RecalculateResultsModal.tsx
+index dea01da..e0f8c7c 100644
+--- a/admin/src/components/ResultPanel/RecalculateResultsModal.tsx
++++ b/admin/src/components/ResultPanel/RecalculateResultsModal.tsx
+@@ -43,7 +43,7 @@ interface Props {
+  * তালিমাত sees exactly which sessions and how many students would change
+  * before anything is written - fail mark is one global setting, so applying
+  * a new value is never a blind operation. Unpublished sessions are safe to
+- * refresh; PUBLISHED/LOCKED ones need the explicit checkbox (guardians may
++ * refresh; PUBLISHED ones need the explicit checkbox (guardians may
+  * already have seen them). A single-session dialog skips that checkbox: the
+  * user picked that session on purpose. */
+ export default function RecalculateResultsModal({ open, onClose, resultMasterId, onApplied }: Props) {
+diff --git a/admin/src/components/ResultPanel/ResultCorrectionsPanel.tsx b/admin/src/components/ResultPanel/ResultCorrectionsPanel.tsx
+index a107573..596d966 100644
+--- a/admin/src/components/ResultPanel/ResultCorrectionsPanel.tsx
++++ b/admin/src/components/ResultPanel/ResultCorrectionsPanel.tsx
+@@ -72,7 +72,7 @@ const formatWhen = (iso: string | null) => {
+   return formatDate(iso, getLang(), { day: "2-digit", month: "2-digit", year: "numeric" });
+ };
+ 
+-/** Lists every correction request filed against a PUBLISHED/LOCKED result and
++/** Lists every correction request filed against a PUBLISHED result and
+  * lets an approver apply or reject the pending ones. The backend only ever
+  * mutates live marks on an explicit approve (see
+  * result-correction.service.ts's decide()), so this is the second half of the
+diff --git a/admin/src/components/ResultPanel/StudentMarksEditModal.tsx b/admin/src/components/ResultPanel/StudentMarksEditModal.tsx
+index f2eac36..b328036 100644
+--- a/admin/src/components/ResultPanel/StudentMarksEditModal.tsx
++++ b/admin/src/components/ResultPanel/StudentMarksEditModal.tsx
+@@ -34,7 +34,7 @@ interface Props {
+   /** Fail mark of the class's division; null = still loading (no colouring). */
+   failMark?: number | null;
+   saving?: boolean;
+-  /** The result is already PUBLISHED/LOCKED: marks can't be overwritten
++  /** The result is already PUBLISHED: marks can't be overwritten
+    * directly (backend saveMarks rejects it), so this becomes a correction
+    * request that needs a reason and only takes effect once approved. */
+   correctionMode?: boolean;
+diff --git a/admin/src/components/ResultPanel/resultPanel.text.ts b/admin/src/components/ResultPanel/resultPanel.text.ts
+index f71e67b..7db5c27 100644
+--- a/admin/src/components/ResultPanel/resultPanel.text.ts
++++ b/admin/src/components/ResultPanel/resultPanel.text.ts
+@@ -7,13 +7,8 @@ export const resultPanelText = defineText({
+     status: {
+       result: {
+         DRAFT: "খসড়া",
+-        MARKS_SUBMITTED: "নম্বর জমা হয়েছে",
+-        MARKS_VERIFIED: "নম্বর যাচাই হয়েছে",
+-        PROCESSING: "প্রসেসিং",
+-        RESULT_VERIFIED: "যাচাইকৃত ফলাফল",
+-        APPROVED: "অনুমোদিত",
++        PROCESSING: "প্রকাশের অপেক্ষায়",
+         PUBLISHED: "প্রকাশিত",
+-        LOCKED: "লকড",
+       },
+       submission: {
+         DRAFT: "খসড়া",
+@@ -89,19 +84,10 @@ export const resultPanelText = defineText({
+       rollByRank: "🏆 মেধাক্রম অনুযায়ী রোল",
+       undoRollTitle: "মেধাক্রম অনুযায়ী বসানো রোলের ঠিক আগের রোল নম্বরগুলো ফিরিয়ে আনবে",
+       undoRoll: "↩️ আগের রোলে ফিরে যান",
+-      verifyTitle: "নম্বর প্রসেস সম্পন্ন — এখন ফলাফল যাচাই করুন",
+-      verifying: "যাচাই হচ্ছে...",
+-      verify: "✅ ফলাফল যাচাই করুন",
+-      approveTitle: "যাচাইকৃত ফলাফল অনুমোদন করুন",
+-      approving: "অনুমোদন হচ্ছে...",
+-      approve: "👍 অনুমোদন করুন",
+-      rejectTitle: "ফলাফল প্রত্যাখ্যান করে আবার প্রসেসিং-এ ফেরত পাঠান",
+-      reject: "প্রত্যাখ্যান",
+       publishing: "প্রকাশ হচ্ছে...",
+       publish: "প্রকাশ করুন",
+       unpublish: "অপ্রকাশিত করুন",
+       unpublishing: "অপ্রকাশিত হচ্ছে...",
+-      lockedPublishTitle: "ফলাফল লক করা আছে — অপ্রকাশিত করতে আগে আনলক করুন",
+       unpublishTitle: "ফলাফলটি অভিভাবক পোর্টাল থেকে সরিয়ে নিন (পরে আবার প্রকাশ করা যাবে)",
+       unpublishConfirmTitle: "ফলাফল অপ্রকাশিত করবেন?",
+       unpublishConfirmMessage: "অভিভাবকেরা আর এই ফলাফল দেখতে পাবেন না। নম্বর ও প্রসেস করা ফলাফল অক্ষত থাকবে এবং যেকোনো সময় আবার \"প্রকাশ করুন\" চেপে প্রকাশ করা যাবে।",
+@@ -203,11 +189,11 @@ export const resultPanelText = defineText({
+       state: "অবস্থা",
+       willChange: "বদলাবে",
+       people: (changed: string, total: string) => `${changed} / ${total} জন`,
+-      includePublished: "প্রকাশিত/লকড ফলাফলেও প্রয়োগ করুন",
++      includePublished: "প্রকাশিত ফলাফলেও প্রয়োগ করুন",
+       includePublishedHint: (n: string) =>
+         ` (${n}টি)। এগুলো অভিভাবকরা আগেই দেখেছেন — শুধু নতুন নিয়ম আগের পরীক্ষাতেও কার্যকর করতে চাইলে টিক দিন। প্রয়োগ করলে প্রকাশিত অবস্থা থাকবে এবং আগের/পরের রেকর্ড অডিটের জন্য সংরক্ষিত থাকবে।`,
+       unpublishedNote:
+-        'অপ্রকাশিত ফলাফল সরাসরি হালনাগাদ হবে। যাচাই/অনুমোদিত হয়ে থাকলে আবার "প্রসেসিং" অবস্থায় ফিরবে — প্রকাশের সময় আপনার অধিকারে যাচাই ও অনুমোদন একসাথেই হয়ে যাবে।',
++        'অপ্রকাশিত ফলাফল সরাসরি হালনাগাদ হবে।',
+       singlePublishedNote: "এটি প্রকাশিত ফলাফল — আপনি নিজে এটি বেছে নিয়েছেন বলে প্রয়োগ হবে; প্রকাশিত অবস্থা বজায় থাকবে।",
+       skipped: (n: string) => `⚠️ ${n}টি ফলাফলে সব নম্বর পূর্ণ নেই বলে বাদ দেওয়া হয়েছে: `,
+       totalsFailed: (n: string) => `${n}টি ফলাফল যাচাই করা যায়নি।`,
+@@ -302,13 +288,8 @@ export const resultPanelText = defineText({
+     status: {
+       result: {
+         DRAFT: "Draft",
+-        MARKS_SUBMITTED: "Marks submitted",
+-        MARKS_VERIFIED: "Marks verified",
+-        PROCESSING: "Processing",
+-        RESULT_VERIFIED: "Result verified",
+-        APPROVED: "Approved",
++        PROCESSING: "Awaiting publish",
+         PUBLISHED: "Published",
+-        LOCKED: "Locked",
+       },
+       submission: {
+         DRAFT: "Draft",
+@@ -384,19 +365,10 @@ export const resultPanelText = defineText({
+       rollByRank: "🏆 Roll by Merit",
+       undoRollTitle: "Restores the roll numbers from just before the merit-based rolls",
+       undoRoll: "↩️ Restore Previous Rolls",
+-      verifyTitle: "Marks processed — now verify the result",
+-      verifying: "Verifying...",
+-      verify: "✅ Verify Result",
+-      approveTitle: "Approve the verified result",
+-      approving: "Approving...",
+-      approve: "👍 Approve",
+-      rejectTitle: "Reject the result and send it back to processing",
+-      reject: "Reject",
+       publishing: "Publishing...",
+       publish: "Publish",
+       unpublish: "Unpublish",
+       unpublishing: "Unpublishing...",
+-      lockedPublishTitle: "This result is locked — unlock it before unpublishing",
+       unpublishTitle: "Withdraw this result from the guardian portal (it can be published again later)",
+       unpublishConfirmTitle: "Unpublish this result?",
+       unpublishConfirmMessage: "Guardians will no longer be able to see this result. Marks and the processed result stay intact, and you can publish it again any time.",
+@@ -496,11 +468,11 @@ export const resultPanelText = defineText({
+       state: "Status",
+       willChange: "Will change",
+       people: (changed, total) => `${changed} / ${total}`,
+-      includePublished: "Also apply to published/locked results",
++      includePublished: "Also apply to published results",
+       includePublishedHint: (n) =>
+         ` (${n}). Guardians have already seen these — tick only if you want the new rules applied to past exams too. They stay published, and before/after records are kept for audit.`,
+       unpublishedNote:
+-        'Unpublished results are updated directly. Verified/approved ones return to "Processing" — with your authority, verification and approval happen together at publish time.',
++        'Unpublished results are updated directly.',
+       singlePublishedNote: "This is a published result — it will be applied because you chose it; it stays published.",
+       skipped: (n) => `⚠️ ${n} result(s) skipped because marks are incomplete: `,
+       totalsFailed: (n) => `${n} result(s) could not be checked.`,
+diff --git a/admin/src/components/ResultPanel/resultStatus.ts b/admin/src/components/ResultPanel/resultStatus.ts
+index 7cf49f0..fa474bc 100644
+--- a/admin/src/components/ResultPanel/resultStatus.ts
++++ b/admin/src/components/ResultPanel/resultStatus.ts
+@@ -6,16 +6,11 @@ import { resultPanelText } from "./resultPanel.text";
+ // MarksTable, and other result status displays). Centralised here so every
+ // screen renders the same label/color for the same status instead of each
+ // screen inventing its own copy.
++//
++// A result session has exactly three statuses: DRAFT (marks being entered),
++// PROCESSING (graded + ranked, awaiting publish) and PUBLISHED.
+ 
+-export type ResultMasterStatus =
+-  | "DRAFT"
+-  | "MARKS_SUBMITTED"
+-  | "MARKS_VERIFIED"
+-  | "PROCESSING"
+-  | "RESULT_VERIFIED"
+-  | "APPROVED"
+-  | "PUBLISHED"
+-  | "LOCKED";
++export type ResultMasterStatus = "DRAFT" | "PROCESSING" | "PUBLISHED";
+ 
+ export type SubmissionStatus = "DRAFT" | "SUBMITTED" | "VERIFIED" | "REJECTED";
+ 
+@@ -37,52 +32,22 @@ const badge = (className: string, label: () => string): StatusBadgeInfo => ({
+ 
+ const L = () => getText(resultPanelText).status;
+ 
+-// Forward order of the result lifecycle - used to know which actions are
+-// "ahead" of the current status (e.g. to grey out an already-passed step).
+-export const RESULT_STATUS_ORDER: ResultMasterStatus[] = [
+-  "DRAFT",
+-  "MARKS_SUBMITTED",
+-  "MARKS_VERIFIED",
+-  "PROCESSING",
+-  "RESULT_VERIFIED",
+-  "APPROVED",
+-  "PUBLISHED",
+-  "LOCKED",
+-];
++// Forward order of the result lifecycle.
++export const RESULT_STATUS_ORDER: ResultMasterStatus[] = ["DRAFT", "PROCESSING", "PUBLISHED"];
+ 
+ export const RESULT_STATUS_MAP: Record<ResultMasterStatus, StatusBadgeInfo> = {
+   DRAFT: badge(
+     "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300",
+     () => L().result.DRAFT,
+   ),
+-  MARKS_SUBMITTED: badge(
+-    "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
+-    () => L().result.MARKS_SUBMITTED,
+-  ),
+-  MARKS_VERIFIED: badge(
+-    "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400",
+-    () => L().result.MARKS_VERIFIED,
+-  ),
+   PROCESSING: badge(
+-    "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400",
++    "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
+     () => L().result.PROCESSING,
+   ),
+-  RESULT_VERIFIED: badge(
+-    "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400",
+-    () => L().result.RESULT_VERIFIED,
+-  ),
+-  APPROVED: badge(
+-    "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400",
+-    () => L().result.APPROVED,
+-  ),
+   PUBLISHED: badge(
+-    "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
++    "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
+     () => L().result.PUBLISHED,
+   ),
+-  LOCKED: badge(
+-    "bg-teal-100 text-teal-800 dark:bg-teal-950/40 dark:text-teal-400",
+-    () => L().result.LOCKED,
+-  ),
+ };
+ 
+ export const SUBMISSION_STATUS_MAP: Record<SubmissionStatus, StatusBadgeInfo> = {
+@@ -159,7 +124,6 @@ export const RESULT_PERMISSIONS = {
+   resultVerify: "result.verify",
+   resultApprove: "result.approve",
+   resultPublish: "result.publish",
+-  resultLock: "result.lock",
+   resultCorrect: "result.correct",
+   legacyFallback: "result.manage",
+ } as const;
+diff --git a/admin/src/features/admin/TrashPage.tsx b/admin/src/features/admin/TrashPage.tsx
+index 71f1b18..3fa305b 100644
+--- a/admin/src/features/admin/TrashPage.tsx
++++ b/admin/src/features/admin/TrashPage.tsx
+@@ -232,7 +232,6 @@ export default function TrashPage() {
+     result_master_id: number;
+     exam_name: string;
+     exam_year: string | null;
+-    will_reopen: boolean;
+   };
+ 
+   // A restored student is missing from already-processed results of their
+@@ -255,10 +254,8 @@ export default function TrashPage() {
+     let message = t.restoreMessage(name || "");
+     if (tab === "students") {
+       const impact = await fetchStudentRestoreImpact(row.id);
+-      const reopen = impact.filter((r) => r.will_reopen).map(examLabel);
+-      const locked = impact.filter((r) => !r.will_reopen).map(examLabel);
++      const reopen = impact.map(examLabel);
+       if (reopen.length) message += t.restoreImpactReopen(reopen.join(", "));
+-      if (locked.length) message += t.restoreImpactLocked(locked.join(", "));
+     }
+     useConfirmStore.getState().show({
+       title: t.restoreTitle,
+@@ -321,10 +318,8 @@ export default function TrashPage() {
+       const impacts = (await Promise.all(targetRows.map((r) => fetchStudentRestoreImpact(r.id)))).flat();
+       const seen = new Set<number>();
+       const unique = impacts.filter((r) => (seen.has(r.result_master_id) ? false : (seen.add(r.result_master_id), true)));
+-      const reopen = unique.filter((r) => r.will_reopen).map(examLabel);
+-      const locked = unique.filter((r) => !r.will_reopen).map(examLabel);
++      const reopen = unique.map(examLabel);
+       if (reopen.length) message += t.restoreImpactReopen(reopen.join(", "));
+-      if (locked.length) message += t.restoreImpactLocked(locked.join(", "));
+     }
+     useConfirmStore.getState().show({
+       title: t.restoreTitle,
+diff --git a/admin/src/features/admin/trash.text.ts b/admin/src/features/admin/trash.text.ts
+index 33adfaf..8ede867 100644
+--- a/admin/src/features/admin/trash.text.ts
++++ b/admin/src/features/admin/trash.text.ts
+@@ -29,8 +29,6 @@ export const trashText = defineText({
+     bulkRestorePartial: (ok: string, fail: string) => `${ok}টি ফিরিয়ে আনা হয়েছে, ${fail}টি ব্যর্থ হয়েছে`,
+     restoreImpactReopen: (exams: string) =>
+       `\n\n⚠ এই শিক্ষার্থীর শ্রেণির এসব ফলাফলে তিনি নেই: ${exams}। ফিরিয়ে আনলে এই ফলাফলগুলো অভিভাবক পোর্টাল থেকে সরে যাবে এবং আবার নম্বর যাচাই করে প্রকাশ করতে হবে (পুরো শ্রেণির মেধাক্রম বদলাতে পারে)।`,
+-    restoreImpactLocked: (exams: string) =>
+-      `\n\nলক করা ফলাফলে তিনি যুক্ত হবেন না: ${exams}। লক করা ফলাফল শুধু সংশোধন প্রক্রিয়ায় বদলানো যায়।`,
+     restoredReopened: (count: string) =>
+       `ফিরিয়ে আনা হয়েছে। ${count}টি ফলাফল পুনর্যাচাইয়ের জন্য খোলা হয়েছে — নম্বর দিয়ে আবার যাচাই ও প্রকাশ করুন।`,
+     bulkDeleteMessage: (n: string) =>
+@@ -83,8 +81,6 @@ export const trashText = defineText({
+     bulkRestorePartial: (ok, fail) => `${ok} restored, ${fail} failed`,
+     restoreImpactReopen: (exams) =>
+       `\n\n⚠ This student is not in these results of their class: ${exams}. Restoring will take them off the guardian portal and they must be re-verified and published again (merit positions of the whole class may change).`,
+-    restoreImpactLocked: (exams) =>
+-      `\n\nThe student will NOT be added to these locked results: ${exams}. A locked result can only change through the correction process.`,
+     restoredReopened: (count) =>
+       `Restored. ${count} result(s) were re-opened for re-verification — enter the marks, then verify and publish again.`,
+     bulkDeleteMessage: (n) =>
+diff --git a/admin/src/features/talimat/ResultEntryPage.tsx b/admin/src/features/talimat/ResultEntryPage.tsx
+index 2d51dd6..33d9029 100644
+--- a/admin/src/features/talimat/ResultEntryPage.tsx
++++ b/admin/src/features/talimat/ResultEntryPage.tsx
+@@ -88,7 +88,7 @@ export default function ResultEntryPage() {
+   // for madrasas that actually staff it.
+   const isSingleActorWorkflow = canSubmitSubject && canVerifySubject;
+ 
+-  // Once a result is PUBLISHED/LOCKED the backend refuses direct mark writes,
++  // Once a result is PUBLISHED the backend refuses direct mark writes,
+   // so this page switches to "সংশোধন" mode: the same whole-class grid, but
+   // saving sends only the changed cells as a correction (see
+   // handleSubmitCorrection). Whoever holds full result authority - তালিমাত /
+@@ -136,7 +136,7 @@ export default function ResultEntryPage() {
+   const baselineRef = useRef<
+     Record<number, Record<number, { mark: number; is_absent: boolean; note: string }>>
+   >({});
+-  const isPublished = sessionStatus === "PUBLISHED" || sessionStatus === "LOCKED";
++  const isPublished = sessionStatus === "PUBLISHED";
+   const isPublishedRef = useRef(false);
+   isPublishedRef.current = isPublished;
+ 
+@@ -441,7 +441,7 @@ export default function ResultEntryPage() {
+ 
+   const handleCellCommit = () => scheduleAutosave(150);
+ 
+-  // ---- সংশোধন mode (PUBLISHED/LOCKED) -------------------------------------
++  // ---- সংশোধন mode (PUBLISHED) -------------------------------------
+   // What the user has changed relative to the stored marks, as correction
+   // requests. A cleared cell can't be corrected (a mark can be changed, not
+   // deleted from a published result), and a cell that had no stored mark has
+diff --git a/admin/src/features/talimat/ResultPreviewPage.tsx b/admin/src/features/talimat/ResultPreviewPage.tsx
+index 9e9c475..e9cf5f2 100644
+--- a/admin/src/features/talimat/ResultPreviewPage.tsx
++++ b/admin/src/features/talimat/ResultPreviewPage.tsx
+@@ -11,7 +11,6 @@ import OverviewGrid from "../../components/ResultPanel/OverviewGrid";
+ import FullResultTable from "../../components/ResultPanel/FullResultTable";
+ import StudentMarksEditModal from "../../components/ResultPanel/StudentMarksEditModal";
+ import ResultStatsCards from "../../components/ResultPanel/ResultStatsCards";
+-import ReasonPromptModal from "../../components/ResultPanel/ReasonPromptModal";
+ import ResultCorrectionsPanel from "../../components/ResultPanel/ResultCorrectionsPanel";
+ import RecalculateResultsModal from "../../components/ResultPanel/RecalculateResultsModal";
+ import { correctionItemsForCell, type CorrectionItem } from "../../components/ResultPanel/correctionDiff";
+@@ -140,9 +139,6 @@ export default function ResultPreviewPage() {
+   const [unpublishing, setUnpublishing] = useState(false);
+   const [applyingRoll, setApplyingRoll] = useState(false);
+   const [canUndoRoll, setCanUndoRoll] = useState(false);
+-  const [verifyingResult, setVerifyingResult] = useState(false);
+-  const [approving, setApproving] = useState(false);
+-  const [rejectResultOpen, setRejectResultOpen] = useState(false);
+   const [correctionReloadKey, setCorrectionReloadKey] = useState(0);
+   // null = closed; { masterId: null } = review every session; { masterId: n } = just that one.
+   const [recalcTarget, setRecalcTarget] = useState<{ masterId: number | null } | null>(null);
+@@ -317,7 +313,7 @@ export default function ResultPreviewPage() {
+     }
+   };
+ 
+-  // After PUBLISHED/LOCKED the backend rejects direct mark writes
++  // After PUBLISHED the backend rejects direct mark writes
+   // (saveMarks / processResult) - the only way to change a mark is a
+   // correction request, which is applied only once someone approves it in
+   // ResultCorrectionsPanel. One request per changed field: an absent<->number
+@@ -375,67 +371,6 @@ export default function ResultPreviewPage() {
+     }
+   };
+ 
+-  // Result-level checker steps between "প্রসেস" and "Publish" — a result
+-  // must be verified, then approved (by someone other than whoever verified
+-  // it, unless they're MUHTAMIM/SUPER_ADMIN — enforced server-side), before
+-  // /results/publish will accept it. Both actions already existed as
+-  // backend endpoints; this just wires the missing UI for them.
+-  const handleVerifyResult = async () => {
+-    if (!resultMasterId) return push("error", t.noProcessedResult);
+-
+-    try {
+-      setVerifyingResult(true);
+-      const res = await api.post(`/results/${resultMasterId}/verify-result`, {});
+-      if (res.data?.valid === false) {
+-        push("error", (res.data?.issues || []).join(" | ") || t.resultIssues);
+-      } else {
+-        push("success", t.resultVerified);
+-      }
+-      await loadSummary();
+-      await loadOverview();
+-    } catch (err: any) {
+-      logger.error("Verify result error:", err);
+-      push("error", err?.response?.data?.message || t.verifyFailed);
+-    } finally {
+-      setVerifyingResult(false);
+-    }
+-  };
+-
+-  const handleApprove = async () => {
+-    if (!resultMasterId) return push("error", t.noProcessedResult);
+-
+-    try {
+-      setApproving(true);
+-      await api.post(`/results/${resultMasterId}/approve`, { approve: true });
+-      await loadSummary();
+-      await loadOverview();
+-      push("success", t.resultApproved);
+-    } catch (err: any) {
+-      logger.error("Approve result error:", err);
+-      push("error", err?.response?.data?.message || t.approveFailed);
+-    } finally {
+-      setApproving(false);
+-    }
+-  };
+-
+-  const handleConfirmRejectResult = async (reason: string) => {
+-    if (!resultMasterId) return;
+-
+-    try {
+-      setApproving(true);
+-      await api.post(`/results/${resultMasterId}/approve`, { approve: false, remarks: reason });
+-      await loadSummary();
+-      await loadOverview();
+-      setRejectResultOpen(false);
+-      push("success", t.resultRejected);
+-    } catch (err: any) {
+-      logger.error("Reject result error:", err);
+-      push("error", err?.response?.data?.message || t.rejectFailed);
+-    } finally {
+-      setApproving(false);
+-    }
+-  };
+-
+   const handlePublish = async () => {
+     if (!resultMasterId) return push("error", t.noProcessedResult);
+ 
+@@ -453,7 +388,7 @@ export default function ResultPreviewPage() {
+     }
+   };
+ 
+-  // প্রকাশিত ফলাফল অপ্রকাশিত করা: PUBLISHED -> APPROVED। অভিভাবক পোর্টাল থেকে
++  // প্রকাশিত ফলাফল অপ্রকাশিত করা: PUBLISHED -> PROCESSING। অভিভাবক পোর্টাল থেকে
+   // সরে যায়, নম্বর/সামারি অক্ষত থাকে; "প্রকাশ করুন" চাপলেই আবার প্রকাশ হয়।
+   const handleUnpublish = async () => {
+     if (!resultMasterId) return push("error", t.noProcessedResult);
+@@ -538,7 +473,7 @@ export default function ResultPreviewPage() {
+   };
+ 
+   const currentPublishStatus = summary[0]?.publish_status;
+-  const isPublished = currentPublishStatus === "PUBLISHED" || currentPublishStatus === "LOCKED";
++  const isPublished = currentPublishStatus === "PUBLISHED";
+ 
+   const selectedClassName = classes.find((c) => String(c.class_id) === classId)?.class_name_bn;
+   const selectedExamName = exams.find((e) => String(e.id) === examId)?.name;
+@@ -603,13 +538,6 @@ export default function ResultPreviewPage() {
+             applyingRoll={applyingRoll}
+             canUndoRoll={canUndoRoll}
+             onUndoRollByRank={handleUndoRollByRank}
+-            canVerifyResult={canVerifyResult}
+-            onVerifyResult={handleVerifyResult}
+-            verifyingResult={verifyingResult}
+-            canApprove={canApprove}
+-            onApprove={handleApprove}
+-            approving={approving}
+-            onRequestRejectResult={() => setRejectResultOpen(true)}
+             onRecalculate={canRecalculate && resultMasterId ? () => setRecalcTarget({ masterId: resultMasterId }) : undefined}
+           />
+ 
+@@ -661,16 +589,6 @@ export default function ResultPreviewPage() {
+         }}
+       />
+ 
+-      <ReasonPromptModal
+-        open={rejectResultOpen}
+-        title={t.rejectResultTitle}
+-        message={t.rejectResultMessage}
+-        label={t.rejectReason}
+-        confirmText={t.rejectConfirm}
+-        loading={approving}
+-        onCancel={() => setRejectResultOpen(false)}
+-        onConfirm={handleConfirmRejectResult}
+-      />
+     </div>
+   );
+ }
+diff --git a/admin/src/features/talimat/results.text.ts b/admin/src/features/talimat/results.text.ts
+index 547a4d8..038721e 100644
+--- a/admin/src/features/talimat/results.text.ts
++++ b/admin/src/features/talimat/results.text.ts
+@@ -20,12 +20,6 @@ export const resultsText = defineText({
+     reasonRequired: "সংশোধনের কারণ লিখুন",
+     noEmptyMark: "কোনো {{subject}}ের নম্বর ফাঁকা রাখা যাবে না — নম্বর অথবা \"-\" (অনুপস্থিত) দিন",
+     correctionApplied: "সংশোধন প্রয়োগ হয়েছে — মোট, গ্রেড ও মেধাক্রম হালনাগাদ হয়েছে",
+-    resultIssues: "ফলাফলে সমস্যা পাওয়া গেছে",
+-    resultVerified: "ফলাফল যাচাই করা হয়েছে",
+-    resultApproved: "ফলাফল অনুমোদিত হয়েছে",
+-    approveFailed: "অনুমোদন করা যায়নি",
+-    resultRejected: "ফলাফল প্রত্যাখ্যান করা হয়েছে",
+-    rejectFailed: "প্রত্যাখ্যান করা যায়নি",
+     resultPublished: "ফলাফল প্রকাশিত হয়েছে",
+     resultUnpublished: "ফলাফল অপ্রকাশিত করা হয়েছে",
+     unpublishFailed: "ফলাফল অপ্রকাশিত করা যায়নি",
+@@ -46,10 +40,6 @@ export const resultsText = defineText({
+     recalcTitle: "ফেল মার্ক/গ্রেড বদলের পর সব ফলাফল নতুন সেটিং অনুযায়ী হালনাগাদ করুন",
+     recalcAll: "সব ফলাফল পুনঃগণনা",
+     viewAll: "সব দেখুন",
+-    rejectResultTitle: "ফলাফল প্রত্যাখ্যান করুন",
+-    rejectResultMessage: "এই ফলাফল প্রত্যাখ্যান করা হলে এটি আবার 'প্রসেসিং' অবস্থায় ফিরে যাবে এবং পুনরায় যাচাই প্রয়োজন হবে।",
+-    rejectReason: "প্রত্যাখ্যানের কারণ",
+-    rejectConfirm: "প্রত্যাখ্যান করুন",
+     // entry
+     notAllEntered: "সব {{student}}ের সব {{subject}}ের নম্বর (বা অনুপস্থিত/অব্যাহতি/স্থগিত চিহ্ন) এখনও দেওয়া হয়নি",
+     noNewChanges: "কোনো নতুন পরিবর্তন নেই — আগের এন্ট্রি ইতিমধ্যে সংরক্ষণ ও প্রসেস করা হয়েছে",
+@@ -122,12 +112,6 @@ export const resultsText = defineText({
+     reasonRequired: "Enter a reason for the correction",
+     noEmptyMark: "No {{subject}} mark may be left empty — enter a mark or \"-\" (absent)",
+     correctionApplied: "Correction applied — total, grade and merit position updated",
+-    resultIssues: "Problems found in the result",
+-    resultVerified: "Result verified",
+-    resultApproved: "Result approved",
+-    approveFailed: "Could not approve",
+-    resultRejected: "Result rejected",
+-    rejectFailed: "Could not reject",
+     resultPublished: "Result published successfully",
+     resultUnpublished: "Result unpublished",
+     unpublishFailed: "Could not unpublish the result",
+@@ -148,10 +132,6 @@ export const resultsText = defineText({
+     recalcTitle: "After changing the fail mark/grades, update all results to the new settings",
+     recalcAll: "Recalculate all results",
+     viewAll: "View all",
+-    rejectResultTitle: "Reject result",
+-    rejectResultMessage: "If rejected, this result returns to 'processing' and must be verified again.",
+-    rejectReason: "Reason for rejection",
+-    rejectConfirm: "Reject",
+     notAllEntered: "Marks (or absent/exempt/withheld marks) have not been entered for every {{subject}} of every {{student}} yet",
+     noNewChanges: "No new changes — the previous entry is already saved and processed",
+     filtersLoadFailed: "Failed to load {{division}}s / exams",
+diff --git a/backend/prisma/migrations/20261013100000_shrink_result_status_to_draft_processing_published/migration.sql b/backend/prisma/migrations/20261013100000_shrink_result_status_to_draft_processing_published/migration.sql
+new file mode 100644
+index 0000000..c453049
+--- /dev/null
++++ b/backend/prisma/migrations/20261013100000_shrink_result_status_to_draft_processing_published/migration.sql
+@@ -0,0 +1,39 @@
++-- Shrink ResultPublishStatus from the 8-step approval pipeline down to
++-- DRAFT / PROCESSING / PUBLISHED. The intermediate states were only
++-- informational for a single reviewer who verifies, approves and publishes
++-- in one go, so existing rows are collapsed first and the enum is then
++-- narrowed.
++--
++--   PUBLISHED, LOCKED                              -> PUBLISHED
++--   PROCESSING, RESULT_VERIFIED, APPROVED          -> PROCESSING
++--   DRAFT, MARKS_SUBMITTED, MARKS_VERIFIED         -> DRAFT
++--
++-- A MARKS_VERIFIED row that becomes DRAFT can still be processed: the
++-- "every subject verified" precondition is now read straight from
++-- mark_submissions instead of from the master status.
++--
++-- The submitted_*/marks_verified_*/result_verified_*/approved_*/locked_*
++-- columns on results_master are intentionally left in place (no longer
++-- written) so historical audit data is preserved.
++
++-- Collapse existing values. Order matters: PUBLISHED first, then PROCESSING,
++-- everything left over is DRAFT.
++UPDATE "results_master" SET "status" = 'PUBLISHED' WHERE "status" IN ('PUBLISHED', 'LOCKED');
++UPDATE "results_master" SET "status" = 'PROCESSING' WHERE "status" IN ('PROCESSING', 'RESULT_VERIFIED', 'APPROVED');
++UPDATE "results_master" SET "status" = 'DRAFT' WHERE "status" NOT IN ('PUBLISHED', 'PROCESSING');
++
++-- Rebuild the enum type with only the values that remain in use.
++CREATE TYPE "ResultPublishStatus_new" AS ENUM ('DRAFT', 'PROCESSING', 'PUBLISHED');
++
++ALTER TABLE "results_master" ALTER COLUMN "status" DROP DEFAULT;
++ALTER TABLE "results_master" ALTER COLUMN "status" TYPE "ResultPublishStatus_new" USING ("status"::text::"ResultPublishStatus_new");
++ALTER TABLE "results_master" ALTER COLUMN "status" SET DEFAULT 'DRAFT';
++
++DROP TYPE "ResultPublishStatus";
++ALTER TYPE "ResultPublishStatus_new" RENAME TO "ResultPublishStatus";
++
++-- The result.lock permission only gated the removed /results/:id/lock
++-- endpoint. Remove the catalog row and any role grants (role_permissions
++-- rows cascade or are cleaned up explicitly below).
++DELETE FROM "role_permissions" WHERE "permission_id" IN (SELECT "id" FROM "permissions" WHERE "key_name" = 'result.lock');
++DELETE FROM "permissions" WHERE "key_name" = 'result.lock';
+diff --git a/backend/prisma/models/result.prisma b/backend/prisma/models/result.prisma
+index 0f37e4d..1db4ac4 100644
+--- a/backend/prisma/models/result.prisma
++++ b/backend/prisma/models/result.prisma
+@@ -2,23 +2,24 @@
+ // RESULTS
+ // ============================================================
+ 
+-/// Full result-processing lifecycle for a ResultMaster (one exam+class
+-/// session). DRAFT and PUBLISHED are the two original values (kept
+-/// unchanged so existing data/guardian-portal queries keep working); the
+-/// rest are additive states inserted by the marks/verification/approval
+-/// workflow. There is deliberately no REJECTED value here - a rejection
+-/// (marks-level or result-level) reverts the row to the nearest earlier
+-/// resting state and is recorded via ResultMaster.rejectedAt/rejectedBy/
+-/// rejectedReason instead, so "rejected" is an event, not a resting status.
++/// Result lifecycle for a ResultMaster (one exam+class session). Only three
++/// resting states exist:
++///   DRAFT      - marks are being entered (or the session was never processed)
++///   PROCESSING - ResultSummary has been produced (graded + ranked) and the
++///                result is waiting to be published
++///   PUBLISHED  - live for guardians; changes go through the correction flow
++/// The old MARKS_SUBMITTED / MARKS_VERIFIED / RESULT_VERIFIED / APPROVED /
++/// LOCKED values were collapsed into these three (see migration
++/// 20261013100000_shrink_result_status_to_draft_processing_published). The
++/// per-subject submit/verify queue (MarkSubmission) is unchanged, but it no
++/// longer moves ResultMaster.status - it is only checked as a precondition
++/// for processing. There is deliberately no REJECTED value: a subject-level
++/// rejection is an event recorded via ResultMaster.rejectedAt/rejectedBy/
++/// rejectedReason, not a resting status.
+ enum ResultPublishStatus {
+   DRAFT
+-  MARKS_SUBMITTED
+-  MARKS_VERIFIED
+   PROCESSING
+-  RESULT_VERIFIED
+-  APPROVED
+   PUBLISHED
+-  LOCKED
+ }
+ 
+ enum ResultRowStatus {
+@@ -29,9 +30,9 @@ enum ResultRowStatus {
+ 
+ /// Per-subject (book) marks submission/verification inside one ResultMaster.
+ /// A teacher/examiner submits marks for a subject; a verifier then approves
+-/// or rejects that subject's entries. ResultMaster.status advances to
+-/// MARKS_SUBMITTED / MARKS_VERIFIED only once every active subject's
+-/// MarkSubmission has reached that stage (see result-workflow.service.ts).
++/// or rejects that subject's entries. Every active subject must be VERIFIED
++/// before a DRAFT result can be processed (see result-workflow.service.ts's
++/// assertAllSubjectsVerified); it does not change ResultMaster.status.
+ enum MarkEntryStatus {
+   DRAFT
+   SUBMITTED
+@@ -124,7 +125,7 @@ model MarkComponentValue {
+ }
+ 
+ /// Controlled correction workflow for marks/results that have already
+-/// passed verification/approval/publish/lock. Every field-level change made
++/// been published. Every field-level change made
+ /// through this path is recorded here (old value, new value, reason, who,
+ /// when) instead of silently overwriting the live row - see
+ /// result-correction.service.ts.
+@@ -184,7 +185,7 @@ model ResultCorrection {
+ /// publish time (and again on any later authorized correction). Protects
+ /// historical published results from silently drifting if grade bands,
+ /// fail-mark, or subject full-marks configuration changes afterwards -
+-/// marksheets/portal views for a PUBLISHED/LOCKED result should render from
++/// marksheets/portal views for a PUBLISHED result should render from
+ /// the latest snapshot rather than recomputing from live config.
+ model ResultSnapshot {
+   id Int @id @default(autoincrement())
+@@ -215,9 +216,10 @@ model ResultMaster {
+ 
+   status ResultPublishStatus @default(DRAFT)
+ 
+-  // ---- workflow timestamps/actors (one column per stage keeps the
+-  // submission/verification/approval queue screens a plain status/actor
+-  // filter on ResultMaster, with no extra joins) ----
++  // ---- workflow timestamps/actors. processedAt/By and publishedAt/By are
++  // the live stamps. submitted*/marksVerified*/resultVerified*/approved*/
++  // locked* belong to the removed intermediate states: they are no longer
++  // written, and are kept only so historical audit data is not lost. ----
+   submittedAt      DateTime? @map("submitted_at")
+   submittedBy      Int?      @map("submitted_by")
+   marksVerifiedAt  DateTime? @map("marks_verified_at")
+diff --git a/backend/prisma/seed.ts b/backend/prisma/seed.ts
+index a81665b..858abbb 100644
+--- a/backend/prisma/seed.ts
++++ b/backend/prisma/seed.ts
+@@ -974,7 +974,7 @@ async function main() {
+     { keyName: "result.manage", name: "ফলাফল ব্যবস্থাপনা" },
+ 
+     // Marks/Result workflow (submission -> verification -> processing ->
+-    // result-verification -> approval -> publish -> lock, plus corrections)
++    // publish, plus corrections)
+     // - added alongside the pre-existing result.read/result.manage above.
+     // Every endpoint gated on these also accepts the legacy result.manage
+     // as a fallback (see result-workflow/result-correction/mark-component
+@@ -988,7 +988,6 @@ async function main() {
+     { keyName: "result.verify", name: "ফলাফল যাচাই" },
+     { keyName: "result.approve", name: "ফলাফল অনুমোদন" },
+     { keyName: "result.publish", name: "ফলাফল প্রকাশ" },
+-    { keyName: "result.lock", name: "ফলাফল লক" },
+     { keyName: "result.correct", name: "ফলাফল সংশোধন" },
+ 
+     { keyName: "fee.read", name: "ফি/ইনভয়েস দেখুন" },
+diff --git a/backend/scripts/e2e/phase6-result-workflow.ts b/backend/scripts/e2e/phase6-result-workflow.ts
+index 99ce982..e6170ff 100644
+--- a/backend/scripts/e2e/phase6-result-workflow.ts
++++ b/backend/scripts/e2e/phase6-result-workflow.ts
+@@ -8,7 +8,7 @@ const CLASS_ID = 1;
+ const BOOKS = [2, 3, 4]; // Bangla, English, Gonit
+ 
+ async function main() {
+-  console.log("=== Phase 6: Marks -> Result workflow (submit/verify/process/verify/approve/publish/lock) ===");
++  console.log("=== Phase 6: Marks -> Result workflow (submit/verify/process/publish) ===");
+ 
+   const state = readFixtureState() as { examA1Id?: number; studentsA?: number[] };
+   if (!state.examA1Id || !state.studentsA?.length) {
+@@ -65,28 +65,11 @@ async function main() {
+   const processRes = await post("/results/process", { exam_id: EXAM_A1, class_id: CLASS_ID, result_master_id: resultMasterId }, { slug: SLUG_A, token: tokenTalimat });
+   check("Process result", processRes.status === 200, { status: processRes.status, body: processRes.body });
+ 
+-  // ---- 7. Verify result (result-level) - use MUHTAMIM again for simplicity ----
+-  const verifyResultRes = await post(`/results/${resultMasterId}/verify-result`, {}, { slug: SLUG_A, token: tokenMuhtamim });
+-  check("Verify result (result-level)", verifyResultRes.status === 200 && verifyResultRes.body?.valid === true, {
+-    status: verifyResultRes.status,
+-    body: verifyResultRes.body,
+-  });
+-
+-  // ---- 8. SEPARATION OF DUTIES: MUHTAMIM approving after verifying as
+-  // MUHTAMIM is fine (privileged bypass) - but let's confirm TALIMAT
+-  // (who did NOT verify) CAN approve, proving separation-of-duties checks
+-  // the ACTOR against the verifier, not against a blanket rule ----
+-  const approveRes = await post(`/results/${resultMasterId}/approve`, { approve: true }, { slug: SLUG_A, token: tokenTalimat });
+-  check("Approve by a DIFFERENT user (TALIMAT) than the verifier (MUHTAMIM) succeeds", approveRes.status === 200, {
+-    status: approveRes.status,
+-    body: approveRes.body,
+-  });
+-
+-  // ---- 9. Publish ----
++  // ---- 7. Publish (runs the pre-publish sanity check; no separate verify/approve steps) ----
+   const publishRes = await post("/results/publish", { result_master_id: resultMasterId }, { slug: SLUG_A, token: tokenTalimat });
+   check("Publish result", publishRes.status === 200, { status: publishRes.status, body: publishRes.body });
+ 
+-  // ---- 10. Attempt to edit marks on a PUBLISHED (not yet locked) result -
++  // ---- 8. Attempt to edit marks on a PUBLISHED result -
+   // must be BLOCKED by the fix from this session (saveMarks now checks
+   // master.status, not just per-book MarkSubmission state) ----
+   const editAfterPublish = await post(
+@@ -99,36 +82,21 @@ async function main() {
+     body: editAfterPublish.body,
+   });
+ 
+-  // ---- 11. Lock ----
+-  const lockRes = await post(`/results/${resultMasterId}/lock`, {}, { slug: SLUG_A, token: tokenTalimat });
+-  check("Lock result", lockRes.status === 200, { status: lockRes.status, body: lockRes.body });
+-
+-  // ---- 12. Attempt to edit marks on a LOCKED result - must be BLOCKED ----
+-  const editAfterLock = await post(
+-    "/results/marks",
+-    { result_master_id: resultMasterId, data: [{ student_id: STUDENTS_A[0], exam_id: EXAM_A1, class_id: CLASS_ID, book_id: BOOKS[0], mark: 5 }] },
+-    { slug: SLUG_A, token: tokenTalimat },
+-  );
+-  check("Editing marks on a LOCKED result is BLOCKED", editAfterLock.status === 409, {
+-    status: editAfterLock.status,
+-    body: editAfterLock.body,
+-  });
+-
+-  // ---- 13. Attempt double-lock (already LOCKED) - must be BLOCKED ----
+-  const doubleLock = await post(`/results/${resultMasterId}/lock`, {}, { slug: SLUG_A, token: tokenTalimat });
+-  check("Locking an already-LOCKED result is BLOCKED", doubleLock.status === 409, {
+-    status: doubleLock.status,
+-    body: doubleLock.body,
++  // ---- 8b. Publishing an already-PUBLISHED result again must be BLOCKED ----
++  const doublePublish = await post("/results/publish", { result_master_id: resultMasterId }, { slug: SLUG_A, token: tokenTalimat });
++  check("Publishing an already-PUBLISHED result is BLOCKED", doublePublish.status === 409, {
++    status: doublePublish.status,
++    body: doublePublish.body,
+   });
+ 
+-  // ---- 14. Correction workflow: request a correction on the locked
++  // ---- 9. Correction workflow: request a correction on the published
+   // result, then decide it (as a DIFFERENT user than the requester) ----
+   const requestCorrection = await post(
+     `/results/${resultMasterId}/corrections`,
+     { student_id: STUDENTS_A[0], book_id: BOOKS[0], field: "mark", new_value: "95", reason: "E2E correction test" },
+     { slug: SLUG_A, token: tokenTalimat },
+   );
+-  check("Request a correction on the locked result", requestCorrection.status === 200, {
++  check("Request a correction on the published result", requestCorrection.status === 200, {
+     status: requestCorrection.status,
+     body: requestCorrection.body,
+   });
+diff --git a/backend/scripts/e2e/phase8-guardian-portal.ts b/backend/scripts/e2e/phase8-guardian-portal.ts
+index 9c681b9..9bb4f27 100644
+--- a/backend/scripts/e2e/phase8-guardian-portal.ts
++++ b/backend/scripts/e2e/phase8-guardian-portal.ts
+@@ -14,7 +14,7 @@ async function main() {
+     throw new Error("Missing madrasaAId/studentsA in fixture state - run phase0/phase2 first");
+   }
+   const madrasaAId = state.madrasaAId;
+-  const STUDENT_WITH_PUBLISHED_RESULT = state.studentsA[0]; // Exam A1's published/locked result covers this student
++  const STUDENT_WITH_PUBLISHED_RESULT = state.studentsA[0]; // Exam A1's published result covers this student
+   const STUDENT_OTHER = state.studentsA[1]; // a different student, NOT this guardian's child
+ 
+   // ---- Fixture: create a guardian directly linked to ONE student only ----
+diff --git a/backend/scripts/e2e/phase9-concurrency.ts b/backend/scripts/e2e/phase9-concurrency.ts
+index 335e52a..d564f64 100644
+--- a/backend/scripts/e2e/phase9-concurrency.ts
++++ b/backend/scripts/e2e/phase9-concurrency.ts
+@@ -84,18 +84,18 @@ async function main() {
+   });
+ 
+   // ================= 2. Simultaneous result-status transition (double
+-  // publish attempt on the SAME already-locked result must not corrupt
+-  // anything - both should fail cleanly since it's already LOCKED) =================
++  // publish attempt on the SAME already-published result must not corrupt
++  // anything - both should fail cleanly since it's already PUBLISHED) =================
+   const rm = await prisma.resultMaster.findFirst({ where: { madrasaId: madrasaAId, examId: EXAM_A1, classId: CLASS_ID } });
+-  check("Found the Phase 6 result master (already LOCKED)", rm?.status === "LOCKED", { status: rm?.status });
++  check("Found the Phase 6 result master (already PUBLISHED)", rm?.status === "PUBLISHED", { status: rm?.status });
+   if (rm) {
+-    const [lock1, lock2] = await Promise.all([
+-      post(`/results/${rm.id}/lock`, {}, { slug: SLUG_A, token: tokenA }),
+-      post(`/results/${rm.id}/lock`, {}, { slug: SLUG_A, token: tokenMuhtamim }),
++    const [publish1, publish2] = await Promise.all([
++      post("/results/publish", { result_master_id: rm.id }, { slug: SLUG_A, token: tokenA }),
++      post("/results/publish", { result_master_id: rm.id }, { slug: SLUG_A, token: tokenMuhtamim }),
+     ]);
+-    check("Both concurrent lock attempts on an already-LOCKED result fail cleanly (no 200)", lock1.status !== 200 && lock2.status !== 200, {
+-      lock1: lock1.status,
+-      lock2: lock2.status,
++    check("Both concurrent publish attempts on an already-PUBLISHED result fail cleanly (no 200)", publish1.status !== 200 && publish2.status !== 200, {
++      publish1: publish1.status,
++      publish2: publish2.status,
+     });
+   }
+ 
+diff --git a/backend/scripts/run-db-snapshot.ts b/backend/scripts/run-db-snapshot.ts
+index 2168555..425bb74 100644
+--- a/backend/scripts/run-db-snapshot.ts
++++ b/backend/scripts/run-db-snapshot.ts
+@@ -21,7 +21,7 @@ async function main() {
+       (SELECT count(*)::int FROM exam_attendances) AS exam_attendances,
+       (SELECT count(*)::int FROM results_master) AS results_master,
+       (SELECT count(*)::int FROM results_master WHERE status = 'PUBLISHED') AS results_published,
+-      (SELECT count(*)::int FROM results_master WHERE status = 'LOCKED') AS results_locked,
++      (SELECT count(*)::int FROM results_master WHERE status = 'PROCESSING') AS results_processing,
+       (SELECT count(*)::int FROM users) AS users,
+       (SELECT count(*)::int FROM guardians) AS guardians
+   `;
+diff --git a/backend/src/modules/ResultPanel/__tests__/result-recalculation.test.ts b/backend/src/modules/ResultPanel/__tests__/result-recalculation.test.ts
+index a36bc49..7f038ed 100644
+--- a/backend/src/modules/ResultPanel/__tests__/result-recalculation.test.ts
++++ b/backend/src/modules/ResultPanel/__tests__/result-recalculation.test.ts
+@@ -15,7 +15,7 @@ vi.mock("../result-workflow.service", () => ({ resultWorkflowService: {} }));
+ import { logActivity } from "../../../shared/utils/activity.util";
+ import { ResultPanelService } from "../result-panel.service";
+ 
+-type Status = "DRAFT" | "PROCESSING" | "RESULT_VERIFIED" | "APPROVED" | "PUBLISHED" | "LOCKED";
++type Status = "DRAFT" | "PROCESSING" | "PUBLISHED";
+ 
+ interface StoredRow {
+   studentId: number;
+@@ -131,20 +131,17 @@ describe("ResultPanelService.recalculateResults", () => {
+     expect(logActivity).toHaveBeenCalledTimes(1);
+   });
+ 
+-  it("steps an APPROVED result back to PROCESSING and clears the sign-off", async () => {
++  it("skips a DRAFT result - nothing has been processed yet, so nothing can be stale", async () => {
+     const { service, replaced } = buildScenario({
+       failMark: 35,
+-      status: "APPROVED",
++      status: "DRAFT",
+       stored: storedUnderFail33(),
+     });
+ 
+-    await service.recalculateResults(1, 7, {});
++    const out = await service.recalculateResults(1, 7, {});
+ 
+-    expect(replaced[0].masterData).toMatchObject({
+-      status: "PROCESSING",
+-      resultVerifiedBy: null,
+-      approvedBy: null,
+-    });
++    expect(replaced).toHaveLength(0);
++    expect(out.results[0].outcome).toBe("SKIPPED");
+   });
+ 
+   it("leaves a PUBLISHED result alone by default and only reports it as pending", async () => {
+@@ -180,7 +177,7 @@ describe("ResultPanelService.recalculateResults", () => {
+   it("treats a single-session call as an explicit act, so it includes published", async () => {
+     const { service, replaced } = buildScenario({
+       failMark: 35,
+-      status: "LOCKED",
++      status: "PUBLISHED",
+       stored: storedUnderFail33(),
+     });
+ 
+@@ -188,7 +185,7 @@ describe("ResultPanelService.recalculateResults", () => {
+ 
+     expect(out.include_published).toBe(true);
+     expect(replaced).toHaveLength(1);
+-    expect(replaced[0].masterData).toEqual({ status: "LOCKED" });
++    expect(replaced[0].masterData).toEqual({ status: "PUBLISHED" });
+   });
+ 
+   it("writes nothing on a dry run, even for unpublished sessions", async () => {
+diff --git a/backend/src/modules/ResultPanel/mark-component.service.ts b/backend/src/modules/ResultPanel/mark-component.service.ts
+index cd74b92..867a7b8 100644
+--- a/backend/src/modules/ResultPanel/mark-component.service.ts
++++ b/backend/src/modules/ResultPanel/mark-component.service.ts
+@@ -85,11 +85,11 @@ export class MarkComponentService {
+ 
+     // Changing a component's fullMark changes the effective denominator
+     // saveMarks() uses to compute a mark from its component breakdown - if
+-    // this book already has marks entered for a PUBLISHED/LOCKED result
++    // this book already has marks entered for a PUBLISHED result
+     // (scoped to this exam when exam-specific, or any exam when this is the
+     // book-wide fallback config), that result's grading would silently
+     // drift out from under it. Block the same way saveMarks blocks direct
+-    // edits to a published/locked session. Mark has no `resultMaster`
++    // edits to a published session. Mark has no `resultMaster`
+     // relation declared (only the resultMasterId scalar), so this is a
+     // manual two-step lookup rather than a nested relation filter.
+     const marksForBook = await prisma.mark.findMany({
+@@ -101,7 +101,7 @@ export class MarkComponentService {
+       ? await prisma.resultMaster.findFirst({
+           where: {
+             id: { in: marksForBook.map((m) => m.resultMasterId) },
+-            status: { in: ["PUBLISHED", "LOCKED"] },
++            status: "PUBLISHED",
+             deletedAt: null,
+           },
+           select: { id: true },
+@@ -109,7 +109,7 @@ export class MarkComponentService {
+       : null;
+     if (affectedPublishedMark) {
+       throw new ConflictError(
+-        t({ bn: "এই বিষয়ের নম্বর বিভাজন পরিবর্তন করা যাবে না — এটি ইতিমধ্যে প্রকাশিত/লক করা একটি ফলাফলে ব্যবহৃত হয়েছে। প্রয়োজনে 'ফলাফল সংশোধন' (correction) প্রক্রিয়া ব্যবহার করুন।", en: "This subject's mark components cannot be changed — they are already used in a published/locked result. Use the 'result correction' process if needed." }),
++        t({ bn: "এই বিষয়ের নম্বর বিভাজন পরিবর্তন করা যাবে না — এটি ইতিমধ্যে প্রকাশিত একটি ফলাফলে ব্যবহৃত হয়েছে। প্রয়োজনে 'ফলাফল সংশোধন' (correction) প্রক্রিয়া ব্যবহার করুন।", en: "This subject's mark components cannot be changed — they are already used in a published result. Use the 'result correction' process if needed." }),
+       );
+     }
+ 
+diff --git a/backend/src/modules/ResultPanel/result-correction.routes.ts b/backend/src/modules/ResultPanel/result-correction.routes.ts
+index 98f132d..70a6ebe 100644
+--- a/backend/src/modules/ResultPanel/result-correction.routes.ts
++++ b/backend/src/modules/ResultPanel/result-correction.routes.ts
+@@ -19,7 +19,7 @@ const router = express.Router();
+ 
+ router.use(tenantMiddleware, authMiddleware);
+ 
+-/* ================= CORRECTION REQUEST / LIST (only usable once PUBLISHED/LOCKED) ================= */
++/* ================= CORRECTION REQUEST / LIST (only usable once PUBLISHED) ================= */
+ router.post(
+   "/:resultMasterId/corrections",
+   requireAnyPermission("result.correct", "result.manage"),
+diff --git a/backend/src/modules/ResultPanel/result-correction.service.ts b/backend/src/modules/ResultPanel/result-correction.service.ts
+index 46b3caa..e09c6ce 100644
+--- a/backend/src/modules/ResultPanel/result-correction.service.ts
++++ b/backend/src/modules/ResultPanel/result-correction.service.ts
+@@ -72,8 +72,8 @@ interface PreparedCorrection {
+ }
+ 
+ /**
+- * Controlled correction workflow for results that have already passed
+- * publish (or lock) - see prisma/models/result.prisma's ResultCorrection
++ * Controlled correction workflow for results that have already been
++ * published - see prisma/models/result.prisma's ResultCorrection
+  * model doc comment. A correction is only ever *applied* after an explicit
+  * approve decision (or an explicit apply_now by an actor with full result
+  * authority); requesting one never touches the live Mark/ResultSummary row.
+@@ -86,9 +86,9 @@ export class ResultCorrectionService {
+   }
+ 
+   private assertCorrectable(status: string) {
+-    if (status !== "PUBLISHED" && status !== "LOCKED") {
++    if (status !== "PUBLISHED") {
+       throw new ConflictError(
+-        t({ bn: "ফলাফল প্রকাশিত/লক অবস্থায় থাকলেই কেবল সংশোধনের অনুরোধ করা যায় — এখনো প্রকাশ না হলে সরাসরি নম্বর সম্পাদনা করুন।", en: "Corrections can be requested only when the result is published/locked — if it isn't published yet, edit the marks directly." }),
++        t({ bn: "ফলাফল প্রকাশিত অবস্থায় থাকলেই কেবল সংশোধনের অনুরোধ করা যায় — এখনো প্রকাশ না হলে সরাসরি নম্বর সম্পাদনা করুন।", en: "Corrections can be requested only when the result is published — if it isn't published yet, edit the marks directly." }),
+       );
+     }
+   }
+diff --git a/backend/src/modules/ResultPanel/result-panel.constants.ts b/backend/src/modules/ResultPanel/result-panel.constants.ts
+index a3ca5d7..fe788fc 100644
+--- a/backend/src/modules/ResultPanel/result-panel.constants.ts
++++ b/backend/src/modules/ResultPanel/result-panel.constants.ts
+@@ -3,20 +3,13 @@ export const FAIL_MARK_SETTING_NAME = "fail_mark";
+ export const DEFAULT_GENERAL_GRADE_FALLBACK = "F";
+ export const DEFAULT_MADRASA_GRADE_FALLBACK = "রাসিব";
+ 
+-// DRAFT and PUBLISHED are the two original values (kept for compat with any
+-// direct string comparisons already in the codebase). The rest are the
+-// additive marks/verification/approval workflow states - see
+-// ResultPublishStatus in prisma/models/result.prisma for the authoritative
+-// definition and the allowed forward progression.
++// The three resting states of a result session: DRAFT (marks being entered),
++// PROCESSING (graded + ranked, waiting to be published) and PUBLISHED. See
++// ResultPublishStatus in prisma/models/result.prisma for the definition.
+ export const RESULT_STATUS = {
+   DRAFT: "DRAFT",
+-  MARKS_SUBMITTED: "MARKS_SUBMITTED",
+-  MARKS_VERIFIED: "MARKS_VERIFIED",
+   PROCESSING: "PROCESSING",
+-  RESULT_VERIFIED: "RESULT_VERIFIED",
+-  APPROVED: "APPROVED",
+   PUBLISHED: "PUBLISHED",
+-  LOCKED: "LOCKED",
+ } as const;
+ 
+ export const MARK_STATUS = {
+diff --git a/backend/src/modules/ResultPanel/result-panel.repository.ts b/backend/src/modules/ResultPanel/result-panel.repository.ts
+index c0f39b1..320d87b 100644
+--- a/backend/src/modules/ResultPanel/result-panel.repository.ts
++++ b/backend/src/modules/ResultPanel/result-panel.repository.ts
+@@ -230,18 +230,6 @@ export class ResultPanelRepository {
+     });
+   }
+ 
+-  /** Companion to revertMarkSubmissionsToDraft: once any subject's lock is
+-   * overridden, the ResultMaster's own aggregate status ("every subject
+-   * submitted/verified") is no longer accurate either, so pull it back to
+-   * DRAFT the same way rejectBook does for a normal reject. No-op if the
+-   * session hadn't advanced that far yet. */
+-  revertMasterStatusIfAdvanced(resultMasterId: number, madrasaId: number) {
+-    return prisma.resultMaster.updateMany({
+-      where: { id: resultMasterId, madrasaId, status: { in: ["MARKS_SUBMITTED", "MARKS_VERIFIED"] } },
+-      data: { status: "DRAFT" },
+-    });
+-  }
+-
+   /** MarkComponentConfig rows for a set of books, covering both
+    * exam-specific (examId = the given exam) and book-wide (examId = null)
+    * rows in one query - callers pick whichever set applies per book (prefer
+@@ -415,9 +403,7 @@ export class ResultPanelRepository {
+     });
+   }
+ 
+-  /** Advances a session to PROCESSING after a (re)process run. Clears any
+-   * prior resultVerified/approved marks since the underlying content just
+-   * changed and those sign-offs no longer apply to the new numbers.
++  /** Advances a session to PROCESSING after a (re)process run.
+    * DB-guarded on `expectedStatuses` (the same reprocessable-status list the
+    * caller already checked in JS) so two concurrent process requests can't
+    * both apply - returns false instead of writing when the guard misses. */
+@@ -433,10 +419,6 @@ export class ResultPanelRepository {
+         status: "PROCESSING",
+         processedAt: new Date(),
+         processedBy,
+-        resultVerifiedAt: null,
+-        resultVerifiedBy: null,
+-        approvedAt: null,
+-        approvedBy: null,
+       },
+     });
+     return result.count > 0;
+@@ -445,7 +427,7 @@ export class ResultPanelRepository {
+   /** Publishes a session and writes an accompanying ResultSnapshot (audit /
+    * integrity record only in this phase - no read path renders from it yet)
+    * in the same transaction. DB-guarded: only publishes when the row is
+-   * still APPROVED at write time - if a concurrent request already moved it
++   * still PROCESSING at write time - if a concurrent request already moved it
+    * elsewhere, the update matches zero rows, the snapshot is never created,
+    * and the transaction returns false instead of throwing. */
+   async publishResultMasterWithSnapshot(
+@@ -457,7 +439,7 @@ export class ResultPanelRepository {
+     return prisma.$transaction(async (tx) => {
+       const now = new Date();
+       const updated = await tx.resultMaster.updateMany({
+-        where: { id: resultMasterId, madrasaId, status: "APPROVED" },
++        where: { id: resultMasterId, madrasaId, status: "PROCESSING" },
+         data: { status: "PUBLISHED", publishedAt: now, publishedBy },
+       });
+       if (updated.count === 0) return false;
+@@ -657,7 +639,7 @@ export class ResultPanelRepository {
+    * always lands back in draft for review). `reprocessResultMaster` (the
+    * correction-workflow reprocess) is the one caller that passes the
+    * session's CURRENT status back in instead, so re-grading after an
+-   * approved correction doesn't silently rewind a PUBLISHED/LOCKED result
++   * approved correction doesn't silently rewind a PUBLISHED result
+    * to DRAFT. */
+   saveResultSummaryInTransaction(
+     resultMasterId: number,
+@@ -701,7 +683,7 @@ export class ResultPanelRepository {
+         madrasaId,
+         deletedAt: null,
+         ...(resultMasterId ? { id: resultMasterId } : {}),
+-        status: { in: ["PROCESSING", "RESULT_VERIFIED", "APPROVED", "PUBLISHED", "LOCKED"] },
++        status: { in: ["PROCESSING", "PUBLISHED"] },
+       },
+       select: {
+         id: true,
+diff --git a/backend/src/modules/ResultPanel/result-panel.routes.ts b/backend/src/modules/ResultPanel/result-panel.routes.ts
+index f146316..5d079d5 100644
+--- a/backend/src/modules/ResultPanel/result-panel.routes.ts
++++ b/backend/src/modules/ResultPanel/result-panel.routes.ts
+@@ -70,7 +70,7 @@ router.post(
+   processResult,
+ );
+ 
+-/* ================= RECALCULATE (any stage, incl. PUBLISHED/LOCKED) ================= */
++/* ================= RECALCULATE (any stage, incl. PUBLISHED) ================= */
+ // Re-grades processed sessions against the CURRENT fail mark / grade bands /
+ // subject setup - see ResultPanelService.recalculateResults for the
+ // published-result rules. Needs no reprocess-from-scratch, so it works after
+@@ -104,7 +104,6 @@ router.get(
+     "result.verify",
+     "result.approve",
+     "result.publish",
+-    "result.lock",
+     "result.correct",
+   ),
+   getResultOverview,
+diff --git a/backend/src/modules/ResultPanel/result-panel.service.ts b/backend/src/modules/ResultPanel/result-panel.service.ts
+index 524aa3f..31515fc 100644
+--- a/backend/src/modules/ResultPanel/result-panel.service.ts
++++ b/backend/src/modules/ResultPanel/result-panel.service.ts
+@@ -5,7 +5,7 @@ import { logger } from "../../shared/logger/logger";
+ import { notificationService } from "../notifications/notification.service";
+ import { resultPanelRepository, ResultPanelRepository } from "./result-panel.repository";
+ import { logActivity } from "../../shared/utils/activity.util";
+-import { hasFullMarksAuthority, hasFullResultAuthority } from "../../shared/utils/rbac.util";
++import { hasFullMarksAuthority } from "../../shared/utils/rbac.util";
+ import { resultWorkflowService } from "./result-workflow.service";
+ import { assertExamCoversClass } from "../ExamPanel/exam-scope";
+ import {
+@@ -64,15 +64,9 @@ type ResultCalculationConfig = ClassGradingConfig;
+ // changes can leave it stale), and the subset guardians can already see.
+ const PROCESSED_RESULT_STATUSES = new Set<ResultPublishStatus>([
+   RESULT_STATUS.PROCESSING,
+-  RESULT_STATUS.RESULT_VERIFIED,
+-  RESULT_STATUS.APPROVED,
+   RESULT_STATUS.PUBLISHED,
+-  RESULT_STATUS.LOCKED,
+-]);
+-const FINAL_RESULT_STATUSES = new Set<ResultPublishStatus>([
+-  RESULT_STATUS.PUBLISHED,
+-  RESULT_STATUS.LOCKED,
+ ]);
++const FINAL_RESULT_STATUSES = new Set<ResultPublishStatus>([RESULT_STATUS.PUBLISHED]);
+ 
+ export type RecalcOutcomeKind = "UPDATED" | "WOULD_UPDATE" | "UNCHANGED" | "SKIPPED" | "FAILED";
+ 
+@@ -426,7 +420,7 @@ export class ResultPanelService {
+    * miyari, subject added/removed). Incomplete sessions are cleared exactly
+    * as before (a new subject with no marks yet must not keep an old partial
+    * total). Complete ones are re-graded through the recalculation engine:
+-   * unpublished results are refreshed in place, while PUBLISHED/LOCKED ones
++   * unpublished results are refreshed in place, while PUBLISHED ones
+    * are left untouched and only counted in `pending_published` - changing a
+    * subject's setup must never silently rewrite (or, as this used to do,
+    * un-publish) a result guardians can already see. তালিমাত applies it to
+@@ -474,14 +468,11 @@ export class ResultPanelService {
+   /** Grades one session again with the CURRENT config and, if anything
+    * differs from what is stored, swaps the new summary in.
+    *
+-   * - Not processed yet (DRAFT / marks stages): nothing to be stale - skipped.
++   * - Not processed yet (DRAFT): nothing to be stale - skipped.
+    * - Marks no longer complete: skipped, never cleared (a config change must
+    *   not gut a result; the entry screens already flag missing marks).
+    * - PROCESSING: refreshed in place.
+-   * - RESULT_VERIFIED / APPROVED: refreshed and stepped back to PROCESSING,
+-   *   because the sign-off no longer describes the numbers (a full-authority
+-   *   actor - তালিমাত - re-clears it in the same click as Publish).
+-   * - PUBLISHED / LOCKED: refreshed with the status kept, and a RECALCULATE
++   * - PUBLISHED: refreshed with the status kept, and a RECALCULATE
+    *   ResultSnapshot + activity log written so the change is auditable.
+    * `apply: false` is a dry run (same diff, no writes). */
+   private async recalculateMaster(
+@@ -558,18 +549,8 @@ export class ResultPanelService {
+     let masterData: Prisma.ResultMasterUncheckedUpdateInput;
+     if (isFinal) {
+       masterData = { status: master.status };
+-    } else if (master.status === RESULT_STATUS.PROCESSING) {
+-      masterData = { processedAt: new Date(), processedBy: opts.actorId };
+     } else {
+-      masterData = {
+-        status: RESULT_STATUS.PROCESSING,
+-        processedAt: new Date(),
+-        processedBy: opts.actorId,
+-        resultVerifiedAt: null,
+-        resultVerifiedBy: null,
+-        approvedAt: null,
+-        approvedBy: null,
+-      };
++      masterData = { processedAt: new Date(), processedBy: opts.actorId };
+     }
+     await this.repository.replaceResultSummaryInTransaction(master.id, rows, masterData);
+ 
+@@ -607,7 +588,7 @@ export class ResultPanelService {
+    * session, what changed.
+    *
+    * Unpublished sessions are always applied (nobody outside the office has
+-   * seen them). PUBLISHED/LOCKED ones are applied only when
++   * seen them). PUBLISHED ones are applied only when
+    * `includePublished` is set: fail mark is one global setting, so a new
+    * value meant for the next exam must not retroactively flip an old exam
+    * that guardians already saw. When it isn't set they are still diffed and
+@@ -702,7 +683,7 @@ export class ResultPanelService {
+     // students.roll every year - a re-grade must not rewrite history), and
+     // pass the session's CURRENT status back in as the override: a
+     // correction re-grades content (total/average/grade/rank) but must not
+-    // silently rewind an already PUBLISHED/LOCKED result to DRAFT the way a
++    // silently rewind an already PUBLISHED result to DRAFT the way a
+     // fresh process run normally would.
+     const existing = await this.repository.findResultSummaryForDiff(resultMasterId);
+     const rollOverrides = new Map(existing.map((row) => [row.studentId, row.roll]));
+@@ -802,9 +783,9 @@ export class ResultPanelService {
+     // after this result was published) would otherwise slip past the
+     // per-book lock check below — block the whole batch the moment the
+     // session itself has moved past marks-editing entirely.
+-    if (master.status === RESULT_STATUS.PUBLISHED || master.status === RESULT_STATUS.LOCKED) {
++    if (master.status === RESULT_STATUS.PUBLISHED) {
+       throw new ConflictError(
+-        t({ bn: "এই ফলাফল ইতিমধ্যে প্রকাশিত/লক করা হয়ে গেছে — সরাসরি নম্বর সম্পাদনা করা যাবে না। প্রয়োজনে 'ফলাফল সংশোধন' (correction) প্রক্রিয়া ব্যবহার করুন।", en: "This result is already published/locked — marks cannot be edited directly. Use the 'result correction' process if needed." }),
++        t({ bn: "এই ফলাফল ইতিমধ্যে প্রকাশিত হয়ে গেছে — সরাসরি নম্বর সম্পাদনা করা যাবে না। প্রয়োজনে 'ফলাফল সংশোধন' (correction) প্রক্রিয়া ব্যবহার করুন।", en: "This result is already published — marks cannot be edited directly. Use the 'result correction' process if needed." }),
+       );
+     }
+ 
+@@ -830,7 +811,7 @@ export class ResultPanelService {
+ 
+     // Once a subject's marks are SUBMITTED/VERIFIED, ordinary marks.manage
+     // edits are locked out — a verifier must reject-and-resubmit, or (once
+-    // published/locked) the correction workflow takes over. An actor with
++    // published) the correction workflow takes over. An actor with
+     // FULL authority over both submit and verify (see hasFullMarksAuthority
+     // - typically the single office/TALIMAT account at a small madrasa with
+     // nobody else to hand a maker/checker step to) is let through instead:
+@@ -1032,7 +1013,6 @@ export class ResultPanelService {
+ 
+     if (bypassedLock) {
+       await this.repository.revertMarkSubmissionsToDraft(resultMasterId, lockedBookIds);
+-      await this.repository.revertMasterStatusIfAdvanced(resultMasterId, madrasaId);
+     }
+ 
+     return { message: t({ bn: "নম্বর সংরক্ষণ করা হয়েছে", en: "Marks saved successfully" }), result_master_id: resultMasterId };
+@@ -1053,7 +1033,7 @@ export class ResultPanelService {
+       result_master_id = master.id;
+     }
+ 
+-    // The entry screen switches into "সংশোধন" mode for PUBLISHED/LOCKED
++    // The entry screen switches into "সংশোধন" mode for PUBLISHED
+     // sessions (direct writes are refused there), so it needs the status.
+     const [rows, sessionRow] = await Promise.all([
+       this.repository.findMarks(madrasaId, examId, classId, result_master_id),
+@@ -1103,41 +1083,22 @@ export class ResultPanelService {
+     let master = await this.repository.findResultMasterById(result_master_id, madrasaId);
+     if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found" }));
+ 
+-    // The master's status is only advanced by submit/verify events, so a
+-    // session can be left at DRAFT/MARKS_SUBMITTED even though every
+-    // subject's MarkSubmission is already VERIFIED (e.g. it was reset by an
+-    // older subject-config recompute). Re-derive it from the submissions -
+-    // the source of truth - before judging whether processing may run.
+-    if (master.status === RESULT_STATUS.DRAFT || master.status === RESULT_STATUS.MARKS_SUBMITTED) {
+-      await resultWorkflowService.syncStatusFromSubmissions(madrasaId, result_master_id, userId);
+-      master = (await this.repository.findResultMasterById(result_master_id, madrasaId)) ?? master;
+-    }
+-
+-    // Reprocessing is fine any time between "marks fully verified" and
+-    // "result verified" (inclusive) - but once a result has moved on to
+-    // APPROVED/PUBLISHED/LOCKED, further changes must go through the
+-    // correction workflow instead of silently rewinding an already
+-    // sign-off'd result.
+-    const reprocessable: string[] = [
+-      RESULT_STATUS.MARKS_VERIFIED,
+-      RESULT_STATUS.PROCESSING,
+-      RESULT_STATUS.RESULT_VERIFIED,
+-    ];
+-    if (!reprocessable.includes(master.status)) {
+-      if (
+-        master.status === RESULT_STATUS.APPROVED ||
+-        master.status === RESULT_STATUS.PUBLISHED ||
+-        master.status === RESULT_STATUS.LOCKED
+-      ) {
+-        throw new ConflictError(
+-          t({ bn: "এই ফলাফল ইতিমধ্যে অনুমোদিত/প্রকাশিত হয়ে গেছে — নম্বর বদলাতে 'ফলাফল সংশোধন' (correction) এবং ফেল মার্ক/গ্রেড বদলের পর হালনাগাদ করতে 'পুনঃগণনা' ব্যবহার করুন।", en: "This result is already approved/published — use 'result correction' to change marks and 'recalculate' to refresh it after changing fail marks/grades." }),
+-        );
+-      }
++    // A published result can't be re-processed: changes go through the
++    // correction workflow ('recalculate' refreshes it after fail-mark/grade
++    // changes).
++    if (master.status === RESULT_STATUS.PUBLISHED) {
+       throw new ConflictError(
+-        t({ bn: "সব বিষয়ের নম্বর জমা ও যাচাই (verify) সম্পন্ন না হওয়া পর্যন্ত ফলাফল প্রসেস করা যাবে না।", en: "The result cannot be processed until marks for all subjects are submitted and verified." }),
++        t({ bn: "এই ফলাফল ইতিমধ্যে প্রকাশিত হয়ে গেছে — নম্বর বদলাতে 'ফলাফল সংশোধন' (correction) এবং ফেল মার্ক/গ্রেড বদলের পর হালনাগাদ করতে 'পুনঃগণনা' ব্যবহার করুন।", en: "This result is already published — use 'result correction' to change marks and 'recalculate' to refresh it after changing fail marks/grades." }),
+       );
+     }
+ 
++    // A first process run (DRAFT) needs every subject submitted and
++    // verified. Re-processing an already PROCESSING result skips that check,
++    // as before - it already cleared it once.
++    if (master.status === RESULT_STATUS.DRAFT) {
++      await resultWorkflowService.assertAllSubjectsVerified(madrasaId, result_master_id);
++    }
++
+     await this.assertAllMarksEntered(
+       madrasaId,
+       exam_id,
+@@ -1454,42 +1415,22 @@ export class ResultPanelService {
+     const master = await this.repository.findResultMasterById(resultMasterId, madrasaId);
+     if (!master) throw new NotFoundError(t({ bn: "ফলাফল সেশন পাওয়া যায়নি", en: "Result session not found" }));
+ 
+-    let status: ResultPublishStatus = master.status;
+-
+-    // The verify-result -> approve stages exist as their own gated
+-    // actions for madrasas that split "checker" from "approver" into
+-    // different people. Most তালিমাত offices don't have a second person
+-    // for that hand-off, so an actor holding full result authority
+-    // (result.verify + result.approve, or Muhtamim/Super Admin) walks
+-    // straight through both stages in this same click instead of being
+-    // sent to hunt for two more buttons first - every validation those
+-    // stages normally run (missing/invalid marks, ExamCandidate holds,
+-    // etc. in verifyResult) still executes exactly as before, just
+-    // inline. An actor who lacks that full authority still stops here
+-    // and needs a separate approver to move the status forward.
+-    if (
+-      (status === RESULT_STATUS.PROCESSING || status === RESULT_STATUS.RESULT_VERIFIED) &&
+-      (await hasFullResultAuthority(userId))
+-    ) {
+-      if (status === RESULT_STATUS.PROCESSING) {
+-        const verifyOutcome = await resultWorkflowService.verifyResult(madrasaId, userId, resultMasterId);
+-        if (!verifyOutcome.valid) {
+-          throw new ConflictError(
+-            t({ bn: `ফলাফল যাচাইয়ে সমস্যা পাওয়া গেছে, তাই প্রকাশ করা যায়নি: ${verifyOutcome.issues[0]}`, en: `Problems were found while verifying the result, so it could not be published: ${verifyOutcome.issues[0]}` }),
+-          );
+-        }
+-        status = RESULT_STATUS.RESULT_VERIFIED;
+-      }
+-
+-      if (status === RESULT_STATUS.RESULT_VERIFIED) {
+-        await resultWorkflowService.decideApproval(madrasaId, userId, resultMasterId, true);
+-        status = RESULT_STATUS.APPROVED;
+-      }
++    if (master.status === RESULT_STATUS.PUBLISHED) {
++      throw new ConflictError(t({ bn: "এই ফলাফল ইতিমধ্যে প্রকাশিত।", en: "This result is already published." }));
++    }
++    if (master.status !== RESULT_STATUS.PROCESSING) {
++      throw new ConflictError(
++        t({ bn: "প্রকাশের আগে ফলাফল প্রসেস করুন।", en: "Process the result before publishing." }),
++      );
+     }
+ 
+-    if (status !== RESULT_STATUS.APPROVED) {
++    // One person reviews and publishes. The sanity checks the old separate
++    // verify step ran (missing/invalid marks, grade/status consistency,
++    // ExamCandidate holds) still run here, and block publishing on any issue.
++    const check = await resultWorkflowService.checkResultBeforePublish(madrasaId, resultMasterId);
++    if (!check.valid) {
+       throw new ConflictError(
+-        t({ bn: "ফলাফল অনুমোদিত (APPROVED) না হওয়া পর্যন্ত প্রকাশ করা যাবে না। এই ফলাফল যাচাই/অনুমোদনের জন্য পৃথক অনুমোদনকারীর কাছে পাঠাতে হবে।", en: "The result cannot be published until it is APPROVED. It must be sent to a separate approver for verification/approval." }),
++        t({ bn: `ফলাফল যাচাইয়ে সমস্যা পাওয়া গেছে, তাই প্রকাশ করা যায়নি: ${check.issues[0]}`, en: `Problems were found while checking the result, so it could not be published: ${check.issues[0]}` }),
+       );
+     }
+ 
+diff --git a/backend/src/modules/ResultPanel/result-panel.validation.ts b/backend/src/modules/ResultPanel/result-panel.validation.ts
+index c04eefa..c6e2c68 100644
+--- a/backend/src/modules/ResultPanel/result-panel.validation.ts
++++ b/backend/src/modules/ResultPanel/result-panel.validation.ts
+@@ -65,7 +65,7 @@ export const recalculateResultsSchema = z.object({
+   body: z.object({
+     // Omit to recalculate every processed session in the madrasa.
+     result_master_id: idSchema.optional(),
+-    // PUBLISHED/LOCKED sessions are only rewritten when this is true.
++    // PUBLISHED sessions are only rewritten when this is true.
+     include_published: z.boolean().optional(),
+     // Report what would change without writing anything.
+     dry_run: z.boolean().optional(),
+diff --git a/backend/src/modules/ResultPanel/result-workflow.controller.ts b/backend/src/modules/ResultPanel/result-workflow.controller.ts
+index 7048131..fd81b51 100644
+--- a/backend/src/modules/ResultPanel/result-workflow.controller.ts
++++ b/backend/src/modules/ResultPanel/result-workflow.controller.ts
+@@ -87,54 +87,6 @@ export const rejectBook = async (req: Request, res: Response) => {
+   }
+ };
+ 
+-/* ================= VERIFY RESULT ================= */
+-export const verifyResult = async (req: Request, res: Response) => {
+-  try {
+-    const madrasa_id = getMadrasaId(req);
+-    const result = await resultWorkflowService.verifyResult(
+-      madrasa_id,
+-      req.user!.id,
+-      toNumber(req.params.resultMasterId),
+-      req.body?.remarks,
+-    );
+-    res.json({ success: true, ...result });
+-  } catch (error) {
+-    respondError(res, error, "verifyResult error:", "Failed to verify result");
+-  }
+-};
+-
+-/* ================= APPROVE / REJECT RESULT ================= */
+-export const decideApproval = async (req: Request, res: Response) => {
+-  try {
+-    const madrasa_id = getMadrasaId(req);
+-    const result = await resultWorkflowService.decideApproval(
+-      madrasa_id,
+-      req.user!.id,
+-      toNumber(req.params.resultMasterId),
+-      Boolean(req.body?.approve),
+-      req.body?.remarks,
+-    );
+-    res.json({ success: true, ...result });
+-  } catch (error) {
+-    respondError(res, error, "decideApproval error:", "Failed to decide on result approval");
+-  }
+-};
+-
+-/* ================= LOCK ================= */
+-export const lockResult = async (req: Request, res: Response) => {
+-  try {
+-    const madrasa_id = getMadrasaId(req);
+-    const result = await resultWorkflowService.lock(
+-      madrasa_id,
+-      req.user!.id,
+-      toNumber(req.params.resultMasterId),
+-    );
+-    res.json({ success: true, ...result });
+-  } catch (error) {
+-    respondError(res, error, "lockResult error:", "Failed to lock result");
+-  }
+-};
+-
+ /* ================= UNPUBLISH ================= */
+ export const unpublishResult = async (req: Request, res: Response) => {
+   try {
+diff --git a/backend/src/modules/ResultPanel/result-workflow.repository.ts b/backend/src/modules/ResultPanel/result-workflow.repository.ts
+index e09c929..77d89d2 100644
+--- a/backend/src/modules/ResultPanel/result-workflow.repository.ts
++++ b/backend/src/modules/ResultPanel/result-workflow.repository.ts
+@@ -4,7 +4,7 @@ import { resultPanelRepository } from "./result-panel.repository";
+ 
+ /**
+  * Data access for the subject-level submission/verification queue and the
+- * result-level verify/approve/publish/lock progression - everything that
++ * pre-publish check and unpublish - everything that
+  * reads or writes MarkSubmission plus the workflow columns on ResultMaster.
+  * Marks-entry itself (Mark rows, the grading engine) stays owned by
+  * result-panel.repository.ts / result-panel.service.ts; this module only
+diff --git a/backend/src/modules/ResultPanel/result-workflow.routes.ts b/backend/src/modules/ResultPanel/result-workflow.routes.ts
+index e595fd4..1fb16dc 100644
+--- a/backend/src/modules/ResultPanel/result-workflow.routes.ts
++++ b/backend/src/modules/ResultPanel/result-workflow.routes.ts
+@@ -8,18 +8,13 @@ import {
+   submitBook,
+   verifyBook,
+   rejectBook,
+-  verifyResult,
+-  decideApproval,
+-  lockResult,
+   unpublishResult,
+ } from "./result-workflow.controller";
+ import {
+   submitBookSchema,
+   verifyBookSchema,
+   rejectBookSchema,
+-  verifyResultSchema,
+-  decideApprovalSchema,
+-  lockResultSchema,
++  unpublishResultSchema,
+ } from "./result-workflow.validation";
+ 
+ const router = express.Router();
+@@ -56,29 +51,11 @@ router.post(
+   rejectBook,
+ );
+ 
+-/* ================= RESULT-LEVEL VERIFY / APPROVE / LOCK ================= */
+-router.post(
+-  "/:resultMasterId/verify-result",
+-  requireAnyPermission("result.verify", "result.manage"),
+-  validate(verifyResultSchema),
+-  verifyResult,
+-);
+-router.post(
+-  "/:resultMasterId/approve",
+-  requireAnyPermission("result.approve", "result.manage"),
+-  validate(decideApprovalSchema),
+-  decideApproval,
+-);
+-router.post(
+-  "/:resultMasterId/lock",
+-  requireAnyPermission("result.lock", "result.manage"),
+-  validate(lockResultSchema),
+-  lockResult,
+-);
++/* ================= UNPUBLISH (publishing itself is POST /results/publish) ================= */
+ router.post(
+   "/:resultMasterId/unpublish",
+   requireAnyPermission("result.publish", "result.manage"),
+-  validate(lockResultSchema),
++  validate(unpublishResultSchema),
+   unpublishResult,
+ );
+ 
+diff --git a/backend/src/modules/ResultPanel/result-workflow.service.ts b/backend/src/modules/ResultPanel/result-workflow.service.ts
+index 02d98e5..4c42f12 100644
+--- a/backend/src/modules/ResultPanel/result-workflow.service.ts
++++ b/backend/src/modules/ResultPanel/result-workflow.service.ts
+@@ -1,7 +1,7 @@
+ import { Prisma } from "@prisma/client";
+ import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
+ import { logActivity } from "../../shared/utils/activity.util";
+-import { hasExamDepartmentAuthority, hasFullResultAuthority } from "../../shared/utils/rbac.util";
++import { hasExamDepartmentAuthority } from "../../shared/utils/rbac.util";
+ import { canCandidateParticipate } from "../exam-candidate/exam-candidate.policy";
+ import { resultWorkflowRepository, ResultWorkflowRepository } from "./result-workflow.repository";
+ import { resultPanelRepository } from "./result-panel.repository";
+@@ -14,10 +14,11 @@ const toBanglaDigits = (value: string | number) =>
+   currentLanguage() !== "bn" ? String(value) : String(value).replace(/\d/g, (digit) => "০১২৩৪৫৬৭৮৯"[Number(digit)]);
+ 
+ /**
+- * Subject-level submission/verification queue (MarkSubmission) and the
+- * result-level verify/approve/lock progression on top of it. Marks-entry
+- * itself, and the grading engine, stay in result-panel.service.ts - this
+- * service only owns the status machine layered on top.
++ * Subject-level submission/verification queue (MarkSubmission), the
++ * pre-publish sanity check, and unpublish. A result session has only three
++ * statuses (DRAFT -> PROCESSING -> PUBLISHED); one reviewer verifies and
++ * publishes it. Marks-entry itself, and the grading engine, stay in
++ * result-panel.service.ts.
+  */
+ export class ResultWorkflowService {
+   constructor(private readonly repository: ResultWorkflowRepository = resultWorkflowRepository) {}
+@@ -35,64 +36,27 @@ export class ResultWorkflowService {
+     if (!active) throw new BadRequestError(t({ bn: "এই বিষয়টি এই শ্রেণির জন্য সক্রিয় নয়।", en: "This subject is not active for this class." }));
+   }
+ 
+-  /** Re-derives ResultMaster.status from the current MarkSubmission states
+-   * after a submit or verify event - shared by both since a verify can also
+-   * complete the "every subject submitted" milestone (e.g. the last
+-   * remaining subject was submitted and verified in the same request
+-   * sequence). Only ever advances forward; rejection moves the status
+-   * backward separately (see rejectBook). */
+-  private async recomputeAfterSubmissionEvent(
+-    madrasaId: number,
+-    resultMasterId: number,
+-    classId: number,
+-    actorId: number,
+-  ) {
++  /** Precondition for the first process run: every active subject's marks
++   * must have been submitted AND verified. Read straight from the
++   * MarkSubmission rows (the source of truth) - ResultMaster.status no
++   * longer tracks this. */
++  async assertAllSubjectsVerified(madrasaId: number, resultMasterId: number) {
++    const master = await this.assertMaster(madrasaId, resultMasterId);
+     const [subjects, submissions] = await Promise.all([
+-      resultPanelRepository.findActiveSubjectsForClass(madrasaId, classId),
++      resultPanelRepository.findActiveSubjectsForClass(madrasaId, master.classId),
+       this.repository.findMarkSubmissions(resultMasterId),
+     ]);
+ 
+     const bookIds = subjects.filter((s) => s.book).map((s) => s.book!.id);
+-    if (!bookIds.length) return;
+-
+     const statusByBook = new Map(submissions.map((s) => [s.bookId, s.status]));
+-    const allVerified = bookIds.every((id) => statusByBook.get(id) === "VERIFIED");
+-    const allSubmittedOrVerified = bookIds.every((id) => {
+-      const st = statusByBook.get(id);
+-      return st === "SUBMITTED" || st === "VERIFIED";
+-    });
+-
+-    // Best-effort: only advances while the session is still in the
+-    // marks-submission phase, so a race against a later stage (e.g. this
+-    // recompute firing just as the result gets published elsewhere) can't
+-    // regress an already-advanced status. Not throwing on a missed guard
+-    // here - unlike the user-facing transitions below - since this is a
+-    // background side-effect of submit/verify, not the primary action the
+-    // caller asked for.
+-    const inSubmissionPhase = ["DRAFT", "MARKS_SUBMITTED", "MARKS_VERIFIED"];
+-    if (allVerified) {
+-      await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, inSubmissionPhase, {
+-        status: "MARKS_VERIFIED",
+-        marksVerifiedAt: new Date(),
+-        marksVerifiedBy: actorId,
+-      });
+-    } else if (allSubmittedOrVerified) {
+-      await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, inSubmissionPhase, {
+-        status: "MARKS_SUBMITTED",
+-        submittedAt: new Date(),
+-        submittedBy: actorId,
+-      });
++    const allVerified = bookIds.length > 0 && bookIds.every((id) => statusByBook.get(id) === "VERIFIED");
++    if (!allVerified) {
++      throw new ConflictError(
++        t({ bn: "সব বিষয়ের নম্বর জমা ও যাচাই (verify) সম্পন্ন না হওয়া পর্যন্ত ফলাফল প্রসেস করা যাবে না।", en: "The result cannot be processed until marks for all subjects are submitted and verified." }),
++      );
+     }
+   }
+ 
+-  /** Public entry to the same status re-derivation submit/verify run, for
+-   * callers (ResultPanelService.processResult) that find a session whose
+-   * status lags behind its subjects' actual submission states. */
+-  async syncStatusFromSubmissions(madrasaId: number, resultMasterId: number, actorId: number) {
+-    const master = await this.assertMaster(madrasaId, resultMasterId);
+-    await this.recomputeAfterSubmissionEvent(madrasaId, resultMasterId, master.classId, actorId);
+-  }
+-
+   async getSubmissions(madrasaId: number, resultMasterId: number) {
+     const master = await this.assertMaster(madrasaId, resultMasterId);
+ 
+@@ -157,7 +121,6 @@ export class ResultWorkflowService {
+     }
+ 
+     await this.repository.upsertMarkSubmissionSubmitted(madrasaId, resultMasterId, bookId, userId);
+-    await this.recomputeAfterSubmissionEvent(madrasaId, resultMasterId, master.classId, userId);
+ 
+     await logActivity({
+       madrasa_id: madrasaId,
+@@ -193,7 +156,6 @@ export class ResultWorkflowService {
+     }
+ 
+     await this.repository.markSubmissionVerified(resultMasterId, bookId, userId, comment?.trim() || null);
+-    await this.recomputeAfterSubmissionEvent(madrasaId, resultMasterId, master.classId, userId);
+ 
+     await logActivity({
+       madrasa_id: madrasaId,
+@@ -234,9 +196,6 @@ export class ResultWorkflowService {
+       rejectedBy: userId,
+       rejectedReason: trimmedReason,
+     };
+-    if (master.status === "MARKS_SUBMITTED" || master.status === "MARKS_VERIFIED") {
+-      data.status = "DRAFT";
+-    }
+     const ok = await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, [master.status], data);
+     if (!ok) {
+       throw new ConflictError(
+@@ -256,23 +215,17 @@ export class ResultWorkflowService {
+     return { message: t({ bn: "নম্বর প্রত্যাখ্যান করা হয়েছে", en: "Marks rejected" }), result_master_id: resultMasterId, book_id: bookId };
+   }
+ 
+-  /** Result-level verification pass - a read-mostly sanity re-check of the
+-   * grading engine's own output (never recomputes grading itself), plus a
+-   * fail-open cross-check against ExamCandidate holds. The missing-marks
+-   * check itself is scoped to active students who are also participating
+-   * ExamCandidates when that roster is non-empty for this exam+class,
+-   * falling back to every active student for exams that predate candidate
+-   * registration (see the candidateRoster/requiredStudents computation
+-   * below). Mutates status only when every check passes. */
+-  async verifyResult(madrasaId: number, userId: number, resultMasterId: number, remarks?: string) {
++  /** Pre-publish sanity check - a read-only re-check of the grading
++   * engine's own output (never recomputes grading itself), plus a fail-open
++   * cross-check against ExamCandidate holds. The missing-marks check is
++   * scoped to active students who are also participating ExamCandidates when
++   * that roster is non-empty for this exam+class, falling back to every
++   * active student for exams that predate candidate registration (see the
++   * candidateRoster/requiredStudents computation below). Never mutates
++   * anything: publishResult decides what to do with the outcome. */
++  async checkResultBeforePublish(madrasaId: number, resultMasterId: number) {
+     const master = await this.assertMaster(madrasaId, resultMasterId);
+ 
+-    if (master.status !== "PROCESSING" && master.status !== "RESULT_VERIFIED") {
+-      throw new ConflictError(
+-        t({ bn: "ফলাফল প্রসেস (PROCESSING) অবস্থায় থাকলেই কেবল ফলাফল যাচাই করা যায়।", en: "A result can be verified only while it is in PROCESSING state." }),
+-      );
+-    }
+-
+     const [activeStudents, summaries, withheldRows, failMark, candidateRows, candidateRoster] =
+       await Promise.all([
+         resultPanelRepository.findActiveStudentsInClass(madrasaId, master.classId),
+@@ -388,34 +341,6 @@ export class ResultWorkflowService {
+ 
+     const valid = issues.length === 0;
+ 
+-    if (valid) {
+-      const ok = await this.repository.updateResultMasterStatus(
+-        resultMasterId,
+-        madrasaId,
+-        ["PROCESSING", "RESULT_VERIFIED"],
+-        {
+-          status: "RESULT_VERIFIED",
+-          resultVerifiedAt: new Date(),
+-          resultVerifiedBy: userId,
+-          ...(remarks !== undefined ? { remarks: remarks || null } : {}),
+-        },
+-      );
+-      if (!ok) {
+-        throw new ConflictError(
+-          t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again." }),
+-        );
+-      }
+-
+-      await logActivity({
+-        madrasa_id: madrasaId,
+-        user_id: userId,
+-        action: "VERIFY_RESULT",
+-        entity: "results/verify-result",
+-        entity_id: resultMasterId,
+-        details: JSON.stringify({ passCount, failCount, absentCount, withheldCount: withheldSet.size }),
+-      });
+-    }
+-
+     return {
+       valid,
+       issues,
+@@ -432,146 +357,18 @@ export class ResultWorkflowService {
+     };
+   }
+ 
+-  async decideApproval(
+-    madrasaId: number,
+-    userId: number,
+-    resultMasterId: number,
+-    approve: boolean,
+-    remarks?: string,
+-  ) {
+-    const master = await this.assertMaster(madrasaId, resultMasterId);
+-
+-    if (master.status !== "RESULT_VERIFIED") {
+-      throw new ConflictError(
+-        t({ bn: "ফলাফল যাচাই (RESULT_VERIFIED) সম্পন্ন না হলে অনুমোদন/প্রত্যাখ্যান করা যাবে না।", en: "A result cannot be approved/rejected until it is verified (RESULT_VERIFIED)." }),
+-      );
+-    }
+-
+-    // Same-person verify+approve is only blocked for a genuine
+-    // separate-checker setup. An actor holding both result.verify and
+-    // result.approve (the single তালিমাত-office case, or Muhtamim/Super
+-    // Admin) has no second person to hand this off to, so they're let
+-    // through - exactly like hasFullMarksAuthority does one level down at
+-    // the subject submit/verify stage. A role limited to only
+-    // result.verify (a genuine separate checker) still hits this gate.
+-    if (
+-      master.resultVerifiedBy != null &&
+-      master.resultVerifiedBy === userId &&
+-      !(await hasFullResultAuthority(userId))
+-    ) {
+-      throw new ConflictError(
+-        t({ bn: "নিজে যাচাই করা ফলাফল নিজে অনুমোদন/প্রত্যাখ্যান করা যাবে না — ভিন্ন ব্যবহারকারীর অনুমোদন প্রয়োজন।", en: "You cannot approve/reject a result you verified yourself — a different user must approve it." }),
+-      );
+-    }
+-
+-    if (approve) {
+-      const ok = await this.repository.updateResultMasterStatus(
+-        resultMasterId,
+-        madrasaId,
+-        ["RESULT_VERIFIED"],
+-        {
+-          status: "APPROVED",
+-          approvedAt: new Date(),
+-          approvedBy: userId,
+-          ...(remarks !== undefined ? { remarks: remarks || null } : {}),
+-        },
+-      );
+-      if (!ok) {
+-        throw new ConflictError(
+-          t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again." }),
+-        );
+-      }
+-
+-      await logActivity({
+-        madrasa_id: madrasaId,
+-        user_id: userId,
+-        action: "APPROVE",
+-        entity: "results/approve",
+-        entity_id: resultMasterId,
+-        details: JSON.stringify({ remarks: remarks || null }),
+-      });
+-
+-      return { message: t({ bn: "ফলাফল অনুমোদিত হয়েছে", en: "Result approved" }), result_master_id: resultMasterId };
+-    }
+-
+-    if (!remarks || !remarks.trim()) {
+-      throw new BadRequestError(t({ bn: "প্রত্যাখ্যানের কারণ (remarks) উল্লেখ করা আবশ্যক।", en: "A reason for rejection (remarks) is required." }));
+-    }
+-
+-    const rejectOk = await this.repository.updateResultMasterStatus(
+-      resultMasterId,
+-      madrasaId,
+-      ["RESULT_VERIFIED"],
+-      {
+-        status: "PROCESSING",
+-        rejectedAt: new Date(),
+-        rejectedBy: userId,
+-        rejectedReason: remarks.trim(),
+-      },
+-    );
+-    if (!rejectOk) {
+-      throw new ConflictError(
+-        t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again." }),
+-      );
+-    }
+-
+-    await logActivity({
+-      madrasa_id: madrasaId,
+-      user_id: userId,
+-      action: "REJECT",
+-      entity: "results/approve",
+-      entity_id: resultMasterId,
+-      details: JSON.stringify({ reason: remarks.trim() }),
+-    });
+-
+-    return { message: t({ bn: "ফলাফল প্রত্যাখ্যান করা হয়েছে", en: "Result rejected" }), result_master_id: resultMasterId };
+-  }
+-
+-  async lock(madrasaId: number, userId: number, resultMasterId: number) {
+-    const master = await this.assertMaster(madrasaId, resultMasterId);
+-
+-    if (master.status !== "PUBLISHED") {
+-      throw new ConflictError(t({ bn: "ফলাফল প্রকাশিত (PUBLISHED) না হলে লক করা যাবে না।", en: "A result cannot be locked until it is PUBLISHED." }));
+-    }
+-
+-    const ok = await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, ["PUBLISHED"], {
+-      status: "LOCKED",
+-      lockedAt: new Date(),
+-      lockedBy: userId,
+-    });
+-    if (!ok) {
+-      throw new ConflictError(
+-        t({ bn: "অন্য কেউ এরই মধ্যে এই ফলাফলের অবস্থা পরিবর্তন করেছে — পাতা রিফ্রেশ করে আবার চেষ্টা করুন।", en: "Someone else has already changed this result's status — refresh the page and try again." }),
+-      );
+-    }
+-
+-    await logActivity({
+-      madrasa_id: madrasaId,
+-      user_id: userId,
+-      action: "LOCK",
+-      entity: "results/lock",
+-      entity_id: resultMasterId,
+-    });
+-
+-    return { message: t({ bn: "ফলাফল লক করা হয়েছে", en: "Result locked" }), result_master_id: resultMasterId };
+-  }
+-
+-  /** প্রকাশিত ফলাফল অপ্রকাশিত করা: PUBLISHED -> APPROVED। অভিভাবক পোর্টাল শুধু
+-   * PUBLISHED/LOCKED পড়ে, তাই এরপর ফলাফল আর দেখা যায় না। নম্বর/প্রসেসড সামারি
+-   * অক্ষত থাকে, ফলে আবার "প্রকাশ করুন" চাপলেই পুনঃপ্রকাশ হয়। লকড ফলাফল আগে
+-   * আনলক না করলে অপ্রকাশিত করা যায় না। */
++  /** প্রকাশিত ফলাফল অপ্রকাশিত করা: PUBLISHED -> PROCESSING। অভিভাবক পোর্টাল শুধু
++   * PUBLISHED পড়ে, তাই এরপর ফলাফল আর দেখা যায় না। নম্বর/প্রসেসড সামারি
++   * অক্ষত থাকে, ফলে আবার "প্রকাশ করুন" চাপলেই পুনঃপ্রকাশ হয়। */
+   async unpublish(madrasaId: number, userId: number, resultMasterId: number) {
+     const master = await this.assertMaster(madrasaId, resultMasterId);
+ 
+-    if (master.status === "LOCKED") {
+-      throw new ConflictError(t({ bn: "লক করা ফলাফল অপ্রকাশিত করা যাবে না।", en: "A locked result cannot be unpublished." }));
+-    }
+     if (master.status !== "PUBLISHED") {
+       throw new ConflictError(t({ bn: "ফলাফল প্রকাশিত না থাকলে অপ্রকাশিত করা যাবে না।", en: "Only a PUBLISHED result can be unpublished." }));
+     }
+ 
+     const ok = await this.repository.updateResultMasterStatus(resultMasterId, madrasaId, ["PUBLISHED"], {
+-      status: "APPROVED",
++      status: "PROCESSING",
+       publishedAt: null,
+       publishedBy: null,
+     });
+diff --git a/backend/src/modules/ResultPanel/result-workflow.validation.ts b/backend/src/modules/ResultPanel/result-workflow.validation.ts
+index dccb8b5..14848dd 100644
+--- a/backend/src/modules/ResultPanel/result-workflow.validation.ts
++++ b/backend/src/modules/ResultPanel/result-workflow.validation.ts
+@@ -21,21 +21,6 @@ export const rejectBookSchema = z.object({
+   }),
+ });
+ 
+-export const verifyResultSchema = z.object({
+-  params: z.object({ resultMasterId: idSchema }),
+-  body: z.object({
+-    remarks: z.string().trim().optional(),
+-  }),
+-});
+-
+-export const decideApprovalSchema = z.object({
+-  params: z.object({ resultMasterId: idSchema }),
+-  body: z.object({
+-    approve: z.boolean(),
+-    remarks: z.string().trim().optional(),
+-  }),
+-});
+-
+-export const lockResultSchema = z.object({
++export const unpublishResultSchema = z.object({
+   params: z.object({ resultMasterId: idSchema }),
+ });
+diff --git a/backend/src/modules/guardian/guardian.repository.ts b/backend/src/modules/guardian/guardian.repository.ts
+index 725fcce..7551446 100644
+--- a/backend/src/modules/guardian/guardian.repository.ts
++++ b/backend/src/modules/guardian/guardian.repository.ts
+@@ -93,10 +93,7 @@ export class GuardianRepository {
+     return prisma.resultSummary.findMany({
+       where: {
+         studentId,
+-        // A LOCKED result is still a published, final result (locking just
+-        // freezes it against further corrections) - guardians should keep
+-        // seeing it exactly like a PUBLISHED one.
+-        resultMaster: { madrasaId, status: { in: ["PUBLISHED", "LOCKED"] }, deletedAt: null },
++        resultMaster: { madrasaId, status: "PUBLISHED", deletedAt: null },
+       },
+       include: {
+         resultMaster: {
+diff --git a/backend/src/modules/trash/__tests__/trash-student-restore.test.ts b/backend/src/modules/trash/__tests__/trash-student-restore.test.ts
+index 766a3d5..69043ae 100644
+--- a/backend/src/modules/trash/__tests__/trash-student-restore.test.ts
++++ b/backend/src/modules/trash/__tests__/trash-student-restore.test.ts
+@@ -36,12 +36,11 @@ describe("TrashService.restoreStudent - result safety", () => {
+ 
+   it("re-opens every processed/published result the student is missing from", async () => {
+     const { service, restoreCalls } = build({
+-      impact: { masters: [master(10, "PUBLISHED"), master(11, "APPROVED"), master(12, "PROCESSING")] },
++      impact: { masters: [master(10, "PUBLISHED"), master(11, "PROCESSING"), master(12, "DRAFT")] },
+     });
+     const out = await service.restoreStudent(5, 1, 9);
+     expect(restoreCalls[0].ids).toEqual([10, 11, 12]);
+     expect(out.reopened.map((r) => r.result_master_id)).toEqual([10, 11, 12]);
+-    expect(out.locked_skipped).toEqual([]);
+     expect(logActivity).toHaveBeenCalledTimes(3);
+     expect(vi.mocked(logActivity).mock.calls[0][0]).toMatchObject({
+       madrasa_id: 1,
+@@ -52,15 +51,6 @@ describe("TrashService.restoreStudent - result safety", () => {
+     });
+   });
+ 
+-  it("never re-opens a LOCKED result - it is reported as skipped instead", async () => {
+-    const { service, restoreCalls } = build({
+-      impact: { masters: [master(10, "LOCKED"), master(11, "PUBLISHED")] },
+-    });
+-    const out = await service.restoreStudent(5, 1, 9);
+-    expect(restoreCalls[0].ids).toEqual([11]);
+-    expect(out.locked_skipped.map((r) => r.result_master_id)).toEqual([10]);
+-  });
+-
+   it("404s when the student is not in the trash", async () => {
+     const { service } = build({ impact: null });
+     await expect(service.restoreStudent(5, 1, 9)).rejects.toThrow();
+@@ -72,12 +62,12 @@ describe("TrashService.restoreStudent - result safety", () => {
+     expect(logActivity).not.toHaveBeenCalled();
+   });
+ 
+-  it("restore-impact flags LOCKED results as will_reopen=false", async () => {
+-    const { service } = build({ impact: { masters: [master(10, "LOCKED"), master(11, "APPROVED")] } });
++  it("restore-impact lists every session that will be re-opened", async () => {
++    const { service } = build({ impact: { masters: [master(10, "PUBLISHED"), master(11, "PROCESSING")] } });
+     const rows = await service.getStudentRestoreImpact(5, 1);
+-    expect(rows.map((r) => [r.result_master_id, r.will_reopen])).toEqual([
+-      [10, false],
+-      [11, true],
++    expect(rows.map((r) => [r.result_master_id, r.status])).toEqual([
++      [10, "PUBLISHED"],
++      [11, "PROCESSING"],
+     ]);
+   });
+ });
+diff --git a/backend/src/modules/trash/trash.repository.ts b/backend/src/modules/trash/trash.repository.ts
+index 5aa7958..6f72217 100644
+--- a/backend/src/modules/trash/trash.repository.ts
++++ b/backend/src/modules/trash/trash.repository.ts
+@@ -149,12 +149,12 @@ export class TrashRepository {
+ 
+   /** Restores the student AND re-opens the given result sessions in ONE
+    * transaction (all-or-nothing): each session's summary is removed, its
+-   * sign-off timestamps cleared, status set back to DRAFT (guardians only
+-   * read PUBLISHED/LOCKED, so it disappears from the portal immediately) and
++   * publish stamps cleared, status set back to DRAFT (guardians only
++   * read PUBLISHED, so it disappears from the portal immediately) and
+    * every SUBMITTED/VERIFIED subject submission goes back to DRAFT so marks
+    * can be entered for the returning student and re-verified. Marks of every
+    * other student are untouched. `processedAt` is kept on purpose (it is the
+-   * new-admission cutoff). LOCKED sessions are never passed in here. */
++   * new-admission cutoff). */
+   restoreStudentAndReopenResults(
+     id: number,
+     madrasaId: number,
+@@ -179,15 +179,11 @@ export class TrashRepository {
+         data: { status: "DRAFT", comment: note },
+       });
+       await tx.resultMaster.updateMany({
+-        where: { id: { in: reopenResultMasterIds }, madrasaId, status: { not: "LOCKED" } },
++        where: { id: { in: reopenResultMasterIds }, madrasaId },
+         data: {
+           status: "DRAFT",
+           publishedAt: null,
+           publishedBy: null,
+-          approvedAt: null,
+-          approvedBy: null,
+-          resultVerifiedAt: null,
+-          resultVerifiedBy: null,
+           remarks: note,
+         },
+       });
+diff --git a/backend/src/modules/trash/trash.service.ts b/backend/src/modules/trash/trash.service.ts
+index bafbfe3..782dbfd 100644
+--- a/backend/src/modules/trash/trash.service.ts
++++ b/backend/src/modules/trash/trash.service.ts
+@@ -103,9 +103,8 @@ export class TrashService {
+   /* ================= RESTORE ================= */
+ 
+   /** Which result sessions bringing this student back would touch - shown in
+-   * the confirm dialog BEFORE restoring. `will_reopen: false` means the
+-   * session is LOCKED: it stays frozen and the student simply is not in it
+-   * (a locked result can only change through the correction process). */
++   * the confirm dialog BEFORE restoring. Every listed session will be
++   * re-opened. */
+   async getStudentRestoreImpact(id: number, madrasaId: number) {
+     const impact = await this.repository.findStudentRestoreImpact(id, madrasaId);
+     if (!impact) throw new NotFoundError(t({ bn: "ট্র্যাশে শিক্ষার্থী পাওয়া যায়নি", en: "Trashed student not found" }));
+@@ -114,7 +113,6 @@ export class TrashService {
+       exam_name: m.examName,
+       exam_year: m.examYear,
+       status: m.status,
+-      will_reopen: m.status !== "LOCKED",
+     }));
+   }
+ 
+@@ -125,13 +123,12 @@ export class TrashService {
+    * marks can be entered and the whole class result re-verified and
+    * re-published - the returning student shifts merit positions, so the full
+    * class must be re-checked. New admissions (created after the result was
+-   * processed) and LOCKED results are never touched. */
++   * processed) are never touched. */
+   async restoreStudent(id: number, madrasaId: number, userId?: number | null) {
+     const impact = await this.repository.findStudentRestoreImpact(id, madrasaId);
+     if (!impact) throw new NotFoundError(t({ bn: "ট্র্যাশে শিক্ষার্থী পাওয়া যায়নি", en: "Trashed student not found" }));
+ 
+-    const toReopen = impact.masters.filter((m) => m.status !== "LOCKED");
+-    const skippedLocked = impact.masters.filter((m) => m.status === "LOCKED");
++    const toReopen = impact.masters;
+ 
+     const note = t({
+       bn: "শিক্ষার্থী ট্র্যাশ থেকে ফিরিয়ে আনায় ফলাফল পুনর্যাচাইয়ের জন্য খোলা হয়েছে",
+@@ -163,7 +160,6 @@ export class TrashService {
+ 
+     return {
+       reopened: toReopen.map((m) => ({ result_master_id: m.id, exam_name: m.examName, exam_year: m.examYear })),
+-      locked_skipped: skippedLocked.map((m) => ({ result_master_id: m.id, exam_name: m.examName, exam_year: m.examYear })),
+     };
+   }
+ 
+diff --git a/backend/src/shared/middleware/activityLogger.middleware.ts b/backend/src/shared/middleware/activityLogger.middleware.ts
+index 5c77aa7..a16a673 100644
+--- a/backend/src/shared/middleware/activityLogger.middleware.ts
++++ b/backend/src/shared/middleware/activityLogger.middleware.ts
+@@ -55,9 +55,6 @@ const SELF_LOGGED_ENTITY_PATHS = new Set([
+   "results/books/submit",
+   "results/books/verify",
+   "results/books/reject",
+-  "results/verify-result",
+-  "results/approve",
+-  "results/lock",
+   "results/corrections",
+   "results/corrections/batch",
+   "results/corrections/decide",
+diff --git a/backend/src/shared/permissions/baseline-role-permissions.ts b/backend/src/shared/permissions/baseline-role-permissions.ts
+index 88eef0e..6836dca 100644
+--- a/backend/src/shared/permissions/baseline-role-permissions.ts
++++ b/backend/src/shared/permissions/baseline-role-permissions.ts
+@@ -59,7 +59,6 @@ export const TALIMAT_DEFAULT_PERMISSION_KEYS = [
+   "result.verify",
+   "result.approve",
+   "result.publish",
+-  "result.lock",
+   "result.correct",
+   "notifications.read",
+   "notifications.send",
+diff --git a/backend/src/shared/utils/rbac.util.ts b/backend/src/shared/utils/rbac.util.ts
+index 1d643ef..d921f24 100644
+--- a/backend/src/shared/utils/rbac.util.ts
++++ b/backend/src/shared/utils/rbac.util.ts
+@@ -63,19 +63,13 @@ export async function hasFullMarksAuthority(userId: number): Promise<boolean> {
+ }
+ 
+ /**
+- * True for an actor who holds full authority over the result-level
+- * verify/approve stage (both result.verify and result.approve, or the
+- * legacy result.manage catch-all) - the তালিমাত office in the common case
+- * where one account owns the whole verify-result -> approve -> publish
+- * tail of the workflow. Mirrors hasFullMarksAuthority's reasoning one
+- * level up the pipeline: there is no second person to hand a maker/checker
+- * step to, so this is the escape hatch resultPanelService.publishResult
+- * uses to silently walk PROCESSING/RESULT_VERIFIED through to APPROVED in
+- * the same click as Publish, and the one decideApproval's
+- * "can't approve your own verified result" guard defers to instead of the
+- * narrower isPrivilegedActor check. A madrasa that later splits verifier
+- * and approver into separate people/roles (only one of the two
+- * permissions each) still hits the real gate, exactly as intended.
++ * True for an actor who holds full authority over result-level review (both
++ * result.verify and result.approve, or the legacy result.manage catch-all) -
++ * the তালিমাত office in the common case where one account reviews and
++ * approves everything. Used by the correction workflow: such an actor may
++ * apply a correction immediately (apply_now) instead of waiting for a
++ * second person's approval. A role holding only one of the two permissions
++ * still needs a separate approver.
+  */
+ export async function hasFullResultAuthority(userId: number): Promise<boolean> {
+   if (await hasExamDepartmentAuthority(userId)) return true;
