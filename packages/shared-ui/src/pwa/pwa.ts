@@ -106,10 +106,9 @@ export interface PwaManifestOptions {
   /** Default true: also hand `name` to the install banner. Pass false where the
    * banner already has its own label (the admin panel's "QMS Admin"). */
   announceName?: boolean;
-  /** Installed app draws its own content inside the title bar (Window Controls
-   * Overlay) - used by the admin panel to put Back / Refresh in the green bar.
-   * Browsers without support silently fall back to the normal "standalone" bar. */
-  windowControlsOverlay?: boolean;
+  /** Default "standalone". "minimal-ui" makes installed desktop Chrome draw its
+   * own Back / Reload buttons in the title bar, right after the app icon. */
+  display?: "standalone" | "minimal-ui";
 }
 
 /**
@@ -127,7 +126,7 @@ export function setPwaManifest({
   startUrl = "/",
   icons = null,
   announceName = true,
-  windowControlsOverlay = false,
+  display = "standalone",
 }: PwaManifestOptions) {
   const origin = window.location.origin;
   const abs = (p: string) => new URL(p, origin).href;
@@ -139,8 +138,7 @@ export function setPwaManifest({
     lang: "bn",
     start_url: abs(startUrl),
     scope: abs("/"),
-    display: "standalone",
-    ...(windowControlsOverlay ? { display_override: ["window-controls-overlay", "standalone"] } : {}),
+    display,
     orientation: "any",
     background_color: "#ffffff",
     theme_color: "#059669",

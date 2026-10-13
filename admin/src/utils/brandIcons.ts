@@ -57,7 +57,9 @@ function render(version: string | null) {
     startUrl: "/",
     icons: source,
     announceName: false,
-    windowControlsOverlay: true,
+    // Desktop (mouse): Chrome shows its own Back/Reload in the title bar.
+    // Phones/tablets keep "standalone" and use the in-app slim bar instead.
+    display: window.matchMedia?.("(hover: hover) and (pointer: fine)").matches ? "minimal-ui" : "standalone",
   });
 }
 
