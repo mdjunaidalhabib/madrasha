@@ -1,0 +1,141 @@
+From 884bde568b6e7b09c8c068a0945adedb65fca550 Mon Sep 17 00:00:00 2001
+From: Dev <dev@example.com>
+Date: Tue, 13 Oct 2026 13:05:26 +0000
+Subject: [PATCH] admin: show Back/Refresh bar only in installed app (PWA),
+ remove from browser header
+
+---
+ admin/src/components/topbar/AppTopBar.tsx | 26 +++++++++++++++++++++++
+ admin/src/components/topbar/Topbar.tsx    |  6 ------
+ admin/src/hooks/useIsStandalone.ts        | 22 +++++++++++++++++++
+ admin/src/layouts/DashboardLayout.tsx     |  3 +++
+ 4 files changed, 51 insertions(+), 6 deletions(-)
+ create mode 100644 admin/src/components/topbar/AppTopBar.tsx
+ create mode 100644 admin/src/hooks/useIsStandalone.ts
+
+diff --git a/admin/src/components/topbar/AppTopBar.tsx b/admin/src/components/topbar/AppTopBar.tsx
+new file mode 100644
+index 0000000..164f9f8
+--- /dev/null
++++ b/admin/src/components/topbar/AppTopBar.tsx
+@@ -0,0 +1,26 @@
++import GlobalBackButton from "@madrasha/shared-ui/src/navigation/GlobalBackButton";
++import GlobalRefreshButton from "@madrasha/shared-ui/src/navigation/GlobalRefreshButton";
++import { useIsStandalone } from "../../hooks/useIsStandalone";
++
++/**
++ * Slim bar pinned at the very top of the INSTALLED app (YouTube-style):
++ * Back on the left, Refresh on the right. An installed app has no browser
++ * chrome, so these two buttons are its only navigation controls.
++ *
++ * In a normal browser tab this renders nothing at all - the browser already has
++ * its own Back / Reload, so the bar (and its buttons) must not exist there.
++ */
++export default function AppTopBar() {
++  const standalone = useIsStandalone();
++  if (!standalone) return null;
++
++  return (
++    <div
++      className="flex h-11 w-full shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 dark:border-slate-800 dark:bg-slate-900 print:hidden"
++      style={{ paddingTop: "env(safe-area-inset-top, 0px)", boxSizing: "content-box" }}
++    >
++      <GlobalBackButton fallbackPath="/dashboard" size="sm" />
++      <GlobalRefreshButton size="sm" />
++    </div>
++  );
++}
+diff --git a/admin/src/components/topbar/Topbar.tsx b/admin/src/components/topbar/Topbar.tsx
+index a184c88..02b8cdc 100644
+--- a/admin/src/components/topbar/Topbar.tsx
++++ b/admin/src/components/topbar/Topbar.tsx
+@@ -5,8 +5,6 @@ import LockButton from "../lock/LockButton";
+ import ThemeToggle from "@madrasha/shared-ui/src/components/ui/ThemeToggle";
+ import { LanguageSwitcher, useText } from "@madrasha/shared-ui/src/i18n";
+ import { shellText } from "./shell.text";
+-import GlobalBackButton from "@madrasha/shared-ui/src/navigation/GlobalBackButton";
+-import GlobalRefreshButton from "@madrasha/shared-ui/src/navigation/GlobalRefreshButton";
+ import PlanBadge from "./PlanBadge";
+ import ProfileMenu from "./ProfileMenu";
+ import { Calendar, Clock, Menu } from "lucide-react";
+@@ -47,12 +45,10 @@ export default function Topbar({ openSidebar }: TopbarProps) {
+       {/* মোবাইল/ট্যাবলেট: উপরে লোগো-নাম-মেনু এক সারিতে, নিচে স্লিম অ্যাকশন বার */}
+       <div className="md:hidden">
+         <div className="flex items-center gap-2 px-3 py-2.5">
+-          <GlobalBackButton fallbackPath="/dashboard" size="sm" />
+           {logo}
+           <div className="min-w-0 flex-1 break-words text-center text-lg font-bold leading-tight text-slate-800 dark:text-slate-100">
+             {branding?.name}
+           </div>
+-          <GlobalRefreshButton size="sm" />
+           <button
+             onClick={openSidebar}
+             className={iconButtonClass}
+@@ -78,7 +74,6 @@ export default function Topbar({ openSidebar }: TopbarProps) {
+       {/* ডেস্কটপ: বাম পাশে লোগো+নাম (ঠিকানাসহ একই লাইনে), ডান পাশে অ্যাকশন -
+           কোনো সেন্টারিং নেই, বাম থেকে সহজভাবে শুরু */}
+       <div className="hidden md:flex md:h-20 md:items-center md:gap-3 md:ps-32 md:pe-4">
+-        <GlobalBackButton fallbackPath="/dashboard" />
+         {logo}
+         <div className="min-w-0 flex-1 truncate">
+           {branding?.name && (
+@@ -95,7 +90,6 @@ export default function Topbar({ openSidebar }: TopbarProps) {
+         </div>
+ 
+         <div className="flex shrink-0 items-center gap-2">
+-          <GlobalRefreshButton />
+           <PlanBadge />
+           <LanguageSwitcher />
+           <ThemeToggle />
+diff --git a/admin/src/hooks/useIsStandalone.ts b/admin/src/hooks/useIsStandalone.ts
+new file mode 100644
+index 0000000..3532ede
+--- /dev/null
++++ b/admin/src/hooks/useIsStandalone.ts
+@@ -0,0 +1,22 @@
++import { useEffect, useState } from "react";
++import { isStandalone } from "@madrasha/shared-ui/src/pwa/pwa";
++
++/**
++ * True only when the admin panel runs as an installed app (PWA) - i.e. with no
++ * browser address bar / back / reload buttons of its own. Reacts live if the
++ * display mode changes (e.g. the app gets installed while the tab is open).
++ */
++export function useIsStandalone(): boolean {
++  const [standalone, setStandalone] = useState(() => isStandalone());
++
++  useEffect(() => {
++    const mq = window.matchMedia?.("(display-mode: standalone)");
++    if (!mq) return;
++    const update = () => setStandalone(isStandalone());
++    update();
++    mq.addEventListener?.("change", update);
++    return () => mq.removeEventListener?.("change", update);
++  }, []);
++
++  return standalone;
++}
+diff --git a/admin/src/layouts/DashboardLayout.tsx b/admin/src/layouts/DashboardLayout.tsx
+index 183b634..4f22863 100644
+--- a/admin/src/layouts/DashboardLayout.tsx
++++ b/admin/src/layouts/DashboardLayout.tsx
+@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
+ 
+ import Sidebar from "../components/sidebar/Sidebar";
+ import Topbar from "../components/topbar/Topbar";
++import AppTopBar from "../components/topbar/AppTopBar";
+ import LockScreen from "../components/lock/LockScreen";
+ import RouteErrorBoundary from "@madrasha/shared-ui/src/components/ui/RouteErrorBoundary";
+ import PageNavBar from "@madrasha/shared-ui/src/navigation/PageNavBar";
+@@ -126,6 +127,8 @@ export default function DashboardLayout() {
+ 
+       {/* Main Layout */}
+       <div className="flex flex-col flex-1 min-w-0">
++        {/* শুধু ইনস্টল করা অ্যাপে: একদম উপরে Back + Refresh বার (ব্রাউজারে নেই) */}
++        <AppTopBar />
+         <Topbar openSidebar={() => setMobileSidebar(true)} />
+ 
+         <main className="flex flex-1 flex-col overflow-y-auto px-4 pb-4 pt-2 text-slate-900 dark:text-slate-100 md:p-4">
+-- 
+2.43.0
+
