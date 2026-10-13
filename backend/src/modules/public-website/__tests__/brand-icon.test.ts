@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { BRAND_ICON_SPECS, renderBrandIcon } from "../brand-icon.service";
+import { BRAND_ICON_SPECS, decodePreviewImage, renderBrandIcon, renderBrandIconPreviews } from "../brand-icon.service";
 
 // A wide, non-square logo with a transparent background.
 const makeLogo = () =>
@@ -33,5 +33,20 @@ describe("brand icons rendered from the madrasa logo", () => {
 
   it("rejects unknown icon names", async () => {
     await expect(renderBrandIcon(await makeLogo(), "evil.png")).rejects.toThrow();
+  });
+
+  it("previews every icon the logo produces as PNG data URIs", async () => {
+    const previews = await renderBrandIconPreviews(await makeLogo());
+    expect(previews.map((p) => p.file).sort()).toEqual(Object.keys(BRAND_ICON_SPECS).sort());
+    for (const p of previews) {
+      expect(p.src.startsWith("data:image/png;base64,")).toBe(true);
+      const meta = await sharp(Buffer.from(p.src.split(",")[1], "base64")).metadata();
+      expect(meta.width).toBe(p.size);
+    }
+  });
+
+  it("rejects a missing / unreadable preview image with a 400-style error", () => {
+    expect(() => decodePreviewImage(undefined)).toThrow();
+    expect(() => decodePreviewImage("not-an-image")).toThrow();
   });
 });

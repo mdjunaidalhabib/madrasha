@@ -32,6 +32,14 @@ export const savePlatformAdminLogo = async (req: Request, res: Response) => {
   }
 };
 
+export const previewPlatformAdminLogo = async (req: Request, res: Response) => {
+  try {
+    res.json({ data: await platformBrandService.previewIcons(req.body?.image) });
+  } catch (error) {
+    respondError(res, error, "previewPlatformAdminLogo ERROR:");
+  }
+};
+
 export const deletePlatformAdminLogo = async (_req: Request, res: Response) => {
   try {
     await platformBrandService.deleteAdminLogo();

@@ -22,12 +22,15 @@ import {
   getPlatformAdminLogo,
   savePlatformAdminLogo,
   deletePlatformAdminLogo,
+  previewPlatformAdminLogo,
   type PlatformAdminLogo,
 } from "../../../services/superAdminApi";
 import { useAdminAuthStore } from "../../../store/adminAuthStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
+import BrandIconPreview, { type BrandIconPreviewItem } from "@madrasha/shared-ui/src/components/brand/BrandIconPreview";
+import { brandIconUrl, platformIconBase } from "@madrasha/shared-ui/src/pwa/brandIcons";
 
 /**
  * Platform-wide Super Admin settings - not tied to any one madrasa. Built
@@ -68,6 +71,44 @@ function AdminLogoSettingsCard() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Icons shown in the preview: a freshly picked (unsaved) logo is rendered by
+  // the server on request; a saved logo shows the real, live icon URLs.
+  const [pendingIcons, setPendingIcons] = useState<BrandIconPreviewItem[]>([]);
+  const [iconsLoading, setIconsLoading] = useState(false);
+  const [iconsFailed, setIconsFailed] = useState(false);
+
+  useEffect(() => {
+    if (!pending) {
+      setPendingIcons([]);
+      setIconsFailed(false);
+      return;
+    }
+    let cancelled = false;
+    setIconsLoading(true);
+    setIconsFailed(false);
+    previewPlatformAdminLogo(pending)
+      .then((icons) => !cancelled && setPendingIcons(icons))
+      .catch((err) => {
+        logger.error("PREVIEW ADMIN PANEL ICONS ERROR:", err);
+        if (!cancelled) {
+          setPendingIcons([]);
+          setIconsFailed(true);
+        }
+      })
+      .finally(() => !cancelled && setIconsLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [pending]);
+
+  const savedIcons: BrandIconPreviewItem[] = current.configured
+    ? ["favicon-32.png", "apple-touch-icon.png", "icon-192.png", "icon-512.png", "maskable-512.png"].map((file) => ({
+        file,
+        size: Number(file.match(/(\d+)/)?.[1] ?? 180),
+        src: brandIconUrl({ base: platformIconBase(), version: current.version }, file),
+      }))
+    : [];
 
   const pick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -170,6 +211,16 @@ function AdminLogoSettingsCard() {
             {pending && <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">নতুন লোগো বাছাই করা হয়েছে — “সেভ করুন” চাপলে কার্যকর হবে।</p>}
           </div>
         </div>
+      )}
+
+      {!loading && (
+        <BrandIconPreview
+          icons={pending ? pendingIcons : savedIcons}
+          loading={!!pending && iconsLoading}
+          error={!!pending && iconsFailed}
+          tabTitle="QMS Admin"
+          note={pending ? "এটি নতুন লোগোর প্রিভিউ — “সেভ করুন” চাপলে কার্যকর হবে।" : "অ্যাডমিন প্যানেলে এই আইকনগুলোই এখন চালু আছে।"}
+        />
       )}
 
       <input ref={fileRef} type="file" accept={LOGO_ACCEPT.join(",")} className="hidden" onChange={pick} />

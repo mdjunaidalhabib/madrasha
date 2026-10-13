@@ -252,6 +252,14 @@ export async function savePlatformAdminLogo(image: string) {
   return res.data.data as PlatformAdminLogo;
 }
 
+export type PlatformLogoIconPreview = { file: string; size: number; kind: string; src: string };
+
+/** Every icon the (not yet saved) logo would generate - nothing is stored. */
+export async function previewPlatformAdminLogo(image: string) {
+  const res = await api.post("/super/platform-settings/logo/preview", { image });
+  return (res.data?.data?.icons ?? []) as PlatformLogoIconPreview[];
+}
+
 export async function deletePlatformAdminLogo() {
   const res = await api.delete("/super/platform-settings/logo");
   return res.data;

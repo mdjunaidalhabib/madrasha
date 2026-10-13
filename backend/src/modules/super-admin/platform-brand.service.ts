@@ -5,7 +5,7 @@ import { decodeImageDataUri } from "../../shared/storage/image-processing";
 import { prisma } from "../../shared/database/prisma";
 import { logger } from "../../shared/logger/logger";
 import { t } from "../../shared/i18n";
-import { BRAND_ICON_SPECS, renderBrandIcon } from "../public-website/brand-icon.service";
+import { BRAND_ICON_SPECS, decodePreviewImage, renderBrandIcon, renderBrandIconPreviews } from "../public-website/brand-icon.service";
 
 /**
  * Brand assets of the MAIN ADMIN PANEL, owned by the Super Admin
@@ -84,6 +84,17 @@ export const platformBrandService = {
     const existing = await findRow();
     if (existing) await prisma.platformBrandSetting.update({ where: { id: existing.id }, data: { adminLogo: null } });
     cache.clear();
+  },
+
+  /** Super Admin: every icon the given (not yet saved) logo would produce, so
+   * the person can check them before pressing Save. Nothing is stored. */
+  async previewIcons(image: unknown) {
+    const input = decodePreviewImage(image);
+    try {
+      return { icons: await renderBrandIconPreviews(input) };
+    } catch {
+      throw new BadRequestError(t({ bn: "ছবিটি পড়া যায়নি, অন্য ছবি দিন", en: "Could not read the image, please try another one" }));
+    }
   },
 
   /** Public: just the version - null means "no logo, show no icon". */

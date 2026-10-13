@@ -1,0 +1,680 @@
+From 99b29595e7641482a91f009b21cd80a0b7ba8c21 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 12:23:48 +0000
+Subject: [PATCH] Flat R2 keys (no year/month) and brand icon previews for
+ admin and super admin
+
+---
+ .../admin/settings/BrandingSettingsPage.tsx   |  36 ++++++
+ .../features/admin/settings/branding.text.ts  |   2 +
+ admin/src/services/brandingApi.ts             |   9 ++
+ .../__tests__/brand-icon.test.ts              |  17 ++-
+ .../public-website/brand-icon.service.ts      |  57 ++++++++-
+ .../modules/settings/settings.controller.ts   |  12 ++
+ .../src/modules/settings/settings.routes.ts   |   8 ++
+ .../super-admin/platform-brand.controller.ts  |   8 ++
+ .../super-admin/platform-brand.service.ts     |  13 +-
+ .../modules/super-admin/superadmin.routes.ts  |   4 +-
+ .../uploads/__tests__/upload-r2.test.ts       |   2 +-
+ backend/src/shared/storage/r2.service.ts      |  10 +-
+ .../src/components/brand/BrandIconPreview.tsx | 112 ++++++++++++++++++
+ .../components/brand/brandIconPreview.text.ts |  34 ++++++
+ .../settings/SuperAdminSettingsPage.tsx       |  51 ++++++++
+ super-admin/src/services/superAdminApi.ts     |   8 ++
+ 16 files changed, 372 insertions(+), 11 deletions(-)
+ create mode 100644 packages/shared-ui/src/components/brand/BrandIconPreview.tsx
+ create mode 100644 packages/shared-ui/src/components/brand/brandIconPreview.text.ts
+
+diff --git a/admin/src/features/admin/settings/BrandingSettingsPage.tsx b/admin/src/features/admin/settings/BrandingSettingsPage.tsx
+index 00be38a..a3c2120 100644
+--- a/admin/src/features/admin/settings/BrandingSettingsPage.tsx
++++ b/admin/src/features/admin/settings/BrandingSettingsPage.tsx
+@@ -24,6 +24,7 @@ import InlineSocialLinksField from "../../../components/settings/InlineSocialLin
+ import { ToggleSwitch } from "../../../components/settings/ToggleSwitch";
+ import {
+   deleteBrandingImage,
++  getBrandIconPreview,
+   saveBranding,
+   BRAND_LAYOUT_DEFAULTS,
+   type BrandingPayload,
+@@ -34,6 +35,7 @@ import {
+   type SocialLinkItem,
+ } from "../../../services/brandingApi";
+ import { useBrandingStore } from "../../../store/brandingStore";
++import BrandIconPreview, { type BrandIconPreviewItem } from "@madrasha/shared-ui/src/components/brand/BrandIconPreview";
+ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+ import { getText, useText } from "@madrasha/shared-ui/src/i18n";
+ import { brandingText } from "./branding.text";
+@@ -141,6 +143,10 @@ export default function BrandingSettingsPage({ section = "branding" }: { section
+   const [emails, setEmails] = useState<string[]>([]);
+   const [socialLinks, setSocialLinks] = useState<SocialLinkItem[]>([]);
+   const [logo, setLogo] = useState<string | null>(null);
++  // Every favicon / PWA icon the saved logo produces (rendered by the server).
++  const [logoIcons, setLogoIcons] = useState<BrandIconPreviewItem[]>([]);
++  const [logoIconsLoading, setLogoIconsLoading] = useState(false);
++  const [logoIconsFailed, setLogoIconsFailed] = useState(false);
+   const [background, setBackground] = useState<string | null>(null);
+   const [watermark, setWatermark] = useState<string | null>(null);
+   const [opacity, setOpacity] = useState(0.08);
+@@ -231,6 +237,29 @@ export default function BrandingSettingsPage({ section = "branding" }: { section
+     }
+   };
+ 
++  useEffect(() => {
++    if (!logo) {
++      setLogoIcons([]);
++      setLogoIconsFailed(false);
++      return;
++    }
++    let cancelled = false;
++    setLogoIconsLoading(true);
++    setLogoIconsFailed(false);
++    getBrandIconPreview()
++      .then((icons) => !cancelled && setLogoIcons(icons))
++      .catch(() => {
++        if (!cancelled) {
++          setLogoIcons([]);
++          setLogoIconsFailed(true);
++        }
++      })
++      .finally(() => !cancelled && setLogoIconsLoading(false));
++    return () => {
++      cancelled = true;
++    };
++  }, [logo]);
++
+   const saveImageField = async (
+     field: "report_logo" | "report_banner" | "report_watermark" | "report_header_image" | "report_footer_image",
+     value: string,
+@@ -382,6 +411,13 @@ export default function BrandingSettingsPage({ section = "branding" }: { section
+           folder="branding"
+           onSave={(v) => saveImageField("report_logo", v)}
+         />
++        <BrandIconPreview
++          icons={logoIcons}
++          loading={logoIconsLoading}
++          error={logoIconsFailed}
++          tabTitle={name || undefined}
++          note={getText(brandingText).iconPreviewNote}
++        />
+       </SectionCard>
+         </>
+       )}
+diff --git a/admin/src/features/admin/settings/branding.text.ts b/admin/src/features/admin/settings/branding.text.ts
+index 660b13d..05434d5 100644
+--- a/admin/src/features/admin/settings/branding.text.ts
++++ b/admin/src/features/admin/settings/branding.text.ts
+@@ -30,6 +30,7 @@ export const brandingText = defineText({
+     logoAndBackground: "লোগো ও ব্যাকগ্রাউন্ড",
+     logo: "লোগো",
+     logoHint: "বর্গাকার ছবি ভালো দেখায় (স্বচ্ছ পটভূমি সহ PNG সবচেয়ে ভালো)",
++    iconPreviewNote: "এই লোগো আপনার মাদ্রাসার ওয়েবসাইটের Favicon ও PWA আইকন হিসেবে ব্যবহার হয়। অ্যাডমিন প্যানেলের নিজস্ব আইকন সুপার অ্যাডমিন ঠিক করেন।",
+     background: "ব্যাকগ্রাউন্ড",
+     backgroundHint: "রিপোর্ট পেজের পুরো পটভূমি জুড়ে দেখাবে (PNG, JPG বা JPEG) — ফিল্ডের তথ্য অপরিবর্তিত থাকবে",
+     defaultHeaderFooter: "ডিফল্ট হেডার-ফুটার ডিজাইন",
+@@ -119,6 +120,7 @@ export const brandingText = defineText({
+     logoAndBackground: "Logo & background",
+     logo: "Logo",
+     logoHint: "Square images look best (PNG with a transparent background is ideal)",
++    iconPreviewNote: "This logo is used as your madrasa website's favicon and PWA icon. The admin panel's own icon is set by the Super Admin.",
+     background: "Background",
+     backgroundHint: "Shown across the whole report page background (PNG, JPG or JPEG) — field data is unchanged",
+     defaultHeaderFooter: "Default header & footer design",
+diff --git a/admin/src/services/brandingApi.ts b/admin/src/services/brandingApi.ts
+index 26b7962..144c895 100644
+--- a/admin/src/services/brandingApi.ts
++++ b/admin/src/services/brandingApi.ts
+@@ -187,3 +187,12 @@ export async function deleteBrandingImage(
+   const res = await api.delete(`/settings/branding/${field}`);
+   return res.data;
+ }
++
++export type BrandIconPreviewResult = { file: string; size: number; kind: string; src: string };
++
++/** Every favicon / PWA icon the madrasa logo produces. Pass `image` (data URI)
++ * to preview an unsaved logo; omit it to preview the saved one. */
++export async function getBrandIconPreview(image?: string) {
++  const res = await api.post("/settings/branding/icon-preview", image ? { image } : {});
++  return (res.data?.data?.icons ?? []) as BrandIconPreviewResult[];
++}
+diff --git a/backend/src/modules/public-website/__tests__/brand-icon.test.ts b/backend/src/modules/public-website/__tests__/brand-icon.test.ts
+index 3052c74..f904595 100644
+--- a/backend/src/modules/public-website/__tests__/brand-icon.test.ts
++++ b/backend/src/modules/public-website/__tests__/brand-icon.test.ts
+@@ -1,6 +1,6 @@
+ import { describe, expect, it } from "vitest";
+ import sharp from "sharp";
+-import { BRAND_ICON_SPECS, renderBrandIcon } from "../brand-icon.service";
++import { BRAND_ICON_SPECS, decodePreviewImage, renderBrandIcon, renderBrandIconPreviews } from "../brand-icon.service";
+ 
+ // A wide, non-square logo with a transparent background.
+ const makeLogo = () =>
+@@ -34,4 +34,19 @@ describe("brand icons rendered from the madrasa logo", () => {
+   it("rejects unknown icon names", async () => {
+     await expect(renderBrandIcon(await makeLogo(), "evil.png")).rejects.toThrow();
+   });
++
++  it("previews every icon the logo produces as PNG data URIs", async () => {
++    const previews = await renderBrandIconPreviews(await makeLogo());
++    expect(previews.map((p) => p.file).sort()).toEqual(Object.keys(BRAND_ICON_SPECS).sort());
++    for (const p of previews) {
++      expect(p.src.startsWith("data:image/png;base64,")).toBe(true);
++      const meta = await sharp(Buffer.from(p.src.split(",")[1], "base64")).metadata();
++      expect(meta.width).toBe(p.size);
++    }
++  });
++
++  it("rejects a missing / unreadable preview image with a 400-style error", () => {
++    expect(() => decodePreviewImage(undefined)).toThrow();
++    expect(() => decodePreviewImage("not-an-image")).toThrow();
++  });
+ });
+diff --git a/backend/src/modules/public-website/brand-icon.service.ts b/backend/src/modules/public-website/brand-icon.service.ts
+index 66b0cde..874fe03 100644
+--- a/backend/src/modules/public-website/brand-icon.service.ts
++++ b/backend/src/modules/public-website/brand-icon.service.ts
+@@ -2,7 +2,7 @@ import { createHash } from "crypto";
+ import dns from "dns/promises";
+ import net from "net";
+ import sharp from "sharp";
+-import { NotFoundError } from "../../shared/errors";
++import { BadRequestError, NotFoundError } from "../../shared/errors";
+ import { decodeImageDataUri } from "../../shared/storage/image-processing";
+ import { r2CredentialsFromEnv } from "../../shared/storage/r2.service";
+ import { prisma } from "../../shared/database/prisma";
+@@ -129,6 +129,45 @@ export const renderBrandIcon = async (logo: Buffer, file: string): Promise<Buffe
+     .toBuffer();
+ };
+ 
++/** One generated icon, ready to show in a preview (PNG as a data URI). */
++export interface BrandIconPreview {
++  file: string;
++  size: number;
++  kind: IconKind;
++  src: string;
++}
++
++/** Pure: renders EVERY icon the logo produces, so the admin / super admin can
++ * see exactly what the favicon and PWA icons will look like. Exported for tests. */
++export const renderBrandIconPreviews = async (logo: Buffer): Promise<BrandIconPreview[]> =>
++  Promise.all(
++    Object.entries(BRAND_ICON_SPECS).map(async ([file, spec]) => {
++      const png = await renderBrandIcon(logo, file);
++      return { file, size: spec.size, kind: spec.kind, src: `data:image/png;base64,${png.toString("base64")}` };
++    }),
++  );
++
++/** Decodes an uploaded (not yet saved) logo for a preview; a bad file is the
++ * caller's mistake (400), not a server error. */
++export const decodePreviewImage = (image: unknown): Buffer => {
++  if (typeof image !== "string" || !image.trim()) {
++    throw new BadRequestError(t({ bn: "লোগো ছবি আবশ্যক", en: "A logo image is required" }));
++  }
++  try {
++    return decodeImageDataUri(image.trim());
++  } catch {
++    throw new BadRequestError(t({ bn: "ছবিটি পড়া যায়নি, অন্য ছবি দিন", en: "Could not read the image, please try another one" }));
++  }
++};
++
++const previewOrBadRequest = async (logo: Buffer): Promise<BrandIconPreview[]> => {
++  try {
++    return await renderBrandIconPreviews(logo);
++  } catch {
++    throw new BadRequestError(t({ bn: "ছবিটি পড়া যায়নি, অন্য ছবি দিন", en: "Could not read the image, please try another one" }));
++  }
++};
++
+ /* ---------- service ---------- */
+ 
+ const CACHE_LIMIT = 150;
+@@ -175,4 +214,20 @@ export const brandIconService = {
+       throw notFound();
+     }
+   },
++
++  /** Every icon a madrasa's logo produces. With `image` (a base64 data URI) it
++   * previews a logo that is not saved yet; without it, the saved logo is used
++   * (no logo => empty list). */
++  async previewForMadrasa(madrasaId: number, image?: unknown): Promise<BrandIconPreview[]> {
++    if (typeof image === "string" && image.trim()) return previewOrBadRequest(decodePreviewImage(image));
++
++    const madrasa = await prisma.madrasa.findFirst({ where: { id: madrasaId, deletedAt: null }, select: { reportLogo: true } });
++    if (!madrasa?.reportLogo) return [];
++    try {
++      return await renderBrandIconPreviews(await loadLogoBuffer(madrasa.reportLogo));
++    } catch (err) {
++      logger.warn("[brand-icon] could not render preview", { madrasaId, error: (err as Error)?.message });
++      return [];
++    }
++  },
+ };
+diff --git a/backend/src/modules/settings/settings.controller.ts b/backend/src/modules/settings/settings.controller.ts
+index dbf5963..7a36d2a 100644
+--- a/backend/src/modules/settings/settings.controller.ts
++++ b/backend/src/modules/settings/settings.controller.ts
+@@ -1,4 +1,5 @@
+ import { Request, Response } from "express";
++import { brandIconService } from "../public-website/brand-icon.service";
+ import { ApiError } from "../../shared/errors";
+ import { HttpStatus } from "../../shared/constants";
+ import { asyncHandler } from "../../shared/utils/async-handler.util";
+@@ -35,6 +36,17 @@ export const getBranding = async (req: Request, res: Response) => {
+   }
+ };
+ 
++/** Every favicon / PWA icon the madrasa logo produces. Body `image` previews an
++ * unsaved logo; no body previews the saved one. Nothing is stored. */
++export const previewBrandIcons = async (req: Request, res: Response) => {
++  try {
++    const icons = await brandIconService.previewForMadrasa(req.tenant!.madrasa_id, req.body?.image);
++    res.json({ data: { icons } });
++  } catch (error) {
++    respondError(res, error);
++  }
++};
++
+ export const updateBranding = async (req: Request, res: Response) => {
+   try {
+     const madrasa_id = req.tenant!.madrasa_id;
+diff --git a/backend/src/modules/settings/settings.routes.ts b/backend/src/modules/settings/settings.routes.ts
+index a26f310..6c6b1e3 100644
+--- a/backend/src/modules/settings/settings.routes.ts
++++ b/backend/src/modules/settings/settings.routes.ts
+@@ -9,6 +9,7 @@ import {
+   getBranding,
+   updateBranding,
+   deleteBrandingImage,
++  previewBrandIcons,
+   getDocumentTemplates,
+   updateDocumentTemplates,
+   getIdCardBack,
+@@ -39,6 +40,13 @@ router.put(
+   rbacMiddleware("settings.manage"),
+   updateBranding,
+ );
++router.post(
++  "/branding/icon-preview",
++  tenantMiddleware,
++  authMiddleware,
++  rbacMiddleware("settings.manage"),
++  previewBrandIcons,
++);
+ router.delete(
+   "/branding/:field",
+   tenantMiddleware,
+diff --git a/backend/src/modules/super-admin/platform-brand.controller.ts b/backend/src/modules/super-admin/platform-brand.controller.ts
+index 20fbf61..93bacea 100644
+--- a/backend/src/modules/super-admin/platform-brand.controller.ts
++++ b/backend/src/modules/super-admin/platform-brand.controller.ts
+@@ -32,6 +32,14 @@ export const savePlatformAdminLogo = async (req: Request, res: Response) => {
+   }
+ };
+ 
++export const previewPlatformAdminLogo = async (req: Request, res: Response) => {
++  try {
++    res.json({ data: await platformBrandService.previewIcons(req.body?.image) });
++  } catch (error) {
++    respondError(res, error, "previewPlatformAdminLogo ERROR:");
++  }
++};
++
+ export const deletePlatformAdminLogo = async (_req: Request, res: Response) => {
+   try {
+     await platformBrandService.deleteAdminLogo();
+diff --git a/backend/src/modules/super-admin/platform-brand.service.ts b/backend/src/modules/super-admin/platform-brand.service.ts
+index 5dc9f67..6b9a1b1 100644
+--- a/backend/src/modules/super-admin/platform-brand.service.ts
++++ b/backend/src/modules/super-admin/platform-brand.service.ts
+@@ -5,7 +5,7 @@ import { decodeImageDataUri } from "../../shared/storage/image-processing";
+ import { prisma } from "../../shared/database/prisma";
+ import { logger } from "../../shared/logger/logger";
+ import { t } from "../../shared/i18n";
+-import { BRAND_ICON_SPECS, renderBrandIcon } from "../public-website/brand-icon.service";
++import { BRAND_ICON_SPECS, decodePreviewImage, renderBrandIcon, renderBrandIconPreviews } from "../public-website/brand-icon.service";
+ 
+ /**
+  * Brand assets of the MAIN ADMIN PANEL, owned by the Super Admin
+@@ -86,6 +86,17 @@ export const platformBrandService = {
+     cache.clear();
+   },
+ 
++  /** Super Admin: every icon the given (not yet saved) logo would produce, so
++   * the person can check them before pressing Save. Nothing is stored. */
++  async previewIcons(image: unknown) {
++    const input = decodePreviewImage(image);
++    try {
++      return { icons: await renderBrandIconPreviews(input) };
++    } catch {
++      throw new BadRequestError(t({ bn: "ছবিটি পড়া যায়নি, অন্য ছবি দিন", en: "Could not read the image, please try another one" }));
++    }
++  },
++
+   /** Public: just the version - null means "no logo, show no icon". */
+   async getPublicInfo() {
+     const row = await findRow();
+diff --git a/backend/src/modules/super-admin/superadmin.routes.ts b/backend/src/modules/super-admin/superadmin.routes.ts
+index c1bf970..a10b354 100644
+--- a/backend/src/modules/super-admin/superadmin.routes.ts
++++ b/backend/src/modules/super-admin/superadmin.routes.ts
+@@ -156,7 +156,7 @@ import {
+   deletePlatformEmailConfig,
+   checkPlatformEmailConnection,
+ } from "./platform-settings.controller";
+-import { getPlatformAdminLogo, savePlatformAdminLogo, deletePlatformAdminLogo } from "./platform-brand.controller";
++import { getPlatformAdminLogo, savePlatformAdminLogo, deletePlatformAdminLogo, previewPlatformAdminLogo } from "./platform-brand.controller";
+ 
+ const router = Router();
+ 
+@@ -365,5 +365,7 @@ router.get("/platform-settings/email/test", superAdminMiddleware, checkPlatformE
+ router.get("/platform-settings/logo", superAdminMiddleware, getPlatformAdminLogo);
+ router.put("/platform-settings/logo", superAdminMiddleware, savePlatformAdminLogo);
+ router.delete("/platform-settings/logo", superAdminMiddleware, deletePlatformAdminLogo);
++// Preview of every icon a not-yet-saved logo would generate (nothing is stored)
++router.post("/platform-settings/logo/preview", superAdminMiddleware, previewPlatformAdminLogo);
+ 
+ export default router;
+diff --git a/backend/src/modules/uploads/__tests__/upload-r2.test.ts b/backend/src/modules/uploads/__tests__/upload-r2.test.ts
+index 0430216..4174072 100644
+--- a/backend/src/modules/uploads/__tests__/upload-r2.test.ts
++++ b/backend/src/modules/uploads/__tests__/upload-r2.test.ts
+@@ -52,7 +52,7 @@ describe("upload to R2", () => {
+ 
+     expect(result.uploaded).toBe(true);
+     const [, key, body, contentType] = putObject.mock.calls[0] as unknown as [unknown, string, Buffer, string];
+-    expect(key).toMatch(/^madrasas\/darul-uloom\/students\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.webp$/);
++    expect(key).toMatch(/^madrasas\/darul-uloom\/students\/[0-9a-f-]{36}\.webp$/);
+     expect(contentType).toBe("image/webp");
+     const meta = await sharp(body).metadata();
+     expect(meta.format).toBe("webp");
+diff --git a/backend/src/shared/storage/r2.service.ts b/backend/src/shared/storage/r2.service.ts
+index 9a36d6a..38109e3 100644
+--- a/backend/src/shared/storage/r2.service.ts
++++ b/backend/src/shared/storage/r2.service.ts
+@@ -7,8 +7,8 @@ import { env } from "../config/env";
+  * Cloudflare R2 (S3-compatible) object storage. ONE bucket for the whole
+  * platform; the key prefix keeps tenants apart:
+  *
+- *   madrasas/<slug>/<folder>/<yyyy>/<mm>/<uuid>.webp   tenant uploads
+- *   platform/<folder>/<yyyy>/<mm>/<uuid>.webp          Super Admin uploads
++ *   madrasas/<slug>/<folder>/<uuid>.webp   tenant uploads
++ *   platform/<folder>/<uuid>.webp          Super Admin uploads
+  *   downloads/attendance-connector/...                 connector installer (CI)
+  *
+  * Credentials come from the R2_* env vars (shared/config/env.ts).
+@@ -60,11 +60,9 @@ export const safeSegment = (value: string): string =>
+ 
+ export const tenantPrefix = (slug: string) => `madrasas/${safeSegment(slug)}/`;
+ 
+-/** `<prefix><folder>/<yyyy>/<mm>/<uuid>.<ext>` */
++/** `<prefix><folder>/<uuid>.<ext>` */
+ export const buildObjectKey = (prefix: string, folder: string, ext: string): string => {
+-  const now = new Date();
+-  const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+-  return `${prefix}${safeSegment(folder)}/${now.getUTCFullYear()}/${mm}/${randomUUID()}.${ext}`;
++  return `${prefix}${safeSegment(folder)}/${randomUUID()}.${ext}`;
+ };
+ 
+ /** Where .github/workflows/connector-release.yml uploads the installer. */
+diff --git a/packages/shared-ui/src/components/brand/BrandIconPreview.tsx b/packages/shared-ui/src/components/brand/BrandIconPreview.tsx
+new file mode 100644
+index 0000000..02f124b
+--- /dev/null
++++ b/packages/shared-ui/src/components/brand/BrandIconPreview.tsx
+@@ -0,0 +1,112 @@
++import { ImageIcon, Loader2 } from "lucide-react";
++import { useText } from "../../i18n";
++import { brandIconPreviewText } from "./brandIconPreview.text";
++
++export type BrandIconPreviewItem = {
++  /** Icon file name, e.g. "favicon-32.png" - decides the label and the mock-up. */
++  file: string;
++  /** Anything an <img> can show: a data URI (unsaved preview) or the live icon URL. */
++  src: string;
++  size?: number;
++};
++
++type Props = {
++  icons: BrandIconPreviewItem[];
++  loading?: boolean;
++  error?: boolean;
++  /** Short line under the title, e.g. which part of the product uses these icons. */
++  note?: string;
++  /** Tab title for the browser-tab mock-up (the page / app name). */
++  tabTitle?: string;
++};
++
++// Same order everywhere, regardless of how the server lists them.
++const ORDER = ["favicon-32.png", "apple-touch-icon.png", "icon-192.png", "icon-512.png", "maskable-512.png"];
++
++const CHECKER =
++  "bg-[length:12px_12px] bg-[position:0_0,0_6px,6px_-6px,-6px_0] bg-[linear-gradient(45deg,#e5e7eb_25%,transparent_25%),linear-gradient(-45deg,#e5e7eb_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#e5e7eb_75%),linear-gradient(-45deg,transparent_75%,#e5e7eb_75%)] dark:opacity-100";
++
++/**
++ * Shows every favicon / PWA icon generated from a logo, each in a realistic
++ * mock-up (browser tab, iOS tile, transparent app icon, round Android mask), so
++ * the person can see what the logo turns into before and after saving.
++ */
++export default function BrandIconPreview({ icons, loading, error, note, tabTitle }: Props) {
++  const t = useText(brandIconPreviewText);
++  const byFile = new Map(icons.map((i) => [i.file, i]));
++  const items = ORDER.map((f) => byFile.get(f)).filter(Boolean) as BrandIconPreviewItem[];
++
++  const label = (file: string) => (t as unknown as Record<string, { name: string; use: string }>)[file];
++
++  return (
++    <div className="mt-5 rounded-xl border border-gray-200 bg-gray-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/40">
++      <div className="flex items-start gap-2">
++        <ImageIcon size={16} className="mt-0.5 shrink-0 text-sky-600 dark:text-sky-400" />
++        <div className="min-w-0">
++          <p className="text-sm font-bold text-gray-900 dark:text-slate-100">{t.title}</p>
++          <p className="mt-0.5 text-xs leading-relaxed text-gray-500 dark:text-slate-400">{t.subtitle}</p>
++          {note && <p className="mt-1 text-xs font-medium text-gray-600 dark:text-slate-300">{note}</p>}
++        </div>
++      </div>
++
++      {loading ? (
++        <p className="mt-4 flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
++          <Loader2 size={14} className="animate-spin" />
++          {t.loading}
++        </p>
++      ) : error ? (
++        <p className="mt-4 text-xs text-red-600 dark:text-red-400">{t.failed}</p>
++      ) : items.length === 0 ? (
++        <p className="mt-4 text-xs text-gray-400 dark:text-slate-500">{t.empty}</p>
++      ) : (
++        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
++          {items.map((icon) => {
++            const info = label(icon.file);
++            return (
++              <div key={icon.file} className="flex flex-col rounded-lg border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
++                <div className="flex h-28 items-center justify-center overflow-hidden rounded-md bg-gray-100 dark:bg-slate-800">
++                  {icon.file === "favicon-32.png" && (
++                    <div className="flex w-40 items-center gap-2 rounded-t-lg border border-b-0 border-gray-300 bg-white px-2.5 py-2 shadow-sm dark:border-slate-600 dark:bg-slate-700">
++                      <img src={icon.src} alt="" width={16} height={16} className="h-4 w-4 shrink-0 object-contain" />
++                      <span className="truncate text-[11px] text-gray-600 dark:text-slate-200">{tabTitle || t.tabTitle}</span>
++                    </div>
++                  )}
++
++                  {icon.file === "apple-touch-icon.png" && (
++                    <img src={icon.src} alt="" className="h-20 w-20 rounded-[22%] object-contain shadow-md" />
++                  )}
++
++                  {(icon.file === "icon-192.png" || icon.file === "icon-512.png") && (
++                    <div className={`flex h-20 w-20 items-center justify-center rounded-lg ${CHECKER}`}>
++                      <img src={icon.src} alt="" className="h-full w-full object-contain" />
++                    </div>
++                  )}
++
++                  {icon.file === "maskable-512.png" && (
++                    <div className="flex items-center gap-3">
++                      <div className="flex flex-col items-center gap-1">
++                        <img src={icon.src} alt="" className="h-16 w-16 object-contain shadow" />
++                        <span className="text-[10px] text-gray-400 dark:text-slate-500">{t.maskSquare}</span>
++                      </div>
++                      <div className="flex flex-col items-center gap-1">
++                        <img src={icon.src} alt="" className="h-16 w-16 rounded-full object-cover shadow" />
++                        <span className="text-[10px] text-gray-400 dark:text-slate-500">{t.maskCircle}</span>
++                      </div>
++                    </div>
++                  )}
++                </div>
++                <p className="mt-2 text-xs font-bold text-gray-800 dark:text-slate-100">
++                  {info?.name ?? icon.file}
++                  <span className="ms-1 font-mono text-[10px] font-normal text-gray-400 dark:text-slate-500">
++                    {icon.size ? `${icon.size}×${icon.size}` : ""}
++                  </span>
++                </p>
++                <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-slate-400">{info?.use}</p>
++              </div>
++            );
++          })}
++        </div>
++      )}
++    </div>
++  );
++}
+diff --git a/packages/shared-ui/src/components/brand/brandIconPreview.text.ts b/packages/shared-ui/src/components/brand/brandIconPreview.text.ts
+new file mode 100644
+index 0000000..24969d3
+--- /dev/null
++++ b/packages/shared-ui/src/components/brand/brandIconPreview.text.ts
+@@ -0,0 +1,34 @@
++import { defineText } from "../../i18n";
++
++export const brandIconPreviewText = defineText({
++  bn: {
++    title: "এই লোগো থেকে যা যা তৈরি হচ্ছে",
++    subtitle: "নিচের আইকনগুলো লোগো থেকে স্বয়ংক্রিয়ভাবে তৈরি হয় — ব্রাউজার ট্যাব, ফোনের হোম স্ক্রিন ও ইনস্টল করা অ্যাপে এভাবেই দেখাবে।",
++    empty: "লোগো দিলে এখানে সব আইকনের প্রিভিউ দেখা যাবে।",
++    loading: "প্রিভিউ তৈরি হচ্ছে...",
++    failed: "প্রিভিউ তৈরি করা যায়নি",
++    tabTitle: "ট্যাবের নাম",
++    maskSquare: "মূল",
++    maskCircle: "গোল মাস্ক",
++    "favicon-32.png": { name: "Favicon", use: "ব্রাউজার ট্যাব ও বুকমার্ক" },
++    "apple-touch-icon.png": { name: "Apple Touch Icon", use: "iPhone/iPad হোম স্ক্রিন (সাদা টাইলে)" },
++    "icon-192.png": { name: "PWA আইকন ১৯২", use: "অ্যান্ড্রয়েড/ডেস্কটপ অ্যাপ আইকন (স্বচ্ছ)" },
++    "icon-512.png": { name: "PWA আইকন ৫১২", use: "অ্যাপ ইনস্টল ও স্প্ল্যাশ স্ক্রিন (স্বচ্ছ)" },
++    "maskable-512.png": { name: "Maskable আইকন", use: "অ্যান্ড্রয়েড গোল/বাঁকা আকারে কাটলেও লোগো পুরো থাকে" },
++  },
++  en: {
++    title: "What is generated from this logo",
++    subtitle: "These icons are created automatically from the logo - this is how it will look in the browser tab, on phone home screens and in the installed app.",
++    empty: "Add a logo to see a preview of every icon here.",
++    loading: "Generating preview...",
++    failed: "Could not generate the preview",
++    tabTitle: "Tab title",
++    maskSquare: "Original",
++    maskCircle: "Round mask",
++    "favicon-32.png": { name: "Favicon", use: "Browser tab and bookmarks" },
++    "apple-touch-icon.png": { name: "Apple Touch Icon", use: "iPhone/iPad home screen (on a white tile)" },
++    "icon-192.png": { name: "PWA icon 192", use: "Android/desktop app icon (transparent)" },
++    "icon-512.png": { name: "PWA icon 512", use: "App install and splash screen (transparent)" },
++    "maskable-512.png": { name: "Maskable icon", use: "Stays fully visible when Android crops it round or squircle" },
++  },
++});
+diff --git a/super-admin/src/features/super-admin/settings/SuperAdminSettingsPage.tsx b/super-admin/src/features/super-admin/settings/SuperAdminSettingsPage.tsx
+index 6e4473e..685ef87 100644
+--- a/super-admin/src/features/super-admin/settings/SuperAdminSettingsPage.tsx
++++ b/super-admin/src/features/super-admin/settings/SuperAdminSettingsPage.tsx
+@@ -22,12 +22,15 @@ import {
+   getPlatformAdminLogo,
+   savePlatformAdminLogo,
+   deletePlatformAdminLogo,
++  previewPlatformAdminLogo,
+   type PlatformAdminLogo,
+ } from "../../../services/superAdminApi";
+ import { useAdminAuthStore } from "../../../store/adminAuthStore";
+ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
+ import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
+ import { logger } from "@madrasha/shared-ui/src/utils/logger";
++import BrandIconPreview, { type BrandIconPreviewItem } from "@madrasha/shared-ui/src/components/brand/BrandIconPreview";
++import { brandIconUrl, platformIconBase } from "@madrasha/shared-ui/src/pwa/brandIcons";
+ 
+ /**
+  * Platform-wide Super Admin settings - not tied to any one madrasa. Built
+@@ -69,6 +72,44 @@ function AdminLogoSettingsCard() {
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, []);
+ 
++  // Icons shown in the preview: a freshly picked (unsaved) logo is rendered by
++  // the server on request; a saved logo shows the real, live icon URLs.
++  const [pendingIcons, setPendingIcons] = useState<BrandIconPreviewItem[]>([]);
++  const [iconsLoading, setIconsLoading] = useState(false);
++  const [iconsFailed, setIconsFailed] = useState(false);
++
++  useEffect(() => {
++    if (!pending) {
++      setPendingIcons([]);
++      setIconsFailed(false);
++      return;
++    }
++    let cancelled = false;
++    setIconsLoading(true);
++    setIconsFailed(false);
++    previewPlatformAdminLogo(pending)
++      .then((icons) => !cancelled && setPendingIcons(icons))
++      .catch((err) => {
++        logger.error("PREVIEW ADMIN PANEL ICONS ERROR:", err);
++        if (!cancelled) {
++          setPendingIcons([]);
++          setIconsFailed(true);
++        }
++      })
++      .finally(() => !cancelled && setIconsLoading(false));
++    return () => {
++      cancelled = true;
++    };
++  }, [pending]);
++
++  const savedIcons: BrandIconPreviewItem[] = current.configured
++    ? ["favicon-32.png", "apple-touch-icon.png", "icon-192.png", "icon-512.png", "maskable-512.png"].map((file) => ({
++        file,
++        size: Number(file.match(/(\d+)/)?.[1] ?? 180),
++        src: brandIconUrl({ base: platformIconBase(), version: current.version }, file),
++      }))
++    : [];
++
+   const pick = (e: React.ChangeEvent<HTMLInputElement>) => {
+     const file = e.target.files?.[0];
+     e.target.value = ""; // allow re-picking the same file
+@@ -172,6 +213,16 @@ function AdminLogoSettingsCard() {
+         </div>
+       )}
+ 
++      {!loading && (
++        <BrandIconPreview
++          icons={pending ? pendingIcons : savedIcons}
++          loading={!!pending && iconsLoading}
++          error={!!pending && iconsFailed}
++          tabTitle="QMS Admin"
++          note={pending ? "এটি নতুন লোগোর প্রিভিউ — “সেভ করুন” চাপলে কার্যকর হবে।" : "অ্যাডমিন প্যানেলে এই আইকনগুলোই এখন চালু আছে।"}
++        />
++      )}
++
+       <input ref={fileRef} type="file" accept={LOGO_ACCEPT.join(",")} className="hidden" onChange={pick} />
+ 
+       <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
+diff --git a/super-admin/src/services/superAdminApi.ts b/super-admin/src/services/superAdminApi.ts
+index 324ba5d..7ab90c3 100644
+--- a/super-admin/src/services/superAdminApi.ts
++++ b/super-admin/src/services/superAdminApi.ts
+@@ -252,6 +252,14 @@ export async function savePlatformAdminLogo(image: string) {
+   return res.data.data as PlatformAdminLogo;
+ }
+ 
++export type PlatformLogoIconPreview = { file: string; size: number; kind: string; src: string };
++
++/** Every icon the (not yet saved) logo would generate - nothing is stored. */
++export async function previewPlatformAdminLogo(image: string) {
++  const res = await api.post("/super/platform-settings/logo/preview", { image });
++  return (res.data?.data?.icons ?? []) as PlatformLogoIconPreview[];
++}
++
+ export async function deletePlatformAdminLogo() {
+   const res = await api.delete("/super/platform-settings/logo");
+   return res.data;
+-- 
+2.43.0
+

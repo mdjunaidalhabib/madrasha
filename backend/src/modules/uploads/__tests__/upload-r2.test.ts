@@ -52,7 +52,7 @@ describe("upload to R2", () => {
 
     expect(result.uploaded).toBe(true);
     const [, key, body, contentType] = putObject.mock.calls[0] as unknown as [unknown, string, Buffer, string];
-    expect(key).toMatch(/^madrasas\/darul-uloom\/students\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.webp$/);
+    expect(key).toMatch(/^madrasas\/darul-uloom\/students\/[0-9a-f-]{36}\.webp$/);
     expect(contentType).toBe("image/webp");
     const meta = await sharp(body).metadata();
     expect(meta.format).toBe("webp");

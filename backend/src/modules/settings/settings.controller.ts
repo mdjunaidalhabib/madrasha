@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { brandIconService } from "../public-website/brand-icon.service";
 import { ApiError } from "../../shared/errors";
 import { HttpStatus } from "../../shared/constants";
 import { asyncHandler } from "../../shared/utils/async-handler.util";
@@ -30,6 +31,17 @@ export const getBranding = async (req: Request, res: Response) => {
     const madrasa_id = req.tenant!.madrasa_id;
     const data = await settingsService.getBranding(madrasa_id);
     res.json({ data });
+  } catch (error) {
+    respondError(res, error);
+  }
+};
+
+/** Every favicon / PWA icon the madrasa logo produces. Body `image` previews an
+ * unsaved logo; no body previews the saved one. Nothing is stored. */
+export const previewBrandIcons = async (req: Request, res: Response) => {
+  try {
+    const icons = await brandIconService.previewForMadrasa(req.tenant!.madrasa_id, req.body?.image);
+    res.json({ data: { icons } });
   } catch (error) {
     respondError(res, error);
   }

@@ -156,7 +156,7 @@ import {
   deletePlatformEmailConfig,
   checkPlatformEmailConnection,
 } from "./platform-settings.controller";
-import { getPlatformAdminLogo, savePlatformAdminLogo, deletePlatformAdminLogo } from "./platform-brand.controller";
+import { getPlatformAdminLogo, savePlatformAdminLogo, deletePlatformAdminLogo, previewPlatformAdminLogo } from "./platform-brand.controller";
 
 const router = Router();
 
@@ -365,5 +365,7 @@ router.get("/platform-settings/email/test", superAdminMiddleware, checkPlatformE
 router.get("/platform-settings/logo", superAdminMiddleware, getPlatformAdminLogo);
 router.put("/platform-settings/logo", superAdminMiddleware, savePlatformAdminLogo);
 router.delete("/platform-settings/logo", superAdminMiddleware, deletePlatformAdminLogo);
+// Preview of every icon a not-yet-saved logo would generate (nothing is stored)
+router.post("/platform-settings/logo/preview", superAdminMiddleware, previewPlatformAdminLogo);
 
 export default router;

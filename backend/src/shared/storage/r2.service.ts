@@ -7,8 +7,8 @@ import { env } from "../config/env";
  * Cloudflare R2 (S3-compatible) object storage. ONE bucket for the whole
  * platform; the key prefix keeps tenants apart:
  *
- *   madrasas/<slug>/<folder>/<yyyy>/<mm>/<uuid>.webp   tenant uploads
- *   platform/<folder>/<yyyy>/<mm>/<uuid>.webp          Super Admin uploads
+ *   madrasas/<slug>/<folder>/<uuid>.webp   tenant uploads
+ *   platform/<folder>/<uuid>.webp          Super Admin uploads
  *   downloads/attendance-connector/...                 connector installer (CI)
  *
  * Credentials come from the R2_* env vars (shared/config/env.ts).
@@ -60,11 +60,9 @@ export const safeSegment = (value: string): string =>
 
 export const tenantPrefix = (slug: string) => `madrasas/${safeSegment(slug)}/`;
 
-/** `<prefix><folder>/<yyyy>/<mm>/<uuid>.<ext>` */
+/** `<prefix><folder>/<uuid>.<ext>` */
 export const buildObjectKey = (prefix: string, folder: string, ext: string): string => {
-  const now = new Date();
-  const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
-  return `${prefix}${safeSegment(folder)}/${now.getUTCFullYear()}/${mm}/${randomUUID()}.${ext}`;
+  return `${prefix}${safeSegment(folder)}/${randomUUID()}.${ext}`;
 };
 
 /** Where .github/workflows/connector-release.yml uploads the installer. */

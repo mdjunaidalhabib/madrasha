@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 import dns from "dns/promises";
 import net from "net";
 import sharp from "sharp";
-import { NotFoundError } from "../../shared/errors";
+import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { decodeImageDataUri } from "../../shared/storage/image-processing";
 import { r2CredentialsFromEnv } from "../../shared/storage/r2.service";
 import { prisma } from "../../shared/database/prisma";
@@ -129,6 +129,45 @@ export const renderBrandIcon = async (logo: Buffer, file: string): Promise<Buffe
     .toBuffer();
 };
 
+/** One generated icon, ready to show in a preview (PNG as a data URI). */
+export interface BrandIconPreview {
+  file: string;
+  size: number;
+  kind: IconKind;
+  src: string;
+}
+
+/** Pure: renders EVERY icon the logo produces, so the admin / super admin can
+ * see exactly what the favicon and PWA icons will look like. Exported for tests. */
+export const renderBrandIconPreviews = async (logo: Buffer): Promise<BrandIconPreview[]> =>
+  Promise.all(
+    Object.entries(BRAND_ICON_SPECS).map(async ([file, spec]) => {
+      const png = await renderBrandIcon(logo, file);
+      return { file, size: spec.size, kind: spec.kind, src: `data:image/png;base64,${png.toString("base64")}` };
+    }),
+  );
+
+/** Decodes an uploaded (not yet saved) logo for a preview; a bad file is the
+ * caller's mistake (400), not a server error. */
+export const decodePreviewImage = (image: unknown): Buffer => {
+  if (typeof image !== "string" || !image.trim()) {
+    throw new BadRequestError(t({ bn: "লোগো ছবি আবশ্যক", en: "A logo image is required" }));
+  }
+  try {
+    return decodeImageDataUri(image.trim());
+  } catch {
+    throw new BadRequestError(t({ bn: "ছবিটি পড়া যায়নি, অন্য ছবি দিন", en: "Could not read the image, please try another one" }));
+  }
+};
+
+const previewOrBadRequest = async (logo: Buffer): Promise<BrandIconPreview[]> => {
+  try {
+    return await renderBrandIconPreviews(logo);
+  } catch {
+    throw new BadRequestError(t({ bn: "ছবিটি পড়া যায়নি, অন্য ছবি দিন", en: "Could not read the image, please try another one" }));
+  }
+};
+
 /* ---------- service ---------- */
 
 const CACHE_LIMIT = 150;
@@ -173,6 +212,22 @@ export const brandIconService = {
     } catch (err) {
       logger.warn("[brand-icon] could not render icon", { slug, file, error: (err as Error)?.message });
       throw notFound();
+    }
+  },
+
+  /** Every icon a madrasa's logo produces. With `image` (a base64 data URI) it
+   * previews a logo that is not saved yet; without it, the saved logo is used
+   * (no logo => empty list). */
+  async previewForMadrasa(madrasaId: number, image?: unknown): Promise<BrandIconPreview[]> {
+    if (typeof image === "string" && image.trim()) return previewOrBadRequest(decodePreviewImage(image));
+
+    const madrasa = await prisma.madrasa.findFirst({ where: { id: madrasaId, deletedAt: null }, select: { reportLogo: true } });
+    if (!madrasa?.reportLogo) return [];
+    try {
+      return await renderBrandIconPreviews(await loadLogoBuffer(madrasa.reportLogo));
+    } catch (err) {
+      logger.warn("[brand-icon] could not render preview", { madrasaId, error: (err as Error)?.message });
+      return [];
     }
   },
 };

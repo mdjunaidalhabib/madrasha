@@ -24,6 +24,7 @@ import InlineSocialLinksField from "../../../components/settings/InlineSocialLin
 import { ToggleSwitch } from "../../../components/settings/ToggleSwitch";
 import {
   deleteBrandingImage,
+  getBrandIconPreview,
   saveBranding,
   BRAND_LAYOUT_DEFAULTS,
   type BrandingPayload,
@@ -34,6 +35,7 @@ import {
   type SocialLinkItem,
 } from "../../../services/brandingApi";
 import { useBrandingStore } from "../../../store/brandingStore";
+import BrandIconPreview, { type BrandIconPreviewItem } from "@madrasha/shared-ui/src/components/brand/BrandIconPreview";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { getText, useText } from "@madrasha/shared-ui/src/i18n";
 import { brandingText } from "./branding.text";
@@ -141,6 +143,10 @@ export default function BrandingSettingsPage({ section = "branding" }: { section
   const [emails, setEmails] = useState<string[]>([]);
   const [socialLinks, setSocialLinks] = useState<SocialLinkItem[]>([]);
   const [logo, setLogo] = useState<string | null>(null);
+  // Every favicon / PWA icon the saved logo produces (rendered by the server).
+  const [logoIcons, setLogoIcons] = useState<BrandIconPreviewItem[]>([]);
+  const [logoIconsLoading, setLogoIconsLoading] = useState(false);
+  const [logoIconsFailed, setLogoIconsFailed] = useState(false);
   const [background, setBackground] = useState<string | null>(null);
   const [watermark, setWatermark] = useState<string | null>(null);
   const [opacity, setOpacity] = useState(0.08);
@@ -230,6 +236,29 @@ export default function BrandingSettingsPage({ section = "branding" }: { section
       throw new Error("save failed");
     }
   };
+
+  useEffect(() => {
+    if (!logo) {
+      setLogoIcons([]);
+      setLogoIconsFailed(false);
+      return;
+    }
+    let cancelled = false;
+    setLogoIconsLoading(true);
+    setLogoIconsFailed(false);
+    getBrandIconPreview()
+      .then((icons) => !cancelled && setLogoIcons(icons))
+      .catch(() => {
+        if (!cancelled) {
+          setLogoIcons([]);
+          setLogoIconsFailed(true);
+        }
+      })
+      .finally(() => !cancelled && setLogoIconsLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [logo]);
 
   const saveImageField = async (
     field: "report_logo" | "report_banner" | "report_watermark" | "report_header_image" | "report_footer_image",
@@ -381,6 +410,13 @@ export default function BrandingSettingsPage({ section = "branding" }: { section
           value={logo}
           folder="branding"
           onSave={(v) => saveImageField("report_logo", v)}
+        />
+        <BrandIconPreview
+          icons={logoIcons}
+          loading={logoIconsLoading}
+          error={logoIconsFailed}
+          tabTitle={name || undefined}
+          note={getText(brandingText).iconPreviewNote}
         />
       </SectionCard>
         </>

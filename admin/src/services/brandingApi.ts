@@ -187,3 +187,12 @@ export async function deleteBrandingImage(
   const res = await api.delete(`/settings/branding/${field}`);
   return res.data;
 }
+
+export type BrandIconPreviewResult = { file: string; size: number; kind: string; src: string };
+
+/** Every favicon / PWA icon the madrasa logo produces. Pass `image` (data URI)
+ * to preview an unsaved logo; omit it to preview the saved one. */
+export async function getBrandIconPreview(image?: string) {
+  const res = await api.post("/settings/branding/icon-preview", image ? { image } : {});
+  return (res.data?.data?.icons ?? []) as BrandIconPreviewResult[];
+}

@@ -9,6 +9,7 @@ import {
   getBranding,
   updateBranding,
   deleteBrandingImage,
+  previewBrandIcons,
   getDocumentTemplates,
   updateDocumentTemplates,
   getIdCardBack,
@@ -38,6 +39,13 @@ router.put(
   authMiddleware,
   rbacMiddleware("settings.manage"),
   updateBranding,
+);
+router.post(
+  "/branding/icon-preview",
+  tenantMiddleware,
+  authMiddleware,
+  rbacMiddleware("settings.manage"),
+  previewBrandIcons,
 );
 router.delete(
   "/branding/:field",
