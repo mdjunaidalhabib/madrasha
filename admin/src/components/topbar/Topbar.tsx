@@ -33,7 +33,7 @@ export default function Topbar({ openSidebar }: TopbarProps) {
       src={branding.report_logo}
       alt=""
       onError={() => setLogoFailed(true)}
-      className="h-11 w-11 shrink-0 rounded-full border border-slate-200 object-cover md:h-12 md:w-12 dark:border-slate-700"
+      className="h-14 w-14 shrink-0 rounded-full border border-slate-200 object-cover md:h-12 md:w-12 dark:border-slate-700"
     />
   );
 

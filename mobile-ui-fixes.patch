@@ -1,0 +1,58 @@
+diff --git a/admin/src/components/topbar/AppTopBar.tsx b/admin/src/components/topbar/AppTopBar.tsx
+--- a/admin/src/components/topbar/AppTopBar.tsx	2026-10-14 07:13:32.494770665 +0000
++++ b/admin/src/components/topbar/AppTopBar.tsx	2026-10-14 07:13:32.495992237 +0000
+@@ -19,7 +19,7 @@
+ }
+ 
+ /**
+- * Back + Refresh for the INSTALLED MOBILE/TABLET app only.
++ * Back + Refresh for the INSTALLED TABLET app only (hidden on phones, < md).
+  *
+  * Installed desktop Chrome already draws Back and Reload in its own title bar,
+  * right after the app icon (like YouTube), so we render nothing there - no
+@@ -35,7 +35,7 @@
+ 
+   return (
+     <div
+-      className="flex w-full shrink-0 select-none items-center gap-1 bg-emerald-600 px-2 text-white print:hidden"
++      className="hidden w-full shrink-0 select-none items-center gap-1 bg-emerald-600 px-2 text-white md:flex print:hidden"
+       style={{ height: "36px", paddingTop: "env(safe-area-inset-top, 0px)", boxSizing: "content-box" }}
+     >
+       <GlobalBackButton fallbackPath="/dashboard" size="sm" className={ghost} />
+diff --git a/admin/src/components/topbar/Topbar.tsx b/admin/src/components/topbar/Topbar.tsx
+--- a/admin/src/components/topbar/Topbar.tsx	2026-10-14 07:13:32.489346628 +0000
++++ b/admin/src/components/topbar/Topbar.tsx	2026-10-14 07:13:32.490966567 +0000
+@@ -33,7 +33,7 @@
+       src={branding.report_logo}
+       alt=""
+       onError={() => setLogoFailed(true)}
+-      className="h-11 w-11 shrink-0 rounded-full border border-slate-200 object-cover md:h-12 md:w-12 dark:border-slate-700"
++      className="h-14 w-14 shrink-0 rounded-full border border-slate-200 object-cover md:h-12 md:w-12 dark:border-slate-700"
+     />
+   );
+ 
+diff --git a/super-admin/src/components/topbar/SuperAdminTopbar.tsx b/super-admin/src/components/topbar/SuperAdminTopbar.tsx
+--- a/super-admin/src/components/topbar/SuperAdminTopbar.tsx	2026-10-14 07:13:32.500081582 +0000
++++ b/super-admin/src/components/topbar/SuperAdminTopbar.tsx	2026-10-14 07:13:32.501858970 +0000
+@@ -16,7 +16,9 @@
+   return (
+     <div className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-3 dark:border-slate-800 dark:bg-slate-900 md:px-4">
+       <div className="flex min-w-0 items-center gap-2 md:gap-3">
+-        <GlobalBackButton fallbackPath="/dashboard" size="sm" />
++        <div className="hidden md:flex">
++          <GlobalBackButton fallbackPath="/dashboard" size="sm" />
++        </div>
+         <button
+           onClick={openSidebar}
+           aria-label={t.openMenu}
+@@ -36,7 +38,9 @@
+         </div>
+       </div>
+       <div className="flex items-center gap-2">
+-        <GlobalRefreshButton size="sm" />
++        <div className="hidden md:flex">
++          <GlobalRefreshButton size="sm" />
++        </div>
+         <LanguageSwitcher />
+         <ThemeToggle />
+       </div>

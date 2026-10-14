@@ -19,7 +19,7 @@ function useIsDesktopPointer(): boolean {
 }
 
 /**
- * Back + Refresh for the INSTALLED MOBILE/TABLET app only.
+ * Back + Refresh for the INSTALLED TABLET app only (hidden on phones, < md).
  *
  * Installed desktop Chrome already draws Back and Reload in its own title bar,
  * right after the app icon (like YouTube), so we render nothing there - no
@@ -35,7 +35,7 @@ export default function AppTopBar() {
 
   return (
     <div
-      className="flex w-full shrink-0 select-none items-center gap-1 bg-emerald-600 px-2 text-white print:hidden"
+      className="hidden w-full shrink-0 select-none items-center gap-1 bg-emerald-600 px-2 text-white md:flex print:hidden"
       style={{ height: "36px", paddingTop: "env(safe-area-inset-top, 0px)", boxSizing: "content-box" }}
     >
       <GlobalBackButton fallbackPath="/dashboard" size="sm" className={ghost} />
