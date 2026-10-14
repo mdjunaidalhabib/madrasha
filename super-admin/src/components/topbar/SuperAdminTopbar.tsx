@@ -1,8 +1,6 @@
 import { useAdminAuthStore } from "../../store/adminAuthStore";
 import ThemeToggle from "@madrasha/shared-ui/src/components/ui/ThemeToggle";
 import { LanguageSwitcher, useText } from "@madrasha/shared-ui/src/i18n";
-import GlobalBackButton from "@madrasha/shared-ui/src/navigation/GlobalBackButton";
-import GlobalRefreshButton from "@madrasha/shared-ui/src/navigation/GlobalRefreshButton";
 import { shellText } from "../sidebar/shell.text";
 
 type SuperAdminTopbarProps = {
@@ -16,9 +14,6 @@ export default function SuperAdminTopbar({ openSidebar }: SuperAdminTopbarProps)
   return (
     <div className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-3 dark:border-slate-800 dark:bg-slate-900 md:px-4">
       <div className="flex min-w-0 items-center gap-2 md:gap-3">
-        <div className="hidden md:flex">
-          <GlobalBackButton fallbackPath="/dashboard" size="sm" />
-        </div>
         <button
           onClick={openSidebar}
           aria-label={t.openMenu}
@@ -38,9 +33,6 @@ export default function SuperAdminTopbar({ openSidebar }: SuperAdminTopbarProps)
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <div className="hidden md:flex">
-          <GlobalRefreshButton size="sm" />
-        </div>
         <LanguageSwitcher />
         <ThemeToggle />
       </div>

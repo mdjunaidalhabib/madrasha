@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from "react";
 
 import Sidebar from "../components/sidebar/Sidebar";
 import Topbar from "../components/topbar/Topbar";
-import AppTopBar from "../components/topbar/AppTopBar";
 import LockScreen from "../components/lock/LockScreen";
 import RouteErrorBoundary from "@madrasha/shared-ui/src/components/ui/RouteErrorBoundary";
 import PageNavBar from "@madrasha/shared-ui/src/navigation/PageNavBar";
@@ -127,8 +126,6 @@ export default function DashboardLayout() {
 
       {/* Main Layout */}
       <div className="flex flex-col flex-1 min-w-0">
-        {/* শুধু ইনস্টল করা অ্যাপে: একদম উপরে Back + Refresh বার (ব্রাউজারে নেই) */}
-        <AppTopBar />
         <Topbar openSidebar={() => setMobileSidebar(true)} />
 
         <main className="flex flex-1 flex-col overflow-y-auto px-4 pb-4 pt-2 text-slate-900 dark:text-slate-100 md:p-4">

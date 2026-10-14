@@ -32,7 +32,7 @@ export const BRAND_ICON_SPECS: Record<string, IconSpec> = {
   // manifest "any" icons - transparent, logo fills the square
   "icon-192.png": { size: 192, kind: "any" },
   "icon-512.png": { size: 512, kind: "any" },
-  // manifest "maskable" - logo kept inside the ~80% safe zone on a white tile,
+  // manifest "maskable" - logo fills the full ~80% safe zone on a white tile,
   // so Android's circle/squircle masks never crop it
   "maskable-512.png": { size: 512, kind: "maskable" },
 };
@@ -117,7 +117,7 @@ export const renderBrandIcon = async (logo: Buffer, file: string): Promise<Buffe
       .toBuffer();
   }
 
-  const inner = Math.round(size * (kind === "maskable" ? 0.6 : 0.86));
+  const inner = Math.round(size * (kind === "maskable" ? 0.8 : 0.94));
   const mark = await source()
     .resize({ width: inner, height: inner, fit: "contain", background: CLEAR })
     .png()

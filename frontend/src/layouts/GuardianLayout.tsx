@@ -5,8 +5,6 @@ import { useGuardianAuthStore } from "../store/guardianAuthStore";
 import { getTenantGuardianBase } from "../utils/tenantSlug";
 import { useTenantSlug } from "../utils/useTenantSlug";
 import RouteErrorBoundary from "@madrasha/shared-ui/src/components/ui/RouteErrorBoundary";
-import GlobalBackButton from "@madrasha/shared-ui/src/navigation/GlobalBackButton";
-import GlobalRefreshButton from "@madrasha/shared-ui/src/navigation/GlobalRefreshButton";
 import PageNavBar from "@madrasha/shared-ui/src/navigation/PageNavBar";
 import { useRefreshStore, useRegisterRefresher } from "@madrasha/shared-ui/src/navigation/refreshStore";
 import { LanguageSwitcher, useText } from "@madrasha/shared-ui/src/i18n";
@@ -74,7 +72,6 @@ export default function GuardianLayout() {
       <header className="border-b bg-white">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <GlobalBackButton fallbackPath={`${base}/dashboard`} size="sm" />
             <div>
               <p className="text-sm font-bold text-slate-900">{t.panelTitle}</p>
               <p className="text-xs text-slate-500">{guardian?.name || guardian?.phone}</p>
@@ -96,7 +93,6 @@ export default function GuardianLayout() {
                 ))}
               </select>
             )}
-            <GlobalRefreshButton size="sm" />
             <LanguageSwitcher />
             <button
               onClick={handleLogout}
