@@ -34,6 +34,8 @@ import {
   toWebsiteVideoApiDto,
 } from "./website.mapper";
 import { t } from "../../shared/i18n";
+import { env } from "../../shared/config/env";
+import { getSubscriptionState } from "../../shared/subscription/subscription-state";
 
 export const resolveTenantId = (req: Request): number =>
   Number((req as any).tenant?.madrasa_id || req.body.madrasa_id || req.query.madrasa_id);
@@ -77,13 +79,23 @@ export const normalizeSlideLink = (value: unknown): string | null => {
 export class WebsiteService {
   constructor(private readonly repository: WebsiteRepository = websiteRepository) {}
 
+  /** Public site is down when the madrasa is suspended, its website is disabled,
+   * or its subscription has lapsed (auto-suspension). */
+  private async assertWebsiteAvailable(madrasa: { id: number; isActive: unknown; websiteStatus: unknown }) {
+    const blocked =
+      !madrasa.isActive ||
+      madrasa.websiteStatus === "disabled" ||
+      (env.subscriptionEnforcement && (await getSubscriptionState(madrasa.id)) !== "ACTIVE");
+    if (blocked) {
+      throw new ForbiddenError(t({ bn: "এই ওয়েবসাইটটি বর্তমানে বন্ধ আছে", en: "This website is currently disabled" }));
+    }
+  }
+
   async getPublicWebsite(slug: string) {
     const madrasa = await this.repository.findPublicMadrasaBySlug(slug);
     if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found" }));
 
-    if (!madrasa.isActive || madrasa.websiteStatus === "disabled") {
-      throw new ForbiddenError(t({ bn: "এই ওয়েবসাইটটি বর্তমানে বন্ধ আছে", en: "This website is currently disabled" }));
-    }
+    await this.assertWebsiteAvailable(madrasa);
 
     // Everything is fetched in one parallel round - the DB is remote, so each
     // sequential await used to add a full network round-trip to page load.
@@ -435,9 +447,7 @@ export class WebsiteService {
   ) {
     const madrasa = await this.repository.findPublicMadrasaBySlug(slug);
     if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found" }));
-    if (!madrasa.isActive || madrasa.websiteStatus === "disabled") {
-      throw new ForbiddenError(t({ bn: "এই ওয়েবসাইটটি বর্তমানে বন্ধ আছে", en: "This website is currently disabled" }));
-    }
+    await this.assertWebsiteAvailable(madrasa);
 
     const {
       student_name,
@@ -480,9 +490,7 @@ export class WebsiteService {
   async submitFullAdmissionApplication(slug: string, body: SubmitFullAdmissionRequestDto) {
     const madrasa = await this.repository.findPublicMadrasaBySlug(slug);
     if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found" }));
-    if (!madrasa.isActive || madrasa.websiteStatus === "disabled") {
-      throw new ForbiddenError(t({ bn: "এই ওয়েবসাইটটি বর্তমানে বন্ধ আছে", en: "This website is currently disabled" }));
-    }
+    await this.assertWebsiteAvailable(madrasa);
 
     return studentService.admitStudent(body as any, madrasa.id);
   }

@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { invalidateSubscriptionCache } from "../../shared/subscription/subscription-state";
 import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
 
@@ -231,6 +232,7 @@ export class SuperAdminRepository {
   }
 
   deactivateSubscriptionsOnTx(tx: TransactionClient, madrasaId: number) {
+    invalidateSubscriptionCache(madrasaId);
     return tx.madrasaSubscription.updateMany({ where: { madrasaId }, data: { isActive: 0 } });
   }
 
@@ -241,6 +243,7 @@ export class SuperAdminRepository {
     startDate: Date,
     endDate: Date,
   ) {
+    invalidateSubscriptionCache(madrasaId);
     return tx.madrasaSubscription.create({ data: { madrasaId, planId, startDate, endDate, isActive: 1 } });
   }
 
@@ -729,6 +732,7 @@ export class SuperAdminRepository {
       await tx.student.deleteMany({ where: { madrasaId: id } });
       await tx.account.deleteMany({ where: { madrasaId: id } });
       await tx.activityLog.deleteMany({ where: { madrasaId: id } });
+      invalidateSubscriptionCache(id);
       await tx.madrasaSubscription.deleteMany({ where: { madrasaId: id } });
       await tx.madrasaModule.deleteMany({ where: { madrasaId: id } });
       await tx.madrasaDivision.deleteMany({ where: { madrasaId: id } });

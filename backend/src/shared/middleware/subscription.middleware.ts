@@ -1,22 +1,22 @@
 import { Request, Response, NextFunction } from "express";
-import { prisma } from "../database/prisma";
 import { asyncHandler } from "../utils/async-handler.util";
-import { t } from "../i18n";
+import { getSubscriptionState, subscriptionSuspendedMessage } from "../subscription/subscription-state";
 
-export const subscriptionCheck = asyncHandler(
-  async (req: Request, res: Response, _next: NextFunction) => {
-    const madrasa_id = req.tenant!.madrasa_id;
-    const subscription = await prisma.madrasaSubscription.findFirst({
-      where: { madrasaId: madrasa_id, isActive: 1 },
-      select: { endDate: true },
+/**
+ * Per-router subscription check (requires tenantMiddleware to have run first).
+ *
+ * NOTE: tenantMiddleware itself now auto-suspends a madrasa whose plan has
+ * expired (423), so on every tenant route this is already enforced before we
+ * get here. This stays as a defensive second layer for routers that read
+ * req.tenant without going through tenantMiddleware.
+ */
+export const subscriptionCheck = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  const state = await getSubscriptionState(req.tenant!.madrasa_id);
+  if (state !== "ACTIVE") {
+    return res.status(423).json({
+      message: subscriptionSuspendedMessage(state),
+      code: state === "NONE" ? "SUBSCRIPTION_NONE" : "SUBSCRIPTION_EXPIRED",
     });
-    if (!subscription) return res.status(403).json({ message: t({ bn: "কোনো সক্রিয় সাবস্ক্রিপশন নেই", en: "No active subscription" }) });
-
-    const today = new Date();
-    const expiry = subscription.endDate ? new Date(subscription.endDate) : null;
-    if (expiry && today > expiry)
-      return res.status(403).json({ message: t({ bn: "সাবস্ক্রিপশনের মেয়াদ শেষ। অনুগ্রহ করে আপগ্রেড করুন।", en: "Subscription expired. Please upgrade." }) });
-
-    _next();
-  },
-);
+  }
+  next();
+});

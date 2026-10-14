@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import { prisma } from "../database/prisma";
 import { logger } from "../logger/logger";
 import { t } from "../i18n";
+import { env } from "../config/env";
+import { getSubscriptionState, subscriptionSuspendedMessage } from "../subscription/subscription-state";
 
 function normalizeSlug(value: unknown) {
   return String(value || "")
@@ -72,6 +74,20 @@ export const tenantMiddleware = async (req: Request, res: Response, next: NextFu
 
     if (!madrasa.isActive) {
       return res.status(423).json({ message: t({ bn: "এই প্রতিষ্ঠানটি স্থগিত আছে", en: "This institution is suspended" }) });
+    }
+
+    // Auto-suspend: once the plan has expired (or none exists) the madrasa is
+    // treated exactly like a manually suspended one (423) - login, admin,
+    // guardian portal, everything. Renewing the plan from the super admin
+    // panel lifts it immediately. Kill switch: SUBSCRIPTION_ENFORCEMENT=false.
+    if (env.subscriptionEnforcement) {
+      const state = await getSubscriptionState(madrasa.id);
+      if (state !== "ACTIVE") {
+        return res.status(423).json({
+          message: subscriptionSuspendedMessage(state),
+          code: state === "NONE" ? "SUBSCRIPTION_NONE" : "SUBSCRIPTION_EXPIRED",
+        });
+      }
     }
 
     req.tenant = {

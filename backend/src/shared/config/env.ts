@@ -136,6 +136,10 @@ export const env = {
   deviceSecretEncKey: process.env.DEVICE_SECRET_ENC_KEY || "",
   // IANA timezone used to decide which calendar day a punch belongs to.
   attendanceTimezone: process.env.ATTENDANCE_TIMEZONE || "Asia/Dhaka",
+  // Blocks every authenticated tenant API call once a madrasa's plan has
+  // expired / is missing. Set SUBSCRIPTION_ENFORCEMENT=false only as an
+  // emergency kill switch.
+  subscriptionEnforcement: (process.env.SUBSCRIPTION_ENFORCEMENT || "true") !== "false",
   // In-process worker that sends queued attendance SMS (sms_queue table).
   smsWorkerEnabled: (process.env.SMS_WORKER_ENABLED || "true") !== "false",
   smsWorkerIntervalMs: Number(process.env.SMS_WORKER_INTERVAL_MS || 15_000),
