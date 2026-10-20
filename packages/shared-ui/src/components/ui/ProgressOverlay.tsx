@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import { localizeDigits, useLang, useText } from "../../i18n";
 import { uiText } from "./ui.text";
 
-/** Above this many steps the checklist collapses to the running step only. */
+/** Above this many steps the checklist collapses to the running step only,
+ * so the list never needs its own scrollbar. */
 const COMPACT_AFTER = 8;
 
 export interface ProgressStep {
@@ -109,7 +110,7 @@ export default function ProgressOverlay({ open, title, steps, completed, failed 
           </p>
         </div>
 
-        <ul className="mt-4 max-h-56 space-y-2 overflow-y-auto pr-1">
+        <ul className="mt-4 space-y-2">
           {steps.map((step, index) => {
             // Long runs (e.g. 200 records) show only the running step -
             // the counter and bar above already carry the overall picture.

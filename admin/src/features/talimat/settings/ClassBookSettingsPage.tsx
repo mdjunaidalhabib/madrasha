@@ -10,7 +10,10 @@ import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import SectionCard from "../../../components/settings/SectionCard";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
 import { commonText, formatNumber, getText, toAsciiDigits, useLang, useText, useInstitutionType } from "@madrasha/shared-ui/src/i18n";
+import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
+import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { talimatSettingsText } from "./talimatSettings.text";
+import { talimatSettingsProgressText } from "./talimatSettings.progress.text";
 
 /** ক্রমিক নম্বর: position within this madrasa's own list (lists arrive
  * already sorted by sortOrder and are re-spliced locally on drag), so it
@@ -120,6 +123,8 @@ export default function ClassBookSettingsPage() {
   const gpaMode = institutionType === "SCHOOL" || institutionType === "COLLEGE";
 
   const toast = useToastStore.getState().push;
+  // Percentage overlay for copy / delete (same component as institution create/delete).
+  const progressTask = useProgressTask();
   // Selection to apply after the next reload (a freshly added/duplicated row).
   const pendingClassSelect = useRef<string | null>(null);
 
@@ -200,10 +205,27 @@ export default function ClassBookSettingsPage() {
       message: t.duplicateDivisionMessage,
       confirmText: t.duplicateAction,
       onConfirm: async () => {
+        const p = getText(talimatSettingsProgressText);
         try {
-          const res = await api.post(`/madrasa-divisions/${division.division_id}/duplicate`);
+          const res = await progressTask.run(
+            {
+              title: p.duplicateDivisionTitle,
+              estimate: { msPerStep: 900 },
+              steps: [
+                p.duplicateDivisionStepCheck,
+                p.duplicateDivisionStepCreate,
+                p.duplicateDivisionStepClasses,
+                p.duplicateDivisionStepBooks,
+                p.stepReload,
+              ],
+            },
+            async () => {
+              const r = await api.post(`/madrasa-divisions/${division.division_id}/duplicate`);
+              await loadDivisions(String(r.data?.division_id));
+              return r;
+            },
+          );
           toast("success", res.data?.message || t.duplicate);
-          await loadDivisions(String(res.data?.division_id));
         } catch (err: any) {
           toast("error", err?.response?.data?.message || t.addFailed);
         }
@@ -218,8 +240,22 @@ export default function ClassBookSettingsPage() {
       confirmText: t.deleteAction,
       danger: true,
       onConfirm: async () => {
-        await api.delete(`/madrasa-divisions/${id}`);
-        await loadDivisions();
+        const p = getText(talimatSettingsProgressText);
+        try {
+          await progressTask.run(
+            {
+              title: p.deleteDivisionTitle,
+              estimate: { msPerStep: 700 },
+              steps: [p.deleteDivisionStepCheck, p.deleteDivisionStepMove, p.stepReload],
+            },
+            async () => {
+              await api.delete(`/madrasa-divisions/${id}`);
+              await loadDivisions();
+            },
+          );
+        } catch (err: any) {
+          toast("error", err?.response?.data?.message || p.deleteFailed);
+        }
       },
     });
   };
@@ -371,11 +407,27 @@ export default function ClassBookSettingsPage() {
       message: t.duplicateClassMessage,
       confirmText: t.duplicateAction,
       onConfirm: async () => {
+        const p = getText(talimatSettingsProgressText);
         try {
-          const res = await api.post(`/madrasa-classes/${classItem.class_id}/duplicate`);
+          const res = await progressTask.run(
+            {
+              title: p.duplicateClassTitle,
+              estimate: { msPerStep: 900 },
+              steps: [
+                p.duplicateClassStepCheck,
+                p.duplicateClassStepCreate,
+                p.duplicateClassStepBooks,
+                p.stepReload,
+              ],
+            },
+            async () => {
+              const r = await api.post(`/madrasa-classes/${classItem.class_id}/duplicate`);
+              pendingClassSelect.current = String(r.data?.class_id);
+              await loadClasses();
+              return r;
+            },
+          );
           toast("success", res.data?.message || t.duplicate);
-          pendingClassSelect.current = String(res.data?.class_id);
-          await loadClasses();
         } catch (err: any) {
           pendingClassSelect.current = null;
           toast("error", err?.response?.data?.message || t.addFailed);
@@ -391,8 +443,22 @@ export default function ClassBookSettingsPage() {
       confirmText: t.deleteAction,
       danger: true,
       onConfirm: async () => {
-        await api.delete(`/madrasa-classes/${id}`);
-        await loadClasses();
+        const p = getText(talimatSettingsProgressText);
+        try {
+          await progressTask.run(
+            {
+              title: p.deleteClassTitle,
+              estimate: { msPerStep: 700 },
+              steps: [p.deleteClassStepCheck, p.deleteClassStepMove, p.stepReload],
+            },
+            async () => {
+              await api.delete(`/madrasa-classes/${id}`);
+              await loadClasses();
+            },
+          );
+        } catch (err: any) {
+          toast("error", err?.response?.data?.message || p.deleteFailed);
+        }
       },
     });
   };
@@ -507,14 +573,32 @@ export default function ClassBookSettingsPage() {
     }
   };
 
-  const duplicateBook = async (book: any) => {
-    try {
-      const res = await api.post(`/madrasa-books/${book.book_id}/duplicate`);
-      toast("success", res.data?.message || t.duplicate);
-      await loadBooks();
-    } catch (err: any) {
-      toast("error", err?.response?.data?.message || t.addFailed);
-    }
+  const duplicateBook = (book: any) => {
+    useConfirmStore.getState().show({
+      title: t.duplicateBook,
+      message: t.duplicateBookMessage,
+      confirmText: t.duplicateAction,
+      onConfirm: async () => {
+        const p = getText(talimatSettingsProgressText);
+        try {
+          const res = await progressTask.run(
+            {
+              title: p.duplicateBookTitle,
+              estimate: { msPerStep: 800 },
+              steps: [p.duplicateBookStepCheck, p.duplicateBookStepCopy, p.stepReload],
+            },
+            async () => {
+              const r = await api.post(`/madrasa-books/${book.book_id}/duplicate`);
+              await loadBooks();
+              return r;
+            },
+          );
+          toast("success", res.data?.message || t.duplicate);
+        } catch (err: any) {
+          toast("error", err?.response?.data?.message || t.addFailed);
+        }
+      },
+    });
   };
 
   const removeBook = (book: any) => {
@@ -524,8 +608,22 @@ export default function ClassBookSettingsPage() {
       confirmText: t.deleteAction,
       danger: true,
       onConfirm: async () => {
-        await api.delete(`/madrasa-books/${book.book_id}`);
-        await loadBooks();
+        const p = getText(talimatSettingsProgressText);
+        try {
+          await progressTask.run(
+            {
+              title: p.deleteBookTitle,
+              estimate: { msPerStep: 800 },
+              steps: [p.deleteBookStepCheck, p.deleteBookStepMove, p.deleteBookStepResults, p.stepReload],
+            },
+            async () => {
+              await api.delete(`/madrasa-books/${book.book_id}`);
+              await loadBooks();
+            },
+          );
+        } catch (err: any) {
+          toast("error", err?.response?.data?.message || p.deleteFailed);
+        }
       },
     });
   };
@@ -1233,6 +1331,8 @@ export default function ClassBookSettingsPage() {
         </div>
       </SectionCard>
       </div>
+
+      <ProgressOverlay {...progressTask.overlayProps} />
 
       {componentsModalBook && (
         <MarkComponentsModal
