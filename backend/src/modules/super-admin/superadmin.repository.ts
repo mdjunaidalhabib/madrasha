@@ -290,7 +290,7 @@ export class SuperAdminRepository {
   /** Catalogue order (Division.sortOrder) so a new madrasa's divisions start
    * out numbered the way the Super Admin catalogue lists them. */
   findAllDivisionIdsOnTx(tx: TransactionClient) {
-    return tx.division.findMany({ select: { id: true }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] });
+    return tx.division.findMany({ where: { ownerMadrasaId: null }, select: { id: true }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] });
   }
 
   findMadrasaDivisionSerialsOnTx(tx: TransactionClient, madrasaId: number) {

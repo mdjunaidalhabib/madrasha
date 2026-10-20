@@ -13,6 +13,10 @@ model Division {
   /// only offers a new madrasa/school/college the divisions (and so classes/
   /// books) of its own type.
   institutionType InstitutionType @default(MADRASA) @map("institution_type")
+  /// NULL = shared Super Admin catalogue division. Set = a private division one
+  /// madrasa created itself (তালিমাত সেটিংস > বিভাগ যোগ / ডুপ্লিকেট); never shown in
+  /// the catalogue or linked into any other madrasa.
+  ownerMadrasaId Int? @map("owner_madrasa_id")
   /// Global catalog order (Super Admin catalog UI drag-reorder). Distinct
   /// from MadrasaDivision.sortOrder, which is each tenant's own re-ordering
   /// of their activated subset.
@@ -32,6 +36,7 @@ model Division {
   madrasaGrades    MadrasaGrade[]
   planRegBlocks    PlanDivisionRegBlock[]
 
+  @@index([ownerMadrasaId], map: "idx_divisions_owner")
   @@map("divisions")
 }
 

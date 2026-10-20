@@ -1,6 +1,10 @@
 import { Router } from "express";
 import {
   getDivisions,
+  addDivision,
+  duplicateDivision,
+  duplicateClass,
+  duplicateSubject,
   deleteDivision,
   updateDivision,
   reorderDivisions,
@@ -40,7 +44,11 @@ const manage = rbacMiddleware("talimat.manage");
 ========================= */
 router.get("/madrasa-divisions", getDivisions);
 
+router.post("/madrasa-divisions", manage, addDivision);
+
 router.put("/madrasa-divisions/reorder", manage, reorderDivisions);
+
+router.post("/madrasa-divisions/:id/duplicate", manage, duplicateDivision);
 
 router.put("/madrasa-divisions/:id", manage, updateDivision);
 
@@ -54,6 +62,8 @@ router.get("/madrasa-classes", getClasses);
 router.post("/madrasa-classes", manage, addClass);
 
 router.put("/madrasa-classes/reorder", manage, reorderClasses);
+
+router.post("/madrasa-classes/:id/duplicate", manage, duplicateClass);
 
 // Per-class student registration-number blocks (e.g. 1-50, 51-100).
 router.get("/madrasa-classes/registration-blocks", getRegistrationBlocks);
@@ -75,6 +85,8 @@ router.put("/madrasa-books/miyari", manage, updateMiyariSubjects);
 router.put("/madrasa-books/optional", manage, updateOptionalSubjects);
 
 router.put("/madrasa-books/reorder", manage, reorderSubjects);
+
+router.post("/madrasa-books/:id/duplicate", manage, duplicateSubject);
 
 router.put("/madrasa-books/:id", manage, updateSubject);
 

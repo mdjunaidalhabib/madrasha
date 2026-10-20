@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Check, GripVertical, Pencil, Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Check, Copy, GripVertical, Pencil, Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
 import MarkComponentsModal from "../../../components/ResultPanel/MarkComponentsModal";
 import api, { cachedGet } from "../../../services/api";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
@@ -9,7 +9,7 @@ import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import SectionCard from "../../../components/settings/SectionCard";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
-import { commonText, formatNumber, getText, useLang, useText, useInstitutionType } from "@madrasha/shared-ui/src/i18n";
+import { commonText, formatNumber, getText, toAsciiDigits, useLang, useText, useInstitutionType } from "@madrasha/shared-ui/src/i18n";
 import { talimatSettingsText } from "./talimatSettings.text";
 
 /** ক্রমিক নম্বর: position within this madrasa's own list (lists arrive
@@ -28,6 +28,76 @@ const SerialBadge = ({ index }: { index: number }) => {
     </span>
   );
 };
+
+/** Bangla (০-৯) or English digits both work - a type="number" input silently
+ * rejects Bangla digits, which is why marks could not be typed on a Bangla
+ * keyboard. Stored as plain ASCII digits. */
+const cleanMarkInput = (raw: string) => toAsciiDigits(raw).replace(/[^0-9]/g, "");
+
+const MarkField = ({
+  label,
+  value,
+  onChange,
+  onEnter,
+  onEscape,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  onEnter: () => void;
+  onEscape: () => void;
+  placeholder?: string;
+}) => (
+  <label className="flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
+    {label}
+    <Input
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      value={value}
+      placeholder={placeholder}
+      onChange={(event) => onChange(cleanMarkInput(event.target.value))}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") onEnter();
+        if (event.key === "Escape") onEscape();
+      }}
+      className="h-8 w-full"
+    />
+  </label>
+);
+
+/** Round "+" in a card header; turns into "×" while its add field is open. */
+const PlusToggle = ({ open, onClick, label, disabled }: { open: boolean; onClick: () => void; label: string; disabled?: boolean }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    aria-label={label}
+    aria-expanded={open}
+    title={label}
+    className={`flex h-8 w-8 touch-manipulation items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-40 ${
+      open
+        ? "border-gray-300 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+        : "border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-400 dark:hover:bg-blue-600 dark:hover:text-white"
+    }`}
+  >
+    <Plus size={16} className={`transition-transform duration-200 ${open ? "rotate-45" : ""}`} />
+  </button>
+);
+
+/** Panel that slides open under a card header when "+" is pressed. */
+const AddPanel = ({ children }: { children: React.ReactNode }) => (
+  <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-2.5 shadow-sm dark:border-blue-900 dark:bg-blue-950/20">
+    {children}
+  </div>
+);
+
+const iconBtn =
+  "touch-manipulation rounded-md p-1.5 text-gray-400 dark:text-slate-500";
+const editBtnCls = `${iconBtn} hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/40 dark:hover:text-blue-400`;
+const copyBtnCls = `${iconBtn} hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400`;
+const delBtnCls = `${iconBtn} hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400`;
 
 export default function ClassBookSettingsPage() {
   const t = useText(talimatSettingsText);
@@ -49,7 +119,13 @@ export default function ClassBookSettingsPage() {
   const institutionType = useInstitutionType();
   const gpaMode = institutionType === "SCHOOL" || institutionType === "COLLEGE";
 
+  const toast = useToastStore.getState().push;
+  // Selection to apply after the next reload (a freshly added/duplicated row).
+  const pendingClassSelect = useRef<string | null>(null);
+
   // DIVISION
+  const [showDivisionInput, setShowDivisionInput] = useState(false);
+  const [divisionName, setDivisionName] = useState("");
   const [editingDivisionId, setEditingDivisionId] = useState<number | null>(null);
   const [editingDivisionName, setEditingDivisionName] = useState("");
   const [editingDivisionOriginalName, setEditingDivisionOriginalName] = useState("");
@@ -75,6 +151,8 @@ export default function ClassBookSettingsPage() {
   const [editingPassMark, setEditingPassMark] = useState("");
   const [editingOriginalPassMark, setEditingOriginalPassMark] = useState("");
   const [showBookInput, setShowBookInput] = useState(false);
+  const [newBookFullMarks, setNewBookFullMarks] = useState("");
+  const [newBookPassMark, setNewBookPassMark] = useState("");
   const [dragBookId, setDragBookId] = useState<number | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
   const [componentsModalBook, setComponentsModalBook] = useState<{ id: number; name: string } | null>(
@@ -83,17 +161,55 @@ export default function ClassBookSettingsPage() {
 
   /* ================= LOAD ================= */
 
-  const loadDivisions = useCallback(async () => {
+  // Keeps the current selection across reloads (rename/delete/add) instead of
+  // jumping back to the first row; `select` forces a specific row ("last" = the
+  // newly appended one).
+  const loadDivisions = useCallback(async (select?: string) => {
     const res = await cachedGet("/madrasa-divisions");
     const data = res.data || [];
 
     setDivisions(data);
-    if (data.length) setDivisionId(String(data[0].division_id));
+    setDivisionId((prev) => {
+      if (select === "last") return data.length ? String(data[data.length - 1].division_id) : "";
+      if (select) return select;
+      if (prev && data.some((d: any) => String(d.division_id) === prev)) return prev;
+      return data.length ? String(data[0].division_id) : "";
+    });
   }, []);
 
   useEffect(() => {
     loadDivisions();
   }, [loadDivisions]);
+
+  const addDivision = async () => {
+    const trimmed = divisionName.trim();
+    if (!trimmed) return;
+    try {
+      await api.post("/madrasa-divisions", { name_bn: trimmed });
+      setDivisionName("");
+      setShowDivisionInput(false);
+      await loadDivisions("last");
+    } catch (err: any) {
+      toast("error", err?.response?.data?.message || t.addFailed);
+    }
+  };
+
+  const duplicateDivision = (division: any) => {
+    useConfirmStore.getState().show({
+      title: t.duplicateDivision,
+      message: t.duplicateDivisionMessage,
+      confirmText: t.duplicateAction,
+      onConfirm: async () => {
+        try {
+          const res = await api.post(`/madrasa-divisions/${division.division_id}/duplicate`);
+          toast("success", res.data?.message || t.duplicate);
+          await loadDivisions(String(res.data?.division_id));
+        } catch (err: any) {
+          toast("error", err?.response?.data?.message || t.addFailed);
+        }
+      },
+    });
+  };
 
   const removeDivision = (id: number) => {
     useConfirmStore.getState().show({
@@ -103,7 +219,7 @@ export default function ClassBookSettingsPage() {
       danger: true,
       onConfirm: async () => {
         await api.delete(`/madrasa-divisions/${id}`);
-        loadDivisions();
+        await loadDivisions();
       },
     });
   };
@@ -117,10 +233,11 @@ export default function ClassBookSettingsPage() {
 
     const id = editingDivisionId;
     setEditingDivisionId(null);
-    await api.put(`/madrasa-divisions/${id}`, {
-      name_bn: trimmed,
-    });
-
+    try {
+      await api.put(`/madrasa-divisions/${id}`, { name_bn: trimmed });
+    } catch (err: any) {
+      toast("error", err?.response?.data?.message || t.editFailed);
+    }
     loadDivisions();
   };
 
@@ -182,9 +299,15 @@ export default function ClassBookSettingsPage() {
 
     setClasses(data);
 
-    if (data.length) setClassId(String(data[0].class_id));
-    else {
-      setClassId("");
+    const pending = pendingClassSelect.current;
+    pendingClassSelect.current = null;
+    setClassId((prev) => {
+      if (pending === "last") return data.length ? String(data[data.length - 1].class_id) : "";
+      if (pending) return pending;
+      if (prev && data.some((c: any) => String(c.class_id) === prev)) return prev;
+      return data.length ? String(data[0].class_id) : "";
+    });
+    if (!data.length) {
       setBooks([]);
       setMiyariBookIds([]);
       setOptionalBookIds([]);
@@ -192,7 +315,12 @@ export default function ClassBookSettingsPage() {
   }, [divisionId]);
 
   useEffect(() => {
-    if (!divisionId) return;
+    if (!divisionId) {
+      setClasses([]);
+      setClassId("");
+      setBooks([]);
+      return;
+    }
     loadClasses();
   }, [divisionId, loadClasses]);
 
@@ -217,14 +345,43 @@ export default function ClassBookSettingsPage() {
 
   const addClass = async () => {
     if (!className.trim()) return;
+    if (!divisionId) {
+      toast("error", t.selectDivisionFirst);
+      return;
+    }
 
-    await api.post("/madrasa-classes", {
-      division_id: divisionId,
-      name_bn: className,
+    try {
+      await api.post("/madrasa-classes", {
+        division_id: divisionId,
+        name_bn: className.trim(),
+      });
+      setClassName("");
+      setShowClassInput(false);
+      pendingClassSelect.current = "last";
+      await loadClasses();
+    } catch (err: any) {
+      pendingClassSelect.current = null;
+      toast("error", err?.response?.data?.message || t.addFailed);
+    }
+  };
+
+  const duplicateClass = (classItem: any) => {
+    useConfirmStore.getState().show({
+      title: t.duplicateClass,
+      message: t.duplicateClassMessage,
+      confirmText: t.duplicateAction,
+      onConfirm: async () => {
+        try {
+          const res = await api.post(`/madrasa-classes/${classItem.class_id}/duplicate`);
+          toast("success", res.data?.message || t.duplicate);
+          pendingClassSelect.current = String(res.data?.class_id);
+          await loadClasses();
+        } catch (err: any) {
+          pendingClassSelect.current = null;
+          toast("error", err?.response?.data?.message || t.addFailed);
+        }
+      },
     });
-
-    setClassName("");
-    loadClasses();
   };
 
   const removeClass = (id: number) => {
@@ -235,7 +392,7 @@ export default function ClassBookSettingsPage() {
       danger: true,
       onConfirm: async () => {
         await api.delete(`/madrasa-classes/${id}`);
-        loadClasses();
+        await loadClasses();
       },
     });
   };
@@ -249,10 +406,11 @@ export default function ClassBookSettingsPage() {
 
     const id = editingClassId;
     setEditingClassId(null);
-    await api.put(`/madrasa-classes/${id}`, {
-      name_bn: trimmed,
-    });
-
+    try {
+      await api.put(`/madrasa-classes/${id}`, { name_bn: trimmed });
+    } catch (err: any) {
+      toast("error", err?.response?.data?.message || t.editFailed);
+    }
     loadClasses();
   };
 
@@ -313,14 +471,50 @@ export default function ClassBookSettingsPage() {
 
   const addBook = async () => {
     if (!name.trim()) return;
+    if (!classId) {
+      toast("error", t.selectClassFirst);
+      return;
+    }
 
-    await api.post("/madrasa-books", {
-      class_id: classId,
-      name_bn: name,
-    });
+    const payload: Record<string, unknown> = { class_id: classId, name_bn: name.trim() };
+    if (newBookFullMarks.trim()) {
+      const fm = Number(newBookFullMarks);
+      if (!Number.isFinite(fm) || fm <= 0) {
+        toast("error", getText(talimatSettingsText).fullMarksInvalid);
+        return;
+      }
+      payload.full_marks = fm;
+    }
+    if (newBookPassMark.trim()) {
+      const pm = Number(newBookPassMark);
+      const max = newBookFullMarks.trim() ? Number(newBookFullMarks) : 100;
+      if (!Number.isFinite(pm) || pm < 0 || pm > max) {
+        toast("error", getText(talimatSettingsText).passMarkInvalid);
+        return;
+      }
+      payload.pass_mark = pm;
+    }
 
-    setName("");
-    loadBooks();
+    try {
+      await api.post("/madrasa-books", payload);
+      setName("");
+      setNewBookFullMarks("");
+      setNewBookPassMark("");
+      setShowBookInput(false);
+      await loadBooks();
+    } catch (err: any) {
+      toast("error", err?.response?.data?.message || t.addFailed);
+    }
+  };
+
+  const duplicateBook = async (book: any) => {
+    try {
+      const res = await api.post(`/madrasa-books/${book.book_id}/duplicate`);
+      toast("success", res.data?.message || t.duplicate);
+      await loadBooks();
+    } catch (err: any) {
+      toast("error", err?.response?.data?.message || t.addFailed);
+    }
   };
 
   const removeBook = (book: any) => {
@@ -350,17 +544,18 @@ export default function ClassBookSettingsPage() {
     }
 
     const id = editingId;
-    setEditingId(null);
 
     const payload: Record<string, unknown> = {
       name_bn: nameChanged ? trimmed : editingOriginalName,
     };
 
+    // Validate first and keep the editor open on a bad value, so what the
+    // admin typed is not thrown away.
     let fullMarks: number | null = null;
     if (fullMarksChanged) {
       fullMarks = Number(fullMarksTrimmed);
       if (!fullMarksTrimmed || !Number.isFinite(fullMarks) || fullMarks <= 0) {
-        useToastStore.getState().push("error", getText(talimatSettingsText).fullMarksInvalid);
+        toast("error", getText(talimatSettingsText).fullMarksInvalid);
         return;
       }
       payload.full_marks = fullMarks;
@@ -374,16 +569,19 @@ export default function ClassBookSettingsPage() {
         const passMark = Number(passMarkTrimmed);
         const maxAllowed = fullMarks ?? Number(fullMarksTrimmed || 100);
         if (!Number.isFinite(passMark) || passMark < 0 || passMark > maxAllowed) {
-          useToastStore
-            .getState()
-            .push("error", getText(talimatSettingsText).passMarkInvalid);
+          toast("error", getText(talimatSettingsText).passMarkInvalid);
           return;
         }
         payload.pass_mark = passMark;
       }
     }
 
-    await api.put(`/madrasa-books/${id}`, payload);
+    setEditingId(null);
+    try {
+      await api.put(`/madrasa-books/${id}`, payload);
+    } catch (err: any) {
+      toast("error", err?.response?.data?.message || t.editFailed);
+    }
     loadBooks();
   };
 
@@ -505,8 +703,41 @@ export default function ClassBookSettingsPage() {
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
-      <SectionCard title={t.divisions} badge={t.countN(num(divisions.length))}>
+      <SectionCard
+        title={t.divisions}
+        badge={t.countN(num(divisions.length))}
+        actions={
+          <PlusToggle
+            open={showDivisionInput}
+            label={t.addDivision}
+            onClick={() => {
+              setShowDivisionInput((v) => !v);
+              setDivisionName("");
+            }}
+          />
+        }
+      >
         <div className="flex flex-col gap-1.5">
+          {showDivisionInput && (
+            <AddPanel>
+              <div className="flex w-full gap-2">
+                <Input
+                  value={divisionName}
+                  onChange={(event) => setDivisionName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") addDivision();
+                    if (event.key === "Escape") setShowDivisionInput(false);
+                  }}
+                  className="h-9 w-full min-w-0"
+                  placeholder={t.divisionName}
+                  autoFocus
+                />
+                <Button onClick={addDivision} className="shrink-0 px-3" aria-label={t.addDivision}>
+                  <Check size={16} />
+                </Button>
+              </div>
+            </AddPanel>
+          )}
           {divisions.map((division, index) => {
             const isActiveDivision = divisionId === String(division.division_id);
             const isEditingThis = editingDivisionId === division.division_id;
@@ -578,14 +809,24 @@ export default function ClassBookSettingsPage() {
                         setEditingDivisionOriginalName(division.division_name_bn);
                       }}
                       aria-label={t.editDivision}
-                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
+                      title={t.editDivision}
+                      className={editBtnCls}
                     >
                       <Pencil size={14} />
                     </button>
                     <button
+                      onClick={() => duplicateDivision(division)}
+                      aria-label={t.duplicateDivision}
+                      title={t.duplicateDivision}
+                      className={copyBtnCls}
+                    >
+                      <Copy size={14} />
+                    </button>
+                    <button
                       onClick={() => removeDivision(division.division_id)}
                       aria-label={t.deleteDivisionTitle}
-                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                      title={t.deleteDivisionTitle}
+                      className={delBtnCls}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -597,30 +838,42 @@ export default function ClassBookSettingsPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title={t.classes} badge={t.countN(num(classes.length))}>
+      <SectionCard
+        title={t.classes}
+        badge={t.countN(num(classes.length))}
+        actions={
+          <PlusToggle
+            open={showClassInput}
+            label={t.addClass}
+            disabled={!divisionId}
+            onClick={() => {
+              setShowClassInput((v) => !v);
+              setClassName("");
+            }}
+          />
+        }
+      >
         <div className="flex flex-col gap-1.5">
-          {!showClassInput ? (
-              <button
-                onClick={() => setShowClassInput(true)}
-                className="touch-manipulation flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:bg-slate-800"
-              >
-                <Plus size={15} />
-                {t.addClass}
-              </button>
-            ) : (
+          {showClassInput && (
+            <AddPanel>
               <div className="flex w-full gap-2">
                 <Input
                   value={className}
                   onChange={(event) => setClassName(event.target.value)}
-                  className="w-full min-w-0"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") addClass();
+                    if (event.key === "Escape") setShowClassInput(false);
+                  }}
+                  className="h-9 w-full min-w-0"
                   placeholder={t.className}
                   autoFocus
                 />
-                <Button onClick={addClass} className="shrink-0 px-3">
+                <Button onClick={addClass} className="shrink-0 px-3" aria-label={t.addClass}>
                   <Check size={16} />
                 </Button>
               </div>
-            )}
+            </AddPanel>
+          )}
 
           {classes.map((classItem, index) => {
             const isEditingThis = editingClassId === classItem.class_id;
@@ -692,14 +945,24 @@ export default function ClassBookSettingsPage() {
                         setEditingClassOriginalName(classItem.class_name_bn);
                       }}
                       aria-label={t.editClass}
-                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
+                      title={t.editClass}
+                      className={editBtnCls}
                     >
                       <Pencil size={14} />
                     </button>
                     <button
+                      onClick={() => duplicateClass(classItem)}
+                      aria-label={t.duplicateClass}
+                      title={t.duplicateClass}
+                      className={copyBtnCls}
+                    >
+                      <Copy size={14} />
+                    </button>
+                    <button
                       onClick={() => removeClass(classItem.class_id)}
                       aria-label={t.deleteClassTitle}
-                      className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                      title={t.deleteClassTitle}
+                      className={delBtnCls}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -711,33 +974,68 @@ export default function ClassBookSettingsPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title={t.books} badge={t.countN(num(books.length))}>
+      <SectionCard
+        title={t.books}
+        badge={t.countN(num(books.length))}
+        actions={
+          <PlusToggle
+            open={showBookInput}
+            label={t.addBook}
+            disabled={!classId}
+            onClick={() => {
+              setShowBookInput((v) => !v);
+              setName("");
+              setNewBookFullMarks("");
+              setNewBookPassMark("");
+            }}
+          />
+        }
+      >
         <div className="flex flex-col gap-1.5">
-          {!showBookInput ? (
-            <button
-              onClick={() => setShowBookInput(true)}
-              className="touch-manipulation flex items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:bg-slate-800"
-            >
-              <Plus size={15} />
-              {t.addBook}
-            </button>
-          ) : (
-            <div className="flex w-full gap-2">
-              <Input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") addBook();
-                  if (event.key === "Escape") setShowBookInput(false);
-                }}
-                className="w-full min-w-0"
-                placeholder={t.bookName}
-                autoFocus
-              />
-              <Button onClick={addBook} className="shrink-0 px-3">
-                <Check size={16} />
-              </Button>
-            </div>
+          {showBookInput && (
+            <AddPanel>
+              <div className="flex flex-col gap-2">
+                <Input
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") addBook();
+                    if (event.key === "Escape") setShowBookInput(false);
+                  }}
+                  className="h-9 w-full min-w-0"
+                  placeholder={t.bookName}
+                  autoFocus
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <MarkField
+                    label={t.fullMarks}
+                    value={newBookFullMarks}
+                    placeholder={num(100)}
+                    onChange={setNewBookFullMarks}
+                    onEnter={addBook}
+                    onEscape={() => setShowBookInput(false)}
+                  />
+                  <MarkField
+                    label={t.passMark}
+                    value={newBookPassMark}
+                    placeholder={t.global}
+                    onChange={setNewBookPassMark}
+                    onEnter={addBook}
+                    onEscape={() => setShowBookInput(false)}
+                  />
+                </div>
+                <p className="text-[11px] leading-tight text-gray-400 dark:text-slate-500">{t.markSetupHint}</p>
+                <div className="flex justify-end gap-2">
+                  <Button variant="secondary" onClick={() => setShowBookInput(false)} className="px-3 py-1.5">
+                    {cm.cancel}
+                  </Button>
+                  <Button onClick={addBook} className="px-3 py-1.5">
+                    <Check size={15} className="me-1" />
+                    {cm.save}
+                  </Button>
+                </div>
+              </div>
+            </AddPanel>
           )}
 
           {books.length > 0 && (
@@ -795,35 +1093,21 @@ export default function ClassBookSettingsPage() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
-                        <label className="flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
-                          {t.fullMarks}
-                          <Input
-                            type="number"
-                            min={1}
-                            value={editingFullMarks}
-                            onChange={(event) => setEditingFullMarks(event.target.value)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") saveEdit();
-                              if (event.key === "Escape") setEditingId(null);
-                            }}
-                            className="h-8 w-full"
-                          />
-                        </label>
-                        <label className="flex flex-col gap-1 text-xs font-medium text-gray-600 dark:text-slate-400">
-                          {t.passMark}
-                          <Input
-                            type="number"
-                            min={0}
-                            placeholder={t.global}
-                            value={editingPassMark}
-                            onChange={(event) => setEditingPassMark(event.target.value)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") saveEdit();
-                              if (event.key === "Escape") setEditingId(null);
-                            }}
-                            className="h-8 w-full"
-                          />
-                        </label>
+                        <MarkField
+                          label={t.fullMarks}
+                          value={editingFullMarks}
+                          onChange={setEditingFullMarks}
+                          onEnter={saveEdit}
+                          onEscape={() => setEditingId(null)}
+                        />
+                        <MarkField
+                          label={t.passMark}
+                          value={editingPassMark}
+                          placeholder={t.global}
+                          onChange={setEditingPassMark}
+                          onEnter={saveEdit}
+                          onEscape={() => setEditingId(null)}
+                        />
                       </div>
                       <p className="-mt-1 text-[11px] leading-tight text-gray-400 dark:text-slate-500">
                         {t.passMarkHint}
@@ -919,14 +1203,24 @@ export default function ClassBookSettingsPage() {
                       <button
                         onClick={() => startEdit(book)}
                         aria-label={t.editBook}
-                        className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
+                        title={t.editBook}
+                        className={editBtnCls}
                       >
                         <Pencil size={14} />
                       </button>
                       <button
+                        onClick={() => duplicateBook(book)}
+                        aria-label={t.duplicateBook}
+                        title={t.duplicateBook}
+                        className={copyBtnCls}
+                      >
+                        <Copy size={14} />
+                      </button>
+                      <button
                         onClick={() => removeBook(book)}
                         aria-label={t.deleteBook}
-                        className="touch-manipulation rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                        title={t.deleteBook}
+                        className={delBtnCls}
                       >
                         <Trash2 size={14} />
                       </button>

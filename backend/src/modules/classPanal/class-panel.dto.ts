@@ -13,9 +13,16 @@ export interface UpdateClassRegistrationBlockRequestDto {
   reg_no_end: number | string | null;
 }
 
+export interface AddDivisionRequestDto {
+  name_bn: string;
+}
+
 export interface AddSubjectRequestDto {
   class_id: number | string;
   name_bn: string;
+  /** Optional on create - defaults to 100 / no override (global fail mark). */
+  full_marks?: number | string;
+  pass_mark?: number | string | null;
 }
 
 export interface UpdateSubjectRequestDto {

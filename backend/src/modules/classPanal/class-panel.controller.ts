@@ -53,6 +53,39 @@ export const getDivisions = async (req: Request, res: Response) => {
   }
 };
 
+export const addDivision = async (req: Request, res: Response) => {
+  try {
+    await classPanelService.addDivision(req.tenant?.madrasa_id, req.body);
+    res.json({ message: t({ bn: "বিভাগ যোগ করা হয়েছে", en: "Division added successfully" }) });
+  } catch (error) {
+    respondError(res, error, "❌ Add division error:", "Failed to add division");
+  }
+};
+
+export const duplicateDivision = async (req: Request, res: Response) => {
+  try {
+    res.json(await classPanelService.duplicateDivision(req.tenant?.madrasa_id, Number(req.params.id)));
+  } catch (error) {
+    respondError(res, error, "❌ Duplicate division error:", "Failed to duplicate division");
+  }
+};
+
+export const duplicateClass = async (req: Request, res: Response) => {
+  try {
+    res.json(await classPanelService.duplicateClass(req.tenant?.madrasa_id, Number(req.params.id)));
+  } catch (error) {
+    respondError(res, error, "❌ Duplicate class error:", "Failed to duplicate class");
+  }
+};
+
+export const duplicateSubject = async (req: Request, res: Response) => {
+  try {
+    res.json(await classPanelService.duplicateSubject(req.tenant?.madrasa_id, Number(req.params.id)));
+  } catch (error) {
+    respondError(res, error, "❌ Duplicate subject error:", "Failed to duplicate subject");
+  }
+};
+
 export const deleteDivision = async (req: Request, res: Response) => {
   try {
     await classPanelService.deleteDivision(req.tenant?.madrasa_id, Number(req.params.id));

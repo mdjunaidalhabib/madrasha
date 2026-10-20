@@ -1,4 +1,6 @@
 import { prisma } from "../../shared/database/prisma";
+import { linkName } from "../../shared/utils/tenant-name.util";
+import type { TransactionClient as Tx } from "../../shared/database/transaction";
 
 export class ClassPanelRepository {
   findActiveDivisions(madrasaId: number) {
@@ -213,7 +215,12 @@ export class ClassPanelRepository {
     ]);
   }
 
-  createAndLinkSubject(madrasaId: number, nameBn: string, classId: number) {
+  createAndLinkSubject(
+    madrasaId: number,
+    nameBn: string,
+    classId: number,
+    marks: { fullMark?: number; passMark?: number | null } = {},
+  ) {
     return prisma.$transaction(async (tx) => {
       const lastSubject = await tx.madrasaBook.findFirst({
         where: { madrasaId, isActive: 1, book: { classId } },
@@ -223,7 +230,13 @@ export class ClassPanelRepository {
 
       const book = await tx.book.create({ data: { nameBn, classId, ownerMadrasaId: madrasaId } });
       await tx.madrasaBook.create({
-        data: { madrasaId, bookId: book.id, sortOrder: (lastSubject?.sortOrder ?? -1) + 1 },
+        data: {
+          madrasaId,
+          bookId: book.id,
+          sortOrder: (lastSubject?.sortOrder ?? -1) + 1,
+          ...(marks.fullMark !== undefined ? { fullMark: marks.fullMark } : {}),
+          ...(marks.passMark !== undefined ? { passMark: marks.passMark } : {}),
+        },
       });
       return book;
     });
@@ -314,6 +327,243 @@ export class ClassPanelRepository {
     return prisma.madrasaBook.updateMany({
       where: { bookId, madrasaId },
       data: { isActive: 0, deletedAt: new Date() },
+    });
+  }
+
+  /* ---- add / duplicate (বিভাগ · শ্রেণি · কিতাব) ---- */
+
+  findMadrasaInstitutionType(madrasaId: number) {
+    return prisma.madrasa.findUnique({ where: { id: madrasaId }, select: { institutionType: true } });
+  }
+
+  /** A madrasa's own বিভাগ - owned by it, so the Super Admin catalogue and
+   * other madrasas never see it. */
+  createDivisionWithLink(madrasaId: number, nameBn: string, institutionType: "MADRASA" | "SCHOOL" | "COLLEGE") {
+    return prisma.$transaction(async (tx) => {
+      const last = await tx.madrasaDivision.findFirst({
+        where: { madrasaId, isActive: 1 },
+        orderBy: { sortOrder: "desc" },
+        select: { sortOrder: true },
+      });
+      const division = await tx.division.create({
+        data: { nameBn, institutionType, ownerMadrasaId: madrasaId },
+      });
+      await tx.madrasaDivision.create({
+        data: { madrasaId, divisionId: division.id, sortOrder: (last?.sortOrder ?? -1) + 1 },
+      });
+      return division;
+    });
+  }
+
+  /** Copies every active কিতাব (with full/pass marks, miyari/optional flags,
+   * order and mark-component split) of one class into another class. */
+  private async copyBooksOnTx(tx: Tx, madrasaId: number, sourceClassId: number, targetClassId: number) {
+    const links = await tx.madrasaBook.findMany({
+      where: { madrasaId, isActive: 1, book: { classId: sourceClassId } },
+      select: {
+        bookId: true,
+        isMiyari: true,
+        isOptional: true,
+        fullMark: true,
+        passMark: true,
+        sortOrder: true,
+        book: { select: { nameBn: true, name: true } },
+      },
+      orderBy: [{ sortOrder: "asc" }, { bookId: "asc" }],
+    });
+
+    for (const [index, link] of links.entries()) {
+      const book = await tx.book.create({
+        data: {
+          nameBn: link.book.nameBn || link.book.name,
+          classId: targetClassId,
+          ownerMadrasaId: madrasaId,
+        },
+      });
+      await tx.madrasaBook.create({
+        data: {
+          madrasaId,
+          bookId: book.id,
+          isMiyari: link.isMiyari,
+          isOptional: link.isOptional,
+          fullMark: link.fullMark,
+          passMark: link.passMark,
+          sortOrder: index,
+        },
+      });
+      const configs = await tx.markComponentConfig.findMany({ where: { madrasaId, bookId: link.bookId } });
+      if (configs.length) {
+        await tx.markComponentConfig.createMany({
+          data: configs.map((c) => ({
+            madrasaId,
+            bookId: book.id,
+            examId: c.examId,
+            component: c.component,
+            fullMark: c.fullMark,
+            sortOrder: c.sortOrder,
+          })),
+        });
+      }
+    }
+    return links.length;
+  }
+
+  private async copyClassOnTx(
+    tx: Tx,
+    madrasaId: number,
+    source: { classId: number; nameBn: string },
+    targetDivisionId: number,
+    withBooks: boolean,
+  ) {
+    const last = await tx.madrasaClass.findFirst({
+      where: { madrasaId, isActive: 1, class: { divisionId: targetDivisionId } },
+      orderBy: { sortOrder: "desc" },
+      select: { sortOrder: true },
+    });
+    const created = await tx.class.create({
+      data: { nameBn: source.nameBn, divisionId: targetDivisionId, isActive: true, ownerMadrasaId: madrasaId },
+    });
+    await tx.madrasaClass.create({
+      data: { madrasaId, classId: created.id, sortOrder: (last?.sortOrder ?? -1) + 1 },
+    });
+    const bookCount = withBooks ? await this.copyBooksOnTx(tx, madrasaId, source.classId, created.id) : 0;
+    return { classId: created.id, bookCount };
+  }
+
+  /** Deep copy of a বিভাগ: the বিভাগ, all its active শ্রেণি and every কিতাব. */
+  duplicateDivision(madrasaId: number, divisionId: number, newName: (original: string) => string) {
+    return prisma.$transaction(
+      async (tx) => {
+        const link = await tx.madrasaDivision.findFirst({
+          where: { madrasaId, divisionId, isActive: 1 },
+          select: {
+            nameBn: true,
+            failMark: true,
+            division: { select: { id: true, nameBn: true, name: true, institutionType: true } },
+          },
+        });
+        if (!link) return null;
+
+        const last = await tx.madrasaDivision.findFirst({
+          where: { madrasaId, isActive: 1 },
+          orderBy: { sortOrder: "desc" },
+          select: { sortOrder: true },
+        });
+        const division = await tx.division.create({
+          data: {
+            nameBn: newName(linkName(link, link.division) || ""),
+            institutionType: link.division.institutionType,
+            ownerMadrasaId: madrasaId,
+          },
+        });
+        await tx.madrasaDivision.create({
+          data: {
+            madrasaId,
+            divisionId: division.id,
+            failMark: link.failMark,
+            sortOrder: (last?.sortOrder ?? -1) + 1,
+          },
+        });
+
+        const classes = await tx.madrasaClass.findMany({
+          where: { madrasaId, isActive: 1, class: { divisionId } },
+          select: { classId: true, nameBn: true, class: { select: { nameBn: true, name: true } } },
+          orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+        });
+        let classCount = 0;
+        let bookCount = 0;
+        for (const row of classes) {
+          const copied = await this.copyClassOnTx(
+            tx,
+            madrasaId,
+            { classId: row.classId, nameBn: linkName(row, row.class) || "" },
+            division.id,
+            true,
+          );
+          classCount += 1;
+          bookCount += copied.bookCount;
+        }
+        return { divisionId: division.id, classCount, bookCount };
+      },
+      { timeout: 60_000, maxWait: 10_000 },
+    );
+  }
+
+  /** Copy of a শ্রেণি (inside the same বিভাগ) with all its কিতাব. */
+  duplicateClass(madrasaId: number, classId: number, newName: (original: string) => string) {
+    return prisma.$transaction(
+      async (tx) => {
+        const link = await tx.madrasaClass.findFirst({
+          where: { madrasaId, classId, isActive: 1 },
+          select: { nameBn: true, class: { select: { nameBn: true, name: true, divisionId: true } } },
+        });
+        if (!link?.class.divisionId) return null;
+
+        const copied = await this.copyClassOnTx(
+          tx,
+          madrasaId,
+          { classId, nameBn: newName(linkName(link, link.class) || "") },
+          link.class.divisionId,
+          true,
+        );
+        return { divisionId: link.class.divisionId, ...copied };
+      },
+      { timeout: 60_000, maxWait: 10_000 },
+    );
+  }
+
+  /** Copy of a কিতাব inside the same শ্রেণি (marks, flags and split kept). */
+  duplicateSubject(madrasaId: number, bookId: number, newName: (original: string) => string) {
+    return prisma.$transaction(async (tx) => {
+      const link = await tx.madrasaBook.findFirst({
+        where: { madrasaId, bookId, isActive: 1 },
+        select: {
+          isMiyari: true,
+          isOptional: true,
+          fullMark: true,
+          passMark: true,
+          book: { select: { classId: true, nameBn: true, name: true } },
+        },
+      });
+      if (!link?.book) return null;
+
+      const last = await tx.madrasaBook.findFirst({
+        where: { madrasaId, isActive: 1, book: { classId: link.book.classId } },
+        orderBy: { sortOrder: "desc" },
+        select: { sortOrder: true },
+      });
+      const book = await tx.book.create({
+        data: {
+          nameBn: newName(link.book.nameBn || link.book.name || ""),
+          classId: link.book.classId,
+          ownerMadrasaId: madrasaId,
+        },
+      });
+      await tx.madrasaBook.create({
+        data: {
+          madrasaId,
+          bookId: book.id,
+          isMiyari: link.isMiyari,
+          isOptional: link.isOptional,
+          fullMark: link.fullMark,
+          passMark: link.passMark,
+          sortOrder: (last?.sortOrder ?? -1) + 1,
+        },
+      });
+      const configs = await tx.markComponentConfig.findMany({ where: { madrasaId, bookId } });
+      if (configs.length) {
+        await tx.markComponentConfig.createMany({
+          data: configs.map((c) => ({
+            madrasaId,
+            bookId: book.id,
+            examId: c.examId,
+            component: c.component,
+            fullMark: c.fullMark,
+            sortOrder: c.sortOrder,
+          })),
+        });
+      }
+      return { bookId: book.id, classId: link.book.classId };
     });
   }
 }

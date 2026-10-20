@@ -8,6 +8,7 @@ import { linkName } from "../../shared/utils/tenant-name.util";
 import { withTransaction } from "../../shared/database/transaction";
 import { assignMissingRegistrationBlocksOnTx } from "../students/registration-block.provisioner";
 import {
+  AddDivisionRequestDto,
   AddClassRequestDto,
   AddSubjectRequestDto,
   UpdateClassRequestDto,
@@ -44,6 +45,70 @@ export class ClassPanelService {
       class_name_bn: linkName(r, r.class),
       division_id: r.class.divisionId,
     }));
+  }
+
+  async addDivision(madrasaId: number | undefined, dto: AddDivisionRequestDto) {
+    if (!madrasaId) throw new TenantNotFoundInPanelError();
+    const name = String(dto?.name_bn ?? "").trim();
+    if (!name) throw new BadRequestError(t({ bn: "name_bn আবশ্যক", en: "name_bn required" }));
+
+    const madrasa = await this.repository.findMadrasaInstitutionType(madrasaId);
+    if (!madrasa) throw new TenantNotFoundInPanelError();
+
+    await this.repository.createDivisionWithLink(madrasaId, name, madrasa.institutionType);
+    await this.afterStructureAdded(madrasaId);
+  }
+
+  /** New classes need their registration-number block and exam-fee rows.
+   * Never fails the add itself - the admin can still fix these by hand. */
+  private async afterStructureAdded(madrasaId: number) {
+    try {
+      await withTransaction((tx) => assignMissingRegistrationBlocksOnTx(tx, madrasaId));
+    } catch (err) {
+      logger.error("registration block assign failed:", err);
+    }
+    try {
+      await examFeeService.syncAllExams(madrasaId);
+    } catch (err) {
+      logger.error("exam fee sync failed:", err);
+    }
+  }
+
+  private copyName = (original: string) =>
+    `${original} ${t({ bn: "(কপি)", en: "(Copy)" })}`.trim();
+
+  async duplicateDivision(madrasaId: number | undefined, id: number) {
+    if (!madrasaId) throw new TenantNotFoundInPanelError();
+    const copied = await this.repository.duplicateDivision(madrasaId, id, this.copyName);
+    if (!copied) throw new NotFoundError(t({ bn: "এই প্রতিষ্ঠানে বিভাগটি পাওয়া যায়নি", en: "Division not found in this institution" }));
+    await this.afterStructureAdded(madrasaId);
+    return {
+      message: t({ bn: "বিভাগ ডুপ্লিকেট করা হয়েছে", en: "Division duplicated" }),
+      division_id: copied.divisionId,
+      class_count: copied.classCount,
+      book_count: copied.bookCount,
+    };
+  }
+
+  async duplicateClass(madrasaId: number | undefined, id: number) {
+    if (!madrasaId) throw new TenantNotFoundInPanelError();
+    const copied = await this.repository.duplicateClass(madrasaId, id, this.copyName);
+    if (!copied) throw new NotFoundError(t({ bn: "এই প্রতিষ্ঠানে শ্রেণিটি পাওয়া যায়নি", en: "Class not found in this institution" }));
+    await this.afterStructureAdded(madrasaId);
+    return {
+      message: t({ bn: "শ্রেণি ডুপ্লিকেট করা হয়েছে", en: "Class duplicated" }),
+      class_id: copied.classId,
+      division_id: copied.divisionId,
+      book_count: copied.bookCount,
+    };
+  }
+
+  async duplicateSubject(madrasaId: number | undefined, id: number) {
+    if (!madrasaId) throw new TenantNotFoundInPanelError();
+    const copied = await this.repository.duplicateSubject(madrasaId, id, this.copyName);
+    if (!copied) throw new NotFoundError(t({ bn: "বিষয় পাওয়া যায়নি", en: "Subject not found" }));
+    await this.results.reprocessClassResults(madrasaId, copied.classId);
+    return { message: t({ bn: "বিষয় ডুপ্লিকেট করা হয়েছে", en: "Subject duplicated" }), book_id: copied.bookId };
   }
 
   async addClass(madrasaId: number | undefined, dto: AddClassRequestDto) {
@@ -337,7 +402,24 @@ export class ClassPanelService {
     const linkedClass = await this.repository.findActiveClassForMadrasa(madrasaId, classId);
     if (!linkedClass) throw new NotFoundError(t({ bn: "এই প্রতিষ্ঠানে শ্রেণিটি পাওয়া যায়নি", en: "Class not found in this institution" }));
 
-    await this.repository.createAndLinkSubject(madrasaId, dto.name_bn, classId);
+    const marks: { fullMark?: number; passMark?: number | null } = {};
+    if (dto.full_marks !== undefined && String(dto.full_marks).trim() !== "") {
+      const fullMark = Number(dto.full_marks);
+      if (!Number.isFinite(fullMark) || fullMark <= 0) {
+        throw new BadRequestError(t({ bn: "full_marks অবশ্যই ধনাত্মক সংখ্যা হতে হবে", en: "full_marks must be a positive number" }));
+      }
+      marks.fullMark = Math.round(fullMark);
+    }
+    if (dto.pass_mark !== undefined && dto.pass_mark !== null && String(dto.pass_mark).trim() !== "") {
+      const passMark = Number(dto.pass_mark);
+      const max = marks.fullMark ?? 100;
+      if (!Number.isFinite(passMark) || passMark < 0 || passMark > max) {
+        throw new BadRequestError(t({ bn: "pass_mark অবশ্যই 0 থেকে বিষয়ের পূর্ণ নম্বরের মধ্যে হতে হবে", en: "pass_mark must be between 0 and the subject's full marks" }));
+      }
+      marks.passMark = Math.round(passMark);
+    }
+
+    await this.repository.createAndLinkSubject(madrasaId, dto.name_bn, classId, marks);
     await this.results.reprocessClassResults(madrasaId, classId);
   }
 

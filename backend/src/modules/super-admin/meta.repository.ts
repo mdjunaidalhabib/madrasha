@@ -3,18 +3,20 @@ import { prisma } from "../../shared/database/prisma";
 
 export class MetaRepository {
   findDivisions() {
+    // Catalogue only - a madrasa's own divisions (ownerMadrasaId) are private.
     return prisma.division.findMany({
+      where: { ownerMadrasaId: null },
       select: { id: true, keyName: true, name: true, nameBn: true, institutionType: true },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
 
   findDivisionByNameBn(nameBn: string) {
-    return prisma.division.findFirst({ where: { nameBn } });
+    return prisma.division.findFirst({ where: { nameBn, ownerMadrasaId: null } });
   }
 
   findMaxDivisionSortOrder() {
-    return prisma.division.aggregate({ _max: { sortOrder: true } });
+    return prisma.division.aggregate({ where: { ownerMadrasaId: null }, _max: { sortOrder: true } });
   }
 
   createDivision(data: { name: string | null; nameBn: string; sortOrder: number; institutionType: InstitutionType }) {
@@ -30,12 +32,12 @@ export class MetaRepository {
   }
 
   findAllDivisionIds() {
-    return prisma.division.findMany({ select: { id: true } });
+    return prisma.division.findMany({ where: { ownerMadrasaId: null }, select: { id: true } });
   }
 
   async reorderDivisions(orderedDivisionIds: number[]) {
     await prisma.$transaction(
-      orderedDivisionIds.map((id, index) => prisma.division.update({ where: { id }, data: { sortOrder: index } })),
+      orderedDivisionIds.map((id, index) => prisma.division.updateMany({ where: { id, ownerMadrasaId: null }, data: { sortOrder: index } })),
     );
   }
 
