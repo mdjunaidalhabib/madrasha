@@ -583,6 +583,7 @@ export default function ResultPreviewPage() {
           <FullResultTable
             summary={summary}
             books={summaryBooks}
+            failMark={failMark}
             loading={detailLoading}
             onEdit={goToEntry}
             onEditStudent={isPublished && !canRequestCorrection ? undefined : handleEditStudent}

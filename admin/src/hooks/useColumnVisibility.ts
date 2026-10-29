@@ -8,6 +8,7 @@ export type ColumnOption<T extends string> = {
 type StoredState<T extends string> = {
   visible: T[];
   order: T[];
+  defaultsVersion?: number;
 };
 
 const isStoredState = <T extends string>(value: unknown): value is StoredState<T> =>
@@ -27,12 +28,20 @@ export const useColumnVisibility = <T extends string>(
   storageKey: string | null,
   allKeys: readonly T[],
   defaultVisibleKeys: readonly T[] = allKeys,
+  defaultsMigration?: { version: number; hiddenKeys: readonly T[] },
 ) => {
   const readInitial = (): StoredState<T> => {
     try {
       const raw = storageKey ? localStorage.getItem(storageKey) : null;
       if (raw) {
-        const parsed = JSON.parse(raw);
+        let parsed = JSON.parse(raw);
+        // Apply changed defaults once, retaining the user's other columns and order.
+        if (defaultsMigration && parsed?.defaultsVersion !== defaultsMigration.version) {
+          if (Array.isArray(parsed)) parsed = { visible: parsed, order: [...allKeys] };
+          if (isStoredState<T>(parsed)) {
+            parsed.visible = parsed.visible.filter((key: T) => !defaultsMigration.hiddenKeys.includes(key));
+          }
+        }
 
         if (isStoredState<T>(parsed)) {
           const validVisible = parsed.visible.filter((key) => allKeys.includes(key));
@@ -70,8 +79,8 @@ export const useColumnVisibility = <T extends string>(
   }
 
   useEffect(() => {
-    if (storageKey) localStorage.setItem(storageKey, JSON.stringify(state));
-  }, [storageKey, state]);
+    if (storageKey) localStorage.setItem(storageKey, JSON.stringify({ ...state, defaultsVersion: defaultsMigration?.version }));
+  }, [storageKey, state, defaultsMigration?.version]);
 
   const visible = useMemo(() => new Set(state.visible), [state.visible]);
 

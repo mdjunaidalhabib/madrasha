@@ -214,6 +214,7 @@ const ReportShell = ({
     columnOptions && !printMode ? `report-columns:${madrasaSlug}:${activeReport.key}` : null,
     columnOptionKeys,
     defaultColumnKeys,
+    { version: 1, hiddenKeys: ["registration_no"] },
   );
   const [printColumnKeys] = useState<string[] | null>(() => {
     const raw = printMode ? searchParams.get("columns") : null;

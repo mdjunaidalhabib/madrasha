@@ -6,6 +6,24 @@ import type { ReportMenuItem } from "./types";
 
 export type ReportBuilder = (t: ReportsText, col: ReportText["col"], isMadrasa: boolean) => ReportMenuItem[];
 
+const registrationPrintables = new Set([
+  "attendance-register", "daily-attendance-register", "digital-attendance",
+]);
+
+const applyColumnDefaults = (reports: ReportMenuItem[], col: ReportText["col"]): ReportMenuItem[] =>
+  reports.map((report) => {
+    const options = [...(report.columnOptions ?? report.columns)];
+    if (registrationPrintables.has(report.printable ?? "") && !options.some((c) => c.key === "registration_no")) {
+      options.splice(1, 0, { key: "registration_no", header: col.regNoFull });
+    }
+    if (!options.some((c) => c.key === "registration_no")) return report;
+    return {
+      ...report,
+      columns: report.columns.filter((c) => c.key !== "registration_no"),
+      columnOptions: options,
+    };
+  });
+
 /**
  * Builds a page's report menu twice: in the user's UI language (sidebar,
  * picker, Excel headers) and in the institution print language (the printed
@@ -18,7 +36,7 @@ export const useLocalizedReports = (build: ReportBuilder) => {
   const pt = usePrintText(reportsText);
   const pcol = usePrintText(reportText).col;
 
-  const reports = useMemo(() => build(t, col, isMadrasa), [build, t, col, isMadrasa]);
-  const printReports = useMemo(() => build(pt, pcol, isMadrasa), [build, pt, pcol, isMadrasa]);
+  const reports = useMemo(() => applyColumnDefaults(build(t, col, isMadrasa), col), [build, t, col, isMadrasa]);
+  const printReports = useMemo(() => applyColumnDefaults(build(pt, pcol, isMadrasa), pcol), [build, pt, pcol, isMadrasa]);
   return { reports, printReports, t };
 };

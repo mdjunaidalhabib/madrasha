@@ -5,6 +5,7 @@ import { reportText } from "../report.text";
 
 type ResidentialAttendancePrintProps = {
   rows: Record<string, any>[];
+  hideRegistrationColumn?: boolean;
   selectedDivisionName?: string;
   selectedClassName?: string;
   startIndex?: number;
@@ -21,6 +22,7 @@ const getRowValue = (row: Record<string, any>, keys: string[]) => {
 };
 
 const ResidentialAttendancePrint = ({
+  hideRegistrationColumn = true,
   rows,
   selectedDivisionName = "",
   selectedClassName = "",
@@ -90,9 +92,9 @@ const ResidentialAttendancePrint = ({
               <tr>
                 <th className="w-12 border border-slate-900 p-0.5 text-base font-bold">{t.col.roll}</th>
 
-                <th className="w-16 border border-slate-900 p-0.5 text-base font-bold">
+                {!hideRegistrationColumn && (<th className="w-16 border border-slate-900 p-0.5 text-base font-bold">
                   {t.col.regNo}
-                </th>
+                </th>)}
 
                 <th className="w-32 border border-slate-900 p-0.5 text-base font-bold">
                   {t.col.studentName}
@@ -116,9 +118,9 @@ const ResidentialAttendancePrint = ({
                   {printCell(row, "roll")}
                 </td>
 
-                <td className="h-7 w-16 border border-slate-900 p-0 text-base">
+                {!hideRegistrationColumn && (<td className="h-7 w-16 border border-slate-900 p-0 text-base">
                   {printCell(row, "registration_no")}
-                </td>
+                </td>)}
 
                 <td className="h-7 w-32 border border-slate-900 ps-3 pe-2 text-start text-base font-semibold">
                   {printCell(row, "student_name")}

@@ -1,4 +1,4 @@
-﻿
+﻿Developer: Reload Window
 [41m                                                                               [0m
 [41m[37m                This is not the tsc command you are looking for                [0m
 [41m                                                                               [0m

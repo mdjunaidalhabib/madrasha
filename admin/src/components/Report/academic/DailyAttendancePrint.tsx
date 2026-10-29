@@ -5,6 +5,7 @@ import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 
 type DailyAttendancePrintProps = {
   rows: Record<string, any>[];
+  hideRegistrationColumn?: boolean;
   selectedDivisionName?: string;
   selectedClassName?: string;
   startIndex?: number;
@@ -17,6 +18,7 @@ const rowText = (row: Record<string, any>, key: string) => {
 };
 
 const DailyAttendancePrint = ({
+  hideRegistrationColumn = true,
   rows,
   selectedDivisionName = "",
   selectedClassName = "",
@@ -57,7 +59,7 @@ const DailyAttendancePrint = ({
             <thead>
               <tr>
                 <th className="w-14 border border-slate-900 p-1 text-base">{t.col.roll}</th>
-                <th className="w-16 border border-slate-900 p-1 text-base">{t.col.regNo}</th>
+                {!hideRegistrationColumn && (<th className="w-16 border border-slate-900 p-1 text-base">{t.col.regNo}</th>)}
                 <th className="w-36 border border-slate-900 p-1 text-base">{t.col.studentName}</th>
                 {days.map((day) => (
                   <th key={day} className="h-16 w-[12px] border border-slate-900 p-0 align-middle">
@@ -80,9 +82,9 @@ const DailyAttendancePrint = ({
                 <td className="h-7 border border-slate-900 p-0 text-base">
                   {printCell(row, "roll")}
                 </td>
-                <td className="h-7 border border-slate-900 p-0 text-base">
+                {!hideRegistrationColumn && (<td className="h-7 border border-slate-900 p-0 text-base">
                   {printCell(row, "registration_no")}
-                </td>
+                </td>)}
                 <td className="h-7 border border-slate-900 ps-3 pe-2 text-start text-base font-semibold">
                   {printCell(row, "student_name")}
                 </td>

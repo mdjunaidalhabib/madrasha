@@ -2,7 +2,7 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 
 export const dashboardText = defineText({
   bn: {
-    totalStudents: "মোট ছাত্র",
+    totalStudents: "মোট শিক্ষার্থী",
     maleStudents: "ছাত্র (ছেলে)",
     femaleStudents: "ছাত্রী (মেয়ে)",
     totalTeachers: "মোট শিক্ষক",

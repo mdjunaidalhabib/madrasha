@@ -175,6 +175,7 @@ const ReportContent = ({
   if (report.printable === "attendance-register") {
     return (
       <ResidentialAttendancePrint
+        hideRegistrationColumn={!report.columns.some((column) => column.key === "registration_no")}
         rows={rows}
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
@@ -187,6 +188,7 @@ const ReportContent = ({
   if (report.printable === "daily-attendance-register") {
     return (
       <DailyAttendancePrint
+        hideRegistrationColumn={!report.columns.some((column) => column.key === "registration_no")}
         rows={rows}
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
@@ -199,6 +201,7 @@ const ReportContent = ({
   if (report.printable === "digital-attendance") {
     return (
       <DigitalAttendancePrint
+        hideRegistrationColumn={!report.columns.some((column) => column.key === "registration_no")}
         rows={rows}
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
@@ -241,6 +244,7 @@ const ReportContent = ({
   if (report.printable === "student-admission-list") {
     return (
       <StudentAdmissionListPrint
+        hideRegistrationColumn={!report.columns.some((column) => column.key === "registration_no")}
         rows={rows}
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
@@ -253,6 +257,7 @@ const ReportContent = ({
   if (report.printable === "guardian-phone-list") {
     return (
       <GuardianPhoneListPrint
+        hideRegistrationColumn={!report.columns.some((column) => column.key === "registration_no")}
         rows={rows}
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
@@ -265,6 +270,7 @@ const ReportContent = ({
   if (report.printable === "teacher-list") {
     return (
       <TeacherListPrint
+        hideRegistrationColumn={!report.columns.some((column) => column.key === "registration_no")}
         rows={rows}
         selectedDivisionName={selectedDivisionName}
         startIndex={startIndex}
@@ -276,6 +282,7 @@ const ReportContent = ({
   if (report.printable === "teacher-phone-list") {
     return (
       <TeacherPhoneListPrint
+        hideRegistrationColumn={!report.columns.some((column) => column.key === "registration_no")}
         rows={rows}
         selectedDivisionName={selectedDivisionName}
         startIndex={startIndex}
@@ -287,6 +294,7 @@ const ReportContent = ({
   if (report.printable === "exam-signature-sheet") {
     return (
       <ExamSignatureSheet
+        hideRegistrationColumn={!report.columns.some((column) => column.key === "registration_no")}
         rows={rows}
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
@@ -300,6 +308,7 @@ const ReportContent = ({
   if (report.printable === "exam-number-sheet") {
     return (
       <ExamNumberSheet
+        hideRegistrationColumn={!report.columns.some((column) => column.key === "registration_no")}
         rows={rows}
         selectedDivisionName={selectedDivisionName}
         selectedClassName={selectedClassName}
@@ -323,7 +332,7 @@ const ReportContent = ({
         startIndex={startIndex}
         isFirstPage={isFirstPage}
         isLastPage={isLastPage}
-        hideRegistrationColumn={report.printable === "exam-signature-number-sheet-2col"}
+        hideRegistrationColumn={!report.columns.some((column) => column.key === "registration_no")}
         hideSignature={report.printable === "exam-signature-number-sheet-2col" && hideSignature}
       />
     );

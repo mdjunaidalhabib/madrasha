@@ -49,6 +49,7 @@ interface Book {
 interface Props {
   summary: Summary[];
   books: Book[];
+  failMark?: number | null;
   loading?: boolean;
   publishing?: boolean;
   applyingRoll?: boolean;
@@ -72,6 +73,7 @@ interface Props {
 export default function FullResultTable({
   summary,
   books,
+  failMark = null,
   loading = false,
   publishing = false,
   applyingRoll = false,
@@ -328,17 +330,22 @@ export default function FullResultTable({
                 </td>
                 <td className="border px-2 py-2 text-center break-words">{s.name_bn}</td>
 
-                {subjectList.map((b) => (
-                  <td key={b.book_id} className="border px-2 py-2 text-center break-words">
-                    {getMark(s, b.book_id)}
-                  </td>
-                ))}
+                {subjectList.map((b) => {
+                  const mark = s.marks?.find((m) => m.book_id === b.book_id);
+                  const threshold = b.pass_mark ?? failMark;
+                  const failed = mark && !mark.is_absent && threshold != null && mark.mark < threshold;
+                  return (
+                    <td key={b.book_id} className={`border px-2 py-2 text-center break-words ${failed ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400" : ""}`}>
+                      {getMark(s, b.book_id)}
+                    </td>
+                  );
+                })}
 
                 <td className="border px-2 py-2 text-blue-600 text-center break-words">
-                  {num(s.total)}
+                  {String(s.status || "").toUpperCase() === "ABSENT" ? "-" : num(s.total)}
                 </td>
                 <td className="border px-2 py-2 text-green-600 text-center break-words">
-                  {num(Number(s.average).toFixed(2))}
+                  {String(s.status || "").toUpperCase() === "ABSENT" ? "-" : num(Number(s.average).toFixed(2))}
                 </td>
                 <td className="border px-2 py-2 text-center break-words">
                   {s.general_grade || "-"}

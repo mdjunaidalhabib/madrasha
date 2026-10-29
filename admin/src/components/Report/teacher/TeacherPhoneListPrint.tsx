@@ -4,12 +4,14 @@ import { reportText } from "../report.text";
 
 type TeacherPhoneListPrintProps = {
   rows: Record<string, any>[];
+  hideRegistrationColumn?: boolean;
   selectedDivisionName?: string;
   startIndex?: number;
   isFirstPage?: boolean;
 };
 
 const TeacherPhoneListPrint = ({
+  hideRegistrationColumn = true,
   rows,
   selectedDivisionName = "",
   startIndex = 0,
@@ -33,7 +35,7 @@ const TeacherPhoneListPrint = ({
         {isFirstPage && (
         <thead>
           <tr>
-            <th className="w-24 border border-black px-1 py-2 text-base font-bold">{t.col.regNo}</th>
+            {!hideRegistrationColumn && (<th className="w-24 border border-black px-1 py-2 text-base font-bold">{t.col.regNo}</th>)}
             <th className="border border-black px-1 py-2 text-base font-bold">{t.col.teacherName}</th>
             <th className="w-28 border border-black px-1 py-2 text-base font-bold">{t.col.designation}</th>
             <th className="w-32 border border-black px-1 py-2 text-base font-bold">{t.col.mobileNo}</th>
@@ -44,7 +46,7 @@ const TeacherPhoneListPrint = ({
         <tbody>
           {rows.map((row, index) => (
             <tr key={`teacher-phone-${startIndex + index}-${row.id || row.teacher_id || index}`}>
-              <td className="h-9 border border-black px-1 text-base">{printCell(row, "registration_no")}</td>
+              {!hideRegistrationColumn && (<td className="h-9 border border-black px-1 text-base">{printCell(row, "registration_no")}</td>)}
               <td className="h-9 border border-black px-1 text-start font-semibold text-base">
                 {printCell(row, "teacher_name")}
               </td>

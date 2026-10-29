@@ -4,6 +4,7 @@ import { reportText } from "../report.text";
 
 type GuardianPhoneListPrintProps = {
   rows: Record<string, any>[];
+  hideRegistrationColumn?: boolean;
   selectedDivisionName?: string;
   selectedClassName?: string;
   startIndex?: number;
@@ -28,6 +29,7 @@ const getPhoneNumbers = (row: Record<string, any>) =>
     .map((value) => printValue(value));
 
 const GuardianPhoneListPrint = ({
+  hideRegistrationColumn = true,
   rows,
   selectedDivisionName = "",
   selectedClassName = "",
@@ -65,7 +67,7 @@ const GuardianPhoneListPrint = ({
         <thead>
           <tr>
             <th className="w-14 border border-black px-1 py-2 text-base font-bold">{t.col.roll}</th>
-            <th className="w-24 border border-black px-1 py-2 text-base font-bold">{t.col.regNo}</th>
+            {!hideRegistrationColumn && (<th className="w-24 border border-black px-1 py-2 text-base font-bold">{t.col.regNo}</th>)}
             <th className="border border-black px-1 py-2 text-base font-bold">{t.col.studentName}</th>
             <th className="border border-black px-1 py-2 text-base font-bold">{t.col.fatherName}</th>
             <th className="w-32 border border-black px-1 py-2 text-base font-bold">{t.col.mobileNo}</th>
@@ -79,7 +81,7 @@ const GuardianPhoneListPrint = ({
             return (
               <tr key={`guardian-phone-${startIndex + index}-${row.id || row.student_id || index}`}>
                 <td className="h-8 border border-black px-1 text-base">{printCell(row, "roll")}</td>
-                <td className="h-8 border border-black px-1 text-base">{printCell(row, "registration_no")}</td>
+                {!hideRegistrationColumn && (<td className="h-8 border border-black px-1 text-base">{printCell(row, "registration_no")}</td>)}
                 <td className="h-8 border border-black px-1 text-start font-semibold text-base">
                   {printCell(row, "student_name")}
                 </td>

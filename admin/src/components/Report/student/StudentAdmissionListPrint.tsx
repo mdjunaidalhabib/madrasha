@@ -4,6 +4,7 @@ import { reportText } from "../report.text";
 
 type StudentAdmissionListPrintProps = {
   rows: Record<string, any>[];
+  hideRegistrationColumn?: boolean;
   selectedDivisionName?: string;
   selectedClassName?: string;
   startIndex?: number;
@@ -19,6 +20,7 @@ const rawValue = (row: Record<string, any>, keys: string[]) => {
 };
 
 const StudentAdmissionListPrint = ({
+  hideRegistrationColumn = true,
   rows,
   selectedDivisionName = "",
   selectedClassName = "",
@@ -56,7 +58,7 @@ const StudentAdmissionListPrint = ({
         <thead>
           <tr>
             <th className="w-11 border border-black px-1 py-2 text-base font-bold">{t.col.roll}</th>
-            <th className="w-20 border border-black px-1 py-2 text-base font-bold">{t.col.regNo}</th>
+            {!hideRegistrationColumn && (<th className="w-20 border border-black px-1 py-2 text-base font-bold">{t.col.regNo}</th>)}
             <th className="border border-black px-1 py-2 text-base font-bold">{t.col.studentName}</th>
             <th className="border border-black px-1 py-2 text-base font-bold">{t.col.fatherName}</th>
             <th className="border border-black px-1 py-2 text-base font-bold">{t.col.currentClass}</th>
@@ -68,9 +70,9 @@ const StudentAdmissionListPrint = ({
           {rows.map((row, index) => (
             <tr key={`student-admission-${startIndex + index}-${row.id || row.student_id || index}`}>
               <td className="h-8 border border-black px-1 text-base">{printCell(row, "roll")}</td>
-              <td className="h-8 border border-black px-1 text-base">
+              {!hideRegistrationColumn && (<td className="h-8 border border-black px-1 text-base">
                 {printCell(row, "registration_no")}
-              </td>
+              </td>)}
               <td className="h-8 border border-black px-1 text-start font-semibold text-base">
                 {printCell(row, "student_name")}
               </td>

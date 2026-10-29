@@ -4,6 +4,7 @@ import { reportText } from "../report.text";
 
 type ExamSignatureSheetProps = {
   rows: Record<string, any>[];
+  hideRegistrationColumn?: boolean;
   selectedDivisionName?: string;
   selectedClassName?: string;
   startIndex?: number;
@@ -42,6 +43,7 @@ const getSelectedSubjectName = (row: Record<string, any>): string => {
 };
 
 const ExamSignatureSheet = ({
+  hideRegistrationColumn = true,
   rows,
   selectedClassName = "",
   startIndex = 0,
@@ -84,7 +86,7 @@ const ExamSignatureSheet = ({
         <thead>
           <tr>
             <th className="w-14 border border-black px-1 py-2 text-base">{t.col.roll}</th>
-            <th className="w-24 border border-black px-1 py-2 text-base">{t.col.regNo}</th>
+            {!hideRegistrationColumn && (<th className="w-24 border border-black px-1 py-2 text-base">{t.col.regNo}</th>)}
             <th className="border border-black px-1 py-2 text-base">{t.col.studentName}</th>
             <th className="w-40 border border-black px-1 py-2 text-base">{t.col.signature}</th>
           </tr>
@@ -94,7 +96,7 @@ const ExamSignatureSheet = ({
           {rows.map((row, index) => (
             <tr key={`exam-sign-${startIndex + index}-${row.id || row.student_id || index}`}>
               <td className="h-9 border border-black px-1 text-base">{printCell(row, "roll")}</td>
-              <td className="h-9 border border-black px-1 text-base">{printCell(row, "registration_no")}</td>
+              {!hideRegistrationColumn && (<td className="h-9 border border-black px-1 text-base">{printCell(row, "registration_no")}</td>)}
               <td className="h-9 border border-black px-2 text-start text-base font-semibold">
                 {printCell(row, "student_name")}
               </td>

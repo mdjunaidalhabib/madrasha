@@ -2128,6 +2128,11 @@ html[data-print-size][data-print-orientation] .print-page-preview.marksheet-half
   background-color: #fef3c7 !important;
 }
 
+/* A failed subject stays red even when the student's overall result passes. */
+.print-page-preview[data-report="academic-result"] td.academic-result-fail-cell {
+  background-color: #fee2e2 !important;
+}
+
 /* Student quick-nav suggestion dropdown - subtle rise-and-fade so the list
    feels attached to the search field instead of popping in flat. */
 @keyframes quickNavPop {

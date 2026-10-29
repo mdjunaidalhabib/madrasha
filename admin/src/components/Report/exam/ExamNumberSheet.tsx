@@ -6,6 +6,7 @@ import { ReportColumn } from "../../../features/reports/types";
 
 type ExamNumberSheetProps = {
   rows: Record<string, any>[];
+  hideRegistrationColumn?: boolean;
   selectedDivisionName?: string;
   selectedClassName?: string;
   startIndex?: number;
@@ -45,6 +46,7 @@ const parseSubjects = (row: Record<string, any>): SubjectMark[] => {
 };
 
 const ExamNumberSheet = ({
+  hideRegistrationColumn = true,
   rows,
   selectedClassName = "",
   startIndex = 0,
@@ -94,7 +96,7 @@ const ExamNumberSheet = ({
         <thead>
           <tr>
             <th className="w-10 border border-black px-0.5 py-2 text-base">{label("roll", t.col.roll)}</th>
-            <th className="w-24 border border-black px-0.5 py-2 text-base">{label("registration_no", t.col.regAbbr)}</th>
+            {!hideRegistrationColumn && (<th className="w-24 border border-black px-0.5 py-2 text-base">{label("registration_no", t.col.regAbbr)}</th>)}
             <th className="w-28 border border-black px-1 py-2 text-base">{label("student_name", t.col.studentName)}</th>
             {subjects.map(([key, subjectLabel]) => (
               <th key={key} className="border border-black px-0.5 py-2 text-base leading-tight">
@@ -108,9 +110,9 @@ const ExamNumberSheet = ({
           {rows.map((row, index) => (
             <tr key={`exam-number-${startIndex + index}-${row.id || row.student_id || index}`}>
               <td className="h-8 border border-black px-0.5 text-base">{printCell(row, "roll")}</td>
-              <td className="h-8 border border-black px-0.5 text-base">
+              {!hideRegistrationColumn && (<td className="h-8 border border-black px-0.5 text-base">
                 {printCell(row, "registration_no")}
-              </td>
+              </td>)}
               <td className="h-8 border border-black px-1 text-start text-base font-semibold">
                 {printCell(row, "student_name")}
               </td>

@@ -4,6 +4,7 @@ import { reportText } from "../report.text";
 
 type DigitalAttendancePrintProps = {
   rows: Record<string, any>[];
+  hideRegistrationColumn?: boolean;
   selectedDivisionName?: string;
   selectedClassName?: string;
   startIndex?: number;
@@ -11,6 +12,7 @@ type DigitalAttendancePrintProps = {
 };
 
 const DigitalAttendancePrint = ({
+  hideRegistrationColumn = true,
   rows,
   selectedDivisionName = "",
   selectedClassName = "",
@@ -37,7 +39,7 @@ const DigitalAttendancePrint = ({
         <thead>
           <tr className="bg-slate-100">
             <th className="border border-slate-600 px-2 py-2 text-base font-bold">{t.col.roll}</th>
-            <th className="border border-slate-600 px-2 py-2 text-base font-bold">{t.col.regNoFull}</th>
+            {!hideRegistrationColumn && (<th className="border border-slate-600 px-2 py-2 text-base font-bold">{t.col.regNoFull}</th>)}
             <th className="border border-slate-600 px-2 py-2 text-base font-bold">{t.col.studentName}</th>
             <th className="border border-slate-600 px-2 py-2 text-base font-bold">{t.col.class}</th>
             <th className="border border-slate-600 px-2 py-2 text-base font-bold">{t.col.date}</th>
@@ -53,9 +55,9 @@ const DigitalAttendancePrint = ({
             <td className="border border-slate-600 px-2 py-2 text-base font-semibold">
               {printCell(row, "roll")}
             </td>
-            <td className="border border-slate-600 px-2 py-2 text-base font-semibold">
+            {!hideRegistrationColumn && (<td className="border border-slate-600 px-2 py-2 text-base font-semibold">
               {printCell(row, "registration_no")}
-            </td>
+            </td>)}
             <td className="border border-slate-600 py-2 ps-3 pe-2 text-start text-base font-semibold">
               {printCell(row, "student_name")}
             </td>

@@ -63,7 +63,6 @@ export const buildAcademicResultColumnOptions = (t: Pick<ReportText, "col">): Re
 
 const DEFAULT_RESULT_COLUMN_KEYS = new Set([
   "roll",
-  "registration_no",
   "student_name",
   "total",
   "average",
@@ -109,6 +108,7 @@ type SubjectMark = {
   subject_name?: string;
   is_miyari?: boolean;
   full_marks?: number | string;
+  pass_mark?: number | string | null;
   mark?: number | string | null;
   is_absent?: boolean;
 };
@@ -332,6 +332,10 @@ const AcademicResultPrint = ({
 
   const getValue = (row: Record<string, any>, column: PrintableColumn) => {
     if (column.subjectKey) return getMark(row, column.subjectKey);
+    if (
+      (column.key === "total" || column.key === "average") &&
+      String(row?.status || "").toUpperCase() === "ABSENT"
+    ) return "-";
     if (column.key === "average") return formatAverage(row);
     if (column.key === "class_name") {
       return printCell(row, "class_name") || printCell(row, "class_name_bn");
@@ -535,7 +539,15 @@ const AcademicResultPrint = ({
                 >
                   {printableColumns.map((column) => {
                     const numericColumn = isNumericColumn(column);
+                    const subject = column.subjectKey
+                      ? getSubjects(row).find((item, index) => getSubjectKey(item, index) === column.subjectKey)
+                      : undefined;
+                    const subjectFailed = subject && !subject.is_absent &&
+                      subject.mark != null && subject.mark !== "" &&
+                      subject.pass_mark != null && subject.pass_mark !== "" &&
+                      Number(subject.mark) < Number(subject.pass_mark);
                     const columnClass = [
+                      subjectFailed ? "academic-result-fail-cell" : "",
                       column.key === "student_name" || column.key === "father_name"
                         ? "academic-result-student-name text-start font-semibold"
                         : "",
