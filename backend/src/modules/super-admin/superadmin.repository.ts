@@ -420,12 +420,21 @@ export class SuperAdminRepository {
    * material for the demo exam-routine seed below (one routine row per
    * class/book). Ordered by the global catalog's own sortOrder so the demo
    * schedule follows the same order admins see in তালিমাত সেটিংস. */
-  findBooksForRoutineSeedOnTx(tx: TransactionClient, bookIds: number[]) {
+  findBooksForRoutineSeedOnTx(tx: TransactionClient, madrasaId: number) {
     return tx.book.findMany({
-      where: { id: { in: bookIds }, ownerMadrasaId: null },
+      where: {
+        ownerMadrasaId: null,
+        madrasaBooks: { some: { madrasaId, isActive: 1, deletedAt: null } },
+        class: { madrasaClasses: { some: { madrasaId, isActive: 1, deletedAt: null } } },
+      },
       select: { id: true, classId: true, name: true, nameBn: true, class: { select: { divisionId: true } } },
       orderBy: [{ classId: "asc" }, { sortOrder: "asc" }],
     });
+  }
+
+  createClassRoutinesOnTx(tx: TransactionClient, rows: Prisma.ClassRoutineCreateManyInput[]) {
+    if (!rows.length) return Promise.resolve({ count: 0 });
+    return tx.classRoutine.createMany({ data: rows });
   }
 
   createExamRoutinesOnTx(tx: TransactionClient, rows: Prisma.ExamRoutineCreateManyInput[]) {

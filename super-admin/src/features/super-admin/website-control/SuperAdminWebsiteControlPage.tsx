@@ -1,16 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
-import { listMadrasas, type MadrasaListItem } from "../../../services/superAdminApi";
+import {
+  listMadrasas,
+  type MadrasaListItem,
+} from "../../../services/superAdminApi";
 import { updateMadrasaWebsiteStatus } from "../../../services/websiteApi";
-import { INSTITUTION_TYPE_LABELS, getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import {
+  INSTITUTION_TYPE_LABELS,
+  getText,
+  useLang,
+  useText,
+} from "@madrasha/shared-ui/src/i18n";
 import { websiteControlText } from "./websiteControl.text";
+import { Globe2, LayoutTemplate } from "lucide-react";
+import WebsiteTemplateEditor from "./WebsiteTemplateEditor";
 
 type WebsiteStatus = "active" | "limited" | "disabled";
 
 export default function SuperAdminWebsiteControlPage() {
   const t = useText(websiteControlText);
   const lang = useLang();
-  const statusLabel = (s?: string) => t.statuses[s || "active"] || s || "active";
+  const [view, setView] = useState<"template" | "status">("template");
+  const statusLabel = (s?: string) =>
+    t.statuses[s || "active"] || s || "active";
   const [madrasas, setMadrasas] = useState<MadrasaListItem[]>([]);
   const [madrasaId, setMadrasaId] = useState("");
   const [status, setStatus] = useState<WebsiteStatus>("active");
@@ -47,7 +59,9 @@ export default function SuperAdminWebsiteControlPage() {
     if (!madrasaId) return;
     await updateMadrasaWebsiteStatus(Number(madrasaId), status);
     setMadrasas((prev) =>
-      prev.map((m) => (String(m.id) === madrasaId ? { ...m, website_status: status } : m)),
+      prev.map((m) =>
+        String(m.id) === madrasaId ? { ...m, website_status: status } : m,
+      ),
     );
     const tx = getText(websiteControlText);
     setMessage(tx.updated(tx.statuses[status] || status));
@@ -55,72 +69,113 @@ export default function SuperAdminWebsiteControlPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl bg-gradient-to-r from-slate-900 to-blue-900 p-6 text-white shadow">
-        <h1 className="text-2xl font-bold">{t.title}</h1>
-        <p className="mt-1 text-sm text-blue-100">
-          {t.subtitle}
-        </p>
+      <div className="flex w-fit gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 dark:border-slate-800 dark:bg-slate-900">
+        <button
+          type="button"
+          onClick={() => setView("template")}
+          aria-pressed={view === "template"}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition ${view === "template" ? "bg-slate-900 text-white dark:bg-teal-700" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
+        >
+          <LayoutTemplate size={16} />
+          {lang === "bn" ? "ডেমো টেমপ্লেট" : "Demo template"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setView("status")}
+          aria-pressed={view === "status"}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition ${view === "status" ? "bg-slate-900 text-white dark:bg-teal-700" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
+        >
+          <Globe2 size={16} />
+          {lang === "bn" ? "প্রতিষ্ঠানের স্ট্যাটাস" : "Institution status"}
+        </button>
       </div>
-
-      <form
-        onSubmit={submit}
-        className="max-w-3xl rounded-2xl border bg-white p-6 shadow-sm space-y-5 dark:border-slate-700 dark:bg-slate-900"
-      >
-        <div>
-          <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t.institution}</label>
-          <select
-            className="mt-1 w-full rounded-xl border px-3 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            value={madrasaId}
-            onChange={(e) => onSelect(e.target.value)}
-            disabled={loading}
-            required
-          >
-            <option value="">{t.selectInstitution}</option>
-            {madrasas.map((m) => (
-              <option key={m.id} value={m.id}>
-                #{m.id} — {m.name}
-                {m.institution_type ? ` (${INSTITUTION_TYPE_LABELS[m.institution_type][lang]})` : ""}
-              </option>
-            ))}
-          </select>
+      <div className={view === "template" ? "" : "hidden"}>
+        <WebsiteTemplateEditor />
+      </div>
+      <div className={view === "status" ? "space-y-6" : "hidden"}>
+        <div className="rounded-3xl bg-gradient-to-r from-slate-900 to-blue-900 p-6 text-white shadow">
+          <h1 className="text-2xl font-bold">{t.title}</h1>
+          <p className="mt-1 text-sm text-blue-100">{t.subtitle}</p>
         </div>
 
-        {selected && (
-          <div className="grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm dark:bg-slate-800 md:grid-cols-3">
-            <div>
-              <span className="text-slate-500 dark:text-slate-400">{t.id}</span>
-              <p className="font-bold text-slate-900 dark:text-slate-100">{selected.id}</p>
-            </div>
-            <div>
-              <span className="text-slate-500 dark:text-slate-400">{t.name}</span>
-              <p className="font-bold text-slate-900 dark:text-slate-100">{selected.name}</p>
-            </div>
-            <div>
-              <span className="text-slate-500 dark:text-slate-400">{t.currentStatus}</span>
-              <p className="font-bold capitalize text-blue-700 dark:text-blue-400">
-                {statusLabel(selected.website_status)}
-              </p>
-            </div>
+        <form
+          onSubmit={submit}
+          className="max-w-3xl rounded-2xl border bg-white p-6 shadow-sm space-y-5 dark:border-slate-700 dark:bg-slate-900"
+        >
+          <div>
+            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              {t.institution}
+            </label>
+            <select
+              className="mt-1 w-full rounded-xl border px-3 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              value={madrasaId}
+              onChange={(e) => onSelect(e.target.value)}
+              disabled={loading}
+              required
+            >
+              <option value="">{t.selectInstitution}</option>
+              {madrasas.map((m) => (
+                <option key={m.id} value={m.id}>
+                  #{m.id} — {m.name}
+                  {m.institution_type
+                    ? ` (${INSTITUTION_TYPE_LABELS[m.institution_type][lang]})`
+                    : ""}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
 
-        <div>
-          <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t.websiteStatus}</label>
-          <select
-            className="mt-1 w-full rounded-xl border px-3 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            value={status}
-            onChange={(e) => setStatus(e.target.value as WebsiteStatus)}
-          >
-            <option value="active">{t.statuses.active}</option>
-            <option value="limited">{t.statuses.limited}</option>
-            <option value="disabled">{t.statuses.disabled}</option>
-          </select>
-        </div>
-        <Button disabled={!madrasaId || loading}>{t.updateStatus}</Button>
-        {message && (
-          <p className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-400">{message}</p>
-        )}
-      </form>
+          {selected && (
+            <div className="grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm dark:bg-slate-800 md:grid-cols-3">
+              <div>
+                <span className="text-slate-500 dark:text-slate-400">
+                  {t.id}
+                </span>
+                <p className="font-bold text-slate-900 dark:text-slate-100">
+                  {selected.id}
+                </p>
+              </div>
+              <div>
+                <span className="text-slate-500 dark:text-slate-400">
+                  {t.name}
+                </span>
+                <p className="font-bold text-slate-900 dark:text-slate-100">
+                  {selected.name}
+                </p>
+              </div>
+              <div>
+                <span className="text-slate-500 dark:text-slate-400">
+                  {t.currentStatus}
+                </span>
+                <p className="font-bold capitalize text-blue-700 dark:text-blue-400">
+                  {statusLabel(selected.website_status)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              {t.websiteStatus}
+            </label>
+            <select
+              className="mt-1 w-full rounded-xl border px-3 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as WebsiteStatus)}
+            >
+              <option value="active">{t.statuses.active}</option>
+              <option value="limited">{t.statuses.limited}</option>
+              <option value="disabled">{t.statuses.disabled}</option>
+            </select>
+          </div>
+          <Button disabled={!madrasaId || loading}>{t.updateStatus}</Button>
+          {message && (
+            <p className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-400">
+              {message}
+            </p>
+          )}
+        </form>
+      </div>
     </div>
   );
 }

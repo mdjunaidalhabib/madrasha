@@ -51,25 +51,33 @@ export class RoutineService {
   }
 
   async createClassRoutine(madrasaId: number, dto: CreateClassRoutineRequestDto) {
-    if (isEmpty(dto.class_id) || isEmpty(dto.subject) || dto.day_of_week === undefined) {
+    if (isEmpty(dto.class_id) || isEmpty(dto.subject) || (dto.day_of_week === undefined && dto.days_of_week === undefined)) {
       throw new BadRequestError(t({ bn: "class_id, day_of_week ও বিষয় আবশ্যক", en: "class_id, day_of_week and subject are required" }));
     }
 
-    const dayOfWeek = Number(dto.day_of_week);
-    if (Number.isNaN(dayOfWeek) || dayOfWeek < MIN_DAY_OF_WEEK || dayOfWeek > MAX_DAY_OF_WEEK) {
+    const rawDays = dto.days_of_week ?? [dto.day_of_week];
+    if (!Array.isArray(rawDays) || !rawDays.length || rawDays.some((day) => isEmpty(day))) {
+      throw new BadRequestError(t({ bn: "অন্তত একটি সঠিক বার নির্বাচন করুন", en: "Select at least one valid day" }));
+    }
+    const days = [...new Set(rawDays.map(Number))];
+    if (days.some((day) => !Number.isInteger(day) || day < MIN_DAY_OF_WEEK || day > MAX_DAY_OF_WEEK)) {
       throw new BadRequestError(t({ bn: "day_of_week অবশ্যই 0 (রবিবার) থেকে 6 (শনিবার) এর মধ্যে হতে হবে", en: "day_of_week must be between 0 (Sunday) and 6 (Saturday)" }));
     }
     const { startStr, endStr } = validateTimeRange(dto.start_time, dto.end_time);
 
     try {
-      await this.repository.createClassRoutine(madrasaId, {
+      const period = {
         classId: Number(dto.class_id),
-        dayOfWeek,
         subject: String(dto.subject).trim(),
         teacherId: dto.teacher_id ? Number(dto.teacher_id) : null,
         startTime: startStr,
         endTime: endStr,
-      });
+      };
+      if (days.length === 1) {
+        await this.repository.createClassRoutine(madrasaId, { ...period, dayOfWeek: days[0] });
+      } else {
+        await this.repository.createClassRoutinePeriods(days.map((dayOfWeek) => ({ ...period, madrasaId, dayOfWeek })));
+      }
     } catch (err) {
       if (isDuplicateError(err)) throw new ConflictError(t({ bn: "এই ক্লাস রুটিন স্লটটি ইতিমধ্যে আছে", en: "This class routine slot already exists" }));
       return friendlyFailure("createClassRoutine error:", err, t({ bn: "ক্লাস রুটিন তৈরি করা যায়নি", en: "Failed to create class routine" }));

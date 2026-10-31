@@ -267,7 +267,8 @@ export const classRoutineApi = {
   overview: () => api.get("/class-routine/overview"),
   create: (payload: {
     class_id: number;
-    day_of_week: number;
+    day_of_week?: number;
+    days_of_week?: number[];
     subject: string;
     teacher_id?: number;
     start_time: string;

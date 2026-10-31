@@ -11,6 +11,12 @@ import { attendanceDeviceText } from "./attendanceDevice.text";
 
 const DEFAULT_PORT = 4370;
 const DEFAULT_POLL_SEC = 30;
+const DEMO_DEVICE = {
+  deviceId: "K40-01",
+  name: "Main Gate K40",
+  ip: "192.168.1.201",
+  commPassword: "",
+};
 const IPV4 = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
 const HOSTNAME = /^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$/;
 
@@ -48,11 +54,11 @@ export default function DeviceFormModal({
 
   useEffect(() => {
     if (!open) return;
-    setDeviceId(device?.device_id ?? "");
-    setName(device?.name ?? "");
-    setIp(device?.ip ?? "");
+    setDeviceId(device?.device_id ?? DEMO_DEVICE.deviceId);
+    setName(device?.name ?? DEMO_DEVICE.name);
+    setIp(device?.ip ?? DEMO_DEVICE.ip);
     setPort(String(device?.port ?? DEFAULT_PORT));
-    setCommPassword("");
+    setCommPassword(device ? "" : DEMO_DEVICE.commPassword);
     setPollSec(String(device?.poll_interval_sec ?? DEFAULT_POLL_SEC));
     setErrors({});
     setSaving(false);

@@ -162,6 +162,8 @@ export class SidebarService {
       const disabled = !isModuleAllowed(roleKey, permissionKeys, mod.keyName || "");
       const children: SidebarChildItem[] = features
         .filter((f) => f.moduleId === mod.id)
+        // Hide the removed page in installations with an existing seeded row.
+        .filter((f) => !(mod.keyName === "talimat" && f.keyName === "exam_attendance"))
         // "ব্যালেন্স" was a tenant-facing gateway status check; balance/SMTP
         // status is now Super Admin-only (platform settings), so hide the
         // old seeded row for tenants who already have it in the DB.
@@ -339,11 +341,10 @@ export class SidebarService {
           // as the শিক্ষার্থী/হিসাব/ফি dashboard fallbacks elsewhere in this file.
           { key: "dashboard", label: "ড্যাশবোর্ড", sortOrder: -1 },
           { key: "routine", label: "ক্লাস/পরীক্ষার রুটিন", sortOrder: 6 },
-          // Exam Operations: Room/Hall, Seat Plan, Exam Attendance - routes
+          // Exam Operations: Room/Hall, Seat Plan - routes
           // live under exam-operations/* (see ABSOLUTE_CHILD_PATHS).
           { key: "exam_rooms", label: "পরীক্ষার রুম/হল", sortOrder: 7 },
           { key: "exam_seat_plan", label: "সিট প্ল্যান", sortOrder: 8 },
-          { key: "exam_attendance", label: "পরীক্ষার হাজিরা", sortOrder: 9 },
           { key: "promotion", label: "শিক্ষার্থী প্রমোশন", sortOrder: 10 },
           { key: "settings", label: "সেটিং", sortOrder: 12 },
         ];

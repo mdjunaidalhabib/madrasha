@@ -1,13 +1,14 @@
 export interface CreateClassRoutineRequestDto {
   class_id: number | string;
-  day_of_week: number | string;
+  day_of_week?: number | string;
+  days_of_week?: (number | string)[];
   subject: string;
   teacher_id?: number | string;
   start_time: string;
   end_time: string;
 }
 
-export type UpdateClassRoutineRequestDto = Partial<CreateClassRoutineRequestDto>;
+export type UpdateClassRoutineRequestDto = Partial<Omit<CreateClassRoutineRequestDto, "days_of_week">>;
 
 export interface CreateExamRoutineRequestDto {
   exam_id: number | string;

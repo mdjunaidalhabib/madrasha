@@ -1,4 +1,4 @@
-import ExcelUpload from "../common/ExcelUpload";
+import { BulkImportModal, BulkImportPreview, BulkImportUploadSteps } from "../common/BulkImport";
 import { commonText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { teacherStaffText } from "../../features/teachers/teacherStaff.text";
 
@@ -118,177 +118,149 @@ const BulkTeacherUploadModal = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-7xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
-        <div className="flex items-center justify-between border-b px-6 py-4 dark:border-slate-700">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{t.bulkTeacherUpload}</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t.bulkTeacherUploadHint}</p>
-          </div>
+    <BulkImportModal
+      title={t.bulkTeacherUpload}
+      subtitle={t.bulkTeacherUploadHint}
+      compact={excelTeachers.length === 0}
+      loading={loading}
+      onClose={onClose}
+      onSubmit={excelTeachers.length > 0 ? onSubmit : undefined}
+      submitLabel={loading ? t.submitting : t.submitAllTeachers}
+    >
+      {excelTeachers.length === 0 && (
+        <BulkImportUploadSteps<ExcelTeacherRow>
+          templateLabel={t.stepTemplate}
+          uploadLabel={t.stepUpload}
+          hints={[t.requiredFieldsHint, t.genderHint(t.male, t.female), t.requiredColumnsHint]}
+          downloadLabel={t.downloadTemplate}
+          buttonText={t.uploadTeacherExcel}
+          loading={loading}
+          requiredColumns={requiredColumns}
+          onDownloadTemplate={onDownloadTemplate}
+          onDataUpload={onDataUpload}
+        />
+      )}
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-slate-500 hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-          >
-            ×
-          </button>
-        </div>
+      {excelTeachers.length > 0 && (
+        <BulkImportPreview
+          title={t.previewTeachers}
+          subtitle={t.totalFound(localizeDigits(excelTeachers.length, lang))}
+          clearLabel={t.clearUploaded}
+          loading={loading}
+          onClear={onClear}
+        >
+          <table className="min-w-[2200px] w-full text-xs sm:text-sm">
+            <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800">
+              <tr>
+                {previewColumns.map((head) => (
+                  <th
+                    key={head}
+                    className="whitespace-nowrap border-b px-2.5 py-2 sm:px-3 sm:py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300"
+                  >
+                    {head}
+                  </th>
+                ))}
+              </tr>
+            </thead>
 
-        <div className="max-h-[82vh] overflow-y-auto p-6">
-          {excelTeachers.length === 0 && (
-            <>
-              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h3 className="font-semibold text-slate-800 dark:text-slate-200">{t.uploadExcelSheet}</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {t.requiredFieldsHint}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{t.genderHint(t.male, t.female)}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {t.requiredColumnsHint}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={onDownloadTemplate}
-                  className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-700"
+            <tbody>
+              {excelTeachers.map((teacher, index) => (
+                <tr
+                  key={index}
+                  className="border-b transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
                 >
-                  {t.downloadTemplate}
-                </button>
-              </div>
-
-              <ExcelUpload<ExcelTeacherRow>
-                buttonText={t.uploadTeacherExcel}
-                onDataUpload={onDataUpload}
-                disabled={loading}
-                requiredColumns={requiredColumns}
-              />
-            </>
-          )}
-
-          {excelTeachers.length > 0 && (
-            <div>
-              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t.previewTeachers}</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    {t.totalFound(localizeDigits(excelTeachers.length, lang))}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={onClear}
-                  className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/40"
-                >
-                  {t.clearUploaded}
-                </button>
-              </div>
-
-              <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
-                <div className="max-h-[420px] overflow-auto">
-                  <table className="min-w-[2200px] w-full text-sm">
-                    <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800">
-                      <tr>
-                        {previewColumns.map((head) => (
-                          <th
-                            key={head}
-                            className="whitespace-nowrap border-b px-3 py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300"
-                          >
-                            {head}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {excelTeachers.map((teacher, index) => (
-                        <tr key={index} className="border-b transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800">
-                          <td className="whitespace-nowrap px-3 py-3">{index + 1}</td>
-                          <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-900 dark:text-slate-100">
-                            {teacher.name_bn || teacher.name || "-"}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">{teacher.name_ar || "-"}</td>
-                          <td className="whitespace-nowrap px-3 py-3">{teacher.nid || "-"}</td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            {getGenderName(teacher.gender)}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">{teacher.dob || "-"}</td>
-                          <td className="whitespace-nowrap px-3 py-3">{teacher.age || "-"}</td>
-                          <td className="whitespace-nowrap px-3 py-3">{teacher.phone || "-"}</td>
-                          <td className="whitespace-nowrap px-3 py-3">{teacher.email || "-"}</td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            {teacher.designation || "-"}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            {getDivisionName(teacher.academic_division)}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            {teacher.qualification || "-"}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            {teacher.experience_year || "-"}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            {teacher.experience_month || "-"}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            {teacher.joining_date || "-"}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">{teacher.salary || "-"}</td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            {teacher.father_name || "-"}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            {teacher.father_name_ar || "-"}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            {teacher.father_nid || "-"}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            {teacher.father_occupation || "-"}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            {teacher.mother_name || "-"}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            {teacher.mother_nid || "-"}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            {teacher.mother_occupation || "-"}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            {teacher.parent_phone || "-"}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">{teacher.division || "-"}</td>
-                          <td className="whitespace-nowrap px-3 py-3">{teacher.district || "-"}</td>
-                          <td className="whitespace-nowrap px-3 py-3">{teacher.thana || "-"}</td>
-                          <td className="whitespace-nowrap px-3 py-3">{teacher.village || "-"}</td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            {teacher.image ? t.uploaded : "-"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={onSubmit}
-                disabled={loading}
-                className="mt-5 w-full rounded-xl bg-green-600 py-3 font-bold text-white hover:bg-green-700 disabled:opacity-60"
-              >
-                {loading ? t.submitting : t.submitAllTeachers}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">{index + 1}</td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3 font-semibold text-slate-900 dark:text-slate-100">
+                    {teacher.name_bn || teacher.name || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.name_ar || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.nid || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {getGenderName(teacher.gender)}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.dob || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.age || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.phone || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.email || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.designation || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {getDivisionName(teacher.academic_division)}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.qualification || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.experience_year || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.experience_month || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.joining_date || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.salary || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.father_name || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.father_name_ar || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.father_nid || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.father_occupation || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.mother_name || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.mother_nid || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.mother_occupation || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.parent_phone || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.division || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.district || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.thana || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.village || "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
+                    {teacher.image ? t.uploaded : "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </BulkImportPreview>
+      )}
+    </BulkImportModal>
   );
 };
 

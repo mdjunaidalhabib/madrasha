@@ -2,12 +2,59 @@ import {
   teacherAssignmentRepository,
   TeacherAssignmentRepository,
 } from "./teacher-assignment.repository";
-import { AssignmentAlreadyExistsError, GroupedAssignment } from "./teacher-assignment.types";
+import {
+  AssignmentAlreadyExistsError,
+  GroupedAssignment,
+  InvalidAssignmentRequestError,
+} from "./teacher-assignment.types";
 
 export class TeacherAssignmentService {
   constructor(
     private readonly repository: TeacherAssignmentRepository = teacherAssignmentRepository,
   ) {}
+
+  async saveGrouped(
+    madrasaId: number,
+    teacherId: number,
+    groups: Array<{ class_id: number; book_ids: number[] }>,
+    replace = false,
+  ) {
+    const [teacher, existingCount, catalog] = await Promise.all([
+      this.repository.findTeacher(madrasaId, teacherId),
+      this.repository.countForTeacher(madrasaId, teacherId),
+      this.repository.getCatalog(madrasaId),
+    ]);
+    if (!teacher) throw new InvalidAssignmentRequestError();
+    if (!replace && existingCount > 0) throw new AssignmentAlreadyExistsError();
+    const bookClasses = new Map(catalog.books.map((book) => [book.book_id, book.class_id]));
+    if (replace) {
+      // Existing subjects can still be retained after they leave the active catalogue.
+      const existing = await this.repository.findAllForTenant(madrasaId);
+      existing
+        .filter((row) => row.teacher.id === teacherId)
+        .forEach((row) => bookClasses.set(row.bookId, row.classId));
+    }
+    const ids = groups.flatMap((group) => group.book_ids);
+    if (
+      !groups.length ||
+      new Set(groups.map((group) => group.class_id)).size !== groups.length ||
+      !ids.length ||
+      new Set(ids).size !== ids.length ||
+      groups.some(
+        (group) =>
+          !group.book_ids.length ||
+          group.book_ids.some((id) => bookClasses.get(id) !== group.class_id),
+      )
+    ) {
+      throw new InvalidAssignmentRequestError();
+    }
+    const conflicts = replace
+      ? await this.repository.findAssignedBooks(madrasaId, ids, teacherId)
+      : await this.repository.findAssignedBooks(madrasaId, ids);
+    if (conflicts.length) throw new InvalidAssignmentRequestError();
+    if (replace) await this.repository.replaceGrouped(madrasaId, teacherId, groups);
+    else await this.repository.createGrouped(madrasaId, teacherId, groups);
+  }
 
   async getBookIds(madrasaId: number, teacherId: number, classId: number): Promise<number[]> {
     const rows = await this.repository.findBookIds(madrasaId, teacherId, classId);
@@ -33,7 +80,7 @@ export class TeacherAssignmentService {
 
       grouped[key].books.push({
         book_id: row.bookId,
-        book_name_bn: row.book.nameBn,
+        book_name_bn: row.book.nameBn || row.book.name || `#${row.bookId}`,
       });
     });
 
@@ -53,11 +100,7 @@ export class TeacherAssignmentService {
   }
 
   async updateAssignment(madrasaId: number, teacherId: number, classId: number, bookIds: number[]) {
-    await this.repository.deleteMany(madrasaId, teacherId, classId);
-
-    if (bookIds.length > 0) {
-      await this.repository.createMany(madrasaId, teacherId, classId, bookIds);
-    }
+    await this.repository.replaceBooks(madrasaId, teacherId, classId, bookIds);
   }
 
   async deleteAssignment(madrasaId: number, teacherId: number, classId: number) {

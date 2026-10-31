@@ -234,7 +234,7 @@ Node.js বা PowerShell কমান্ড লাগে না।
 
 হাতে চালাতে চাইলে: `connector.exe setup --token <পেয়ারিং কোড>` (অথবা env `PAIRING_TOKEN`)।
 
-রিলিজ বানানো (ডেভেলপার): `connector-v1.1.0` এর মতো ট্যাগ push করলে `.github/workflows/connector-release.yml` exe ও ইনস্টলার বানিয়ে Cloudflare R2-এ (`downloads/attendance-connector/`) তুলে দেয় (রিপো secrets: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`)। লোকালি: `npm run package` -> `release\connector.exe`, তারপর Inno Setup 6.3+ দিয়ে `installer\AttendanceConnector.iss` কম্পাইল।
+রিলিজ বানানো (ডেভেলপার): `connector-v1.1.0` এর মতো ট্যাগ push করলে `.github/workflows/connector-release.yml` exe ও ইনস্টলার বানিয়ে Cloudflare R2-এ (`downloads/attendance-connector/`) তুলে দেয় (রিপো secrets: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`)। লোকালি: `npm run package` -> `release\connector.exe`, তারপর Inno Setup 6.6+ দিয়ে `installer\AttendanceConnector.iss` কম্পাইল।
 
 নিচের ম্যানুয়াল গাইড শুধু ডেভেলপার/টেকনিশিয়ানের জন্য।
 

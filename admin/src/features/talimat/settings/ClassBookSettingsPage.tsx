@@ -14,6 +14,9 @@ import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverl
 import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { talimatSettingsText } from "./talimatSettings.text";
 import { talimatSettingsProgressText } from "./talimatSettings.progress.text";
+import BulkSelection, { selectionCheckboxClass } from "./BulkSelection";
+
+type BulkKind = "division" | "class" | "book";
 
 /** ক্রমিক নম্বর: position within this madrasa's own list (lists arrive
  * already sorted by sortOrder and are re-spliced locally on drag), so it
@@ -110,6 +113,10 @@ export default function ClassBookSettingsPage() {
   const [divisions, setDivisions] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [books, setBooks] = useState<any[]>([]);
+  const [selectedDivisions, setSelectedDivisions] = useState<number[]>([]);
+  const [selectedClasses, setSelectedClasses] = useState<number[]>([]);
+  const [selectedBooks, setSelectedBooks] = useState<number[]>([]);
+  const bulkRunning = useRef(false);
 
   const [divisionId, setDivisionId] = useState<string>("");
   const [classId, setClassId] = useState<string>("");
@@ -174,6 +181,7 @@ export default function ClassBookSettingsPage() {
     const data = res.data || [];
 
     setDivisions(data);
+    setSelectedDivisions((prev) => prev.filter((id) => data.some((d: any) => Number(d.division_id) === id)));
     setDivisionId((prev) => {
       if (select === "last") return data.length ? String(data[data.length - 1].division_id) : "";
       if (select) return select;
@@ -334,6 +342,7 @@ export default function ClassBookSettingsPage() {
     const data = res.data || [];
 
     setClasses(data);
+    setSelectedClasses((prev) => prev.filter((id) => data.some((c: any) => Number(c.class_id) === id)));
 
     const pending = pendingClassSelect.current;
     pendingClassSelect.current = null;
@@ -351,12 +360,12 @@ export default function ClassBookSettingsPage() {
   }, [divisionId]);
 
   useEffect(() => {
-    if (!divisionId) {
-      setClasses([]);
-      setClassId("");
-      setBooks([]);
-      return;
-    }
+    setSelectedClasses([]);
+    setSelectedBooks([]);
+    setClasses([]);
+    setClassId("");
+    setBooks([]);
+    if (!divisionId) return;
     loadClasses();
   }, [divisionId, loadClasses]);
 
@@ -364,6 +373,7 @@ export default function ClassBookSettingsPage() {
     const res = await cachedGet(`/madrasa-books?class_id=${classId}`);
     const data = res.data || [];
     setBooks(data);
+    setSelectedBooks((prev) => prev.filter((id) => data.some((b: any) => Number(b.book_id) === id)));
     setMiyariBookIds(
       data.filter((book: any) => Boolean(book.is_miyari)).map((book: any) => Number(book.book_id)),
     );
@@ -373,6 +383,8 @@ export default function ClassBookSettingsPage() {
   }, [classId]);
 
   useEffect(() => {
+    setSelectedBooks([]);
+    setBooks([]);
     if (!classId) return;
     loadBooks();
   }, [classId, loadBooks]);
@@ -793,6 +805,64 @@ export default function ClassBookSettingsPage() {
 
   /* ================= UI ================= */
 
+  const toggleSelected = (kind: BulkKind, id: number) => {
+    const setter = kind === "division" ? setSelectedDivisions : kind === "class" ? setSelectedClasses : setSelectedBooks;
+    setter((prev) => prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]);
+  };
+
+  const bulkAction = (kind: BulkKind, action: "duplicate" | "delete") => {
+    if (bulkRunning.current || progressTask.isRunning) return;
+    const rows = kind === "division" ? divisions : kind === "class" ? classes : books;
+    const selected = kind === "division" ? selectedDivisions : kind === "class" ? selectedClasses : selectedBooks;
+    const setter = kind === "division" ? setSelectedDivisions : kind === "class" ? setSelectedClasses : setSelectedBooks;
+    const idKey = `${kind}_id`;
+    const nameKey = `${kind}_name_bn`;
+    const items = rows.filter((row) => selected.includes(Number(row[idKey])));
+    if (!items.length) return;
+    const title = action === "delete" ? t.deleteSelected : t.duplicateSelected;
+    const endpoint = kind === "division" ? "/madrasa-divisions" : kind === "class" ? "/madrasa-classes" : "/madrasa-books";
+    useConfirmStore.getState().show({
+      title,
+      message: `${t.bulkConfirm(num(items.length), kind === "division" ? t.divisions : kind === "class" ? t.classes : t.books)} ${action === "delete" ? t.bulkDeleteHint : t.bulkDuplicateHint}`,
+      confirmText: action === "delete" ? t.deleteAction : t.duplicateAction,
+      danger: action === "delete",
+      onConfirm: async () => {
+        if (bulkRunning.current) return;
+        bulkRunning.current = true;
+        const failed: number[] = [];
+        try {
+          await progressTask.run({
+            title,
+            steps: [...items.map((item) => item[nameKey]), getText(talimatSettingsProgressText).stepReload],
+            failedWhen: () => failed.length > 0,
+          }, async ({ advance }) => {
+            for (const item of items) {
+              try {
+                if (action === "delete") await api.delete(`${endpoint}/${item[idKey]}`);
+                else await api.post(`${endpoint}/${item[idKey]}/duplicate`);
+              } catch {
+                failed.push(Number(item[idKey]));
+              }
+              advance();
+            }
+            setter(failed);
+            if (kind === "division") await loadDivisions();
+            else if (kind === "class") await loadClasses();
+            else await loadBooks();
+            advance();
+          });
+          const completed = items.length - failed.length;
+          if (completed) toast("success", t.bulkCompleted(num(completed)));
+          if (failed.length) toast("error", t.bulkFailed(num(failed.length)));
+        } catch (err: any) {
+          toast("error", err?.response?.data?.message || cm.saveFailed);
+        } finally {
+          bulkRunning.current = false;
+        }
+      },
+    });
+  };
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
@@ -815,6 +885,9 @@ export default function ClassBookSettingsPage() {
           />
         }
       >
+        <BulkSelection ids={divisions.map((d) => Number(d.division_id))} selected={selectedDivisions}
+          onChange={setSelectedDivisions} onAction={(action) => bulkAction("division", action)}
+          disabled={progressTask.isRunning} formatCount={num} />
         <div className="flex flex-col gap-1.5">
           {showDivisionInput && (
             <AddPanel>
@@ -851,6 +924,11 @@ export default function ClassBookSettingsPage() {
                       : "border-gray-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"
                 } ${dragDivisionId === division.division_id ? "opacity-40" : ""}`}
               >
+                <input type="checkbox" className={selectionCheckboxClass}
+                  aria-label={t.selectItem(division.division_name_bn)}
+                  checked={selectedDivisions.includes(Number(division.division_id))}
+                  disabled={progressTask.isRunning}
+                  onChange={() => toggleSelected("division", Number(division.division_id))} />
                 {isEditingThis ? (
                   <>
                     <Input
@@ -951,6 +1029,9 @@ export default function ClassBookSettingsPage() {
           />
         }
       >
+        <BulkSelection ids={classes.map((c) => Number(c.class_id))} selected={selectedClasses}
+          onChange={setSelectedClasses} onAction={(action) => bulkAction("class", action)}
+          disabled={progressTask.isRunning} formatCount={num} />
         <div className="flex flex-col gap-1.5">
           {showClassInput && (
             <AddPanel>
@@ -987,6 +1068,11 @@ export default function ClassBookSettingsPage() {
                       : "border-gray-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"
                 } ${dragClassId === classItem.class_id ? "opacity-40" : ""}`}
               >
+                <input type="checkbox" className={selectionCheckboxClass}
+                  aria-label={t.selectItem(classItem.class_name_bn)}
+                  checked={selectedClasses.includes(Number(classItem.class_id))}
+                  disabled={progressTask.isRunning}
+                  onChange={() => toggleSelected("class", Number(classItem.class_id))} />
                 {isEditingThis ? (
                   <>
                     <Input
@@ -1089,6 +1175,9 @@ export default function ClassBookSettingsPage() {
           />
         }
       >
+        <BulkSelection ids={books.map((b) => Number(b.book_id))} selected={selectedBooks}
+          onChange={setSelectedBooks} onAction={(action) => bulkAction("book", action)}
+          disabled={progressTask.isRunning} formatCount={num} />
         <div className="flex flex-col gap-1.5">
           {showBookInput && (
             <AddPanel>
@@ -1163,6 +1252,11 @@ export default function ClassBookSettingsPage() {
                   {isEditingThis ? (
                     <div className="flex flex-col gap-2.5 p-2">
                       <div className="flex items-center gap-1">
+                        <input type="checkbox" className={selectionCheckboxClass}
+                          aria-label={t.selectItem(book.book_name_bn)}
+                          checked={selectedBooks.includes(Number(book.book_id))}
+                          disabled={progressTask.isRunning}
+                          onChange={() => toggleSelected("book", Number(book.book_id))} />
                         <Input
                           value={editingName}
                           onChange={(event) => setEditingName(event.target.value)}
@@ -1265,6 +1359,11 @@ export default function ClassBookSettingsPage() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-1 px-1.5 py-1.5">
+                      <input type="checkbox" className={selectionCheckboxClass}
+                        aria-label={t.selectItem(book.book_name_bn)}
+                        checked={selectedBooks.includes(Number(book.book_id))}
+                        disabled={progressTask.isRunning}
+                        onChange={() => toggleSelected("book", Number(book.book_id))} />
                       <span
                         onPointerDown={handleHandlePointerDown(book.book_id)}
                         onPointerMove={handleHandlePointerMove}

@@ -783,7 +783,6 @@ async function main() {
       { keyName: "routine", name: "Routine", nameBn: "ক্লাস/পরীক্ষার রুটিন", sortOrder: 5 },
       { keyName: "exam_rooms", name: "Exam Rooms", nameBn: "পরীক্ষার রুম/হল", sortOrder: 6 },
       { keyName: "exam_seat_plan", name: "Seat Plan", nameBn: "সিট প্ল্যান", sortOrder: 7 },
-      { keyName: "exam_attendance", name: "Exam Attendance", nameBn: "পরীক্ষার হাজিরা", sortOrder: 8 },
       { keyName: "promotion", name: "Promotion", nameBn: "শিক্ষার্থী প্রমোশন", sortOrder: 9 },
       { keyName: "settings", name: "Settings", nameBn: "সেটিং", sortOrder: 10 },
     ],

@@ -1,4 +1,4 @@
-﻿; Attendance Connector (ZKTeco K40 -> cloud) - Inno Setup 6 script (requires Inno Setup >= 6.3, Unicode).
+﻿; Attendance Connector (ZKTeco K40 -> cloud) - Inno Setup 6 script (requires Inno Setup >= 6.6, Unicode).
 ; This file is saved as UTF-8 WITH BOM so the Bangla strings survive compilation - keep the BOM when editing.
 ;
 ; Build (from attendance-connector\):
@@ -90,7 +90,7 @@ Type: filesandordirs; Name: "{app}\secrets"
 
 [Code]
 var
-  PairPage: TInputQueryPage;
+  PairPage: TInputQueryWizardPage;
   TestCheck: TNewCheckBox;
   UpgradeNote: TNewStaticText;
   HadConfig: Boolean;
@@ -251,10 +251,8 @@ var
 begin
   Result := False;
   if WizardSilent then Exit;
-  Form := CreateCustomForm;
+  Form := CreateCustomForm(520, 330, True, True);
   try
-    Form.ClientWidth := ScaleX(520);
-    Form.ClientHeight := ScaleY(330);
     Form.Caption := 'পেয়ারিং ব্যর্থ (Pairing failed)';
 
     Info := TNewStaticText.Create(Form);

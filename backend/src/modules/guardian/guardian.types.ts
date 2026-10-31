@@ -60,6 +60,7 @@ export interface GuardianMarksheetSubjectRow {
   mark: number | null;
   isAbsent: boolean;
   fullMarks: number | null;
+  passMark: number;
 }
 
 export interface GuardianMarksheetDetail {

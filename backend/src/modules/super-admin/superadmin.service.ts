@@ -1,4 +1,6 @@
 import { Prisma, WebsiteStatus } from "@prisma/client";
+import { buildDemoClassRoutines } from "./demo-class-routine";
+import { provisionWebsiteOnTx } from "../public-website/website-template.service";
 import { hashPassword } from "../../shared/utils/hash.util";
 import { buildPeriodExpr } from "../../shared/utils/period-expr.util";
 import { normalizeHost } from "../../shared/utils/host.util";
@@ -438,13 +440,18 @@ export class SuperAdminService {
        routineService.createExamRoutine) specifically to bypass those
        hooks. All rows land as DRAFT so nothing looks "published" to
        students/guardians until an admin reviews and publishes it. */
-    const routineSeedBooks = await this.repository.findBooksForRoutineSeedOnTx(tx, bookIds);
+    const routineSeedBooks = await this.repository.findBooksForRoutineSeedOnTx(tx, madrasaId);
     const booksByClassId = new Map<number, { subject: string; divisionId: number | null }[]>();
     for (const b of routineSeedBooks) {
       const list = booksByClassId.get(b.classId) ?? [];
       list.push({ subject: b.nameBn || b.name || "বিষয়", divisionId: b.class?.divisionId ?? null });
       booksByClassId.set(b.classId, list);
     }
+
+    await this.repository.createClassRoutinesOnTx(
+      tx,
+      buildDemoClassRoutines(madrasaId, [...booksByClassId.keys()], booksByClassId),
+    );
 
     const examIdByName = new Map(createdExams.map((e) => [e.name, e.id]));
     // Days from madrasa-creation date to that exam's first demo day - kept
@@ -485,6 +492,7 @@ export class SuperAdminService {
     }
 
     await this.repository.createExamRoutinesOnTx(tx, routineRows);
+    await provisionWebsiteOnTx(tx, madrasaId);
   }
 
   private async seedAndActivate(

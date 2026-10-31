@@ -60,7 +60,6 @@ import {
 import { useAuthStore } from "../../../store/authStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
-import { getTenantSlugFromPath } from "../../../utils/tenantSlug";
 import { getPublicSiteUrl } from "../../../utils/publicSiteUrl";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 
@@ -393,7 +392,7 @@ export default function AdminWebsiteSettingsPage() {
   const t = useText(websiteText);
   const c = useText(commonText);
   const user = useAuthStore((s) => s.user);
-  const slug = getTenantSlugFromPath();
+  const slug = useAuthStore((s) => s.madrasaSlug) || "";
   const toast = useToastStore((s) => s.show);
   const isSectionEnabled = useSectionTogglesStore((s) => s.isEnabled);
   const setSectionToggle = useSectionTogglesStore((s) => s.setToggle);

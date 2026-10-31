@@ -4,6 +4,15 @@
 // module/feature/permission catalog that tenants activate from.
 // ============================================================
 
+/// The editable starter website copied into each newly provisioned tenant.
+model PlatformWebsiteTemplate {
+  id        Int      @id @default(1)
+  content   Json
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("platform_website_templates")
+}
+
 model SuperAdmin {
   id           Int       @id @default(autoincrement())
   name         String    @db.VarChar(150)

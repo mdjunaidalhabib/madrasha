@@ -3,6 +3,15 @@ import { MISSING_TABLE_OR_COLUMN_CODES, REPORT_MISSING_TABLE_WARNING } from "./r
 import { OptionalQueryResult } from "./reports.types";
 import { examCandidateParticipationSql } from "../exam-candidate/exam-candidate.policy";
 
+// Raw subject pass mark: subject override, division override, tenant default.
+// Kept inside the subject aggregate so grading lookups do not duplicate rows.
+const SUBJECT_PASS_MARK_SQL = `COALESCE(mb.pass_mark,
+  (SELECT md.fail_mark FROM madrasa_divisions md
+   WHERE md.madrasa_id = s.madrasa_id AND md.division_id = s.division_id
+     AND md.deleted_at IS NULL LIMIT 1),
+  (SELECT NULLIF(fs.value, '')::int FROM settings fs
+   WHERE fs.madrasa_id = s.madrasa_id AND fs.name = 'fail_mark' LIMIT 1), 35)`;
+
 /** Optional narrowing filters accepted by roster-shaped queries (id cards,
  * admit cards) so document-templates.service.ts can generate for a single
  * class or a hand-picked set of students instead of always the whole
@@ -339,6 +348,7 @@ export class ReportsRepository {
               'subject_name', COALESCE(b.name_bn, b.name),
               'is_miyari', COALESCE(mb.is_miyari, false),
               'full_marks', COALESCE(mb.full_mark, 100),
+              'pass_mark', ${SUBJECT_PASS_MARK_SQL},
               'mark', m.mark,
               'is_absent', COALESCE(m.is_absent, false)
             )
@@ -861,6 +871,7 @@ export class ReportsRepository {
               'book_id', b.id,
               'subject_name', COALESCE(b.name_bn, b.name),
               'full_marks', COALESCE(mb.full_mark, 100),
+              'pass_mark', ${SUBJECT_PASS_MARK_SQL},
               'mark', m.mark,
               'is_absent', COALESCE(m.is_absent, false)
             )

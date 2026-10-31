@@ -32,7 +32,6 @@ export const ABSOLUTE_CHILD_PATHS: Record<string, string> = {
   routine: "routine",
   exam_rooms: "exam-operations/rooms",
   exam_seat_plan: "exam-operations/seat-plan",
-  exam_attendance: "exam-operations/attendance",
   promotion: "students/promotion",
   attendance_mark: "attendance/mark",
   attendance_devices: "attendance/devices",

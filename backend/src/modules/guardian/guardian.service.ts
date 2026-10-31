@@ -10,6 +10,7 @@ import { libraryService } from "../library/library.service";
 import { promotionRepository } from "../promotion/promotion.repository";
 import { routineRepository } from "../routine/routine.repository";
 import { resultPanelRepository } from "../ResultPanel/result-panel.repository";
+import { MadrasaGradingConfig } from "../ResultPanel/result-grading-config";
 import { guardianRepository, GuardianRepository } from "./guardian.repository";
 import {
   ACCOUNT_LOCKOUT_DURATION_MS,
@@ -192,12 +193,14 @@ export class GuardianService {
     const detail = await this.repository.findResultSummaryDetail(madrasaId, studentId, resultMasterId);
     if (!detail) throw new NotFoundError(t({ bn: "প্রকাশিত ফলাফল পাওয়া যায়নি", en: "Published result not found" }));
 
-    const [marks, subjects] = await Promise.all([
+    const [marks, subjects, failMark] = await Promise.all([
       this.repository.findMarksForResult(resultMasterId, studentId),
       resultPanelRepository.findActiveSubjectsForClass(madrasaId, detail.resultMaster.classId),
+      new MadrasaGradingConfig(resultPanelRepository, madrasaId).failMarkForClass(detail.resultMaster.classId),
     ]);
 
     const fullMarksByBookId = new Map(subjects.filter((s) => s.book).map((s) => [s.book!.id, s.fullMark]));
+    const passMarksByBookId = new Map(subjects.filter((s) => s.book).map((s) => [s.book!.id, s.passMark ?? failMark]));
 
     return {
       examName: detail.resultMaster.exam.name,
@@ -220,14 +223,14 @@ export class GuardianService {
         mark: m.isAbsent ? null : Number(m.mark),
         isAbsent: m.isAbsent,
         fullMarks: fullMarksByBookId.get(m.bookId) ?? null,
+        passMark: passMarksByBookId.get(m.bookId) ?? failMark,
       })),
     };
   }
 
   /** Exam-day schedule for the guardian's own child's current class - reuses
    * RoutineRepository.findExamRoutines (the same query the admin Routine
-   * module lists from) filtered to just that class, so this never exposes
-   * anything beyond what's already visible admin-side. */
+   * module lists from), restricted to active routines for that class. */
   async getChildExamRoutine(
     guardianId: number,
     madrasaId: number,
@@ -238,7 +241,7 @@ export class GuardianService {
     const classId = await this.repository.findStudentClassId(madrasaId, studentId);
     if (!classId) return [];
 
-    const rows = await routineRepository.findExamRoutines(madrasaId, undefined, classId);
+    const rows = await routineRepository.findExamRoutines(madrasaId, undefined, classId, true);
     return rows.map((row) => ({
       id: row.id,
       examName: row.exam.name,

@@ -13,10 +13,14 @@ type CardProps = {
   padding?: keyof typeof PADDING_CLASSES;
 };
 
-export default function Card({ children, className = "", padding = "md" }: CardProps) {
+export default function Card({
+  children,
+  className = "",
+  padding = "md",
+}: CardProps) {
   return (
     <div
-      className={`min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 ${PADDING_CLASSES[padding]} ${className}`}
+      className={`min-w-0 rounded-2xl border border-slate-200/90 bg-white shadow-[0_2px_8px_-4px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-900 ${PADDING_CLASSES[padding]} ${className}`}
     >
       {children}
     </div>
@@ -49,7 +53,9 @@ export function CardHeader({
         </p>
       )}
       {actions && (
-        <div className="flex shrink-0 items-center gap-2 sm:col-start-2 sm:row-start-1">{actions}</div>
+        <div className="flex shrink-0 items-center gap-2 sm:col-start-2 sm:row-start-1">
+          {actions}
+        </div>
       )}
     </div>
   );

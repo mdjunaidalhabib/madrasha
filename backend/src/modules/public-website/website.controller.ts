@@ -5,6 +5,22 @@ import { websiteService, resolveTenantId } from "./website.service";
 import { normalizeHost } from "../../shared/utils/host.util";
 import { t } from "../../shared/i18n";
 import { brandIconService } from "./brand-icon.service";
+import { getWebsiteTemplate, saveWebsiteTemplate, uploadWebsiteTemplateImage } from "./website-template.service";
+
+export const uploadDefaultWebsiteImage = async (req: Request, res: Response) => {
+  try { res.json({ data: await uploadWebsiteTemplateImage(req.body.image) }); }
+  catch (error) { respondError(res, error); }
+};
+
+export const getDefaultWebsiteTemplate = async (_req: Request, res: Response) => {
+  try { res.json({ data: await getWebsiteTemplate() }); }
+  catch (error) { respondError(res, error); }
+};
+
+export const updateDefaultWebsiteTemplate = async (req: Request, res: Response) => {
+  try { res.json({ data: await saveWebsiteTemplate(req.body) }); }
+  catch (error) { respondError(res, error); }
+};
 
 const respondError = (res: Response, error: unknown) => {
   if (error instanceof ApiError) {

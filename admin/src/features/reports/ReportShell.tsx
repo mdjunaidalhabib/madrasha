@@ -35,6 +35,7 @@ type ReportSubject = {
   book_id?: number | string;
   subject_name?: string;
   mark?: number | string | null;
+  is_absent?: boolean;
 };
 
 const getReportSubjects = (row: Record<string, any>): ReportSubject[] => {
@@ -752,7 +753,8 @@ const ReportShell = ({
       getReportSubjects(row).forEach((subject, index) => {
         const subjectId = String(subject.book_id ?? subject.subject_name ?? index);
         flattenedRow[`subject_${subjectId}`] =
-          subject.mark === null || subject.mark === undefined ? "" : subject.mark;
+          subject.is_absent ? getText(reportText).absentShort :
+            subject.mark === null || subject.mark === undefined ? "" : subject.mark;
       });
       return flattenedRow;
     });

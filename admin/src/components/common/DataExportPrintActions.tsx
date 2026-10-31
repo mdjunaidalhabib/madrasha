@@ -7,6 +7,7 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useText } from "@madrasha/shared-ui/src/i18n";
 import { commonUiText } from "./commonUi.text";
+import { getSubjectResult } from "@madrasha/shared-ui/src/utils/subjectResult";
 
 // CSS px per mm at 96 DPI (same constant as Report/pagination/pageGeometry's
 // MM_TO_CSS_PX - kept local here rather than importing across the
@@ -198,6 +199,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
     data.map((item) =>
       columns.map((col) => {
         const key = String(col.key);
+        if ((key === "total" || key === "average") && String(item.status || "").toUpperCase() === "ABSENT") return "-";
         const value = item[key];
         return value === null || value === undefined || value === ""
           ? ""
@@ -225,7 +227,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
   };
 
   const downloadExcel = async () => {
-    const XLSX = await import("xlsx");
+    const XLSX = await import("xlsx-js-style");
 
     const headerRow = columns.map((col) => col.header);
     const bodyRows = getRows();
@@ -255,6 +257,21 @@ const DataExportPrintActions = <T extends Record<string, any>>({
           alignment: { horizontal: "center", vertical: "center" },
           border: cellBorder,
         };
+        const key = String(columns[colIndex].key);
+        if (key.startsWith("subject_")) {
+          let subjects = data[rowIndex].subjects;
+          if (typeof subjects === "string") {
+            try { subjects = JSON.parse(subjects); } catch { subjects = []; }
+          }
+          const subject = Array.isArray(subjects) ? subjects.find((subject, index) =>
+            String(subject.book_id ?? subject.subject_name ?? index) === key.slice(8),
+          ) : undefined;
+          const result = getSubjectResult(subject);
+          if (result === "fail" || result === "absent") {
+            worksheet[cellRef].s.fill = { patternType: "solid", fgColor: { rgb: result === "fail" ? "FEE2E2" : "FEF3C7" } };
+            worksheet[cellRef].s.font = { bold: true, color: { rgb: result === "fail" ? "B91C1C" : "92400E" } };
+          }
+        }
       });
     });
 

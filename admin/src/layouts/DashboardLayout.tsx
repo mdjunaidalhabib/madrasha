@@ -6,7 +6,10 @@ import Topbar from "../components/topbar/Topbar";
 import LockScreen from "../components/lock/LockScreen";
 import RouteErrorBoundary from "@madrasha/shared-ui/src/components/ui/RouteErrorBoundary";
 import PageNavBar from "@madrasha/shared-ui/src/navigation/PageNavBar";
-import { useRefreshStore, useRegisterRefresher } from "@madrasha/shared-ui/src/navigation/refreshStore";
+import {
+  useRefreshStore,
+  useRegisterRefresher,
+} from "@madrasha/shared-ui/src/navigation/refreshStore";
 import { Calendar, Clock } from "lucide-react";
 
 import { clearGetCache } from "../services/api";
@@ -128,7 +131,7 @@ export default function DashboardLayout() {
       <div className="flex flex-col flex-1 min-w-0">
         <Topbar openSidebar={() => setMobileSidebar(true)} />
 
-        <main className="flex flex-1 flex-col overflow-y-auto px-4 pb-4 pt-2 text-slate-900 dark:text-slate-100 md:p-4">
+        <main className="flex flex-1 flex-col overflow-y-auto bg-gradient-to-br from-slate-50 via-slate-50 to-indigo-50/30 px-4 pb-4 pt-2 text-slate-900 dark:from-slate-950 dark:via-slate-950 dark:to-slate-950 dark:text-slate-100 md:px-6 md:pb-6 md:pt-4">
           <PageNavBar
             breadcrumbs={breadcrumbs}
             trailing={

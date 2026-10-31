@@ -43,7 +43,6 @@ const SessionPage = lazy(() => import("../features/session/SessionPage"));
 const ClassExamRoutinePage = lazy(() => import("../features/routine/ClassExamRoutinePage"));
 const ExamRoomsPage = lazy(() => import("../features/exam-operations/ExamRoomsPage"));
 const SeatPlanPage = lazy(() => import("../features/exam-operations/SeatPlanPage"));
-const ExamAttendancePage = lazy(() => import("../features/exam-operations/ExamAttendancePage"));
 const FeeDashboardPage = lazy(() => import("../features/fee/FeeDashboardPage"));
 const FeeStructurePage = lazy(() => import("../features/fee/FeeStructurePage"));
 const FeeCategorySettingsPage = lazy(() => import("../features/fee/FeeCategorySettingsPage"));
@@ -517,14 +516,6 @@ const madrasaAdminChildren = [
         <PermissionGuard permission={["exam.seat.read", "exam.seat.manage"]}>
           {withSuspense(<SeatPlanPage />)}
         </PermissionGuard>
-      </ModuleGuard>
-    ),
-  },
-  {
-    path: "exam-operations/attendance",
-    element: (
-      <ModuleGuard module="talimat">
-        <PermissionGuard permission="exam.attendance.read">{withSuspense(<ExamAttendancePage />)}</PermissionGuard>
       </ModuleGuard>
     ),
   },

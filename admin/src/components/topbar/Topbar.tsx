@@ -41,7 +41,7 @@ export default function Topbar({ openSidebar }: TopbarProps) {
     "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800";
 
   return (
-    <div className="w-full min-w-0 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+    <div className="z-20 w-full min-w-0 border-b border-slate-200/80 bg-white shadow-sm shadow-slate-900/[0.02] dark:border-slate-800 dark:bg-slate-900">
       {/* মোবাইল/ট্যাবলেট: উপরে লোগো-নাম-মেনু এক সারিতে, নিচে স্লিম অ্যাকশন বার */}
       <div className="md:hidden">
         <div className="flex items-center gap-2 px-3 py-2.5">
@@ -49,11 +49,7 @@ export default function Topbar({ openSidebar }: TopbarProps) {
           <div className="min-w-0 flex-1 break-words text-center text-lg font-bold leading-tight text-slate-800 dark:text-slate-100">
             {branding?.name}
           </div>
-          <button
-            onClick={openSidebar}
-            className={iconButtonClass}
-            aria-label={t.openMenu}
-          >
+          <button onClick={openSidebar} className={iconButtonClass} aria-label={t.openMenu}>
             <Menu size={17} />
           </button>
         </div>
@@ -73,16 +69,16 @@ export default function Topbar({ openSidebar }: TopbarProps) {
 
       {/* ডেস্কটপ: বাম পাশে লোগো+নাম (ঠিকানাসহ একই লাইনে), ডান পাশে অ্যাকশন -
           কোনো সেন্টারিং নেই, বাম থেকে সহজভাবে শুরু */}
-      <div className="hidden md:flex md:h-20 md:items-center md:gap-3 md:ps-32 md:pe-4">
+      <div className="hidden md:flex md:h-20 md:items-center md:gap-3 md:px-6">
         {logo}
         <div className="min-w-0 flex-1 truncate">
           {branding?.name && (
-            <span className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+            <span className="text-xl font-bold text-slate-800 dark:text-slate-100">
               {branding.name}
             </span>
           )}
           {branding?.address && (
-            <span className="ms-2 text-2xl font-bold text-slate-800 dark:text-slate-100">
+            <span className="ms-2 text-sm text-slate-500 dark:text-slate-400">
               {branding?.name && "• "}
               {branding.address}
             </span>

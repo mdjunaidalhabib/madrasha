@@ -7,6 +7,7 @@ import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { printCell, printMeritRank, printValue } from "../printFormat";
 import { useIsMadrasa, usePrintText } from "@madrasha/shared-ui/src/i18n";
 import { reportText, type ReportText } from "../report.text";
+import { getSubjectResult } from "@madrasha/shared-ui/src/utils/subjectResult";
 
 type SubjectMark = {
   book_id?: number | string;
@@ -102,11 +103,8 @@ const formatMark = (subject: SubjectMark, absentLabel: string) => {
 // below its pass mark (the backend resolves pass_mark = subject override ->
 // division fail mark -> madrasa fail mark, same rule as the marks-entry grid).
 const isSubjectFailed = (subject: SubjectMark) => {
-  if (subject.is_absent) return true;
-  const mark = subject.mark;
-  const passMark = subject.pass_mark;
-  if (mark === null || mark === undefined || mark === "" || passMark === null || passMark === undefined) return false;
-  return Number(mark) < Number(passMark);
+  const result = getSubjectResult(subject);
+  return result === "fail" || result === "absent";
 };
 
 const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId }: MarksheetListProps) => {
@@ -137,9 +135,10 @@ const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId
   // marks * 100, see result-panel.service.ts) - this row is labelled and
   // shown as গড় নম্বর (plain average) rather than a "শতকরা (%)" figure,
   // per this madrasa's preference, so no "%" suffix here.
-  const percentageValue = printCell(row, "average");
+  const isAbsent = String(row.status || "").toUpperCase() === "ABSENT";
+  const percentageValue = isAbsent ? "-" : printCell(row, "average");
   const summaryRows = [
-    { label: t.col.totalMarks, value: printCell(row, "total") },
+    { label: t.col.totalMarks, value: isAbsent ? "-" : printCell(row, "total") },
     { label: t.col.averageMark, value: percentageValue },
   ];
 

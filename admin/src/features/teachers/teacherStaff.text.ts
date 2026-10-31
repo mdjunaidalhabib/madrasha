@@ -68,9 +68,11 @@ export const teacherStaffText = defineText({
 
     // Profile pages
     deleteTeacherTitle: "{{teacher}} মুছবেন?",
-    deleteTeacherMessage: "এই {{teacher}}কে ট্র্যাশে সরাতে চান? পরে প্রয়োজনে ট্র্যাশ থেকে ফিরিয়ে আনা যাবে।",
+    deleteTeacherMessage:
+      "এই {{teacher}}কে ট্র্যাশে সরাতে চান? পরে প্রয়োজনে ট্র্যাশ থেকে ফিরিয়ে আনা যাবে।",
     deleteStaffTitle: "স্টাফ মুছবেন?",
-    deleteStaffMessage: "এই স্টাফকে ট্র্যাশে সরাতে চান? পরে প্রয়োজনে ট্র্যাশ থেকে ফিরিয়ে আনা যাবে।",
+    deleteStaffMessage:
+      "এই স্টাফকে ট্র্যাশে সরাতে চান? পরে প্রয়োজনে ট্র্যাশ থেকে ফিরিয়ে আনা যাবে।",
     moveToTrash: "ট্র্যাশে সরান",
     movedToTrash: "🗑️ ট্র্যাশে সরানো হয়েছে",
     deleteFailed: "❌ মুছে ফেলা যায়নি",
@@ -142,6 +144,8 @@ export const teacherStaffText = defineText({
     bulkUploadFailed: "বাল্ক আপলোড ব্যর্থ ❌",
     bulkTeacherUpload: "বাল্ক {{teacher}} আপলোড",
     bulkTeacherUploadHint: "Excel ফাইল আপলোড করে একসাথে একাধিক {{teacher}} যোগ করুন",
+    stepTemplate: "টেমপ্লেট ডাউনলোড করে তথ্য পূরণ করুন",
+    stepUpload: "পূরণ করা ফাইলটি আপলোড করুন",
     uploadExcelSheet: "Excel শিট আপলোড করুন",
     requiredFieldsHint: "টেমপ্লেটে আবশ্যক ফিল্ডগুলো লাল রঙে ও * চিহ্নসহ থাকবে",
     genderHint: (male: string, female: string) => `লিঙ্গ: 1 = ${male}, 2 = ${female}`,
@@ -178,7 +182,8 @@ export const teacherStaffText = defineText({
     statusUnchanged: "পরিবর্তন নেই",
     statusSkipped: "বাদ পড়েছে",
     exportUpload: "এক্সেল এক্সপোর্ট / আপলোড",
-    exportHint: (n: string) => `বর্তমান ফিল্টার অনুযায়ী তালিকাভুক্ত ${n} জন {{teacher}}ের তথ্য এক্সপোর্ট হবে।`,
+    exportHint: (n: string) =>
+      `বর্তমান ফিল্টার অনুযায়ী তালিকাভুক্ত ${n} জন {{teacher}}ের তথ্য এক্সপোর্ট হবে।`,
     lockedColsHint: "ধূসর কলাম (id, registration_no) লক করা - সম্পাদনা করা যাবে না।",
     exportExcel: "এক্সেল এক্সপোর্ট করুন",
     uploadUpdatedExcel: "আপডেট করা Excel আপলোড করুন",
@@ -269,9 +274,11 @@ export const teacherStaffText = defineText({
     loadTeachersFailed: "Could not load the {{teacher}} list",
     loadStaffFailed: "Could not load the staff list",
     deleteTeacherTitle: "Delete {{teacher}}?",
-    deleteTeacherMessage: "Move this {{teacher}} to the trash? You can restore them from the trash later if needed.",
+    deleteTeacherMessage:
+      "Move this {{teacher}} to the trash? You can restore them from the trash later if needed.",
     deleteStaffTitle: "Delete staff member?",
-    deleteStaffMessage: "Move this staff member to the trash? You can restore them from the trash later if needed.",
+    deleteStaffMessage:
+      "Move this staff member to the trash? You can restore them from the trash later if needed.",
     moveToTrash: "Move to trash",
     movedToTrash: "🗑️ Moved to trash",
     deleteFailed: "❌ Could not delete",
@@ -332,10 +339,13 @@ export const teacherStaffText = defineText({
     excelUploadFirst: "Please upload an Excel file",
     rowNoName: (row) => `Row ${row}: {{teacher}} name is missing`,
     rowNoDivision: (row) => `Row ${row}: academic_division is missing`,
-    bulkUploadSuccess: (inserted, updated) => `Bulk upload successful ✅ New: ${inserted} | Updated: ${updated}`,
+    bulkUploadSuccess: (inserted, updated) =>
+      `Bulk upload successful ✅ New: ${inserted} | Updated: ${updated}`,
     bulkUploadFailed: "Bulk upload failed ❌",
     bulkTeacherUpload: "Bulk {{teacher}} Upload",
     bulkTeacherUploadHint: "Upload an Excel file to add many {{teacher}}s at once",
+    stepTemplate: "Download the template and fill it in",
+    stepUpload: "Upload the filled-in file",
     uploadExcelSheet: "Upload Excel Sheet",
     requiredFieldsHint: "Required fields are marked in red with * in the template",
     genderHint: (male, female) => `Gender: 1 = ${male}, 2 = ${female}`,

@@ -7,6 +7,7 @@ import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { printCell, printMeritRank, printValue } from "../printFormat";
 import { useIsMadrasa, usePrintText } from "@madrasha/shared-ui/src/i18n";
 import { reportText, type ReportText } from "../report.text";
+import { getSubjectResult } from "@madrasha/shared-ui/src/utils/subjectResult";
 
 type GradeItem = {
   id: string | number;
@@ -542,10 +543,7 @@ const AcademicResultPrint = ({
                     const subject = column.subjectKey
                       ? getSubjects(row).find((item, index) => getSubjectKey(item, index) === column.subjectKey)
                       : undefined;
-                    const subjectFailed = subject && !subject.is_absent &&
-                      subject.mark != null && subject.mark !== "" &&
-                      subject.pass_mark != null && subject.pass_mark !== "" &&
-                      Number(subject.mark) < Number(subject.pass_mark);
+                    const subjectFailed = getSubjectResult(subject) === "fail";
                     const columnClass = [
                       subjectFailed ? "academic-result-fail-cell" : "",
                       column.key === "student_name" || column.key === "father_name"

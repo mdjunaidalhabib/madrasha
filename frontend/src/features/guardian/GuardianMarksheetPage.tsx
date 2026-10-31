@@ -9,6 +9,7 @@ import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
 import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { formatDate, localizeDigits, usePrintLang, usePrintText, useText, type Lang, useIsMadrasa } from "@madrasha/shared-ui/src/i18n";
 import { guardianText } from "./guardian.text";
+import { getSubjectResult } from "@madrasha/shared-ui/src/utils/subjectResult";
 
 const formatDob = (value: unknown, lang: Lang) => {
   if (!value) return "—";
@@ -170,7 +171,9 @@ export default function GuardianMarksheetPage() {
                   <tr key={subject.bookId ?? index}>
                     <td className="border border-black px-2 py-1.5 text-center">{n(index + 1)}</td>
                     <td className="border border-black px-3 py-1.5">{subject.subjectName || "—"}</td>
-                    <td className="border border-black px-3 py-1.5 text-center font-semibold">
+                    <td className="border border-black px-3 py-1.5 text-center font-semibold"
+                      style={getSubjectResult({ mark: subject.mark, is_absent: subject.isAbsent, pass_mark: subject.passMark }) === "fail"
+                        ? { backgroundColor: "#fee2e2", color: "#b91c1c", printColorAdjust: "exact" } : undefined}>
                       {subject.isAbsent ? p.absentShort : n(subject.mark ?? "—")}
                     </td>
                     <td className="border border-black px-3 py-1.5 text-center">
@@ -183,7 +186,7 @@ export default function GuardianMarksheetPage() {
                     {p.totalMarks}
                   </td>
                   <td colSpan={2} className="border border-black px-3 py-1.5 text-center font-bold">
-                    {n(data.total)}
+                    {isAbsent ? "-" : n(data.total)}
                   </td>
                 </tr>
                 <tr className="bg-slate-50">
@@ -191,7 +194,7 @@ export default function GuardianMarksheetPage() {
                     {p.averageMarks}
                   </td>
                   <td colSpan={2} className="border border-black px-3 py-1.5 text-center font-bold">
-                    {n(data.average)}
+                    {isAbsent ? "-" : n(data.average)}
                   </td>
                 </tr>
               </tbody>

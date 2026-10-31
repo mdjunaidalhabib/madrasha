@@ -45,6 +45,7 @@ const COLUMN_WEIGHTS: Record<string, number> = {
 const getColumnWeight = (key: string) => COLUMN_WEIGHTS[key] || 1;
 
 const formatCellValue = (row: Record<string, any>, key: string) => {
+  if ((key === "total" || key === "average") && String(row.status || "").toUpperCase() === "ABSENT") return "-";
   if (key === "average") {
     const value = row?.average;
     if (value === null || value === undefined || value === "") return "—";

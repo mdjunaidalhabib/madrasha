@@ -1,0 +1,2 @@
+369e34b80ca46f114d6cf2ac9c2f34b078265e28f99a3e064ad5b387816268de  AttendanceConnectorSetup.exe
+16319a340df1e8b69cb18c35fffda9fc77427ff3e2ebbbdbc8f61db6127ed44f  connector.exe

@@ -1,4 +1,5 @@
 import { prisma } from "../../shared/database/prisma";
+import type { Prisma } from "@prisma/client";
 import { tenantClassNameSelect, withTenantClassName, tenantDivisionNameSelect, tenantDivisionName, linkName } from "../../shared/utils/tenant-name.util";
 
 export class RoutineRepository {
@@ -17,6 +18,11 @@ export class RoutineRepository {
     return prisma.classRoutine.create({ data: { ...data, madrasaId } as any });
   }
 
+  createClassRoutinePeriods(rows: Prisma.ClassRoutineCreateManyInput[]) {
+    // One atomic insert prevents a weekly schedule being only partly saved.
+    return prisma.classRoutine.createMany({ data: rows });
+  }
+
   updateClassRoutine(id: number, madrasaId: number, data: Record<string, unknown>) {
     return prisma.classRoutine.updateMany({ where: { id, madrasaId }, data });
   }
@@ -27,13 +33,14 @@ export class RoutineRepository {
 
   /* ================= EXAM ROUTINE ================= */
 
-  async findExamRoutines(madrasaId: number, examId?: number, classId?: number) {
+  async findExamRoutines(madrasaId: number, examId?: number, classId?: number, activeOnly = false) {
     const rows = await prisma.examRoutine.findMany({
       where: {
         madrasaId,
         exam: { deletedAt: null },
         ...(examId ? { examId } : {}),
         ...(classId ? { classId } : {}),
+        ...(activeOnly ? { status: "PUBLISHED" as const } : {}),
       },
       orderBy: [{ examDate: "asc" }, { startTime: "asc" }],
       include: {
@@ -123,7 +130,8 @@ export class RoutineRepository {
       }));
   }
 
-  /** Every active exam x active class combination, alongside how many exam
+  /** Every non-deleted exam x active class combination, including dormant
+   * demo exams so admins can prepare them before activation, alongside how many exam
    * routine entries already exist and their combined status - the same
    * "cross-join + left-join" idea as the Result panel's overview, so the
    * routine builder page can show class-by-class progress on load. */
@@ -135,12 +143,12 @@ export class RoutineRepository {
         orderBy: [{ sortOrder: "asc" }],
       }),
       prisma.exam.findMany({
-        where: { madrasaId, isActive: true },
+        where: { madrasaId, deletedAt: null },
         orderBy: [{ sortOrder: "asc" }],
         select: { id: true, name: true, year: true },
       }),
       prisma.examRoutine.findMany({
-        where: { madrasaId, exam: { madrasaId, isActive: true } },
+        where: { madrasaId, exam: { madrasaId, deletedAt: null } },
         select: { examId: true, classId: true, status: true },
       }),
     ]);

@@ -12,6 +12,9 @@ import {
   getPublicBrandIcon,
   getPublicWebsite,
   getWebsiteSettings,
+  getDefaultWebsiteTemplate,
+  updateDefaultWebsiteTemplate,
+  uploadDefaultWebsiteImage,
   resolveDomain,
   deleteWebsiteVideo,
   saveWebsiteCommitteeMember,
@@ -55,5 +58,8 @@ router.delete("/admin/committee/:id", ...adminGuard, deleteWebsiteCommitteeMembe
 router.patch("/admin/admissions/:id/status", ...adminGuard, updateAdmissionApplicationStatus);
 router.delete("/admin/admissions/:id", ...adminGuard, deleteAdmissionApplication);
 router.patch("/super/madrasas/:id/status", superAdminMiddleware, updateWebsiteStatusBySuperAdmin);
+router.get("/super/default-template", superAdminMiddleware, getDefaultWebsiteTemplate);
+router.put("/super/default-template", superAdminMiddleware, updateDefaultWebsiteTemplate);
+router.post("/super/default-template/image", superAdminMiddleware, uploadDefaultWebsiteImage);
 
 export default router;

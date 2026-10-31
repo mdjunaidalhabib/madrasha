@@ -3,11 +3,14 @@ import { ButtonHTMLAttributes } from "react";
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 
 const styles: Record<Variant, string> = {
-  primary: "bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-500",
+  primary:
+    "border border-transparent bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 dark:hover:bg-indigo-500",
   secondary:
     "bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700",
-  danger: "bg-rose-600 text-white shadow-sm shadow-rose-600/20 hover:bg-rose-500",
-  ghost: "bg-transparent hover:bg-slate-100 text-slate-800 dark:text-slate-200 dark:hover:bg-slate-800",
+  danger:
+    "border border-transparent bg-rose-600 text-white shadow-sm shadow-rose-600/20 hover:bg-rose-700",
+  ghost:
+    "border border-transparent bg-transparent hover:bg-slate-100 text-slate-700 dark:text-slate-200 dark:hover:bg-slate-800",
 };
 
 export default function Button({
@@ -21,8 +24,8 @@ export default function Button({
       {...props}
       disabled={disabled}
       className={[
-        "inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition",
-        "disabled:opacity-60 disabled:cursor-not-allowed",
+        "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors duration-150",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed",
         styles[variant],
         className,
       ].join(" ")}

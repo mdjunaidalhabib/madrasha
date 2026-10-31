@@ -3,6 +3,17 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 /** UI text for the {{academic}} settings pages. */
 export const talimatSettingsText = defineText({
   bn: {
+    selectAll: "সব নির্বাচন",
+    clearSelection: "নির্বাচন বাতিল",
+    selectedCount: (n: string) => `${n}টি নির্বাচিত`,
+    selectItem: (name: string) => `${name} নির্বাচন করুন`,
+    duplicateSelected: "নির্বাচিতগুলো ডুপ্লিকেট করুন",
+    deleteSelected: "নির্বাচিতগুলো ডিলিট করুন",
+    bulkConfirm: (n: string, label: string) => `${n}টি নির্বাচিত ${label}। চালিয়ে যাবেন?`,
+    bulkDuplicateHint: "{{division}} বা {{class}} ডুপ্লিকেট করলে এর অধীনের {{class}} ও {{subject}}ও কপি হবে।",
+    bulkDeleteHint: "{{division}} বা {{class}} ডিলিট করলে এর অধীনের তথ্যেও প্রভাব পড়বে। বিদ্যমান ডিলিটের নিয়ম প্রযোজ্য হবে।",
+    bulkCompleted: (n: string) => `${n}টি আইটেমের কাজ সম্পন্ন হয়েছে`,
+    bulkFailed: (n: string) => `${n}টি আইটেমের কাজ সম্পন্ন হয়নি। সেগুলো নির্বাচিত রাখা হয়েছে।`,
     // layout
     navClassBook: "{{division}} {{class}} {{subject}}",
     navExam: "পরীক্ষা",
@@ -110,6 +121,17 @@ export const talimatSettingsText = defineText({
     selectClassFirst: "আগে একটি {{class}} বেছে নিন",
   },
   en: {
+    selectAll: "Select all",
+    clearSelection: "Clear selection",
+    selectedCount: (n) => `${n} selected`,
+    selectItem: (name) => `Select ${name}`,
+    duplicateSelected: "Duplicate selected",
+    deleteSelected: "Delete selected",
+    bulkConfirm: (n, label) => `${label}: ${n} selected items. Continue?`,
+    bulkDuplicateHint: "Duplicating a {{division}} or {{class}} also copies its {{class}}es and {{subject}}s.",
+    bulkDeleteHint: "Deleting a {{division}} or {{class}} also affects its contents. Existing deletion rules apply.",
+    bulkCompleted: (n) => `Completed for ${n} items`,
+    bulkFailed: (n) => `Could not complete ${n} items. They remain selected.`,
     navClassBook: "{{division}}, {{class}} & {{subject}}",
     navExam: "Exams",
     navGrade: "Grading System",
