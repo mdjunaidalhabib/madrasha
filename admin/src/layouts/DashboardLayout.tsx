@@ -1,3 +1,5 @@
+import PlanAccessBoundary from "../components/plans/PlanAccessBoundary";
+import PlanRenewalBanner from "../components/plans/PlanRenewalBanner";
 import { Outlet, useLocation } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
 
@@ -15,10 +17,8 @@ import { Calendar, Clock } from "lucide-react";
 import { clearGetCache } from "../services/api";
 import { useBrandingStore } from "../store/brandingStore";
 import { loadSidebar } from "../services/sidebarApi";
-import { getMyPlan } from "../services/planApi";
 import { getMyProfile } from "../services/profileApi";
 import { useSidebarStore } from "../store/sidebarStore";
-import { usePlanStore } from "../store/planStore";
 import { useAuthStore } from "../store/authStore";
 import { useAdminBreadcrumbs } from "../components/sidebar/useAdminBreadcrumbs";
 import { useNowLabels } from "../hooks/useNowLabels";
@@ -26,8 +26,11 @@ import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useLanguageStore } from "@madrasha/shared-ui/src/i18n";
 
 export default function DashboardLayout() {
+  return <PlanAccessBoundary><DashboardShell /></PlanAccessBoundary>;
+}
+
+function DashboardShell() {
   const setItems = useSidebarStore((s) => s.setItems);
-  const setPlan = usePlanStore((s) => s.setPlan);
   const setAccess = useAuthStore((s) => s.setAccess);
   const updateUser = useAuthStore((s) => s.updateUser);
   const [mobileSidebar, setMobileSidebar] = useState(false);
@@ -51,15 +54,6 @@ export default function DashboardLayout() {
       setItems([]);
     }
   }, [setItems]);
-
-  const loadPlanData = useCallback(async () => {
-    try {
-      const data = await getMyPlan();
-      setPlan(data);
-    } catch (err) {
-      logger.error("Plan load failed:", err);
-    }
-  }, [setPlan]);
 
   // Re-syncs permissions/modules against the backend on every app load, not
   // just at login - so a sidebar module split (see the ফি ব্যবস্থাপনা split)
@@ -87,10 +81,6 @@ export default function DashboardLayout() {
   }, [loadSidebarData]);
 
   useEffect(() => {
-    void loadPlanData();
-  }, [loadPlanData]);
-
-  useEffect(() => {
     void loadAccessData();
   }, [loadAccessData]);
 
@@ -100,7 +90,7 @@ export default function DashboardLayout() {
   const fetchBranding = useBrandingStore((s) => s.fetchBranding);
   useRegisterRefresher(() => {
     clearGetCache();
-    return Promise.all([loadSidebarData(), loadPlanData(), loadAccessData(), fetchBranding(true)]);
+    return Promise.all([loadSidebarData(), loadAccessData(), fetchBranding(true)]);
   });
   const refreshKey = useRefreshStore((s) => s.refreshKey);
 
@@ -149,7 +139,10 @@ export default function DashboardLayout() {
               ছাত্র তালিকা) main-এর প্রকৃত খালি জায়গা জানতে পারবে না। */}
           <div className="flex min-h-0 flex-1 flex-col">
             <RouteErrorBoundary key={`${location.pathname}:${refreshKey}`}>
-              <Outlet />
+              <>
+                {location.pathname === "/dashboard" && <PlanRenewalBanner />}
+                <Outlet />
+              </>
             </RouteErrorBoundary>
           </div>
         </main>

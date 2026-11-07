@@ -3,6 +3,8 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 /** Topbar, plan badge, profile menu, lock screen, 404/unauthorized pages. */
 export const shellText = defineText({
   bn: {
+    active: "সক্রিয়",
+    overLimit: "ছাত্রসীমা অতিক্রম করেছে",
     expired: "মেয়াদ শেষ",
     endsToday: "আজই শেষ",
     daysLeft: (n: string) => `${n} দিন বাকি`,
@@ -29,6 +31,8 @@ export const shellText = defineText({
     accessRestrictedBody: "এই মডিউল ব্যবহারের অনুমতি আপনার অ্যাকাউন্টে নেই।",
   },
   en: {
+    active: "Active",
+    overLimit: "Over the student limit",
     expired: "Expired",
     endsToday: "Ends today",
     daysLeft: (n) => `${n} days left`,

@@ -563,7 +563,7 @@ const measureAndSplitRecord = (
   let remainder = fullBodyText;
   let isFirst = true;
 
-  while (true) {
+  for (;;) {
     const pageBudgetPx = isFirst ? firstPageBudgetPx - headingHeightPx : continuationBudgetPx;
     const budgetWithFooterPx = pageBudgetPx - footerReservePx;
 

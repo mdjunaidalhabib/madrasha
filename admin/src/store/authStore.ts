@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { usePlanStore } from "./planStore";
 import { persist } from "zustand/middleware";
 import { useBrandingStore } from "./brandingStore";
 import { useIdCardDesignStore } from "./idCardDesignStore";
@@ -61,6 +62,7 @@ export const useAuthStore = create<AuthState>()(
       madrasaSlug: null,
 
       setAuth: (data) => {
+        usePlanStore.getState().reset();
         useLanguageStore.getState().setInstitution(data.institution);
         set({
           token: data.token,
@@ -91,6 +93,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        usePlanStore.getState().reset();
         set({ token: null, user: null, permissions: [], modules: [], madrasaSlug: null });
         // এই "fetch-once" স্টোরগুলোর `loaded` flag রিসেট না করলে SPA
         // নেভিগেশনে (ফুল রিফ্রেশ ছাড়া) পরের মাদরাসায় লগইন করলেও এরা আগের

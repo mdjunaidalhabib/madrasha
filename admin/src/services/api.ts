@@ -2,6 +2,7 @@ import axios, { type AxiosRequestConfig, type AxiosResponse } from "axios";
 import { attachLanguageHeader, getLang, getText, localizeDigits } from "@madrasha/shared-ui/src/i18n";
 import { servicesText } from "./services.text";
 import { useAuthStore } from "../store/authStore";
+import { usePlanStore } from "../store/planStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 
 import { API_BASE_URL } from "@madrasha/shared-ui/src/services/apiConfig";
@@ -147,6 +148,21 @@ api.interceptors.response.use(
     const status = err?.response?.status;
     const originalRequest = err?.config;
     const requestUrl = String(originalRequest?.url || "");
+    // A subscription lock does not revoke authentication. Keep the valid tenant
+    // session for the plan-only screen; 401/410 still use normal logout below.
+    const currentAuth = useAuthStore.getState();
+    const belongsToSession = currentAuth.token &&
+      originalRequest?.headers?.Authorization === `Bearer ${currentAuth.token}` &&
+      originalRequest?.headers?.["X-Madrasa-Slug"] === currentAuth.madrasaSlug;
+    if (status === 423 && (
+      err.response?.data?.code === "SUBSCRIPTION_EXPIRED" || err.response?.data?.code === "SUBSCRIPTION_NONE"
+    )) {
+      if (belongsToSession) {
+        clearGetCache();
+        usePlanStore.getState().setBlock(err.response.data);
+      }
+      return Promise.reject(err);
+    }
     const canRetryWithRefresh =
       status === 401 &&
       originalRequest &&
