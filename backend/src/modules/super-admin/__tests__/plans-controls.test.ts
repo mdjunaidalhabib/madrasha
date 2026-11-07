@@ -9,6 +9,13 @@ import { logActivity } from "../../../shared/utils/activity.util";
 import { PLAN_SEEDS } from "../../../../prisma/data/plans.seed";
 
 describe("super-admin plan controls", () => {
+  it("reads reset defaults from the seed catalogue and leaves custom plans alone", async () => {
+    const repo = { findActiveById: vi.fn(async () => ({ name: "Plus" })) };
+    const service = new PlansService(repo as any);
+    expect(await service.getDefaults(4)).toEqual(PLAN_SEEDS[3]);
+    repo.findActiveById.mockResolvedValue({ name: "Custom" });
+    expect(await service.getDefaults(99)).toBeNull();
+  });
   it.each([
     { price: -1 },
     { renewalPrice: 6000 },

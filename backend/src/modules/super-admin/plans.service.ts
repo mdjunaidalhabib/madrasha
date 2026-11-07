@@ -1,4 +1,5 @@
 import { parsePlanFields } from "./plans.validation";
+import { PLAN_SEEDS } from "../../shared/subscription/plan-defaults";
 import { logActivity } from "../../shared/utils/activity.util";
 import { Prisma } from "@prisma/client";
 import { BadRequestError } from "../../shared/errors";
@@ -44,6 +45,12 @@ export class PlansService {
 
   listTrash() {
     return this.repository.findTrashed();
+  }
+
+  async getDefaults(id: number) {
+    const plan = await this.repository.findActiveById(id);
+    if (!plan) throw new PlanNotFoundError(t({ bn: "প্ল্যান পাওয়া যায়নি।", en: "Plan not found." }));
+    return PLAN_SEEDS.find((row) => row.name === plan.name) ?? null;
   }
 
   async createPlan(dto: CreatePlanRequestDto, actor: number | null = null) {

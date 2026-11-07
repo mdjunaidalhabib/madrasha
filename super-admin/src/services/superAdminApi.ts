@@ -1,3 +1,4 @@
+import type { PlanDisplayFields } from "./subscriptionApi";
 import api, { cachedGet } from "./adminApi";
 import type { InstitutionType, Lang } from "@madrasha/shared-ui/src/i18n";
 
@@ -56,7 +57,7 @@ export async function listTrashPlans() {
 /** Per-বিভাগ student registration-number block size for each class. */
 export type PlanRegBlockSizePayload = { division_id: number; block_size: number };
 
-export async function createPlan(payload: {
+export async function createPlan(payload: Partial<PlanDisplayFields> & {
   name: string;
   student_limit: number;
   user_limit: number;
@@ -71,7 +72,7 @@ export async function createPlan(payload: {
 
 export async function updatePlan(
   planId: number,
-  payload: {
+  payload: Partial<PlanDisplayFields> & {
     name: string;
     student_limit: number;
     user_limit: number;

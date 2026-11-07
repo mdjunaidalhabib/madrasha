@@ -236,7 +236,7 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
       if (!plan) return;
 
       setStudentLimit(plan.studentLimit);
-      setUserLimit(plan.userLimit);
+      setUserLimit(Number(plan.userLimit ?? 0));
       setDurationDays(plan.durationDays);
     },
     [plans]

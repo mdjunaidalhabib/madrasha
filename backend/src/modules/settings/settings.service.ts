@@ -1080,6 +1080,7 @@ export class SettingsService {
 
     return {
       plan_name: subscription?.plan?.name ?? null,
+      subscription_id: subscription?.id ?? null,
       price: subscription?.plan?.price !== undefined && subscription?.plan?.price !== null
         ? Number(subscription.plan.price)
         : null,
@@ -1099,6 +1100,7 @@ export class SettingsService {
       retention_notice: retentionNotice(),
       renewal_contact: { phone_display: contact.phone_display, phone_intl: contact.phone_intl, email: contact.email },
       refund: {
+        amount: subscription?.pricePaid == null ? (subscription?.payments ?? []).reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0) : Number(subscription.pricePaid),
         eligible: !!(subscription?.startDate && subscription.isActive && !subscription.cancelledAt && !subscription.refundedAt && firstPurchase && isRefundEligible({ startDate: subscription.startDate, now, cycle: subscription.cycle })),
         until: subscription?.startDate && firstPurchase && subscription.cycle === "FIRST" ? new Date(+subscription.startDate + REFUND_DAYS * 86400000) : null,
       },

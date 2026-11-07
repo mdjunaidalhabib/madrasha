@@ -145,6 +145,7 @@ export class SettingsRepository {
       orderBy: { id: "desc" },
       select: {
         id: true, isActive: true, pricePaid: true, cancelledAt: true, refundedAt: true,
+        payments: { where: { status: "paid" }, select: { amount: true } },
         cycle: true,
         startDate: true,
         endDate: true,

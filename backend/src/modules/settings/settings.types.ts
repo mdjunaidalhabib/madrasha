@@ -100,6 +100,7 @@ export interface BookLabelDesignData {
 }
 
 export interface MyPlanData {
+  subscription_id: number | null;
   over_limit: (ReturnType<typeof import("../../shared/subscription/subscription-pricing").recommendOverLimitAction> & {
     extra_students: number; extra_charge: number;
     upgrade_to: { plan_name: string; charge: number } | null; recommended: "EXTRA" | "UPGRADE";
@@ -113,7 +114,7 @@ export interface MyPlanData {
   retention_warning_days: number;
   retention_notice: string;
   renewal_contact: { phone_display: string; phone_intl: string; email: string };
-  refund: { eligible: boolean; until: Date | null };
+  refund: { eligible: boolean; until: Date | null; amount: number };
   custom_domain: { domain: string; end_date: Date; is_active: boolean } | null;
   payments: { amount: number | null; method: string | null; status: string | null; date: Date }[];
   includes: { bn: string; en: string }[];

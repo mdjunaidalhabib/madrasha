@@ -117,8 +117,9 @@ describe("GET /settings/plan", () => {
       next_renewal_price: 5500,
       days_since_expiry: null,
       retention_warning_days: 60,
+      subscription_id: 7,
       renewal_contact: { phone_intl: "880123", email: "support@example.test" },
-      refund: { eligible: true },
+      refund: { eligible: true, amount: 10000 },
       custom_domain: { domain: "school7.com", is_active: true },
       over_limit: {
         extra_students: 150,
@@ -146,6 +147,16 @@ describe("GET /settings/plan", () => {
     expect((await request(8, "7")).status).toBe(401);
     expect((await request(7, "guardian")).status).toBe(401);
     expect((await fetch(base + "/plan", { headers: { "x-madrasa-slug": "7" } })).status).toBe(401);
+  });
+
+  it("quotes the same refund amount as cancellation for a legacy subscription without pricePaid", async () => {
+    const current = await db.madrasaSubscription.findFirst({ where: { madrasaId: 7 }, orderBy: { id: "desc" } });
+    db.madrasaSubscription.findFirst.mockImplementation(async ({ where, orderBy }) => orderBy?.id === "asc" ? { id: where.madrasaId } : {
+      ...current, pricePaid: null, payments: [{ amount: 3000 }, { amount: 2000 }],
+    });
+    const { data } = await (await request(7)).json() as any;
+    expect(data.refund).toMatchObject({ eligible: true, amount: 5000 });
+    expect(data.payments[0].amount).toBe(700);
   });
   it("lets an expired tenant see only the authenticated plan route, with the retention notice", async () => {
     db.madrasaSubscription.findFirst.mockImplementation(async ({ where, orderBy }) =>

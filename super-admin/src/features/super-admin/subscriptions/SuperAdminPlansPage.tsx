@@ -1,3 +1,7 @@
+import PlanCard from "@madrasha/shared-ui/src/components/plans/PlanCard";
+import PlanEditorFields, { displayDraft, displayPayload, PlanVisibilityControls, type PlanDisplayDraft } from "./PlanEditorFields";
+import { getPlanDefaults, updatePlanDisplay, type PlanDisplayFields, type PlanDefaults } from "../../../services/subscriptionApi";
+import { planToolsText } from "./plan-tools.text";
 import { useEffect, useMemo, useState } from "react";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import ConfirmModal from "@madrasha/shared-ui/src/components/ui/ConfirmModal";
@@ -27,7 +31,7 @@ import {
 } from "@madrasha/shared-ui/src/i18n";
 import { plansText } from "./plans.text";
 
-type Plan = {
+type Plan = Partial<PlanDisplayFields> & {
   id: number;
   name: string;
   studentLimit: number;
@@ -39,7 +43,7 @@ type Plan = {
   regBlocks?: { divisionId: number; blockSize: number }[];
 };
 
-type PlanForm = {
+type PlanForm = PlanDisplayDraft & {
   name: string;
   student_limit: number;
   user_limit: number;
@@ -52,9 +56,10 @@ type PlanForm = {
 type RegBlockDraft = Record<number, string>;
 
 const emptyForm: PlanForm = {
+  ...displayDraft(),
   name: "",
   student_limit: 100,
-  user_limit: 5,
+  user_limit: 0,
   duration_days: 365,
   price: 0,
   is_active: 1,
@@ -142,6 +147,9 @@ export default function SuperAdminPlansPage() {
   const { show } = useToastStore();
   const t = useText(plansText);
   const c = useText(commonText);
+  const pt = useText(planToolsText);
+  const [displayBusy, setDisplayBusy] = useState<number | null>(null);
+  const [resetDraft, setResetDraft] = useState<PlanDefaults | null>(null);
   const lang = useLang();
   const n = (v: number) => formatNumber(v, lang);
 
@@ -180,7 +188,7 @@ export default function SuperAdminPlansPage() {
     setLoading(true);
     try {
       const res = await fetchPlans({ q, active });
-      setRows((res?.data || []) as Plan[]);
+      setRows(((res?.data || []) as Plan[]).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id - b.id));
     } catch (e: any) {
       show(e?.response?.data?.message || t.loadFailed, "error");
     } finally {
@@ -225,7 +233,7 @@ export default function SuperAdminPlansPage() {
 
   function openCreate() {
     setEditing(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, sortOrder: Math.max(0, ...rows.map((row) => row.sortOrder ?? 0)) + 1 });
     setPriceText("0");
     setRegBlocks({});
     setOpen(true);
@@ -234,6 +242,7 @@ export default function SuperAdminPlansPage() {
   function openEdit(p: Plan) {
     setEditing(p);
     setForm({
+      ...displayDraft(p),
       name: p.name ?? "",
       student_limit: Number(p.studentLimit ?? 0),
       user_limit: Number(p.userLimit ?? 0),
@@ -249,6 +258,7 @@ export default function SuperAdminPlansPage() {
   function validate(): string | null {
     const priceNum = Number(priceText || 0);
 
+    if (!Number.isInteger(form.sortOrder) || form.sortOrder < 0 || (form.accentColor && !/^#(?:[a-f0-9]{3}|[a-f0-9]{6})$/i.test(form.accentColor.trim())) || [form.renewalPrice, form.extraStudentPriceFirst, form.extraStudentPriceRenewal].some((v) => v !== null && (!Number.isFinite(v) || v < 0)) || (form.renewalPrice !== null && form.renewalPrice > priceNum)) return pt.invalid;
     if (!form.name.trim()) return t.errName;
     if (form.student_limit < 0) return t.errStudentLimit;
     if (form.user_limit < 0) return t.errUserLimit;
@@ -272,8 +282,9 @@ export default function SuperAdminPlansPage() {
 
     setSaving(true);
     try {
-      const payload: PlanForm = {
+      const payload = {
         ...form,
+        ...displayPayload(form),
         price: Number(priceText || 0),
       };
       const reg_block_sizes = divisions.map((d) => ({
@@ -282,10 +293,12 @@ export default function SuperAdminPlansPage() {
       }));
 
       if (editing) {
-        await updatePlan(editing.id, { ...payload, reg_block_sizes });
+        const response = await updatePlan(editing.id, { ...payload, reg_block_sizes });
+        response?.warnings?.forEach((warning: string) => show(warning, "info"));
         show(t.updated, "success");
       } else {
-        await createPlan({ ...payload, reg_block_sizes });
+        const response = await createPlan({ ...payload, reg_block_sizes });
+        response?.warnings?.forEach((warning: string) => show(warning, "info"));
         show(t.created, "success");
       }
 
@@ -296,6 +309,25 @@ export default function SuperAdminPlansPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function changeDisplay(p: Plan, patch: Partial<PlanDisplayFields>) {
+    setDisplayBusy(p.id);
+    try {
+      const response = await updatePlanDisplay(p.id, patch);
+      response.warnings?.forEach((warning) => show(warning, "info"));
+      await loadPlans();
+      show(pt.visibilitySaved, "success");
+    } catch { show(pt.failed, "error"); } finally { setDisplayBusy(null); }
+  }
+
+  async function resetDefaults() {
+    if (!editing) return;
+    try {
+      const defaults = await getPlanDefaults(editing.id);
+      if (!defaults) { show(pt.noDefaults, "info"); return; }
+      setResetDraft(defaults);
+    } catch { show(pt.failed, "error"); }
   }
 
   async function onToggle(id: number) {
@@ -500,7 +532,7 @@ export default function SuperAdminPlansPage() {
                 </div>
                 <div>
                   <div className="text-xs text-gray-500 dark:text-slate-400">{t.users}</div>
-                  {n(p.userLimit)}
+                  <span title={pt.unlimited}>&infin;</span>
                 </div>
                 <div>
                   <div className="text-xs text-gray-500 dark:text-slate-400">{t.price}</div>৳ {fmtMoney(p.price)}
@@ -510,6 +542,7 @@ export default function SuperAdminPlansPage() {
               <div className="mt-3">
                 <div className="mb-1 text-xs text-gray-500 dark:text-slate-400">{t.regBlockPerClass}</div>
                 <RegBlockSizes plan={p} divisions={divisions} />
+                <PlanVisibilityControls plan={p} busy={displayBusy !== null} onChange={(patch) => void changeDisplay(p, patch)} />
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
@@ -560,7 +593,7 @@ export default function SuperAdminPlansPage() {
                 </div>
                 <div>
                   <div className="text-xs text-gray-500 dark:text-slate-400">{t.users}</div>
-                  {n(p.userLimit)}
+                  <span title={pt.unlimited}>&infin;</span>
                 </div>
                 <div>
                   <div className="text-xs text-gray-500 dark:text-slate-400">{t.price}</div>৳ {fmtMoney(p.price)}
@@ -616,8 +649,9 @@ export default function SuperAdminPlansPage() {
                     <td className="px-4 py-3 text-gray-700">{p.studentLimit}</td>
                     <td className="px-4 py-3">
                       <RegBlockSizes plan={p} divisions={divisions} />
+                      <PlanVisibilityControls plan={p} busy={displayBusy !== null} onChange={(patch) => void changeDisplay(p, patch)} />
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{p.userLimit}</td>
+                    <td className="px-4 py-3 text-gray-700"><span title={pt.unlimited}>&infin;</span></td>
                     <td className="px-4 py-3 text-gray-700">{p.durationDays}</td>
                     <td className="px-4 py-3 text-gray-700">৳ {fmtMoney(p.price)}</td>
                     <td className="px-4 py-3">
@@ -659,7 +693,7 @@ export default function SuperAdminPlansPage() {
                     <td className="px-4 py-3">
                       <RegBlockSizes plan={p} divisions={divisions} />
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{p.userLimit}</td>
+                    <td className="px-4 py-3 text-gray-700"><span title={pt.unlimited}>&infin;</span></td>
                     <td className="px-4 py-3 text-gray-700">{p.durationDays}</td>
                     <td className="px-4 py-3 text-gray-700">৳ {fmtMoney(p.price)}</td>
                     <td className="px-4 py-3">
@@ -711,11 +745,13 @@ export default function SuperAdminPlansPage() {
       </div>
 
       {/* Create/Edit Modal */}
-      <Modal open={open} title={modalTitle} onClose={() => setOpen(false)}>
-        <form onSubmit={onSubmit} className="grid gap-4">
+      <Modal open={open} title={modalTitle} onClose={() => { if (!saving) setOpen(false); }} maxWidthClassName="max-w-6xl">
+        <form onSubmit={onSubmit} className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="grid gap-4">
           <div className="grid gap-2">
-            <label className="text-xs text-gray-600">{t.planName}</label>
+            <label htmlFor="plan-name" className="text-xs text-gray-600">{t.planName}</label>
             <input
+              id="plan-name"
               className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
               placeholder={t.planNamePlaceholder}
               value={form.name}
@@ -725,8 +761,9 @@ export default function SuperAdminPlansPage() {
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="grid gap-2">
-              <label className="text-xs text-gray-600">{t.studentLimit}</label>
+              <label htmlFor="plan-student-limit" className="text-xs text-gray-600">{t.studentLimit}</label>
               <input
+                id="plan-student-limit"
                 type="number"
                 className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
                 value={form.student_limit}
@@ -734,19 +771,11 @@ export default function SuperAdminPlansPage() {
               />
             </div>
 
-            <div className="grid gap-2">
-              <label className="text-xs text-gray-600">{t.userLimit}</label>
-              <input
-                type="number"
-                className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
-                value={form.user_limit}
-                onChange={(e) => setForm({ ...form, user_limit: Number(e.target.value) })}
-              />
-            </div>
 
             <div className="grid gap-2">
-              <label className="text-xs text-gray-600">{t.durationDays}</label>
+              <label htmlFor="plan-duration" className="text-xs text-gray-600">{t.durationDays}</label>
               <input
+                id="plan-duration"
                 type="number"
                 className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
                 value={form.duration_days}
@@ -755,11 +784,12 @@ export default function SuperAdminPlansPage() {
             </div>
 
             <div className="grid gap-2">
-              <label className="text-xs text-gray-600">
-                {t.priceTaka}{" "}
+              <label htmlFor="plan-first-price" className="text-xs text-gray-600">
+                {pt.firstPrice}{" "}
                 <span className="text-[11px] text-gray-400">(৳ {fmtMoney(priceText)})</span>
               </label>
               <input
+                id="plan-first-price"
                 inputMode="decimal"
                 className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
                 value={priceText}
@@ -772,6 +802,8 @@ export default function SuperAdminPlansPage() {
             </div>
           </div>
 
+          <PlanEditorFields value={form} onChange={(patch) => setForm((current) => ({ ...current, ...patch }))} />
+          {editing && <button type="button" disabled={saving} onClick={() => void resetDefaults()} className="justify-self-start rounded-lg border px-3 py-2 text-sm dark:border-slate-600 dark:text-slate-200">{pt.reset}</button>}
           {divisions.length > 0 && (
             <div className="grid gap-2 rounded-xl border p-3 dark:border-slate-700">
               <div>
@@ -830,9 +862,21 @@ export default function SuperAdminPlansPage() {
               {saving ? c.saving : editing ? c.update : c.create}
             </button>
           </div>
+          </div>
+          <aside className="min-w-0 space-y-3 lg:sticky lg:top-0">
+            <h3 className="text-sm font-semibold dark:text-slate-100">{pt.preview}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{pt.previewHint}</p>
+            <PlanCard preview plan={{ ...form, studentLimit: form.student_limit, price: Number(priceText || 0) }} />
+          </aside>
         </form>
       </Modal>
 
+      <ConfirmModal open={!!resetDraft} title={pt.resetTitle} message={pt.resetMessage} confirmText={pt.reset} onClose={() => setResetDraft(null)} onConfirm={() => {
+        if (!resetDraft) return;
+        setForm({ ...displayDraft(resetDraft), name: resetDraft.name, student_limit: resetDraft.studentLimit, user_limit: 0, duration_days: resetDraft.durationDays, price: Number(resetDraft.price), is_active: resetDraft.isActive ? 1 : 0 });
+        setPriceText(String(resetDraft.price));
+        setResetDraft(null);
+      }} />
       {/* Confirm Modal */}
       <ConfirmModal
         open={confirmOpen}

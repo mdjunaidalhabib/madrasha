@@ -61,6 +61,7 @@ import {
 ========================= */
 import {
   listPlansAdmin,
+  getPlanDefaults,
   listTrashPlans,
   createPlanAdmin,
   updatePlanAdmin,
@@ -244,6 +245,7 @@ router.patch("/admins/:id/reactivate", superAdminMiddleware, reactivateSuperAdmi
 
 // main list
 router.get("/plans", superAdminMiddleware, listPlansAdmin);
+router.get("/plans/:id/defaults", superAdminMiddleware, getPlanDefaults);
 
 // active plans only (dropdown safe)
 router.get("/plans/active", superAdminMiddleware, listPlans);

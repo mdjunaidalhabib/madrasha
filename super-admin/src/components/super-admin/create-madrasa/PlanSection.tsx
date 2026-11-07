@@ -1,6 +1,8 @@
 import { Plan } from "../../../features/super-admin/madrasa-management/SuperAdminMadrasasPage";
 import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { createMadrasaText } from "./createMadrasa.text";
+import PlanCard from "@madrasha/shared-ui/src/components/plans/PlanCard";
+import { planToolsText } from "../../../features/super-admin/subscriptions/plan-tools.text";
 
 /** One বিভাগ's share of the registration-number blocks a new madrasa gets. */
 export type RegBlockPreviewRow = {
@@ -39,6 +41,8 @@ export default function PlanSection({
 }: Props) {
   const t = useText(createMadrasaText);
   const lang = useLang();
+  const pt = useText(planToolsText);
+  const selected = plans.find((plan) => String(plan.id) === plan_id);
   const bn = (n: number) => localizeDigits(n, lang);
   return (
     <div className="space-y-4">
@@ -54,15 +58,17 @@ export default function PlanSection({
           >
             {plans.map((p) => (
               <option key={p.id} value={String(p.id)}>
-                {p.name}
+                {lang === "bn" ? p.nameBn || p.name : p.name}
               </option>
             ))}
           </select>
         </div>
 
         <LimitField label={t.studentLimit} value={student_limit} disabled={locked} />
-        <LimitField label={t.userLimit} value={user_limit} disabled={locked} />
+        <p className="self-end rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">{pt.unlimited}</p>
       </div>
+
+      {selected && <details className="rounded-xl border p-3 dark:border-slate-700"><summary className="cursor-pointer text-sm font-medium dark:text-slate-100">{pt.preview}</summary><div className="mx-auto mt-4 max-w-sm"><PlanCard plan={selected} preview /></div></details>}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>

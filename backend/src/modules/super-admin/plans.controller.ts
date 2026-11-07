@@ -22,6 +22,11 @@ export const listPlansAdmin = async (req: Request, res: Response) => {
   }
 };
 
+export const getPlanDefaults = async (req: Request, res: Response) => {
+  try { res.json({ data: await plansService.getDefaults(Number(req.params.id)) }); }
+  catch (error) { respondError(res, error, "getPlanDefaults ERROR:"); }
+};
+
 export const listTrashPlans = async (_req: Request, res: Response) => {
   try {
     const rows = await plansService.listTrash();

@@ -1,3 +1,8 @@
+import { planToolsText } from "../subscriptions/plan-tools.text";
+import type { AdminPlan, SubscriptionSnapshot } from "../../../services/subscriptionApi";
+import MadrasaSubscriptionCard from "../subscriptions/MadrasaSubscriptionCard";
+import DomainAddOnFields from "../subscriptions/DomainAddOnFields";
+import ExpiredMadrasaList from "../subscriptions/ExpiredMadrasaList";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import {
@@ -67,18 +72,7 @@ export type Madrasa = {
   default_language?: Lang;
 };
 
-export type Plan = {
-  id: number;
-  name: string;
-  studentLimit: number;
-  userLimit: number;
-  durationDays: number;
-  /** Per-বিভাগ registration-number block size per class (see plan settings). */
-  regBlocks?: { divisionId: number; blockSize: number }[];
-  website_status?: string;
-  address?: string | null;
-  phone?: string | null;
-};
+export type Plan = AdminPlan;
 
 /* ==============================
    Debounce Hook
@@ -104,7 +98,7 @@ export default function SuperAdminMadrasasPage() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const progressTask = useProgressTask();
 
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(() => new URLSearchParams(window.location.search).get("q") ?? "");
   const dq = useDebounce(q, 350);
   const [typeFilter, setTypeFilter] = useState<InstitutionType | "">("");
 
@@ -182,7 +176,7 @@ export default function SuperAdminMadrasasPage() {
       try {
         const data = await listPlans();
         const rows = Array.isArray(data) ? data : (data.data ?? []);
-        setPlans(rows);
+        setPlans([...rows].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)));
       } catch (err) {
         logger.error("Failed to fetch plans:", err);
       }
@@ -413,6 +407,7 @@ export default function SuperAdminMadrasasPage() {
 
   return (
     <div className="space-y-4">
+      <ExpiredMadrasaList />
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
@@ -587,7 +582,12 @@ function EditMadrasaModal({
   onSubmit: (payload: Partial<Madrasa> & Record<string, unknown>) => Promise<void>;
 }) {
   const t = useText(madrasasText);
+  const [snapshot, setSnapshot] = useState<SubscriptionSnapshot>();
+  const [subscriptionVersion, setSubscriptionVersion] = useState(0);
+  const [domainBusy, setDomainBusy] = useState(false);
+  const [refundBusy, setRefundBusy] = useState(false);
   const tc = useText(createMadrasaText);
+  const pt = useText(planToolsText);
   const c = useText(commonText);
 
   // Institution type + raw default-language override (detail endpoint; "" = type default).
@@ -625,7 +625,7 @@ function EditMadrasaModal({
         ...prev,
         plan_id: id,
         student_limit: plan.studentLimit,
-        user_limit: plan.userLimit,
+        user_limit: Number(plan.userLimit ?? 0),
       };
     });
   };
@@ -681,6 +681,7 @@ function EditMadrasaModal({
         setAllBooks(bookRes.data?.data || []);
 
         const detail = detailRes?.data || {};
+        setSnapshot(detail.subscription);
         const detailType: InstitutionType = detail.institution_type || madrasa.institution_type || "MADRASA";
         setInstitutionType(detailType);
         setDefaultLanguage(normalizeDefaultLanguage(detailType, detail.default_language || ""));
@@ -817,16 +818,7 @@ function EditMadrasaModal({
                 onChange={(e) => update("student_limit", Number(e.target.value))}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-semibold dark:text-slate-200">{t.userLimit}</label>
-              <input
-                type="number"
-                disabled={!!form.plan_id}
-                className="w-full rounded border px-3 py-2 disabled:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-800/60"
-                value={form.user_limit}
-                onChange={(e) => update("user_limit", Number(e.target.value))}
-              />
-            </div>
+            <p className="self-end rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">{pt.unlimited}</p>
           </div>
           <div>
             <label className="mb-1 block text-sm font-semibold dark:text-slate-200">
@@ -882,6 +874,9 @@ function EditMadrasaModal({
           </div>
         </div>
 
+        <DomainAddOnFields madrasaId={madrasa.id} connectedDomain={form.custom_domain} prices={snapshot?.custom_domain_prices} onBusyChange={setDomainBusy} onConnectedChange={(domain) => { update("custom_domain", domain); setSubscriptionVersion((value) => value + 1); }} />
+        <div className="mt-5"><MadrasaSubscriptionCard key={subscriptionVersion} madrasaId={madrasa.id} onBusyChange={setRefundBusy} /></div>
+
         {/* System Setup — same as Create Madrasa (Classes/Books stay hidden and auto-derive) */}
         <div className="mt-6 space-y-4">
           {loadingSetup ? (
@@ -906,7 +901,7 @@ function EditMadrasaModal({
         </div>
 
         <div className="mt-6 flex gap-2 sm:justify-end">
-          <Button variant="secondary" className="flex-1 sm:flex-none" onClick={onClose} disabled={busy}>
+          <Button variant="secondary" className="flex-1 sm:flex-none" onClick={onClose} disabled={busy || domainBusy || refundBusy}>
             {c.cancel}
           </Button>
           <Button
@@ -916,7 +911,7 @@ function EditMadrasaModal({
                 ...form,
                 institution_type: institutionType,
                 default_language: defaultLanguage || null,
-                plan_id: form.plan_id ? Number(form.plan_id) : undefined,
+                plan_id: form.plan_id && form.plan_id !== String(madrasa.plan_id ?? "") ? Number(form.plan_id) : undefined,
                 start_date: form.plan_id ? form.start_date : undefined,
                 divisions: divisions.map(Number),
                 modules: modules.map(Number),
@@ -924,7 +919,7 @@ function EditMadrasaModal({
                 books: books.map(Number),
               } as any)
             }
-            disabled={busy || loadingSetup}
+            disabled={busy || loadingSetup || domainBusy || refundBusy}
           >
             {busy ? c.saving : t.saveChanges}
           </Button>
