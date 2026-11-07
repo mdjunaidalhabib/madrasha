@@ -142,11 +142,16 @@ export class SettingsRepository {
       where: { madrasaId, isActive: 1 },
       orderBy: { id: "desc" },
       select: {
+        cycle: true,
         startDate: true,
         endDate: true,
-        plan: { select: { name: true, price: true, durationDays: true } },
+        plan: true,
       },
     });
+  }
+
+  findAvailablePricingPlans() {
+    return prisma.plan.findMany({ where: { isActive: 1, deletedAt: null }, orderBy: { studentLimit: "asc" } });
   }
 
   countActiveStudents(madrasaId: number) {

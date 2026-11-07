@@ -100,6 +100,7 @@ export interface BookLabelDesignData {
 }
 
 export interface MyPlanData {
+  over_limit: ReturnType<typeof import("../../shared/subscription/subscription-pricing").recommendOverLimitAction> | null;
   plan_name: string | null;
   price: number | null;
   duration_days: number | null;

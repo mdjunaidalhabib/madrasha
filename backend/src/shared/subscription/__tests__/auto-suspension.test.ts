@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const madrasaFindUnique = vi.fn();
-const subscriptionFindFirst = vi.fn();
+const { madrasaFindUnique, subscriptionFindFirst } = vi.hoisted(() => ({
+  madrasaFindUnique: vi.fn(),
+  subscriptionFindFirst: vi.fn(),
+}));
 vi.mock("../../database/prisma", () => ({
   prisma: {
     madrasa: { findUnique: madrasaFindUnique, findFirst: vi.fn(async () => null) },

@@ -240,7 +240,18 @@ model Madrasa {
   @@map("madrasas")
 }
 
+enum SubscriptionCycle {
+  FIRST
+  RENEWAL
+}
+
 model MadrasaSubscription {
+  cycle SubscriptionCycle @default(FIRST)
+  pricePaid Decimal? @map("price_paid") @db.Decimal(10, 2)
+  studentLimitAtStart Int? @map("student_limit_at_start")
+  cancelledAt DateTime? @map("cancelled_at")
+  refundedAt DateTime? @map("refunded_at")
+  refundAmount Decimal? @map("refund_amount") @db.Decimal(10, 2)
   id        Int       @id @default(autoincrement())
   madrasaId Int       @map("madrasa_id")
   planId    Int       @map("plan_id")

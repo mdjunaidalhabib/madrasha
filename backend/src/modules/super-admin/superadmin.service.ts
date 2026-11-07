@@ -39,7 +39,6 @@ import {
   TrashedMadrasaOperationError,
   UserEmailConflictError,
   UserEmailRequiredError,
-  UserLimitReachedError,
   UserNameRequiredError,
   UserNotFoundError,
   UserPasswordTooShortError,
@@ -539,7 +538,7 @@ export class SuperAdminService {
     if (allModules.length) {
       await this.repository.seedMadrasaModulesOnTx(
         tx,
-        allModules.map((m) => ({ madrasaId, moduleId: m.id, isActive: 0 })),
+        allModules.map((m) => ({ madrasaId, moduleId: m.id, isActive: options.resetFirst ? 0 : 1 })),
       );
     }
     await this.repository.activateMadrasaModulesOnTx(tx, madrasaId, moduleIds);
@@ -818,11 +817,6 @@ export class SuperAdminService {
     // sharing the role that every other guard in this file assumes is
     // unique per madrasa.
     if (role.keyName === DEFAULT_PROTECTED_ROLE_KEY) throw new MuhtamimAlreadyExistsError();
-
-    const activeCount = await this.repository.countActiveUsersForMadrasa(madrasaId);
-    if (activeCount >= (madrasa.userLimit ?? 0)) {
-      throw new UserLimitReachedError();
-    }
 
     const existing = await this.repository.findMadrasaUserByEmail(madrasaId, email);
     if (existing) throw new UserEmailConflictError();

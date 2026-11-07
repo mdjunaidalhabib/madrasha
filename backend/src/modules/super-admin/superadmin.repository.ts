@@ -247,7 +247,7 @@ export class SuperAdminRepository {
     return tx.madrasaSubscription.create({ data: { madrasaId, planId, startDate, endDate, isActive: 1 } });
   }
 
-  updateMadrasaLimitsOnTx(tx: TransactionClient, madrasaId: number, studentLimit: number, userLimit: number) {
+  updateMadrasaLimitsOnTx(tx: TransactionClient, madrasaId: number, studentLimit: number, userLimit: number | null) {
     return tx.madrasa.update({ where: { id: madrasaId }, data: { studentLimit, userLimit } });
   }
 

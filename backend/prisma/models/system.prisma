@@ -154,13 +154,24 @@ model Plan {
   id           Int       @id @default(autoincrement())
   name         String    @unique(map: "uniq_plan_name") @db.VarChar(100)
   studentLimit Int       @map("student_limit")
-  userLimit    Int       @map("user_limit")
+  userLimit    Int?      @map("user_limit")
   durationDays Int?      @default(365) @map("duration_days")
   price        Decimal?  @default(0) @db.Decimal(10, 2)
   isActive     Int?      @default(1) @map("is_active")
   deletedAt    DateTime? @map("deleted_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  renewalPrice Decimal? @map("renewal_price") @db.Decimal(10, 2)
+  extraStudentPriceFirst Decimal? @map("extra_student_price_first") @db.Decimal(10, 2)
+  extraStudentPriceRenewal Decimal? @map("extra_student_price_renewal") @db.Decimal(10, 2)
+  sortOrder Int @default(0) @map("sort_order")
+  nameBn String? @map("name_bn")
+  tagline String?
+  taglineBn String? @map("tagline_bn")
+  showOnLanding Int @default(1) @map("show_on_landing")
+  isFeatured Int @default(0) @map("is_featured")
+  accentColor String? @map("accent_color")
 
   subscriptions MadrasaSubscription[]
   regBlocks     PlanDivisionRegBlock[]

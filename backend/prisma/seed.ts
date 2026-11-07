@@ -1,3 +1,4 @@
+import { PLAN_SEEDS, seedPlans } from "./data/plans.seed";
 import "dotenv/config";
 import { InstitutionType, PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -314,28 +315,9 @@ async function main() {
   }
 
   /* ============== PLANS ============== */
-  const plans = [
-    { name: "Basic", studentLimit: 100, userLimit: 5, durationDays: 365, price: 2000 },
-    { name: "Standard", studentLimit: 300, userLimit: 10, durationDays: 365, price: 5000 },
-    { name: "Premium", studentLimit: 1000, userLimit: 50, durationDays: 365, price: 12000 },
-  ];
-  const planIds: number[] = [];
-  for (const plan of plans) {
-    const row = await prisma.plan.upsert({
-      where: { name: plan.name },
-      update: {
-        studentLimit: plan.studentLimit,
-        userLimit: plan.userLimit,
-        durationDays: plan.durationDays,
-        price: plan.price,
-      },
-      create: plan,
-    });
-    planIds.push(row.id);
-  }
-  await syncDelete("plan", await prisma.plan.findMany({ select: { id: true } }), planIds, (id) =>
-    prisma.plan.delete({ where: { id } }),
-  );
+  const plans = PLAN_SEEDS;
+  const planIds = await seedPlans(prisma.plan);
+  // Do not syncDelete plans: legacy and custom plans may have subscriptions.
 
   /* ============== DIVISIONS ============== */
   const divisions: { keyName: string; name: string; nameBn: string; institutionType?: InstitutionType }[] = [
@@ -369,9 +351,12 @@ async function main() {
     Premium: { nurani: 150, nazera_hifz: 200, kitab: 100, takhassus: 50 },
   };
   for (let index = 0; index < plans.length; index++) {
+    // New tiers reuse the nearest existing registration-block preset.
+    const preset = plans[index].studentLimit <= 100 ? "Basic"
+      : plans[index].studentLimit <= 700 ? "Standard" : "Premium";
     const sizes = {
-      ...(planRegBlockSizes[plans[index].name] ?? {}),
-      ...(NON_MADRASA_REG_BLOCKS[plans[index].name] ?? {}),
+      ...(planRegBlockSizes[plans[index].name] ?? planRegBlockSizes[preset]),
+      ...(NON_MADRASA_REG_BLOCKS[plans[index].name] ?? NON_MADRASA_REG_BLOCKS[preset]),
     };
     const data = Object.entries(sizes)
       .filter(([key]) => divisionIds[key])

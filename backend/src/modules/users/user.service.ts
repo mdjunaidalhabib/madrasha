@@ -4,7 +4,7 @@ import { BadRequestError, ForbiddenError, NotFoundError } from "../../shared/err
 import { isMuhtamimRole } from "../../shared/permissions";
 import { userRepository, UserRepository } from "./user.repository";
 import { CreateUserRequestDto, ResetPasswordRequestDto, UpdateUserRequestDto } from "./user.dto";
-import { USER_ACTIVITY_ENTITY, USER_LIMIT_REACHED_MESSAGE } from "./user.constants";
+import { USER_ACTIVITY_ENTITY } from "./user.constants";
 import { DefaultUserProtectedError } from "./user.types";
 import { t } from "../../shared/i18n";
 
@@ -31,14 +31,6 @@ export class UserService {
       throw new ForbiddenError(
         t({ bn: "এখান থেকে প্রতিষ্ঠান প্রধান রোলের ব্যবহারকারী যোগ করা যাবে না — প্রতিটি প্রতিষ্ঠানের একজনই ডিফল্ট প্রধান থাকতে পারেন।", en: "Users with the institution head role cannot be added here — each institution can have only one default head." }),
       );
-    }
-
-    const madrasa = await this.repository.findMadrasaUserLimit(madrasaId);
-    const userLimit = madrasa?.userLimit ?? 0;
-
-    const total = await this.repository.countActiveForTenant(madrasaId);
-    if (total >= userLimit) {
-      throw new BadRequestError(USER_LIMIT_REACHED_MESSAGE());
     }
 
     const passwordHash = await hashPassword(dto.password);

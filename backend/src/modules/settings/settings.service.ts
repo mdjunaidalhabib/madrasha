@@ -1,3 +1,4 @@
+import { recommendOverLimitAction } from "../../shared/subscription/subscription-pricing";
 import { Prisma } from "@prisma/client";
 import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { storageProvider } from "../../shared/storage";
@@ -1047,11 +1048,12 @@ export class SettingsService {
   }
 
   async getMyPlan(madrasaId: number): Promise<MyPlanData> {
-    const [madrasa, subscription, students, users] = await Promise.all([
+    const [madrasa, subscription, students, users, plans] = await Promise.all([
       this.repository.findMadrasaLimits(madrasaId),
       this.repository.findActiveSubscription(madrasaId),
       this.repository.countActiveStudents(madrasaId),
       this.repository.countActiveUsers(madrasaId),
+      this.repository.findAvailablePricingPlans(),
     ]);
     if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found" }));
 
@@ -1076,7 +1078,15 @@ export class SettingsService {
       days_remaining: daysRemaining,
       plan_status: madrasa.planStatus,
       has_active_subscription: !!subscription,
-      // Actual enforced limits live on the Madrasa row itself, not the Plan -
+      over_limit: subscription?.plan ? recommendOverLimitAction({
+        plan: { ...subscription.plan, studentLimit: madrasa.studentLimit ?? subscription.plan.studentLimit },
+        plans,
+        cycle: subscription.cycle,
+        studentCount: students,
+        remainingDays: Math.max(0, (daysRemaining ?? -1) + 1), // endDate is the last valid day.
+        durationDays: subscription.plan.durationDays ?? 365,
+      }) : null,
+      // Advisory limits live on the Madrasa row itself, not the Plan -
       // assignPlanToMadrasa copies the plan's limits here but a super admin
       // can also override them per-madrasa afterwards (see
       // updateMadrasaLimitsOnTx in superadmin.service.ts), so this is the
