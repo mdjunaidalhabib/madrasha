@@ -1,4 +1,5 @@
 import { Router } from "express";
+import leadRoutes from "../modules/leads/lead.routes";
 
 /* =========================
    IMPORT ROUTES
@@ -89,6 +90,7 @@ import guardianRoutes from "../modules/guardian/guardian.routes";
 import trashRoutes from "../modules/trash/trash.routes";
 
 const router = Router();
+router.use(leadRoutes);
 
 router.use("/website", websiteRoutes);
 

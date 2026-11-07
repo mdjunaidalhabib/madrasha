@@ -1,0 +1,35 @@
+enum LeadStatus {
+  NEW
+  CONTACTED
+  DEMO_SCHEDULED
+  CONVERTED
+  LOST
+}
+
+model PlatformLead {
+  id              Int        @id @default(autoincrement())
+  name            String     @db.VarChar(100)
+  phone           String     @db.VarChar(20)
+  institution     String     @db.VarChar(180)
+  institutionType String     @map("institution_type") @db.VarChar(40)
+  studentCount    String?    @map("student_count") @db.VarChar(30)
+  message         String?    @db.VarChar(2000)
+  status          LeadStatus @default(NEW)
+  notes           String?    @db.Text
+  followUpAt      DateTime?  @map("follow_up_at")
+  utmSource       String?    @map("utm_source") @db.VarChar(200)
+  utmMedium       String?    @map("utm_medium") @db.VarChar(200)
+  utmCampaign     String?    @map("utm_campaign") @db.VarChar(200)
+  utmContent      String?    @map("utm_content") @db.VarChar(200)
+  utmTerm         String?    @map("utm_term") @db.VarChar(200)
+  fbclid          String?    @db.VarChar(500)
+  landingPath     String?    @map("landing_path") @db.VarChar(300)
+  consentAt       DateTime   @default(now()) @map("consent_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([phone, createdAt])
+  @@index([followUpAt])
+  @@map("platform_leads")
+}

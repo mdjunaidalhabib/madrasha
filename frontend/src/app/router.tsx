@@ -6,6 +6,7 @@ import GuardianAuthGuard from "../components/guards/GuardianAuthGuard";
 import PageLoader from "@madrasha/shared-ui/src/components/ui/PageLoader";
 
 const RootRoute = lazy(() => import("../features/landing/RootRoute"));
+const DemoLandingPage = lazy(() => import("../features/landing/LeadCapture").then((module) => ({ default: module.DemoLandingPage })));
 const CustomDomainTenantGate = lazy(() => import("../features/landing/CustomDomainTenantGate"));
 const PublicWebsitePage = lazy(() => import("../features/website/PublicWebsitePage"));
 const AdmissionApplyPage = lazy(() => import("../features/website/AdmissionApplyPage"));
@@ -35,6 +36,7 @@ const withSuspense = (element: JSX.Element) => (
 
 export const router = createBrowserRouter([
   { path: "/", element: withSuspense(<RootRoute />) },
+  { path: "/demo", element: withSuspense(<DemoLandingPage />) },
 
   { path: "/m/:madrasaSlug", element: withSuspense(<PublicWebsitePage />) },
   { path: "/m/:madrasaSlug/admission", element: withSuspense(<AdmissionApplyPage />) },

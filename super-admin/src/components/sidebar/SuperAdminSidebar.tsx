@@ -40,6 +40,7 @@ type NavItem = { to: string; label: NavLabelKey; icon: ReactElement; end?: boole
 // দেখানো হয়। ফ্ল্যাট অ্যারে-ই থাকছে (breadcrumb হুক এটাকে ফ্ল্যাট হিসেবে খোঁজে)।
 export const SUPER_ADMIN_NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", label: "dashboard", icon: <LayoutDashboard size={18} />, end: true, group: "main" },
+  { to: "/leads", label: "leads", icon: <Megaphone size={18} />, group: "main" },
 
   { to: "/madrasas", label: "institutions", icon: <School size={18} />, end: true, group: "institutions" },
   { to: "/madrasas/trash", label: "trash", icon: <Trash2 size={18} />, group: "institutions" },

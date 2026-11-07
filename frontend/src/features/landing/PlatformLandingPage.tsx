@@ -31,6 +31,7 @@ import {
   Building2,
 } from "lucide-react";
 import ContactFab from "./ContactFab";
+import LeadCapture from "./LeadCapture";
 import { getAdminAppLoginUrl } from "../../utils/adminAppUrl";
 import { LanguageSwitcher, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { BRAND_NAME, landingText } from "./landing.text";
@@ -330,7 +331,7 @@ export default function PlatformLandingPage() {
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <a
-                href="#service"
+                href="#demo"
                 className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/25 transition hover:bg-emerald-500"
               >
                 {t.getService}
@@ -539,6 +540,7 @@ export default function PlatformLandingPage() {
       </section>
 
       {/* ---------------- Contact ---------------- */}
+      <LeadCapture />
       <section id="contact" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         <div className="overflow-hidden rounded-3xl bg-[#0b1220]">
           <div className="grid grid-cols-1 lg:grid-cols-5">

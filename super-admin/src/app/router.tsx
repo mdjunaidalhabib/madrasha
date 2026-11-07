@@ -8,6 +8,7 @@ import SuperAdminLoginPage from "../features/super-admin/auth/SuperAdminLoginPag
 const SuperAdminDashboardPage = lazy(
   () => import("../features/super-admin/dashboard/SuperAdminDashboardPage"),
 );
+const SuperAdminLeadsPage = lazy(() => import("../features/super-admin/leads/SuperAdminLeadsPage"));
 const SuperAdminMadrasasPage = lazy(
   () => import("../features/super-admin/madrasa-management/SuperAdminMadrasasPage"),
 );
@@ -77,6 +78,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="dashboard" replace /> },
       { path: "dashboard", element: withSuspense(<SuperAdminDashboardPage />) },
+      { path: "leads", element: withSuspense(<SuperAdminLeadsPage />) },
       { path: "madrasas", element: withSuspense(<SuperAdminMadrasasPage />) },
       { path: "madrasas/trash", element: withSuspense(<SuperAdminMadrasasTrashPage />) },
       { path: "madrasas/:id/staff", element: withSuspense(<SuperAdminMadrasaStaffPage />) },

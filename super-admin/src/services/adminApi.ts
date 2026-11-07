@@ -83,6 +83,12 @@ adminApi.interceptors.response.use(
     return res;
   },
   (err) => {
+    // Effect cleanup and navigation intentionally abort requests. Keep the
+    // rejection for callers, but do not treat cancellation as a user error.
+    if (axios.isCancel(err) || err?.code === "ERR_CANCELED") {
+      return Promise.reject(err);
+    }
+
     const status = err?.response?.status;
 
     if (status === 401) {

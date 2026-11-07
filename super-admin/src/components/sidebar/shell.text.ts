@@ -19,6 +19,7 @@ export const shellText = defineBilingualText({
       settings: "সেটিংস",
     },
     nav: {
+      leads: "লিড ম্যানেজমেন্ট",
       dashboard: "ড্যাশবোর্ড",
       institutions: "প্রতিষ্ঠানসমূহ",
       trash: "ট্র্যাশ",
@@ -55,6 +56,7 @@ export const shellText = defineBilingualText({
     },
     nav: {
       dashboard: "Dashboard",
+      leads: "Lead management",
       institutions: "Institutions",
       trash: "Trash",
       plans: "Plans",

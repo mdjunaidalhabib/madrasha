@@ -20,6 +20,7 @@ import Badge from "@madrasha/shared-ui/src/components/ui/Badge";
 import { useThemeStore } from "@madrasha/shared-ui/src/store/themeStore";
 import { formatCurrency, formatDate, formatDateTime, formatNumber, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { dashboardText } from "./dashboard.text";
+import LeadSummary from "../leads/LeadSummary";
 
 type ActivityItem = {
   id: number;
@@ -177,6 +178,7 @@ export default function SuperAdminDashboardPage() {
       </div>
 
       {/* Expiring Plans */}
+      <LeadSummary recent />
       <Card>
         <CardHeader title={t.expiringTitle} />
         {!stats?.expiringPlans?.length ? (
