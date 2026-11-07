@@ -49,6 +49,8 @@ describe("super-admin plan controls", () => {
     const tx = {
       $executeRaw: vi.fn(),
       plan: {
+        findMany: vi.fn(async () => [...rows].sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)),
+        update: vi.fn(async ({ where, data }) => Object.assign(rows.find((r) => r.id === where.id)!, data)),
         findFirst: vi.fn(async ({ where }) => rows.find((r) => r.id === where.id)),
         updateMany: vi.fn(async ({ where, data }) => {
           for (const row of rows) {

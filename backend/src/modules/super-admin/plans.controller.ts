@@ -15,8 +15,8 @@ const respondError = (res: Response, error: unknown, logTag: string) => {
 
 export const listPlansAdmin = async (req: Request, res: Response) => {
   try {
-    const rows = await plansService.listPlans(req.query);
-    res.json({ data: rows || [] });
+    const [rows, totalPlans] = await Promise.all([plansService.listPlans(req.query), plansService.countPlans()]);
+    res.json({ data: rows || [], meta: { totalPlans } });
   } catch (error) {
     respondError(res, error, "listPlansAdmin ERROR:");
   }

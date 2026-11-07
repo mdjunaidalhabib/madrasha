@@ -14,6 +14,7 @@ import {
   pricingQuickChoices,
 } from "./pricing-selection";
 import { landingText } from "./landing.text";
+import { useDemoPlanStore } from "./demo-plan.store";
 
 const focus =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2";
@@ -43,6 +44,7 @@ function PricingSkeleton({ label }: { label: string }) {
 }
 
 export default function PricingSection() {
+  const chooseDemo = useDemoPlanStore((s) => s.choose);
   const t = useText(landingText).pricing;
   const lang = useLang();
   const [data, setData] = useState<PublicPricing | null>(null);
@@ -312,6 +314,7 @@ export default function PricingSection() {
                 </p>
                 <a
                   href="#demo"
+                  onClick={() => chooseDemo({ planId: null, studentCount: count, custom: true })}
                   className={`mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white ${focus}`}
                 >
                   {t.customContact}
@@ -338,7 +341,14 @@ export default function PricingSection() {
                           {t.recommended}
                         </span>
                       )}
-                      <PlanCard plan={plan} href="#demo" ctaLabel={t.contact} />
+                      <PlanCard
+                        plan={plan}
+                        href="#demo"
+                        ctaLabel={t.contact}
+                        onSelect={() =>
+                          chooseDemo({ planId: plan.id, studentCount: count, custom: false })
+                        }
+                      />
                     </div>
                   );
                 })}

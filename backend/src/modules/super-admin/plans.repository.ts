@@ -2,6 +2,28 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 
 export class PlansRepository {
+  countListed() {
+    return prisma.plan.count({ where: { deletedAt: null } });
+  }
+
+  /** The caller holds the catalogue advisory lock. Move one tier and persist
+   * contiguous positions for every non-trashed plan, including inactive tiers. */
+  private async orderPlans(tx: Prisma.TransactionClient, id?: number, position?: number) {
+    const rows = await tx.plan.findMany({
+      where: { deletedAt: null }, select: { id: true, sortOrder: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
+    if (id !== undefined && position !== undefined) {
+      const index = rows.findIndex((row) => row.id === id);
+      if (index >= 0) {
+        const [moved] = rows.splice(index, 1);
+        rows.splice(Math.max(0, Math.min(rows.length, position - 1)), 0, moved);
+      }
+    }
+    for (const [index, row] of rows.entries()) {
+      if (row.sortOrder !== index + 1) await tx.plan.update({ where: { id: row.id }, data: { sortOrder: index + 1 } });
+    }
+  }
   findMany(where: Prisma.PlanWhereInput) {
     return prisma.plan.findMany({
       where,
@@ -70,7 +92,9 @@ export class PlansRepository {
     return prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(731902)`;
       if (data.isFeatured === 1) await tx.plan.updateMany({ data: { isFeatured: 0 }, where: { isFeatured: 1 } });
-      return tx.plan.create({ data });
+      const created = await tx.plan.create({ data });
+      await this.orderPlans(tx, created.id, data.sortOrder && data.sortOrder > 0 ? data.sortOrder : Number.MAX_SAFE_INTEGER);
+      return created;
     });
   }
 
@@ -80,7 +104,12 @@ export class PlansRepository {
       const found = await tx.plan.findFirst({ where: { id, deletedAt: null } });
       if (!found) return { count: 0 };
       if (data.isFeatured === 1) await tx.plan.updateMany({ data: { isFeatured: 0 }, where: { isFeatured: 1, id: { not: id } } });
-      return tx.plan.updateMany({ where: { id, deletedAt: null }, data });
+      // Keep the previous positions until the move is calculated, so other
+      // plans preserve their relative order even when positions were duplicated.
+      const { sortOrder, ...fields } = data;
+      const result = await tx.plan.updateMany({ where: { id, deletedAt: null }, data: fields });
+      await this.orderPlans(tx, id, typeof sortOrder === "number" && sortOrder > 0 ? sortOrder : undefined);
+      return result;
     });
   }
 
@@ -103,11 +132,21 @@ export class PlansRepository {
   }
 
   softDelete(id: number) {
-    return prisma.plan.updateMany({ where: { id, deletedAt: null }, data: { deletedAt: new Date() } });
+    return prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(731902)`;
+      const result = await tx.plan.updateMany({ where: { id, deletedAt: null }, data: { deletedAt: new Date() } });
+      await this.orderPlans(tx);
+      return result;
+    });
   }
 
   restore(id: number) {
-    return prisma.plan.updateMany({ where: { id, deletedAt: { not: null } }, data: { deletedAt: null } });
+    return prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(731902)`;
+      const result = await tx.plan.updateMany({ where: { id, deletedAt: { not: null } }, data: { deletedAt: null } });
+      if (result.count) await this.orderPlans(tx, id, Number.MAX_SAFE_INTEGER);
+      return result;
+    });
   }
 
   permanentDelete(id: number) {

@@ -3,6 +3,12 @@ import { createLeadSchema, updateLeadSchema } from "../lead.validation";
 
 const valid = { name: "Demo Contact", phone: "01712345678", institution: "Demo School", institutionType: "school", consent: true };
 describe("lead input validation", () => {
+  it.each(["50", "200", "700", "2001", "9999999", "1-100", "1000+"])("accepts exact student counts and legacy bands: %s", (studentCount) => {
+    expect(createLeadSchema.parse({ ...valid, studentCount }).studentCount).toBe(studentCount);
+  });
+  it.each(["0", "-1", "1.5", "10000000", "oops"])("rejects invalid exact student counts: %s", (studentCount) => {
+    expect(createLeadSchema.safeParse({ ...valid, studentCount }).success).toBe(false);
+  });
   it.each(["01712345678", "+880 1712-345678", "008801712345678", "০১৭১২৩৪৫৬৭৮"])("normalizes Bangladesh mobile format %s", (phone) => {
     expect(createLeadSchema.parse({ ...valid, phone }).phone).toBe("01712345678");
   });

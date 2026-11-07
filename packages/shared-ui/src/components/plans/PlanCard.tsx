@@ -180,7 +180,7 @@ export default function PlanCard({
         </ul>
         <div className="mt-auto pt-2">
           {href && !preview ? (
-            <a href={href} className={ctaClass} style={ctaStyle}>
+            <a href={href} onClick={onSelect} className={ctaClass} style={ctaStyle}>
               {ctaLabel || t.choose}
             </a>
           ) : (

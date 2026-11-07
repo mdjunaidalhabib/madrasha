@@ -13,6 +13,8 @@ export const BRAND_NAME = "EMS";
  * supports (madrasa, school, kindergarten). */
 export const landingText = defineText({
   bn: {
+    menuLabel: "মেনু",
+    languageLabel: "ভাষা নির্বাচন",
     pricing: {
       eyebrow: "সহজ বার্ষিক মূল্য", title: "ছাত্রসংখ্যা অনুযায়ী আপনার প্ল্যান",
       body: "প্রতিটি প্ল্যানে সফটওয়্যারের সব সুবিধা। প্রথম বছরের প্রস্তুতি ও পরবর্তী বছরের নবায়নের মূল্য আলাদা করে দেখুন।",
@@ -166,6 +168,8 @@ export const landingText = defineText({
     domainNotLinked: "এই ডোমেইনটি এখনো কোনো প্রতিষ্ঠানের সাথে সংযুক্ত করা হয়নি।",
   },
   en: {
+    menuLabel: "Menu",
+    languageLabel: "Choose language",
     pricing: {
       eyebrow: "Straightforward annual pricing", title: "A plan for your student count",
       body: "Every software feature in every plan. See the first-year setup price and the annual renewal price separately.",

@@ -11,7 +11,8 @@ export const createLeadSchema = z.object({
   phone: z.string().max(40).transform(normalizeLeadPhone).pipe(z.string().regex(/^01[3-9]\d{8}$/, "Enter a valid Bangladesh mobile number")),
   institution: z.string().trim().min(2).max(180),
   institutionType: z.enum(["madrasa", "school", "college", "kindergarten", "other"]),
-  studentCount: z.enum(["1-100", "101-300", "301-500", "501-1000", "1000+"]).optional(),
+  // Preserve historical reporting bands while accepting the demo form's exact count.
+  studentCount: z.union([z.enum(["1-100", "101-300", "301-500", "501-1000", "1000+"]), z.string().regex(/^[1-9]\d{0,6}$/)]).optional(),
   message: optionalText(2000),
   consent: z.literal(true),
   website: z.string().max(0).optional(),

@@ -1,4 +1,4 @@
-import { useText } from "@madrasha/shared-ui/src/i18n";
+import { formatNumber, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { planAccent } from "@madrasha/shared-ui/src/components/plans/plan-colors";
 import type {
   AdminPlan,
@@ -51,11 +51,14 @@ export function displayPayload(draft: PlanDisplayDraft): PlanDisplayFields {
 export default function PlanEditorFields({
   value,
   onChange,
+  orderCount,
 }: {
   value: PlanDisplayDraft;
+  orderCount: number;
   onChange: (patch: Partial<PlanDisplayDraft>) => void;
 }) {
   const t = useText(planToolsText);
+  const lang = useLang();
   const input =
     "mt-1 w-full rounded-xl border bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500";
   const numberFields = [
@@ -111,14 +114,23 @@ export default function PlanEditorFields({
         ))}
         <label className="text-xs text-slate-600 dark:text-slate-300">
           {t.order}
-          <input
+          <select
             className={input}
-            type="number"
-            min={0}
-            step={1}
-            value={value.sortOrder}
+            value={
+              value.sortOrder > 0 && value.sortOrder <= orderCount
+                ? value.sortOrder
+                : 0
+            }
             onChange={(e) => onChange({ sortOrder: Number(e.target.value) })}
-          />
+          >
+            <option value={0}>{t.autoOrder}</option>
+            {Array.from({ length: orderCount }, (_, i) => (
+              <option key={i + 1} value={i + 1}>
+                {formatNumber(i + 1, lang)}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-xs">{t.orderHint}</span>
         </label>
         <label className="text-xs text-slate-600 dark:text-slate-300">
           {t.color}
@@ -172,12 +184,15 @@ export function PlanVisibilityControls({
   plan,
   busy,
   onChange,
+  orderCount,
 }: {
   plan: AdminPlan;
+  orderCount: number;
   busy: boolean;
   onChange: (patch: Partial<PlanDisplayFields>) => void;
 }) {
   const t = useText(planToolsText);
+  const lang = useLang();
   return (
     <fieldset
       disabled={busy}
@@ -203,27 +218,28 @@ export function PlanVisibilityControls({
       </label>
       <label className="flex items-center gap-2">
         {t.order}
-        <input
+        <select
           aria-label={`${plan.name} ${t.order}`}
-          key={`${plan.id}:${plan.sortOrder}`}
-          type="number"
-          min={0}
-          step={1}
-          defaultValue={plan.sortOrder ?? 0}
-          className="w-16 rounded border bg-transparent px-2 py-1 dark:border-slate-600"
-          onBlur={(e) => {
+          value={
+            plan.sortOrder && plan.sortOrder <= orderCount ? plan.sortOrder : 0
+          }
+          className="min-w-20 rounded-lg border bg-white px-2 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900"
+          onChange={(e) => {
             const value = Number(e.target.value);
-            if (
-              e.target.value !== "" &&
-              Number.isInteger(value) &&
-              value >= 0 &&
-              value !== plan.sortOrder
-            )
-              onChange({ sortOrder: value });
-            else e.target.value = String(plan.sortOrder ?? 0);
+            if (value !== plan.sortOrder) onChange({ sortOrder: value });
           }}
-        />
+        >
+          <option value={0} disabled>
+            {t.autoOrder}
+          </option>
+          {Array.from({ length: orderCount }, (_, i) => (
+            <option key={i + 1} value={i + 1}>
+              {formatNumber(i + 1, lang)}
+            </option>
+          ))}
+        </select>
       </label>
+      <p className="leading-5 text-slate-400">{t.orderHint}</p>
     </fieldset>
   );
 }

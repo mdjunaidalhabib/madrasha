@@ -47,6 +47,10 @@ export class PlansService {
     return this.repository.findTrashed();
   }
 
+  countPlans() {
+    return this.repository.countListed();
+  }
+
   async getDefaults(id: number) {
     const plan = await this.repository.findActiveById(id);
     if (!plan) throw new PlanNotFoundError(t({ bn: "প্ল্যান পাওয়া যায়নি।", en: "Plan not found." }));

@@ -2,6 +2,8 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 
 export const planToolsText = defineText({
   bn: {
+    autoOrder: "স্বয়ংক্রিয়",
+    orderHint: "অবস্থান বদলালে অন্য প্ল্যানের ক্রম স্বয়ংক্রিয়ভাবে সরে যাবে।",
     nameBn: "বাংলা নাম",
     tagline: "সংক্ষিপ্ত পরিচিতি (ইংরেজি)",
     taglineBn: "সংক্ষিপ্ত পরিচিতি (বাংলা)",
@@ -99,6 +101,8 @@ export const planToolsText = defineText({
     cancel: "বাতিল",
   },
   en: {
+    autoOrder: "Automatic",
+    orderHint: "Moving a plan automatically shifts the other plans into order.",
     nameBn: "Bengali name",
     tagline: "Tagline (English)",
     taglineBn: "Tagline (Bengali)",

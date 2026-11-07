@@ -34,7 +34,9 @@ import ContactFab from "./ContactFab";
 import LeadCapture from "./LeadCapture";
 import PricingSection from "./PricingSection";
 import { getAdminAppLoginUrl } from "../../utils/adminAppUrl";
-import { LanguageSwitcher, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import LandingLanguageSwitcher from "./LandingLanguageSwitcher";
+import LandingMobileMenu from "./LandingMobileMenu";
 import { BRAND_NAME, landingText } from "./landing.text";
 
 // Contact number used for both the "tel:" and WhatsApp ("wa.me") links in
@@ -213,20 +215,20 @@ export default function PlatformLandingPage() {
     >
       {/* ---------------- Header ---------------- */}
       <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-          <a href="#top" className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 xl:gap-5">
+          <a href="#top" className="flex min-w-0 items-center gap-2.5 xl:shrink-0">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white sm:h-11 sm:w-11">
               <GraduationCap size={20} />
             </span>
-            <span className="leading-tight">
-              <span className="block text-sm font-extrabold tracking-tight text-slate-900">
+            <span className="min-w-0 leading-tight">
+              <span className="block text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
                 {BRAND_NAME}
               </span>
-              <span className="block text-[11px] text-slate-500">{t.brandTagline}</span>
+              <span className="block truncate text-[13px] text-slate-500 sm:text-sm">{t.brandTagline}</span>
             </span>
           </a>
 
-          <nav className="hidden items-center gap-7 whitespace-nowrap text-sm font-medium text-slate-600 xl:flex">
+          <nav className={`hidden shrink-0 items-center gap-4 whitespace-nowrap font-medium text-slate-600 xl:flex 2xl:gap-5 ${lang === "bn" ? "text-lg" : "text-sm"}`}>
             {NAV_LINKS.map((link) => {
               const isActive = activeSection === link.href.slice(1);
               return (
@@ -244,11 +246,11 @@ export default function PlatformLandingPage() {
             })}
           </nav>
 
-          <div className="flex items-center gap-2">
-            <LanguageSwitcher />
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="hidden xl:block"><LandingLanguageSwitcher /></div>
             <a
               href={adminAppLoginUrl}
-              className="hidden items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700 sm:inline-flex"
+              className="hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700 xl:inline-flex"
             >
               {t.goToAdmin}
               <ArrowRight size={15} className="rtl:rotate-180" />
@@ -260,6 +262,8 @@ export default function PlatformLandingPage() {
               onClick={() => setMobileNavOpen((v) => !v)}
               aria-label={mobileNavOpen ? t.closeMenu : t.openMenu}
               aria-expanded={mobileNavOpen}
+              aria-haspopup="dialog"
+              aria-controls="landing-mobile-menu"
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 xl:hidden"
             >
               {mobileNavOpen ? <X size={20} /> : <Menu size={20} />}
@@ -267,38 +271,9 @@ export default function PlatformLandingPage() {
           </div>
         </div>
 
-        {/* Mobile nav panel */}
-        {mobileNavOpen && (
-          <div className="border-t border-slate-100 bg-white px-4 py-3 xl:hidden">
-            <nav className="flex flex-col gap-1 text-sm font-medium text-slate-600">
-              {NAV_LINKS.map((link) => {
-                const isActive = activeSection === link.href.slice(1);
-                return (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setMobileNavOpen(false)}
-                    aria-current={isActive ? "true" : undefined}
-                    className={`rounded-lg px-3 py-2.5 transition hover:bg-emerald-50 hover:text-emerald-700 ${
-                      isActive ? "bg-emerald-50 font-semibold text-emerald-700" : ""
-                    }`}
-                  >
-                    {t.nav[link.key]}
-                  </a>
-                );
-              })}
-              <a
-                href={adminAppLoginUrl}
-                onClick={() => setMobileNavOpen(false)}
-                className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700"
-              >
-                {t.goToAdmin}
-                <ArrowRight size={15} className="rtl:rotate-180" />
-              </a>
-            </nav>
-          </div>
-        )}
       </header>
+
+      <LandingMobileMenu open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} links={NAV_LINKS.map((link) => ({ href: link.href, label: t.nav[link.key] }))} activeSection={activeSection} adminUrl={adminAppLoginUrl} />
 
       {/* ---------------- Hero ---------------- */}
       <section id="top" className="relative overflow-hidden bg-[#0b1220]">

@@ -1,11 +1,28 @@
+import PlanManagementCard from "./PlanManagementCard";
+import {
+  Package,
+  Search,
+  LayoutGrid,
+  CheckCircle2,
+  Sparkles,
+} from "lucide-react";
 import PlanCard from "@madrasha/shared-ui/src/components/plans/PlanCard";
-import PlanEditorFields, { displayDraft, displayPayload, PlanVisibilityControls, type PlanDisplayDraft } from "./PlanEditorFields";
-import { getPlanDefaults, updatePlanDisplay, type PlanDisplayFields, type PlanDefaults } from "../../../services/subscriptionApi";
+import PlanEditorFields, {
+  displayDraft,
+  displayPayload,
+  type PlanDisplayDraft,
+} from "./PlanEditorFields";
+import {
+  getPlanDefaults,
+  updatePlanDisplay,
+  type PlanDisplayFields,
+  type PlanDefaults,
+} from "../../../services/subscriptionApi";
 import { planToolsText } from "./plan-tools.text";
 import { useEffect, useMemo, useState } from "react";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import ConfirmModal from "@madrasha/shared-ui/src/components/ui/ConfirmModal";
-import { SkeletonList, SkeletonTable } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { SkeletonList } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 
 import {
@@ -18,12 +35,14 @@ import {
   restorePlan,
   permanentDeletePlan,
 } from "../../../services/superAdminApi";
-import { catalogDivisionApi, type CatalogDivisionDto } from "../../../services/superAdminCatalogApi";
+import {
+  catalogDivisionApi,
+  type CatalogDivisionDto,
+} from "../../../services/superAdminCatalogApi";
 import {
   INSTITUTION_TYPE_LABELS,
   LOCALE_MAP,
   commonText,
-  formatDateTime,
   formatNumber,
   getLang,
   useLang,
@@ -55,6 +74,19 @@ type PlanForm = PlanDisplayDraft & {
 /** divisionId -> block size text, as typed (empty = no automatic block). */
 type RegBlockDraft = Record<number, string>;
 
+function formSignature(form: PlanForm, price: string, blocks: RegBlockDraft) {
+  return JSON.stringify({
+    ...form,
+    ...displayPayload(form),
+    name: form.name.trim(),
+    price: Number(price || 0),
+    blocks: Object.entries(blocks)
+      .map(([id, size]) => [Number(id), Number(size || 0)])
+      .filter(([, size]) => size !== 0)
+      .sort(([a], [b]) => a - b),
+  });
+}
+
 const emptyForm: PlanForm = {
   ...displayDraft(),
   name: "",
@@ -64,22 +96,6 @@ const emptyForm: PlanForm = {
   price: 0,
   is_active: 1,
 };
-
-function Badge({ active }: { active: boolean }) {
-  const t = useText(plansText);
-  return (
-    <span
-      className={[
-        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
-        active
-          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-          : "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-400",
-      ].join(" ")}
-    >
-      {active ? t.active : t.inactive}
-    </span>
-  );
-}
 
 function fmtMoney(v: number | string | null | undefined) {
   const n = Number(v ?? 0);
@@ -96,53 +112,6 @@ function sanitizePriceText(input: string) {
   return `${intPart || "0"}.${dec}`;
 }
 
-/** Plan's per-বিভাগ registration-number block size per class, in the
- * catalog's বিভাগ order - e.g. "নূরানী ৩০ · নাযেরা/হিফজ ৪০ · কিতাব ২০". */
-function RegBlockSizes({ plan, divisions }: { plan: Plan; divisions: CatalogDivisionDto[] }) {
-  const t = useText(plansText);
-  const lang = useLang();
-  const sizes = new Map((plan.regBlocks || []).map((b) => [b.divisionId, b.blockSize]));
-  const items = divisions.filter((d) => sizes.get(d.id));
-  if (!items.length) return <span className="text-xs text-gray-400 dark:text-slate-500">{t.notSet}</span>;
-  return (
-    <div className="flex flex-wrap gap-1">
-      {items.map((d) => (
-        <span
-          key={d.id}
-          className="whitespace-nowrap rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
-        >
-          {d.label || d.name} {formatNumber(sizes.get(d.id)!, lang)}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function IconButton({
-  children,
-  onClick,
-  title,
-  variant = "default",
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  title?: string;
-  variant?: "default" | "danger" | "warn";
-}) {
-  const cls =
-    variant === "danger"
-      ? "rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm text-red-700 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-900/40"
-      : variant === "warn"
-        ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm text-amber-800 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-400 dark:hover:bg-amber-900/40"
-        : "rounded-lg border bg-white px-3 py-1.5 text-sm hover:bg-gray-50 active:scale-[0.99] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800";
-
-  return (
-    <button type="button" onClick={onClick} title={title} className={cls}>
-      {children}
-    </button>
-  );
-}
-
 export default function SuperAdminPlansPage() {
   const { show } = useToastStore();
   const t = useText(plansText);
@@ -157,6 +126,7 @@ export default function SuperAdminPlansPage() {
   const [tab, setTab] = useState<"plans" | "trash">("plans");
 
   const [rows, setRows] = useState<Plan[]>([]);
+  const [orderCount, setOrderCount] = useState(0);
   const [trashRows, setTrashRows] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -172,11 +142,16 @@ export default function SuperAdminPlansPage() {
   const [priceText, setPriceText] = useState("0");
   const [divisions, setDivisions] = useState<CatalogDivisionDto[]>([]);
   const [regBlocks, setRegBlocks] = useState<RegBlockDraft>({});
+  const [initialForm, setInitialForm] = useState("");
+  const isDirty =
+    !editing || formSignature(form, priceText, regBlocks) !== initialForm;
 
   // confirm modal
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
-  const [confirmMode, setConfirmMode] = useState<"trash" | "restore" | "permanent">("trash");
+  const [confirmMode, setConfirmMode] = useState<
+    "trash" | "restore" | "permanent"
+  >("trash");
   const [target, setTarget] = useState<Plan | null>(null);
 
   const modalTitle = useMemo(
@@ -188,7 +163,18 @@ export default function SuperAdminPlansPage() {
     setLoading(true);
     try {
       const res = await fetchPlans({ q, active });
-      setRows(((res?.data || []) as Plan[]).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id - b.id));
+      setOrderCount(
+        res?.meta?.totalPlans ??
+          Math.max(
+            (res?.data || []).length,
+            ...(res?.data || []).map((p: Plan) => p.sortOrder ?? 0),
+          ),
+      );
+      setRows(
+        ((res?.data || []) as Plan[]).sort(
+          (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id - b.id,
+        ),
+      );
     } catch (e: any) {
       show(e?.response?.data?.message || t.loadFailed, "error");
     } finally {
@@ -233,7 +219,10 @@ export default function SuperAdminPlansPage() {
 
   function openCreate() {
     setEditing(null);
-    setForm({ ...emptyForm, sortOrder: Math.max(0, ...rows.map((row) => row.sortOrder ?? 0)) + 1 });
+    setForm({
+      ...emptyForm,
+      sortOrder: orderCount + 1,
+    });
     setPriceText("0");
     setRegBlocks({});
     setOpen(true);
@@ -241,7 +230,7 @@ export default function SuperAdminPlansPage() {
 
   function openEdit(p: Plan) {
     setEditing(p);
-    setForm({
+    const draft: PlanForm = {
       ...displayDraft(p),
       name: p.name ?? "",
       student_limit: Number(p.studentLimit ?? 0),
@@ -249,16 +238,34 @@ export default function SuperAdminPlansPage() {
       duration_days: Number(p.durationDays ?? 0),
       price: Number(p.price ?? 0),
       is_active: p.isActive ? 1 : 0,
-    });
-    setPriceText(String(Number(p.price ?? 0)));
-    setRegBlocks(Object.fromEntries((p.regBlocks || []).map((b) => [b.divisionId, String(b.blockSize)])));
+    };
+    const price = String(Number(p.price ?? 0));
+    const blocks = Object.fromEntries(
+      (p.regBlocks || []).map((b) => [b.divisionId, String(b.blockSize)]),
+    );
+    setForm(draft);
+    setPriceText(price);
+    setRegBlocks(blocks);
+    setInitialForm(formSignature(draft, price, blocks));
     setOpen(true);
   }
 
   function validate(): string | null {
     const priceNum = Number(priceText || 0);
 
-    if (!Number.isInteger(form.sortOrder) || form.sortOrder < 0 || (form.accentColor && !/^#(?:[a-f0-9]{3}|[a-f0-9]{6})$/i.test(form.accentColor.trim())) || [form.renewalPrice, form.extraStudentPriceFirst, form.extraStudentPriceRenewal].some((v) => v !== null && (!Number.isFinite(v) || v < 0)) || (form.renewalPrice !== null && form.renewalPrice > priceNum)) return pt.invalid;
+    if (
+      !Number.isInteger(form.sortOrder) ||
+      form.sortOrder < 0 ||
+      (form.accentColor &&
+        !/^#(?:[a-f0-9]{3}|[a-f0-9]{6})$/i.test(form.accentColor.trim())) ||
+      [
+        form.renewalPrice,
+        form.extraStudentPriceFirst,
+        form.extraStudentPriceRenewal,
+      ].some((v) => v !== null && (!Number.isFinite(v) || v < 0)) ||
+      (form.renewalPrice !== null && form.renewalPrice > priceNum)
+    )
+      return pt.invalid;
     if (!form.name.trim()) return t.errName;
     if (form.student_limit < 0) return t.errStudentLimit;
     if (form.user_limit < 0) return t.errUserLimit;
@@ -274,6 +281,7 @@ export default function SuperAdminPlansPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (saving || (editing && !isDirty)) return;
     const err = validate();
     if (err) {
       show(err, "error");
@@ -293,7 +301,10 @@ export default function SuperAdminPlansPage() {
       }));
 
       if (editing) {
-        const response = await updatePlan(editing.id, { ...payload, reg_block_sizes });
+        const response = await updatePlan(editing.id, {
+          ...payload,
+          reg_block_sizes,
+        });
         response?.warnings?.forEach((warning: string) => show(warning, "info"));
         show(t.updated, "success");
       } else {
@@ -318,16 +329,25 @@ export default function SuperAdminPlansPage() {
       response.warnings?.forEach((warning) => show(warning, "info"));
       await loadPlans();
       show(pt.visibilitySaved, "success");
-    } catch { show(pt.failed, "error"); } finally { setDisplayBusy(null); }
+    } catch {
+      show(pt.failed, "error");
+    } finally {
+      setDisplayBusy(null);
+    }
   }
 
   async function resetDefaults() {
     if (!editing) return;
     try {
       const defaults = await getPlanDefaults(editing.id);
-      if (!defaults) { show(pt.noDefaults, "info"); return; }
+      if (!defaults) {
+        show(pt.noDefaults, "info");
+        return;
+      }
       setResetDraft(defaults);
-    } catch { show(pt.failed, "error"); }
+    } catch {
+      show(pt.failed, "error");
+    }
   }
 
   async function onToggle(id: number) {
@@ -394,12 +414,16 @@ export default function SuperAdminPlansPage() {
         : t.confirmPermanentMessage(target?.name ?? "");
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="mx-auto w-full max-w-[1600px] p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold dark:text-slate-100">{t.title}</h1>
-          <p className="text-sm text-gray-600 dark:text-slate-400">{t.subtitle}</p>
+          <h1 className="text-2xl font-semibold dark:text-slate-100">
+            {t.title}
+          </h1>
+          <p className="text-sm text-gray-600 dark:text-slate-400">
+            {t.catalogHint}
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -408,7 +432,7 @@ export default function SuperAdminPlansPage() {
             className={[
               "flex-1 rounded-xl px-4 py-2 text-sm font-medium sm:flex-none",
               tab === "plans"
-                ? "bg-black text-white"
+                ? "bg-emerald-600 text-white"
                 : "border bg-white text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800",
             ].join(" ")}
           >
@@ -420,7 +444,7 @@ export default function SuperAdminPlansPage() {
             className={[
               "flex-1 rounded-xl px-4 py-2 text-sm font-medium sm:flex-none",
               tab === "trash"
-                ? "bg-black text-white"
+                ? "bg-emerald-600 text-white"
                 : "border bg-white text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800",
             ].join(" ")}
           >
@@ -430,7 +454,7 @@ export default function SuperAdminPlansPage() {
           {tab === "plans" && (
             <button
               onClick={openCreate}
-              className="flex-1 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/90 sm:flex-none"
+              className="flex-1 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 sm:flex-none"
             >
               {t.newPlan}
             </button>
@@ -442,9 +466,15 @@ export default function SuperAdminPlansPage() {
       {tab === "plans" && (
         <div className="mt-5 grid gap-3 md:grid-cols-12">
           <div className="md:col-span-5">
-            <label className="mb-1 block text-xs text-gray-600 dark:text-slate-400">{t.search}</label>
+            <label className="mb-1 block text-xs text-gray-600 dark:text-slate-400">
+              {t.search}
+            </label>
             <div className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
-              <span className="text-gray-400 dark:text-slate-500">🔎</span>
+              <Search
+                size={17}
+                aria-hidden="true"
+                className="shrink-0 text-slate-400"
+              />
               <input
                 className="w-full bg-transparent text-sm outline-none dark:text-slate-100"
                 placeholder={t.searchPlaceholder}
@@ -455,7 +485,9 @@ export default function SuperAdminPlansPage() {
           </div>
 
           <div className="md:col-span-3">
-            <label className="mb-1 block text-xs text-gray-600 dark:text-slate-400">{t.status}</label>
+            <label className="mb-1 block text-xs text-gray-600 dark:text-slate-400">
+              {t.status}
+            </label>
             <select
               className="w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               value={active}
@@ -477,7 +509,10 @@ export default function SuperAdminPlansPage() {
             </button>
 
             <div className="text-xs text-gray-500 dark:text-slate-400">
-              {t.total}: <span className="font-medium text-gray-800 dark:text-slate-100">{n(rows.length)}</span>
+              {t.total}:{" "}
+              <span className="font-medium text-gray-800 dark:text-slate-100">
+                {n(rows.length)}
+              </span>
             </div>
           </div>
         </div>
@@ -495,388 +530,330 @@ export default function SuperAdminPlansPage() {
           </button>
 
           <div className="text-xs text-gray-500 dark:text-slate-400">
-            {t.totalTrash}: <span className="font-medium text-gray-800 dark:text-slate-100">{n(trashRows.length)}</span>
+            {t.totalTrash}:{" "}
+            <span className="font-medium text-gray-800 dark:text-slate-100">
+              {n(trashRows.length)}
+            </span>
           </div>
         </div>
       )}
 
-      {/* Mobile card list (hidden on md+) */}
-      <div className="mt-5 space-y-3 md:hidden">
-        {loading && <SkeletonList items={3} />}
-
-        {!loading && tab === "plans" && rows.length === 0 && (
-          <div className="rounded-2xl border bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900">
-            <div className="text-sm font-medium text-gray-800 dark:text-slate-100">{t.noPlans}</div>
-            <div className="text-xs text-gray-500 dark:text-slate-400">{t.noPlansHint}</div>
-          </div>
-        )}
-
-        {!loading &&
-          tab === "plans" &&
-          rows.map((p) => (
-            <div key={p.id} className="rounded-2xl border bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="font-medium text-gray-900 dark:text-slate-100">
-                    #{p.id} — {p.name}
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.duration(n(p.durationDays))}</div>
-                </div>
-                <Badge active={!!p.isActive} />
-              </div>
-
-              <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-gray-700 dark:text-slate-300">
-                <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.students}</div>
-                  {n(p.studentLimit)}
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.users}</div>
-                  <span title={pt.unlimited}>&infin;</span>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.price}</div>৳ {fmtMoney(p.price)}
-                </div>
-              </div>
-
-              <div className="mt-3">
-                <div className="mb-1 text-xs text-gray-500 dark:text-slate-400">{t.regBlockPerClass}</div>
-                <RegBlockSizes plan={p} divisions={divisions} />
-                <PlanVisibilityControls plan={p} busy={displayBusy !== null} onChange={(patch) => void changeDisplay(p, patch)} />
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                <IconButton title={t.edit} onClick={() => openEdit(p)}>
-                  ✏️ {t.edit}
-                </IconButton>
-                <IconButton title={t.toggle} onClick={() => onToggle(p.id)}>
-                  🔁 {t.toggle}
-                </IconButton>
-                <IconButton
-                  title={t.moveToTrash}
-                  variant="danger"
-                  onClick={() => openConfirm("trash", p)}
-                >
-                  🗑 {t.trash}
-                </IconButton>
+      {tab === "plans" && (
+        <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-4">
+          {[
+            {
+              label: t.total,
+              value: rows.length,
+              icon: LayoutGrid,
+              color: "text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40",
+            },
+            {
+              label: t.active,
+              value: rows.filter((p) => !!p.isActive).length,
+              icon: CheckCircle2,
+              color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/40",
+            },
+            {
+              label: t.featuredCount,
+              value: rows.filter((p) => !!p.isFeatured).length,
+              icon: Sparkles,
+              color: "text-amber-500 bg-amber-50 dark:bg-amber-950/40",
+            },
+          ].map(({ label, value, icon: Icon, color }) => (
+            <div
+              key={label}
+              className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 sm:p-4"
+            >
+              <span className={"hidden rounded-xl p-2.5 sm:block " + color}>
+                <Icon size={20} aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {label}
+                </p>
+                <p className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
+                  {loading ? "—" : n(value)}
+                </p>
               </div>
             </div>
           ))}
-
-        {!loading && tab === "trash" && trashRows.length === 0 && (
-          <div className="rounded-2xl border bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900">
-            <div className="text-sm font-medium text-gray-800 dark:text-slate-100">{t.trashEmpty}</div>
-            <div className="text-xs text-gray-500 dark:text-slate-400">{t.trashEmptyHint}</div>
-          </div>
-        )}
-
-        {!loading &&
-          tab === "trash" &&
-          trashRows.map((p) => (
-            <div key={p.id} className="rounded-2xl border bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="font-medium text-gray-900 dark:text-slate-100">
-                    #{p.id} — {p.name}
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">
-                    {t.deleted}: {p.deletedAt ? formatDateTime(p.deletedAt, lang) : "-"}
-                  </div>
-                </div>
-                <Badge active={!!p.isActive} />
-              </div>
-
-              <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-gray-700 dark:text-slate-300">
-                <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.students}</div>
-                  {n(p.studentLimit)}
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.users}</div>
-                  <span title={pt.unlimited}>&infin;</span>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400">{t.price}</div>৳ {fmtMoney(p.price)}
-                </div>
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                <IconButton title={t.restore} variant="warn" onClick={() => openConfirm("restore", p)}>
-                  ♻️ {t.restore}
-                </IconButton>
-                <IconButton
-                  title={t.permanentDelete}
-                  variant="danger"
-                  onClick={() => openConfirm("permanent", p)}
-                >
-                  ❌ {t.permanent}
-                </IconButton>
-              </div>
-            </div>
-          ))}
-      </div>
-
-      {/* Desktop table (hidden below md) */}
-      <div className="mt-5 hidden overflow-hidden rounded-2xl border bg-white md:block">
-        {loading ? (
-          <SkeletonTable rows={6} columns={9} className="rounded-none" bordered={false} shadowed={false} />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-start text-sm">
-            <thead className="bg-gray-50 text-xs text-gray-600">
-              <tr>
-                <th className="px-4 py-3">ID</th>
-                <th className="px-4 py-3">{t.colName}</th>
-                <th className="px-4 py-3">{t.students}</th>
-                <th className="px-4 py-3">{t.regBlockCol}</th>
-                <th className="px-4 py-3">{t.users}</th>
-                <th className="px-4 py-3">{t.days}</th>
-                <th className="px-4 py-3">{t.price}</th>
-                <th className="px-4 py-3">{t.status}</th>
-                <th className="px-4 py-3 text-end">{t.colActions}</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y">
-              {tab === "plans" &&
-                rows.map((p) => (
-                  <tr key={p.id} className="hover:bg-gray-50/60">
-                    <td className="px-4 py-3 text-gray-700">{p.id}</td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{p.name}</div>
-                      <div className="text-xs text-gray-500">{t.duration(n(p.durationDays))}</div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{p.studentLimit}</td>
-                    <td className="px-4 py-3">
-                      <RegBlockSizes plan={p} divisions={divisions} />
-                      <PlanVisibilityControls plan={p} busy={displayBusy !== null} onChange={(patch) => void changeDisplay(p, patch)} />
-                    </td>
-                    <td className="px-4 py-3 text-gray-700"><span title={pt.unlimited}>&infin;</span></td>
-                    <td className="px-4 py-3 text-gray-700">{p.durationDays}</td>
-                    <td className="px-4 py-3 text-gray-700">৳ {fmtMoney(p.price)}</td>
-                    <td className="px-4 py-3">
-                      <Badge active={!!p.isActive} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        <IconButton title={t.edit} onClick={() => openEdit(p)}>
-                          ✏️ {t.edit}
-                        </IconButton>
-
-                        <IconButton title={t.toggle} onClick={() => onToggle(p.id)}>
-                          🔁 {t.toggle}
-                        </IconButton>
-
-                        <IconButton
-                          title={t.moveToTrash}
-                          variant="danger"
-                          onClick={() => openConfirm("trash", p)}
-                        >
-                          🗑 {t.trash}
-                        </IconButton>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-
-              {tab === "trash" &&
-                trashRows.map((p) => (
-                  <tr key={p.id} className="hover:bg-gray-50/60">
-                    <td className="px-4 py-3 text-gray-700">{p.id}</td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{p.name}</div>
-                      <div className="text-xs text-gray-500">
-                        {t.deleted}: {p.deletedAt ? formatDateTime(p.deletedAt, lang) : "-"}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{p.studentLimit}</td>
-                    <td className="px-4 py-3">
-                      <RegBlockSizes plan={p} divisions={divisions} />
-                    </td>
-                    <td className="px-4 py-3 text-gray-700"><span title={pt.unlimited}>&infin;</span></td>
-                    <td className="px-4 py-3 text-gray-700">{p.durationDays}</td>
-                    <td className="px-4 py-3 text-gray-700">৳ {fmtMoney(p.price)}</td>
-                    <td className="px-4 py-3">
-                      <Badge active={!!p.isActive} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        <IconButton
-                          title={t.restore}
-                          variant="warn"
-                          onClick={() => openConfirm("restore", p)}
-                        >
-                          ♻️ {t.restore}
-                        </IconButton>
-
-                        <IconButton
-                          title={t.permanentDelete}
-                          variant="danger"
-                          onClick={() => openConfirm("permanent", p)}
-                        >
-                          ❌ {t.permanent}
-                        </IconButton>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-
-              {tab === "plans" && rows.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center">
-                    <div className="text-sm font-medium text-gray-800">{t.noPlans}</div>
-                    <div className="text-xs text-gray-500">{t.noPlansHint}</div>
-                  </td>
-                </tr>
-              )}
-
-              {tab === "trash" && trashRows.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center">
-                    <div className="text-sm font-medium text-gray-800">{t.trashEmpty}</div>
-                    <div className="text-xs text-gray-500">{t.trashEmptyHint}</div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
         </div>
+      )}
+      <div
+        className="mt-6 grid items-stretch gap-5 md:grid-cols-2 2xl:grid-cols-3"
+        aria-busy={loading}
+      >
+        {loading
+          ? Array.from({ length: 6 }, (_, index) => (
+              <div
+                key={index}
+                className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900"
+              >
+                <SkeletonList items={4} />
+              </div>
+            ))
+          : (tab === "plans" ? rows : trashRows).map((p) => (
+              <PlanManagementCard
+                key={p.id}
+                plan={p}
+                divisions={divisions}
+                trash={tab === "trash"}
+                busy={displayBusy !== null}
+                orderCount={orderCount}
+                onEdit={() => openEdit(p)}
+                onToggle={() => void onToggle(p.id)}
+                onTrash={() => openConfirm("trash", p)}
+                onRestore={() => openConfirm("restore", p)}
+                onPermanent={() => openConfirm("permanent", p)}
+                onDisplay={(patch) => void changeDisplay(p, patch)}
+              />
+            ))}
+        {!loading && (tab === "plans" ? rows : trashRows).length === 0 && (
+          <div className="col-span-full rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-900">
+            <Package
+              size={32}
+              className="mx-auto mb-4 text-slate-300"
+              aria-hidden="true"
+            />
+            <p className="font-semibold text-slate-700 dark:text-slate-200">
+              {tab === "plans" ? t.noPlans : t.trashEmpty}
+            </p>
+            <p className="mt-2 text-sm text-slate-400">
+              {tab === "plans" ? t.noPlansHint : t.trashEmptyHint}
+            </p>
+            {tab === "plans" && (
+              <button
+                type="button"
+                onClick={openCreate}
+                className="mt-5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                {t.newPlan}
+              </button>
+            )}
+          </div>
         )}
       </div>
 
       {/* Create/Edit Modal */}
-      <Modal open={open} title={modalTitle} onClose={() => { if (!saving) setOpen(false); }} maxWidthClassName="max-w-6xl">
-        <form onSubmit={onSubmit} className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <Modal
+        open={open}
+        title={modalTitle}
+        onClose={() => {
+          if (!saving) setOpen(false);
+        }}
+        maxWidthClassName="max-w-6xl"
+      >
+        <form
+          onSubmit={onSubmit}
+          className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px]"
+        >
           <div className="grid gap-4">
-          <div className="grid gap-2">
-            <label htmlFor="plan-name" className="text-xs text-gray-600">{t.planName}</label>
-            <input
-              id="plan-name"
-              className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
-              placeholder={t.planNamePlaceholder}
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="grid gap-2">
-              <label htmlFor="plan-student-limit" className="text-xs text-gray-600">{t.studentLimit}</label>
-              <input
-                id="plan-student-limit"
-                type="number"
-                className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
-                value={form.student_limit}
-                onChange={(e) => setForm({ ...form, student_limit: Number(e.target.value) })}
-              />
-            </div>
-
-
-            <div className="grid gap-2">
-              <label htmlFor="plan-duration" className="text-xs text-gray-600">{t.durationDays}</label>
-              <input
-                id="plan-duration"
-                type="number"
-                className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
-                value={form.duration_days}
-                onChange={(e) => setForm({ ...form, duration_days: Number(e.target.value) })}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <label htmlFor="plan-first-price" className="text-xs text-gray-600">
-                {pt.firstPrice}{" "}
-                <span className="text-[11px] text-gray-400">(৳ {fmtMoney(priceText)})</span>
+              <label htmlFor="plan-name" className="text-xs text-gray-600">
+                {t.planName}
               </label>
               <input
-                id="plan-first-price"
-                inputMode="decimal"
+                id="plan-name"
                 className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
-                value={priceText}
-                onChange={(e) => setPriceText(sanitizePriceText(e.target.value))}
-                onBlur={() => {
-                  const n = Number(priceText || 0);
-                  setPriceText(String(Number.isNaN(n) ? 0 : n));
-                }}
+                placeholder={t.planNamePlaceholder}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
-          </div>
 
-          <PlanEditorFields value={form} onChange={(patch) => setForm((current) => ({ ...current, ...patch }))} />
-          {editing && <button type="button" disabled={saving} onClick={() => void resetDefaults()} className="justify-self-start rounded-lg border px-3 py-2 text-sm dark:border-slate-600 dark:text-slate-200">{pt.reset}</button>}
-          {divisions.length > 0 && (
-            <div className="grid gap-2 rounded-xl border p-3 dark:border-slate-700">
-              <div>
-                <div className="text-sm font-medium text-gray-800 dark:text-slate-200">{t.regBlockTitle}</div>
-                <p className="mt-0.5 text-[11px] text-gray-500 dark:text-slate-400">
-                  {t.regBlockHint}
-                </p>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid gap-2">
+                <label
+                  htmlFor="plan-student-limit"
+                  className="text-xs text-gray-600"
+                >
+                  {t.studentLimit}
+                </label>
+                <input
+                  id="plan-student-limit"
+                  type="number"
+                  className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                  value={form.student_limit}
+                  onChange={(e) =>
+                    setForm({ ...form, student_limit: Number(e.target.value) })
+                  }
+                />
               </div>
-              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                {divisions.map((d) => (
-                  <div key={d.id} className="grid gap-1">
-                    <label className="truncate text-xs text-gray-600 dark:text-slate-400">
-                      {d.label || d.name}
-                      <span className="ms-1 text-[10px] text-gray-400 dark:text-slate-500">
-                        ({INSTITUTION_TYPE_LABELS[d.institution_type ?? "MADRASA"][lang]})
-                      </span>
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      inputMode="numeric"
-                      placeholder="0"
-                      className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
-                      value={regBlocks[d.id] ?? ""}
-                      onChange={(e) => setRegBlocks({ ...regBlocks, [d.id]: e.target.value })}
-                    />
-                  </div>
-                ))}
+
+              <div className="grid gap-2">
+                <label
+                  htmlFor="plan-duration"
+                  className="text-xs text-gray-600"
+                >
+                  {t.durationDays}
+                </label>
+                <input
+                  id="plan-duration"
+                  type="number"
+                  className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                  value={form.duration_days}
+                  onChange={(e) =>
+                    setForm({ ...form, duration_days: Number(e.target.value) })
+                  }
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <label
+                  htmlFor="plan-first-price"
+                  className="text-xs text-gray-600"
+                >
+                  {pt.firstPrice}{" "}
+                  <span className="text-[11px] text-gray-400">
+                    (৳ {fmtMoney(priceText)})
+                  </span>
+                </label>
+                <input
+                  id="plan-first-price"
+                  inputMode="decimal"
+                  className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                  value={priceText}
+                  onChange={(e) =>
+                    setPriceText(sanitizePriceText(e.target.value))
+                  }
+                  onBlur={() => {
+                    const n = Number(priceText || 0);
+                    setPriceText(String(Number.isNaN(n) ? 0 : n));
+                  }}
+                />
               </div>
             </div>
-          )}
 
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={!!form.is_active}
-              onChange={(e) => setForm({ ...form, is_active: e.target.checked ? 1 : 0 })}
+            <PlanEditorFields
+              orderCount={orderCount + (editing ? 0 : 1)}
+              value={form}
+              onChange={(patch) =>
+                setForm((current) => ({ ...current, ...patch }))
+              }
             />
-            <span className="text-gray-700">{t.active}</span>
-          </label>
+            {editing && (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void resetDefaults()}
+                className="justify-self-start rounded-lg border px-3 py-2 text-sm dark:border-slate-600 dark:text-slate-200"
+              >
+                {pt.reset}
+              </button>
+            )}
+            {divisions.length > 0 && (
+              <div className="grid gap-2 rounded-xl border p-3 dark:border-slate-700">
+                <div>
+                  <div className="text-sm font-medium text-gray-800 dark:text-slate-200">
+                    {t.regBlockTitle}
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-gray-500 dark:text-slate-400">
+                    {t.regBlockHint}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                  {divisions.map((d) => (
+                    <div key={d.id} className="grid gap-1">
+                      <label className="truncate text-xs text-gray-600 dark:text-slate-400">
+                        {d.label || d.name}
+                        <span className="ms-1 text-[10px] text-gray-400 dark:text-slate-500">
+                          (
+                          {
+                            INSTITUTION_TYPE_LABELS[
+                              d.institution_type ?? "MADRASA"
+                            ][lang]
+                          }
+                          )
+                        </span>
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        inputMode="numeric"
+                        placeholder="0"
+                        className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                        value={regBlocks[d.id] ?? ""}
+                        onChange={(e) =>
+                          setRegBlocks({ ...regBlocks, [d.id]: e.target.value })
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="rounded-xl border bg-white px-4 py-2 text-sm hover:bg-gray-50"
-            >
-              {c.cancel}
-            </button>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={!!form.is_active}
+                onChange={(e) =>
+                  setForm({ ...form, is_active: e.target.checked ? 1 : 0 })
+                }
+              />
+              <span className="text-gray-700">{t.active}</span>
+            </label>
 
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/90 disabled:opacity-60"
-            >
-              {saving ? c.saving : editing ? c.update : c.create}
-            </button>
-          </div>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-xl border bg-white px-4 py-2 text-sm hover:bg-gray-50"
+              >
+                {c.cancel}
+              </button>
+
+              {isDirty && (
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  {saving ? c.saving : editing ? c.update : c.create}
+                </button>
+              )}
+            </div>
           </div>
           <aside className="min-w-0 space-y-3 lg:sticky lg:top-0">
-            <h3 className="text-sm font-semibold dark:text-slate-100">{pt.preview}</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{pt.previewHint}</p>
-            <PlanCard preview plan={{ ...form, studentLimit: form.student_limit, price: Number(priceText || 0) }} />
+            <h3 className="text-sm font-semibold dark:text-slate-100">
+              {pt.preview}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {pt.previewHint}
+            </p>
+            <PlanCard
+              preview
+              plan={{
+                ...form,
+                studentLimit: form.student_limit,
+                price: Number(priceText || 0),
+              }}
+            />
           </aside>
         </form>
       </Modal>
 
-      <ConfirmModal open={!!resetDraft} title={pt.resetTitle} message={pt.resetMessage} confirmText={pt.reset} onClose={() => setResetDraft(null)} onConfirm={() => {
-        if (!resetDraft) return;
-        setForm({ ...displayDraft(resetDraft), name: resetDraft.name, student_limit: resetDraft.studentLimit, user_limit: 0, duration_days: resetDraft.durationDays, price: Number(resetDraft.price), is_active: resetDraft.isActive ? 1 : 0 });
-        setPriceText(String(resetDraft.price));
-        setResetDraft(null);
-      }} />
+      <ConfirmModal
+        open={!!resetDraft}
+        title={pt.resetTitle}
+        message={pt.resetMessage}
+        confirmText={pt.reset}
+        onClose={() => setResetDraft(null)}
+        onConfirm={() => {
+          if (!resetDraft) return;
+          setForm({
+            ...displayDraft(resetDraft),
+            name: resetDraft.name,
+            student_limit: resetDraft.studentLimit,
+            user_limit: 0,
+            duration_days: resetDraft.durationDays,
+            price: Number(resetDraft.price),
+            is_active: resetDraft.isActive ? 1 : 0,
+          });
+          setPriceText(String(resetDraft.price));
+          setResetDraft(null);
+        }}
+      />
       {/* Confirm Modal */}
       <ConfirmModal
         open={confirmOpen}
