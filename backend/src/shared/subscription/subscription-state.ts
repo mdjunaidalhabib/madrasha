@@ -1,4 +1,5 @@
 import { prisma } from "../database/prisma";
+import { DATA_RETENTION_WARNING_DAYS, retentionNotice } from "./subscription.constants";
 import { t } from "../i18n";
 
 export type SubscriptionState = "ACTIVE" | "NONE" | "EXPIRED";
@@ -8,7 +9,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // time, but a renewal by the super admin still takes effect quickly (and is
 // cleared immediately via invalidateSubscriptionCache).
 const CACHE_TTL_MS = 30_000;
-const cache = new Map<number, { state: SubscriptionState; expiresAt: number }>();
+const cache = new Map<number, { state: SubscriptionState; endDate: Date | null; expiresAt: number }>();
 
 export const invalidateSubscriptionCache = (madrasaId?: number) => {
   if (madrasaId === undefined) cache.clear();
@@ -37,7 +38,7 @@ export async function getSubscriptionState(madrasaId: number): Promise<Subscript
   else if (subscription.endDate && now >= new Date(subscription.endDate).getTime() + DAY_MS) state = "EXPIRED";
   else state = "ACTIVE";
 
-  cache.set(madrasaId, { state, expiresAt: now + CACHE_TTL_MS });
+  cache.set(madrasaId, { state, endDate: subscription?.endDate ?? null, expiresAt: now + CACHE_TTL_MS });
   return state;
 }
 
@@ -52,3 +53,19 @@ export const subscriptionSuspendedMessage = (state: Exclude<SubscriptionState, "
         bn: "সাবস্ক্রিপশনের মেয়াদ শেষ হওয়ায় এই প্রতিষ্ঠানটি স্থগিত করা হয়েছে। নবায়নের জন্য অনুগ্রহ করে যোগাযোগ করুন।",
         en: "This institution is suspended because its subscription has expired. Please contact support to renew.",
       });
+
+export async function subscriptionSuspendedBody(madrasaId: number) {
+  const state = await getSubscriptionState(madrasaId);
+  const cachedEnd = cache.get(madrasaId)?.endDate;
+  const endDate = cachedEnd ?? (state === "NONE" ? (await prisma.madrasaSubscription.findFirst({
+    where: { madrasaId }, select: { endDate: true }, orderBy: { id: "desc" },
+  }))?.endDate : null) ?? null;
+  return {
+    message: subscriptionSuspendedMessage(state === "ACTIVE" ? "NONE" : state),
+    code: state === "ACTIVE" ? undefined : state === "NONE" ? "SUBSCRIPTION_NONE" : "SUBSCRIPTION_EXPIRED",
+    endDate,
+    daysSinceExpiry: endDate ? Math.max(0, Math.floor((Date.now() - endDate.getTime()) / DAY_MS)) : null,
+    retentionWarningDays: DATA_RETENTION_WARNING_DAYS,
+    retentionNotice: retentionNotice(),
+  };
+}

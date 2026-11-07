@@ -33,8 +33,8 @@ export const listTrashPlans = async (_req: Request, res: Response) => {
 
 export const createPlanAdmin = async (req: Request, res: Response) => {
   try {
-    const id = await plansService.createPlan(req.body);
-    res.status(HttpStatus.CREATED).json({ message: t({ bn: "প্ল্যান তৈরি হয়েছে", en: "Plan created" }), id });
+    const id = await plansService.createPlan(req.body, req.user?.id ?? null);
+    res.status(HttpStatus.CREATED).json({ message: t({ bn: "প্ল্যান তৈরি হয়েছে", en: "Plan created" }), id, warnings: await plansService.planWarnings() });
   } catch (error) {
     respondError(res, error, "createPlanAdmin ERROR:");
   }
@@ -42,8 +42,8 @@ export const createPlanAdmin = async (req: Request, res: Response) => {
 
 export const updatePlanAdmin = async (req: Request, res: Response) => {
   try {
-    await plansService.updatePlan(Number(req.params.id), req.body);
-    res.json({ message: t({ bn: "প্ল্যান আপডেট হয়েছে", en: "Plan updated" }) });
+    await plansService.updatePlan(Number(req.params.id), req.body, req.user?.id ?? null);
+    res.json({ message: t({ bn: "প্ল্যান আপডেট হয়েছে", en: "Plan updated" }), warnings: await plansService.planWarnings() });
   } catch (error) {
     respondError(res, error, "updatePlanAdmin ERROR:");
   }
@@ -51,8 +51,8 @@ export const updatePlanAdmin = async (req: Request, res: Response) => {
 
 export const togglePlanAdmin = async (req: Request, res: Response) => {
   try {
-    await plansService.togglePlan(Number(req.params.id));
-    res.json({ message: t({ bn: "প্ল্যানের অবস্থা আপডেট হয়েছে", en: "Plan status updated" }) });
+    await plansService.togglePlan(Number(req.params.id), req.user?.id ?? null);
+    res.json({ message: t({ bn: "প্ল্যানের অবস্থা আপডেট হয়েছে", en: "Plan status updated" }), warnings: await plansService.planWarnings() });
   } catch (error) {
     respondError(res, error, "togglePlanAdmin ERROR:");
   }

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../database/prisma", () => ({ prisma: {} }));
+vi.mock("../../../modules/super-admin/vendor-promo.service", () => ({ vendorPromoService: { getConfig: vi.fn(async () => ({ phone_display: "123", phone_intl: "880123", email: "support@example.test" })) } }));
 vi.mock("../../utils/activity.util", () => ({ logActivity: vi.fn() }));
 vi.mock("../../utils/hash.util", () => ({ hashPassword: vi.fn(async () => "hashed") }));
 vi.mock("../../storage", () => ({ storageProvider: {} }));
@@ -18,8 +19,8 @@ describe("subscription limits are advisory", () => {
   it("keeps the existing plan fields and uses only the caller's active-student count", async () => {
     const plus = PLAN_SEEDS.find((p) => p.name === "Plus")!;
     const endDate = new Date();
-    endDate.setHours(0, 0, 0, 0);
-    endDate.setDate(endDate.getDate() + 364);
+    endDate.setUTCHours(0, 0, 0, 0);
+    endDate.setUTCDate(endDate.getUTCDate() + 364);
     const startDate = new Date();
     const repo = {
       findMadrasaLimits: vi.fn(async () => ({
@@ -28,6 +29,7 @@ describe("subscription limits are advisory", () => {
         planStatus: "active",
       })),
       findActiveSubscription: vi.fn(async () => ({
+        id: 1, isActive: 1, pricePaid: 10000,
         plan: plus,
         startDate,
         endDate,
@@ -36,6 +38,9 @@ describe("subscription limits are advisory", () => {
       countActiveStudents: vi.fn(async (id) => (id === 7 ? 450 : 10)),
       countActiveUsers: vi.fn(async () => 50),
       findAvailablePricingPlans: vi.fn(async () => PLAN_SEEDS),
+      findDomainSubscription: vi.fn(async () => null),
+      findSubscriptionPayments: vi.fn(async () => []),
+      findFirstSubscription: vi.fn(async () => ({ id: 1 })),
     };
     const service = new SettingsService(repo as any);
     const first = await service.getMyPlan(7);
@@ -60,11 +65,7 @@ describe("subscription limits are advisory", () => {
         durationDays: 365,
       }),
     });
-    expect((await service.getMyPlan(8)).over_limit).toMatchObject({
-      studentCount: 10,
-      overLimit: false,
-      blocked: false,
-    });
+    expect((await service.getMyPlan(8)).over_limit).toBeNull();
     for (const fn of [
       repo.findMadrasaLimits,
       repo.findActiveSubscription,

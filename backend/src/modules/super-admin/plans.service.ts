@@ -1,3 +1,5 @@
+import { parsePlanFields } from "./plans.validation";
+import { logActivity } from "../../shared/utils/activity.util";
 import { Prisma } from "@prisma/client";
 import { BadRequestError } from "../../shared/errors";
 import { plansRepository, PlansRepository } from "./plans.repository";
@@ -8,16 +10,6 @@ import { t } from "../../shared/i18n";
 const num = (v: unknown, def = 0) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : def;
-};
-
-const bool01 = (v: unknown) => (v ? 1 : 0);
-
-const validatePlanFields = (name: string, student_limit: number, user_limit: number, duration_days: number, price: number) => {
-  if (!name) throw new BadRequestError(t({ bn: "প্ল্যানের নাম দিতে হবে", en: "Plan name is required" }));
-  if (student_limit < 0) throw new BadRequestError(t({ bn: "শিক্ষার্থী সীমা 0 বা তার বেশি হতে হবে", en: "Student limit must be 0 or more" }));
-  if (user_limit < 0) throw new BadRequestError(t({ bn: "ব্যবহারকারী সীমা 0 বা তার বেশি হতে হবে", en: "User limit must be 0 or more" }));
-  if (duration_days <= 0) throw new BadRequestError(t({ bn: "মেয়াদ (দিন) 1 বা তার বেশি হতে হবে", en: "Duration days must be 1 or more" }));
-  if (price < 0) throw new BadRequestError(t({ bn: "মূল্য 0 বা তার বেশি হতে হবে", en: "Price must be 0 or more" }));
 };
 
 /** null = not sent (leave unchanged). Sizes of 0/empty are dropped. */
@@ -54,32 +46,20 @@ export class PlansService {
     return this.repository.findTrashed();
   }
 
-  async createPlan(dto: CreatePlanRequestDto) {
-    const name = String(dto.name || "").trim();
-    const student_limit = num(dto.student_limit);
-    const user_limit = num(dto.user_limit);
-    const duration_days = num(dto.duration_days, 365);
-    const price = num(dto.price);
-    const is_active = bool01(dto.is_active ?? 1);
-
-    validatePlanFields(name, student_limit, user_limit, duration_days, price);
+  async createPlan(dto: CreatePlanRequestDto, actor: number | null = null) {
+    const fields = parsePlanFields(dto);
+    const { name } = fields;
     const regBlocks = parseRegBlockSizes(dto);
 
     const exist = await this.repository.findActiveByName(name);
     if (exist) throw new PlanConflictError(t({ bn: "এই নামে প্ল্যান ইতিমধ্যে আছে", en: "A plan with this name already exists" }));
 
     try {
-      const created = await this.repository.create({
-        name,
-        studentLimit: student_limit,
-        userLimit: user_limit,
-        durationDays: duration_days,
-        price,
-        isActive: is_active,
-      });
+      const created = await this.repository.create(fields);
 
       if (regBlocks) await this.repository.replaceRegBlocks(created.id, regBlocks);
 
+      await this.audit(created.id, "PLAN_CREATED", actor);
       return created.id;
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -89,17 +69,13 @@ export class PlansService {
     }
   }
 
-  async updatePlan(id: number, dto: CreatePlanRequestDto) {
+  async updatePlan(id: number, dto: CreatePlanRequestDto, actor: number | null = null) {
     if (!id) throw new InvalidPlanIdError();
 
-    const name = String(dto.name || "").trim();
-    const student_limit = num(dto.student_limit);
-    const user_limit = num(dto.user_limit);
-    const duration_days = num(dto.duration_days);
-    const price = num(dto.price);
-    const is_active = bool01(dto.is_active ?? 1);
-
-    validatePlanFields(name, student_limit, user_limit, duration_days, price);
+    const current = await this.repository.findActiveById(id);
+    if (!current) throw new PlanNotFoundError(t({ bn: "প্ল্যান পাওয়া যায়নি।", en: "Plan not found." }));
+    const fields = parsePlanFields(dto, current);
+    const { name } = fields;
     const regBlocks = parseRegBlockSizes(dto);
 
     const exist = await this.repository.findActiveByNameExcludingId(name, id);
@@ -107,14 +83,7 @@ export class PlansService {
 
     let result;
     try {
-      result = await this.repository.updateActiveById(id, {
-        name,
-        studentLimit: student_limit,
-        userLimit: user_limit,
-        durationDays: duration_days,
-        price,
-        isActive: is_active,
-      });
+      result = await this.repository.updateActiveById(id, fields);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
         throw new PlanConflictError(t({ bn: "এই নামে প্ল্যান আগে ব্যবহার হয়েছে (ট্র্যাশেও থাকতে পারে), অন্য নাম দিন", en: "This plan name has been used before (it may be in the trash), choose another name" }));
@@ -127,15 +96,27 @@ export class PlansService {
     // Only affects blocks laid out from now on - madrasas' existing blocks
     // are never resized by a plan edit.
     if (regBlocks) await this.repository.replaceRegBlocks(id, regBlocks);
+    await this.audit(id, "PLAN_UPDATED", actor);
   }
 
-  async togglePlan(id: number) {
+  async togglePlan(id: number, actor: number | null = null) {
     if (!id) throw new InvalidPlanIdError();
 
     const plan = await this.repository.findActiveById(id);
     if (!plan) throw new PlanNotFoundError(t({ bn: "প্ল্যান পাওয়া যায়নি / ট্র্যাশে আছে", en: "Plan not found / it is in the trash" }));
 
     await this.repository.updateById(id, { isActive: plan.isActive === 1 ? 0 : 1 });
+    await this.audit(id, "PLAN_TOGGLED", actor);
+  }
+
+  private audit(id: number, action: string, actor: number | null) {
+    return logActivity({ madrasa_id: null, user_id: actor, action, entity: "plans", entity_id: id });
+  }
+
+  async planWarnings() {
+    const rows = (await this.repository.findMany({ isActive: 1, deletedAt: null })).sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
+    return rows.some((row, index) => index > 0 && (row.studentLimit <= rows[index - 1].studentLimit || row.sortOrder === rows[index - 1].sortOrder))
+      ? [t({ bn: "ক্রম অনুযায়ী সক্রিয় প্ল্যানের শিক্ষার্থী সীমা বাড়তে হবে।", en: "Active plan student limits should increase strictly with sort order." })] : [];
   }
 
   private async hasRunningSubscription(planId: number) {

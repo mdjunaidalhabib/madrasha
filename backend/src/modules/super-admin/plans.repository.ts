@@ -8,6 +8,9 @@ export class PlansRepository {
       select: {
         id: true,
         name: true,
+        nameBn: true, tagline: true, taglineBn: true, renewalPrice: true,
+        extraStudentPriceFirst: true, extraStudentPriceRenewal: true, sortOrder: true,
+        showOnLanding: true, isFeatured: true, accentColor: true,
         studentLimit: true,
         userLimit: true,
         durationDays: true,
@@ -27,6 +30,9 @@ export class PlansRepository {
       select: {
         id: true,
         name: true,
+        nameBn: true, tagline: true, taglineBn: true, renewalPrice: true,
+        extraStudentPriceFirst: true, extraStudentPriceRenewal: true, sortOrder: true,
+        showOnLanding: true, isFeatured: true, accentColor: true,
         studentLimit: true,
         userLimit: true,
         durationDays: true,
@@ -61,11 +67,21 @@ export class PlansRepository {
   }
 
   create(data: Prisma.PlanUncheckedCreateInput) {
-    return prisma.plan.create({ data });
+    return prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(731902)`;
+      if (data.isFeatured === 1) await tx.plan.updateMany({ data: { isFeatured: 0 }, where: { isFeatured: 1 } });
+      return tx.plan.create({ data });
+    });
   }
 
   updateActiveById(id: number, data: Prisma.PlanUpdateInput) {
-    return prisma.plan.updateMany({ where: { id, deletedAt: null }, data });
+    return prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(731902)`;
+      const found = await tx.plan.findFirst({ where: { id, deletedAt: null } });
+      if (!found) return { count: 0 };
+      if (data.isFeatured === 1) await tx.plan.updateMany({ data: { isFeatured: 0 }, where: { isFeatured: 1, id: { not: id } } });
+      return tx.plan.updateMany({ where: { id, deletedAt: null }, data });
+    });
   }
 
   findActiveById(id: number) {

@@ -15,7 +15,7 @@ import {
   revokeSession,
   listSessions,
 } from "./auth.controller";
-import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
+import { tenantMiddleware, tenantPlanAccessMiddleware } from "../../shared/middleware/tenant.middleware";
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { validate } from "../../shared/middleware/validate.middleware";
 import { idParamSchema } from "../../shared/validators/common.validation";
@@ -48,7 +48,7 @@ const loginLimiter = rateLimit({
   message: () => ({ message: t({ bn: "অনেকবার লগইনের চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many login attempts. Please try again later." }) }),
 });
 
-router.post("/login", loginLimiter, tenantMiddleware, validate(loginSchema), login);
+router.post("/login", loginLimiter, tenantPlanAccessMiddleware, validate(loginSchema), login);
 
 /* UNLOCK SCREEN */
 router.post("/unlock", tenantMiddleware, authMiddleware, validate(unlockSchema), unlockScreen);
@@ -91,11 +91,11 @@ const refreshLimiter = rateLimit({
 router.post(
   "/refresh",
   refreshLimiter,
-  tenantMiddleware,
+  tenantPlanAccessMiddleware,
   validate(refreshTokenSchema),
   refreshAccessToken,
 );
-router.post("/logout", refreshLimiter, tenantMiddleware, validate(logoutSchema), logout);
+router.post("/logout", refreshLimiter, tenantPlanAccessMiddleware, validate(logoutSchema), logout);
 
 /* LOGOUT FROM ALL DEVICES - body.keep_current=true revokes every OTHER
    session and leaves this one signed in; omitted/false revokes this one too. */

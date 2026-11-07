@@ -19,6 +19,13 @@ export const LATE_RENEWAL_FEE = 0;
 export const REFUND_APPLIES_TO_RENEWALS = false;
 const DAY_MS = 86_400_000;
 
+/** Match subscription-state: a DATE endDate is valid through its UTC day. */
+export function daysRemainingInTerm(endDate: Date | null, now = new Date()): number | null {
+  if (!endDate) return null;
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return Math.round((endDate.getTime() - today) / DAY_MS);
+}
+
 export function pickPlanForStudents<T extends PricingPlan>(
   plans: readonly T[],
   studentCount: number,
@@ -38,7 +45,9 @@ export function priceForCycle(plan: PricingPlan, cycle: PricingCycle): number {
 
 function prorate(amount: number, remainingDays: number, durationDays: number): number {
   if (durationDays <= 0 || remainingDays <= 0 || amount <= 0) return 0;
-  return Math.ceil((amount * Math.min(remainingDays, durationDays)) / durationDays);
+  const charge = (amount * Math.min(remainingDays, durationDays)) / durationDays;
+  // Decimal prices such as 1.10 must not add a taka through binary float noise.
+  return Math.ceil(charge - Number.EPSILON * Math.max(1, Math.abs(charge)) * 2);
 }
 
 export function extraStudentRate(plan: PricingPlan, cycle: PricingCycle): number {

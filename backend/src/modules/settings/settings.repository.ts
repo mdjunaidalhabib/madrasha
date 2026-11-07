@@ -1,3 +1,4 @@
+import { TransactionClient } from "../../shared/database/transaction";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 
@@ -130,18 +131,20 @@ export class SettingsRepository {
   findMadrasaLimits(madrasaId: number) {
     return prisma.madrasa.findUnique({
       where: { id: madrasaId },
-      select: { studentLimit: true, userLimit: true, planStatus: true },
+      select: { studentLimit: true, userLimit: true, planStatus: true, isActive: true },
     });
   }
 
-  /** Current plan comes from the latest active subscription row - see
+  /** Latest subscription remains visible after cancellation so the plan page
+   * can explain suspension and show payment/refund information. See
    * assignPlanToMadrasa in superadmin.service.ts, which is the only place
    * this row is created/replaced (fully super-admin controlled). */
   findActiveSubscription(madrasaId: number) {
     return prisma.madrasaSubscription.findFirst({
-      where: { madrasaId, isActive: 1 },
+      where: { madrasaId },
       orderBy: { id: "desc" },
       select: {
+        id: true, isActive: true, pricePaid: true, cancelledAt: true, refundedAt: true,
         cycle: true,
         startDate: true,
         endDate: true,
@@ -150,12 +153,25 @@ export class SettingsRepository {
     });
   }
 
+  findFirstSubscription(madrasaId: number) {
+    return prisma.madrasaSubscription.findFirst({ where: { madrasaId }, orderBy: { id: "asc" }, select: { id: true } });
+  }
+
+  findDomainSubscription(madrasaId: number) {
+    return prisma.madrasaDomainSubscription.findFirst({ where: { madrasaId }, orderBy: { id: "desc" } });
+  }
+
+  findSubscriptionPayments(madrasaId: number) {
+    return prisma.subscriptionPayment.findMany({ where: { madrasaId }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 10,
+      select: { amount: true, paymentMethod: true, status: true, createdAt: true } });
+  }
+
   findAvailablePricingPlans() {
     return prisma.plan.findMany({ where: { isActive: 1, deletedAt: null }, orderBy: { studentLimit: "asc" } });
   }
 
-  countActiveStudents(madrasaId: number) {
-    return prisma.student.count({ where: { madrasaId, isActive: 1, deletedAt: null } });
+  countActiveStudents(madrasaId: number, tx?: TransactionClient) {
+    return (tx ?? prisma).student.count({ where: { madrasaId, isActive: 1, deletedAt: null } });
   }
 
   countActiveUsers(madrasaId: number) {

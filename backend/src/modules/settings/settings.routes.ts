@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
+import { tenantMiddleware, tenantPlanAccessMiddleware } from "../../shared/middleware/tenant.middleware";
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { subscriptionCheck } from "../../shared/middleware/subscription.middleware";
 import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
@@ -109,7 +109,7 @@ router.put(
   updateBookLabelDesign,
 );
 
-router.get("/plan", tenantMiddleware, authMiddleware, getMyPlan);
+router.get("/plan", tenantPlanAccessMiddleware, authMiddleware, getMyPlan);
 
 router.get("/section-toggles", tenantMiddleware, authMiddleware, getSectionToggles);
 router.put(

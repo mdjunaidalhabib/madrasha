@@ -237,7 +237,31 @@ model Madrasa {
 
   @@index([isActive, deletedAt], map: "idx_madrasas_active")
   @@index([planStatus], map: "idx_madrasas_plan_status")
+  domainSubscriptions MadrasaDomainSubscription[]
+
   @@map("madrasas")
+}
+
+enum DomainRegistrationOwner {
+  institution
+  platform
+}
+
+model MadrasaDomainSubscription {
+  id Int @id @default(autoincrement())
+  madrasaId Int @map("madrasa_id")
+  domain String @db.VarChar(190)
+  amountPaid Decimal @map("amount_paid") @db.Decimal(10, 2)
+  startDate DateTime @map("start_date") @db.Date
+  endDate DateTime @map("end_date") @db.Date
+  isActive Int @default(1) @map("is_active")
+  registeredInNameOf DomainRegistrationOwner @default(institution) @map("registered_in_name_of")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, endDate], map: "idx_domain_subscription_madrasa")
+  @@map("madrasa_domain_subscriptions")
 }
 
 enum SubscriptionCycle {

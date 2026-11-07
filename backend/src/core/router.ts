@@ -1,3 +1,4 @@
+import publicPlansRoutes from "../modules/public-plans/public-plans.routes";
 import { Router } from "express";
 import leadRoutes from "../modules/leads/lead.routes";
 
@@ -91,6 +92,7 @@ import trashRoutes from "../modules/trash/trash.routes";
 
 const router = Router();
 router.use(leadRoutes);
+router.use(publicPlansRoutes);
 
 router.use("/website", websiteRoutes);
 

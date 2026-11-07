@@ -1,4 +1,5 @@
-export interface CreateMadrasaRequestDto {
+import { SubscriptionPurchaseDto } from "./subscriptions.dto";
+export interface CreateMadrasaRequestDto extends SubscriptionPurchaseDto {
   name: string;
   address?: string;
   slug?: string;
@@ -22,7 +23,7 @@ export interface CreateMadrasaRequestDto {
   default_users?: Array<{ role: string; name?: string; email: string; password: string }>;
 }
 
-export interface UpdateMadrasaRequestDto {
+export interface UpdateMadrasaRequestDto extends SubscriptionPurchaseDto {
   name?: string;
   slug?: string;
   address?: string;
@@ -44,7 +45,7 @@ export interface UpdateMadrasaRequestDto {
   books?: unknown;
 }
 
-export interface AssignPlanRequestDto {
+export interface AssignPlanRequestDto extends SubscriptionPurchaseDto {
   plan_id: number | string;
   /** See CreateMadrasaRequestDto.start_date. */
   start_date?: string;

@@ -100,7 +100,25 @@ export interface BookLabelDesignData {
 }
 
 export interface MyPlanData {
-  over_limit: ReturnType<typeof import("../../shared/subscription/subscription-pricing").recommendOverLimitAction> | null;
+  over_limit: (ReturnType<typeof import("../../shared/subscription/subscription-pricing").recommendOverLimitAction> & {
+    extra_students: number; extra_charge: number;
+    upgrade_to: { plan_name: string; charge: number } | null; recommended: "EXTRA" | "UPGRADE";
+  }) | null;
+  plan_name_bn: string | null;
+  cycle: "FIRST" | "RENEWAL" | null;
+  renewal_price: number | null;
+  price_paid: number | null;
+  next_renewal_price: number | null;
+  days_since_expiry: number | null;
+  retention_warning_days: number;
+  retention_notice: string;
+  renewal_contact: { phone_display: string; phone_intl: string; email: string };
+  refund: { eligible: boolean; until: Date | null };
+  custom_domain: { domain: string; end_date: Date; is_active: boolean } | null;
+  payments: { amount: number | null; method: string | null; status: string | null; date: Date }[];
+  includes: { bn: string; en: string }[];
+  excludes: { bn: string; en: string }[];
+  custom_domain_prices: { firstYear: number; renewal: number };
   plan_name: string | null;
   price: number | null;
   duration_days: number | null;

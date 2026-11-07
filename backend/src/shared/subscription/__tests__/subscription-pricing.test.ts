@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { PLAN_SEEDS, seedPlans } from "../../../../prisma/data/plans.seed";
 import {
+  daysRemainingInTerm,
   extraStudentCharge,
   extraStudentRate,
   isRefundEligible,
@@ -15,6 +16,12 @@ const plan = (name: string) => PLAN_SEEDS.find((p) => p.name === name)!;
 const term = { cycle: "FIRST" as const, remainingDays: 365, durationDays: 365 };
 
 describe("subscription pricing", () => {
+  it("keeps the last valid UTC day consistent across expiry and plan responses", () => {
+    const end = new Date("2026-11-07T00:00:00Z");
+    expect(daysRemainingInTerm(end, new Date("2026-11-07T23:59:59Z"))).toBe(0);
+    expect(daysRemainingInTerm(end, new Date("2026-11-08T00:00:00Z"))).toBe(-1);
+    expect(daysRemainingInTerm(null)).toBeNull();
+  });
   it.each([
     [50, "Starter"],
     [51, "Basic"],
@@ -126,6 +133,9 @@ describe("subscription pricing", () => {
         studentCount: 120,
       }),
     ).toBe(0);
+  });
+  it("does not overcharge an admin-edited decimal extra-student rate", () => {
+    expect(extraStudentCharge({ ...term, plan: { ...plan("Basic"), extraStudentPriceFirst: 1.1 }, studentCount: 200 })).toBe(110);
   });
   it("handles an empty catalogue and an invalid or exceeded term without overcharging", () => {
     expect(pickPlanForStudents([], 50)).toBe("CUSTOM");

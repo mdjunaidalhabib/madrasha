@@ -3,7 +3,7 @@ import { prisma } from "../database/prisma";
 import { logger } from "../logger/logger";
 import { t } from "../i18n";
 import { env } from "../config/env";
-import { getSubscriptionState, subscriptionSuspendedMessage } from "../subscription/subscription-state";
+import { getSubscriptionState, subscriptionSuspendedBody } from "../subscription/subscription-state";
 
 function normalizeSlug(value: unknown) {
   return String(value || "")
@@ -49,7 +49,7 @@ async function getSlugFromRequest(req: Request) {
   return "";
 }
 
-export const tenantMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+const resolveTenant = (allowExpired: boolean) => async (req: Request, res: Response, next: NextFunction) => {
   try {
     const slug = await getSlugFromRequest(req);
 
@@ -72,21 +72,21 @@ export const tenantMiddleware = async (req: Request, res: Response, next: NextFu
       return res.status(410).json({ message: t({ bn: "এই প্রতিষ্ঠানটি মুছে ফেলা হয়েছে", en: "This institution has been deleted" }) });
     }
 
-    if (!madrasa.isActive) {
-      return res.status(423).json({ message: t({ bn: "এই প্রতিষ্ঠানটি স্থগিত আছে", en: "This institution is suspended" }) });
+    if (!madrasa.isActive && !allowExpired) {
+      return res.status(423).json({
+        ...await subscriptionSuspendedBody(madrasa.id),
+        message: t({ bn: "এই প্রতিষ্ঠানটি স্থগিত আছে", en: "This institution is suspended" }),
+      });
     }
 
     // Auto-suspend: once the plan has expired (or none exists) the madrasa is
-    // treated exactly like a manually suspended one (423) - login, admin,
-    // guardian portal, everything. Renewing the plan from the super admin
-    // panel lifts it immediately. Kill switch: SUBSCRIPTION_ENFORCEMENT=false.
-    if (env.subscriptionEnforcement) {
+    // blocked on ordinary tenant routes. Login/session renewal and the
+    // authenticated plan view use tenantPlanAccessMiddleware explicitly.
+    // Renewing lifts expiry immediately. Kill switch: SUBSCRIPTION_ENFORCEMENT=false.
+    if (env.subscriptionEnforcement && !allowExpired) {
       const state = await getSubscriptionState(madrasa.id);
       if (state !== "ACTIVE") {
-        return res.status(423).json({
-          message: subscriptionSuspendedMessage(state),
-          code: state === "NONE" ? "SUBSCRIPTION_NONE" : "SUBSCRIPTION_EXPIRED",
-        });
+        return res.status(423).json(await subscriptionSuspendedBody(madrasa.id));
       }
     }
 
@@ -101,3 +101,8 @@ export const tenantMiddleware = async (req: Request, res: Response, next: NextFu
     return res.status(500).json({ message: t({ bn: "প্রতিষ্ঠান শনাক্ত করা যায়নি", en: "Tenant resolution failed" }) });
   }
 };
+
+export const tenantMiddleware = resolveTenant(false);
+// DECISION: only login/session renewal and the authenticated plan view bypass expiry.
+// Tenant existence, deletion and token ownership remain enforced.
+export const tenantPlanAccessMiddleware = resolveTenant(true);

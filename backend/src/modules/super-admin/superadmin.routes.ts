@@ -1,3 +1,4 @@
+import { renewSubscription, cancelAndRefund, listExpiredSubscriptions, listDomainSubscriptions, createDomainSubscription, updateDomainSubscription, removeDomainSubscription } from "./subscriptions.controller";
 import { Router } from "express";
 import { superAdminMiddleware } from "../../shared/middleware/superAdmin.middleware";
 
@@ -164,6 +165,13 @@ const router = Router();
    MADRASAS
 ===================================================== */
 
+router.get("/madrasas/expired", superAdminMiddleware, listExpiredSubscriptions);
+router.post("/madrasas/:id/renew", superAdminMiddleware, renewSubscription);
+router.post("/madrasas/:id/subscriptions/:subscriptionId/cancel-refund", superAdminMiddleware, cancelAndRefund);
+router.get("/madrasas/:id/domain-subscriptions", superAdminMiddleware, listDomainSubscriptions);
+router.post("/madrasas/:id/domain-subscriptions", superAdminMiddleware, createDomainSubscription);
+router.put("/madrasas/:id/domain-subscriptions/:domainId", superAdminMiddleware, updateDomainSubscription);
+router.delete("/madrasas/:id/domain-subscriptions/:domainId", superAdminMiddleware, removeDomainSubscription);
 router.get("/madrasas", superAdminMiddleware, listMadrasas);
 router.post("/madrasas", superAdminMiddleware, createMadrasa);
 router.put("/madrasas/:id", superAdminMiddleware, updateMadrasa);

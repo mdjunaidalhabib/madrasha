@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { asyncHandler } from "../utils/async-handler.util";
-import { getSubscriptionState, subscriptionSuspendedMessage } from "../subscription/subscription-state";
+import { getSubscriptionState, subscriptionSuspendedBody } from "../subscription/subscription-state";
 
 /**
  * Per-router subscription check (requires tenantMiddleware to have run first).
@@ -13,10 +13,7 @@ import { getSubscriptionState, subscriptionSuspendedMessage } from "../subscript
 export const subscriptionCheck = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   const state = await getSubscriptionState(req.tenant!.madrasa_id);
   if (state !== "ACTIVE") {
-    return res.status(423).json({
-      message: subscriptionSuspendedMessage(state),
-      code: state === "NONE" ? "SUBSCRIPTION_NONE" : "SUBSCRIPTION_EXPIRED",
-    });
+    return res.status(423).json(await subscriptionSuspendedBody(req.tenant!.madrasa_id));
   }
   next();
 });

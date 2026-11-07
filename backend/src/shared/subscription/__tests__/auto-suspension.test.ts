@@ -14,7 +14,7 @@ vi.mock("../../config/env", () => ({ env: { subscriptionEnforcement: true } }));
 vi.mock("../../logger/logger", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
 
 import { env } from "../../config/env";
-import { tenantMiddleware } from "../../middleware/tenant.middleware";
+import { tenantMiddleware, tenantPlanAccessMiddleware } from "../../middleware/tenant.middleware";
 import { getSubscriptionState, invalidateSubscriptionCache } from "../subscription-state";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -23,7 +23,7 @@ const dateOnly = (offsetDays: number) => {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 };
 
-const runTenant = async () => {
+const runTenant = async (middleware = tenantMiddleware) => {
   const out: { status?: number; body?: any; nexted: boolean; tenant?: any } = { nexted: false };
   const res: any = {
     status(code: number) {
@@ -36,7 +36,7 @@ const runTenant = async () => {
     },
   };
   const req: any = { headers: { "x-madrasa-slug": "demo" }, params: {}, query: {} };
-  await tenantMiddleware(req, res, () => {
+  await middleware(req, res, () => {
     out.nexted = true;
     out.tenant = req.tenant;
   });
@@ -86,10 +86,12 @@ describe("getSubscriptionState", () => {
 });
 
 describe("tenantMiddleware auto-suspension", () => {
-  it("suspends (423) a madrasa whose subscription expired - this covers login too", async () => {
+  it("suspends ordinary routes and includes the retention notice", async () => {
     subscriptionFindFirst.mockResolvedValue({ endDate: dateOnly(-5) });
     const r = await runTenant();
     expect(r.status).toBe(423);
+    expect(r.body).toMatchObject({ endDate: dateOnly(-5), daysSinceExpiry: 5, retentionWarningDays: 60 });
+    expect(r.body.retentionNotice).toBe("মেয়াদ শেষের পর ৬০ দিন পর্যন্ত আপনার ডেটা সংরক্ষিত থাকবে। এরপর ডেটা যেকোনো সময় মুছে ফেলা হতে পারে এবং সংরক্ষণের নিশ্চয়তা থাকবে না। অনুগ্রহ করে এর মধ্যে নবায়ন করুন বা ডেটা ডাউনলোড করে নিন।");
     expect(r.body.code).toBe("SUBSCRIPTION_EXPIRED");
     expect(r.nexted).toBe(false);
   });
@@ -108,11 +110,11 @@ describe("tenantMiddleware auto-suspension", () => {
     expect(r.tenant).toEqual({ madrasa_id: 7, slug: "demo" });
   });
 
-  it("a manually suspended madrasa is still rejected without a subscription lookup", async () => {
+  it("a manually suspended madrasa is still rejected with retention details", async () => {
     madrasaFindUnique.mockResolvedValue({ id: 7, slug: "demo", name: "Demo", isActive: 0, deletedAt: null, websiteStatus: "published" });
     const r = await runTenant();
     expect(r.status).toBe(423);
-    expect(subscriptionFindFirst).not.toHaveBeenCalled();
+    expect(r.body.retentionWarningDays).toBe(60);
   });
 
   it("does nothing extra when enforcement is switched off", async () => {
@@ -121,5 +123,18 @@ describe("tenantMiddleware auto-suspension", () => {
     const r = await runTenant();
     expect(r.nexted).toBe(true);
     expect(subscriptionFindFirst).not.toHaveBeenCalled();
+  });
+
+  it("allows tenant resolution for login and authenticated plan access after expiry", async () => {
+    subscriptionFindFirst.mockResolvedValue({ endDate: dateOnly(-5) });
+    expect((await runTenant(tenantPlanAccessMiddleware)).tenant).toEqual({ madrasa_id: 7, slug: "demo" });
+    expect((await runTenant()).status).toBe(423);
+  });
+
+  it("never permits a deleted or missing tenant through plan access", async () => {
+    madrasaFindUnique.mockResolvedValue(null);
+    expect((await runTenant(tenantPlanAccessMiddleware)).status).toBe(410);
+    madrasaFindUnique.mockResolvedValue({ id: 7, isActive: 1, deletedAt: new Date() });
+    expect((await runTenant(tenantPlanAccessMiddleware)).status).toBe(410);
   });
 });

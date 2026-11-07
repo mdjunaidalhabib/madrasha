@@ -1,5 +1,7 @@
-import { recommendOverLimitAction } from "../../shared/subscription/subscription-pricing";
+import { DATA_RETENTION_WARNING_DAYS, retentionNotice, CUSTOM_DOMAIN_PRICES, SUBSCRIPTION_INCLUDES, SUBSCRIPTION_EXCLUDES } from "../../shared/subscription/subscription.constants";
+import { recommendOverLimitAction, pickPlanForStudents, priceForCycle, isRefundEligible, REFUND_DAYS, daysRemainingInTerm } from "../../shared/subscription/subscription-pricing";
 import { Prisma } from "@prisma/client";
+import { vendorPromoService } from "../super-admin/vendor-promo.service";
 import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { storageProvider } from "../../shared/storage";
 import { logActivity } from "../../shared/utils/activity.util";
@@ -1048,24 +1050,33 @@ export class SettingsService {
   }
 
   async getMyPlan(madrasaId: number): Promise<MyPlanData> {
-    const [madrasa, subscription, students, users, plans] = await Promise.all([
+    const [madrasa, subscription, students, users, plans, domain, payments, firstSubscription, contact] = await Promise.all([
       this.repository.findMadrasaLimits(madrasaId),
       this.repository.findActiveSubscription(madrasaId),
       this.repository.countActiveStudents(madrasaId),
       this.repository.countActiveUsers(madrasaId),
       this.repository.findAvailablePricingPlans(),
+      this.repository.findDomainSubscription(madrasaId),
+      this.repository.findSubscriptionPayments(madrasaId),
+      this.repository.findFirstSubscription(madrasaId),
+      vendorPromoService.getConfig(),
     ]);
     if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found" }));
 
     const endDate = subscription?.endDate ?? null;
-    let daysRemaining: number | null = null;
-    if (endDate) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const end = new Date(endDate);
-      end.setHours(0, 0, 0, 0);
-      daysRemaining = Math.round((end.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
-    }
+    const daysRemaining = daysRemainingInTerm(endDate);
+
+    const fitting = pickPlanForStudents(plans, students);
+    const recommendation = subscription?.plan ? recommendOverLimitAction({
+      plan: { ...subscription.plan, studentLimit: madrasa.studentLimit ?? subscription.plan.studentLimit },
+      plans, cycle: subscription.cycle, studentCount: students,
+      remainingDays: Math.max(0, (daysRemaining ?? -1) + 1),
+      durationDays: subscription.plan.durationDays ?? 365,
+    }) : null;
+    const now = new Date();
+    const firstPurchase = subscription?.id === firstSubscription?.id;
+    const active = madrasa.isActive !== 0 && !!subscription?.isActive && !subscription.cancelledAt && (daysRemaining === null || daysRemaining >= 0);
+
 
     return {
       plan_name: subscription?.plan?.name ?? null,
@@ -1076,16 +1087,31 @@ export class SettingsService {
       start_date: subscription?.startDate ?? null,
       end_date: endDate,
       days_remaining: daysRemaining,
-      plan_status: madrasa.planStatus,
-      has_active_subscription: !!subscription,
-      over_limit: subscription?.plan ? recommendOverLimitAction({
-        plan: { ...subscription.plan, studentLimit: madrasa.studentLimit ?? subscription.plan.studentLimit },
-        plans,
-        cycle: subscription.cycle,
-        studentCount: students,
-        remainingDays: Math.max(0, (daysRemaining ?? -1) + 1), // endDate is the last valid day.
-        durationDays: subscription.plan.durationDays ?? 365,
-      }) : null,
+      plan_status: active ? madrasa.planStatus : "suspended",
+      has_active_subscription: active,
+      plan_name_bn: subscription?.plan?.nameBn ?? null,
+      cycle: subscription?.cycle ?? null,
+      renewal_price: subscription?.plan ? priceForCycle(subscription.plan, "RENEWAL") : null,
+      price_paid: subscription?.pricePaid == null ? null : Number(subscription.pricePaid),
+      next_renewal_price: fitting === "CUSTOM" ? null : priceForCycle(fitting, "RENEWAL"),
+      days_since_expiry: daysRemaining !== null && daysRemaining < 0 ? -daysRemaining : null,
+      retention_warning_days: DATA_RETENTION_WARNING_DAYS,
+      retention_notice: retentionNotice(),
+      renewal_contact: { phone_display: contact.phone_display, phone_intl: contact.phone_intl, email: contact.email },
+      refund: {
+        eligible: !!(subscription?.startDate && subscription.isActive && !subscription.cancelledAt && !subscription.refundedAt && firstPurchase && isRefundEligible({ startDate: subscription.startDate, now, cycle: subscription.cycle })),
+        until: subscription?.startDate && firstPurchase && subscription.cycle === "FIRST" ? new Date(+subscription.startDate + REFUND_DAYS * 86400000) : null,
+      },
+      custom_domain: domain ? { domain: domain.domain, end_date: domain.endDate, is_active: domain.isActive === 1 && +domain.endDate + 86400000 > +now } : null,
+      payments: payments.map((p) => ({ amount: p.amount == null ? null : Number(p.amount), method: p.paymentMethod, status: p.status, date: p.createdAt })),
+      includes: SUBSCRIPTION_INCLUDES, excludes: SUBSCRIPTION_EXCLUDES, custom_domain_prices: CUSTOM_DOMAIN_PRICES,
+      over_limit: recommendation?.overLimit ? {
+        ...recommendation,
+        extra_students: Math.max(0, students - recommendation.studentLimit),
+        extra_charge: recommendation.extraAmount,
+        upgrade_to: recommendation.upgradePlan ? { plan_name: recommendation.upgradePlan.name, charge: recommendation.upgradeAmount! } : null,
+        recommended: recommendation.recommendedAction === "UPGRADE" ? "UPGRADE" : "EXTRA",
+      } : null,
       // Advisory limits live on the Madrasa row itself, not the Plan -
       // assignPlanToMadrasa copies the plan's limits here but a super admin
       // can also override them per-madrasa afterwards (see

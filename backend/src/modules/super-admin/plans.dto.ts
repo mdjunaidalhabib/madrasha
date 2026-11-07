@@ -1,5 +1,24 @@
 export interface CreatePlanRequestDto {
-  name: string;
+  name?: string;
+  renewalPrice?: number | string | null;
+  extraStudentPriceFirst?: number | string | null;
+  extraStudentPriceRenewal?: number | string | null;
+  sortOrder?: number | string;
+  nameBn?: string | null;
+  tagline?: string | null;
+  taglineBn?: string | null;
+  showOnLanding?: number | boolean;
+  isFeatured?: number | boolean;
+  accentColor?: string | null;
+  renewal_price?: number | string | null;
+  extra_student_price_first?: number | string | null;
+  extra_student_price_renewal?: number | string | null;
+  sort_order?: number | string;
+  name_bn?: string | null;
+  tagline_bn?: string | null;
+  show_on_landing?: number | boolean;
+  is_featured?: number | boolean;
+  accent_color?: string | null;
   student_limit?: number | string;
   user_limit?: number | string;
   duration_days?: number | string;

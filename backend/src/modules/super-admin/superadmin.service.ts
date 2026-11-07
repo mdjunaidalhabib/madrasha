@@ -1,3 +1,6 @@
+import { settingsService } from "../settings/settings.service";
+import { subscriptionsService } from "./subscriptions.service";
+import { invalidateSubscriptionCache } from "../../shared/subscription/subscription-state";
 import { Prisma, WebsiteStatus } from "@prisma/client";
 import { buildDemoClassRoutines } from "./demo-class-routine";
 import { provisionWebsiteOnTx } from "../public-website/website-template.service";
@@ -75,18 +78,7 @@ const cleanNumberArray = (v: unknown): number[] => {
   return v.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n > 0);
 };
 
-/** Many madrasas already had a running subscription before being entered
- * into this system, so the plan's start date can't always just be "today" -
- * the super admin may backdate it here. Falls back to today when omitted. */
-const resolvePlanStartDate = (value?: string): Date => {
-  if (!value) return new Date(new Date().toDateString());
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) throw new BadRequestError(t({ bn: "শুরুর তারিখ সঠিক নয়", en: "Invalid start date" }));
-  return new Date(parsed.toDateString());
-};
-
-/** A `{ from, to }` pair for the activity log when a field actually changed
- * (the tenant's log renders it as "নাম: পুরনো → নতুন"), else undefined. */
+/** A from/to pair for the activity log when a field actually changed. */
 const changeOf = (from: string | null | undefined, to: string | null | undefined) =>
   to && to !== from ? { from: from ?? "", to } : undefined;
 
@@ -158,25 +150,10 @@ export class SuperAdminService {
     if (!dto.plan_id) throw new PlanIdRequiredError();
 
     await this.repository.runTransaction(async (tx) => {
-      const madrasa = await this.repository.findMadrasaOnTx(tx, madrasaId);
-      if (!madrasa) throw new MadrasaNotFoundError();
-      if (madrasa.deletedAt) throw new TrashedMadrasaOperationError(t({ bn: "ট্র্যাশে থাকা প্রতিষ্ঠানে প্ল্যান দেওয়া যাবে না", en: "Cannot assign a plan to a trashed institution" }));
-
-      const plan = await this.repository.findActivePlanOnTx(tx, Number(dto.plan_id));
-      if (!plan) throw new InvalidPlanError();
-
-      await this.repository.deactivateSubscriptionsOnTx(tx, madrasaId);
-
-      const startDate = resolvePlanStartDate(dto.start_date);
-      const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + (plan.durationDays || 0));
-
-      await this.repository.createSubscriptionOnTx(tx, madrasaId, plan.id, startDate, endDate);
-      await this.repository.updateMadrasaLimitsOnTx(tx, madrasaId, plan.studentLimit, plan.userLimit);
-      // Classes still without a registration-number block get one sized by
-      // the new plan; existing (possibly admin-edited) blocks stay as they are.
-      await assignMissingRegistrationBlocksOnTx(tx, madrasaId, plan.id);
+      const subscription = await subscriptionsService.purchaseOnTx(tx, madrasaId, dto);
+      await assignMissingRegistrationBlocksOnTx(tx, madrasaId, subscription.planId);
     });
+    invalidateSubscriptionCache(madrasaId);
   }
 
   async createMadrasa(dto: CreateMadrasaRequestDto) {
@@ -220,14 +197,7 @@ export class SuperAdminService {
         const plan = await this.repository.findActivePlanOnTx(tx, Number(dto.plan_id));
         if (!plan) throw new InvalidPlanError(t({ bn: "plan_id সঠিক নয়", en: "Invalid plan_id" }));
 
-        const durationDays = Number(dto.duration_days) > 0 ? Number(dto.duration_days) : plan.durationDays || 0;
-
-        const startDate = resolvePlanStartDate(dto.start_date);
-        const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + durationDays);
-
-        await this.repository.createSubscriptionOnTx(tx, madrasaId, plan.id, startDate, endDate);
-        await this.repository.updateMadrasaLimitsOnTx(tx, madrasaId, plan.studentLimit, plan.userLimit);
+        await subscriptionsService.purchaseOnTx(tx, madrasaId, dto);
 
         // Every activated class gets its registration-number block from the
         // plan (e.g. নূরানী 30 / হিফজ 40 / কিতাব 20 per class), one after
@@ -247,6 +217,7 @@ export class SuperAdminService {
       return { madrasaId, finalSlug };
     });
 
+    invalidateSubscriptionCache(result.madrasaId);
     return result;
   }
 
@@ -642,14 +613,12 @@ export class SuperAdminService {
         newPlanId = plan.id;
         newPlanName = plan.name;
 
-        await this.repository.deactivateSubscriptionsOnTx(tx, id);
-
-        const startDate = resolvePlanStartDate(dto.start_date);
-        const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + (plan.durationDays || 0));
-
-        await this.repository.createSubscriptionOnTx(tx, id, plan.id, startDate, endDate);
-        await this.repository.updateMadrasaLimitsOnTx(tx, id, plan.studentLimit, plan.userLimit);
+        const current = await tx.madrasaSubscription.findFirst({ where: { madrasaId: id, isActive: 1 }, orderBy: { id: "desc" } });
+        // Existing edit forms submit the unchanged plan on every save.
+        if (current?.planId !== plan.id) {
+          const subscription = await subscriptionsService.purchaseOnTx(tx, id, dto);
+          newPlanId = subscription.planId;
+        }
       }
 
       if (divisionIds !== null || moduleIds !== null || classIds !== null || bookIds !== null) {
@@ -683,6 +652,7 @@ export class SuperAdminService {
         }),
       });
     });
+    invalidateSubscriptionCache(id);
   }
 
   async getMadrasaDetail(id: number) {
@@ -704,6 +674,7 @@ export class SuperAdminService {
       institution_type: madrasa.institutionType,
       default_language: madrasa.defaultLanguage ?? null,
       custom_domain: madrasa.customDomain,
+      subscription: await settingsService.getMyPlan(id),
       plan_id: madrasa.subscriptions[0]?.planId ?? null,
       start_date: madrasa.subscriptions[0]?.startDate ?? null,
       end_date: madrasa.subscriptions[0]?.endDate ?? null,
