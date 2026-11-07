@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import ContactFab from "./ContactFab";
 import LeadCapture from "./LeadCapture";
+import PricingSection from "./PricingSection";
 import { getAdminAppLoginUrl } from "../../utils/adminAppUrl";
 import { LanguageSwitcher, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { BRAND_NAME, landingText } from "./landing.text";
@@ -49,6 +50,7 @@ const NAV_LINKS = [
   { href: "#why", key: "why" },
   { href: "#getting-started", key: "gettingStarted" },
   { href: "#service", key: "service" },
+  { href: "#pricing", key: "pricing" },
   { href: "#contact", key: "contact" },
 ];
 
@@ -224,7 +226,7 @@ export default function PlatformLandingPage() {
             </span>
           </a>
 
-          <nav className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex">
+          <nav className="hidden items-center gap-7 whitespace-nowrap text-sm font-medium text-slate-600 xl:flex">
             {NAV_LINKS.map((link) => {
               const isActive = activeSection === link.href.slice(1);
               return (
@@ -258,7 +260,7 @@ export default function PlatformLandingPage() {
               onClick={() => setMobileNavOpen((v) => !v)}
               aria-label={mobileNavOpen ? t.closeMenu : t.openMenu}
               aria-expanded={mobileNavOpen}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 md:hidden"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 xl:hidden"
             >
               {mobileNavOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -267,7 +269,7 @@ export default function PlatformLandingPage() {
 
         {/* Mobile nav panel */}
         {mobileNavOpen && (
-          <div className="border-t border-slate-100 bg-white px-4 py-3 md:hidden">
+          <div className="border-t border-slate-100 bg-white px-4 py-3 xl:hidden">
             <nav className="flex flex-col gap-1 text-sm font-medium text-slate-600">
               {NAV_LINKS.map((link) => {
                 const isActive = activeSection === link.href.slice(1);
@@ -540,6 +542,7 @@ export default function PlatformLandingPage() {
       </section>
 
       {/* ---------------- Contact ---------------- */}
+      <PricingSection />
       <LeadCapture />
       <section id="contact" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         <div className="overflow-hidden rounded-3xl bg-[#0b1220]">
