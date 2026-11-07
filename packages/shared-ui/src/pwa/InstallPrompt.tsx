@@ -5,7 +5,7 @@ import { commonText, localizeDigits, useLang, useText } from "../i18n";
 import { pwaText } from "./pwa.text";
 
 interface InstallPromptProps {
-  /** Shown as the banner heading, e.g. "Hikmah EMS Admin" or the madrasa's name. */
+  /** Shown as the banner heading, e.g. "EMS Admin" or the madrasa's name. */
   appName: string;
   description?: string;
   /** localStorage key that remembers a ✕ click; separate per app. */

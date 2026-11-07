@@ -6,7 +6,7 @@ type InstitutionCard = { title: string; desc: string; points: string[] };
 /** Platform brand shown on the marketing landing page. Change it here (and in
  * frontend/index.html) to rename the product - nothing else on the page
  * hardcodes it. */
-export const BRAND_NAME = "Hikmah EMS";
+export const BRAND_NAME = "EMS";
 
 /** Platform marketing landing page - not a tenant site, so no institution
  * placeholders here: it speaks to every institution type the platform
@@ -21,7 +21,7 @@ export const landingText = defineText({
       service: "সেবা নিন",
       contact: "যোগাযোগ",
     } as Record<string, string>,
-    brandTagline: "মাদ্রাসা · স্কুল · কলেজ · কিন্ডারগার্টেন",
+    brandTagline: "শিক্ষা প্রতিষ্ঠান ম্যানেজমেন্ট সিস্টেম",
     goToAdmin: "অ্যাডমিন প্যানেলে যান",
     closeMenu: "মেনু বন্ধ করুন",
     openMenu: "মেনু খুলুন",
@@ -152,7 +152,7 @@ export const landingText = defineText({
       service: "Get Started",
       contact: "Contact",
     },
-    brandTagline: "Madrasa · School · College · Kindergarten",
+    brandTagline: "Education Management System",
     goToAdmin: "Go to Admin Panel",
     closeMenu: "Close menu",
     openMenu: "Open menu",

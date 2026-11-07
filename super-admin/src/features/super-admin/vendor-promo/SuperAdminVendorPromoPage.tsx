@@ -378,7 +378,7 @@ function ServicesList() {
       <h2 className="mb-1 text-lg font-bold text-slate-900 dark:text-slate-100">আমাদের সেবাসমূহ</h2>
       <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
         বিস্তারিত পেজে "আমাদের সেবাসমূহ" গ্রিডে যা দেখা যাবে। "বর্তমানে ব্যবহার করছে" চিহ্নিত
-        সার্ভিসটি (সাধারণত Hikmah EMS) ব্যাজসহ আলাদাভাবে দেখানো হয়।
+        সার্ভিসটি (সাধারণত EMS) ব্যাজসহ আলাদাভাবে দেখানো হয়।
       </p>
 
       <div className="mb-4 rounded-xl border border-dashed border-gray-300 p-3 dark:border-slate-700">
@@ -415,7 +415,7 @@ function ServicesList() {
               checked={addForm.is_current}
               onChange={(e) => setAddForm((p) => ({ ...p, is_current: e.target.checked }))}
             />
-            এটাই বর্তমানে ব্যবহার করছে (Hikmah EMS)
+            এটাই বর্তমানে ব্যবহার করছে (EMS)
           </label>
           <button
             type="button"
@@ -557,7 +557,7 @@ function ServicesList() {
               checked={editForm.is_current}
               onChange={(e) => setEditForm((p) => ({ ...p, is_current: e.target.checked }))}
             />
-            এটাই বর্তমানে ব্যবহার করছে (Hikmah EMS)
+            এটাই বর্তমানে ব্যবহার করছে (EMS)
           </label>
         </div>
         <div className="mt-4 flex justify-end gap-2">

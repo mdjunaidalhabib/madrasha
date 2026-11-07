@@ -23,7 +23,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <Toaster />
       <ConfirmDialog />
       <InstallPrompt
-        appName="Hikmah EMS Admin"
+        appName="EMS Admin"
         storageKey="ems-admin:pwa-dismissed-at"
         hideOnPaths={/\/print\//}
       />
