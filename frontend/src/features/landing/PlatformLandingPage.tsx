@@ -25,11 +25,15 @@ import {
   PhoneCall,
   Menu,
   X,
+  BookOpen,
+  School,
+  Baby,
+  Building2,
 } from "lucide-react";
 import ContactFab from "./ContactFab";
 import { getAdminAppLoginUrl } from "../../utils/adminAppUrl";
 import { LanguageSwitcher, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
-import { landingText } from "./landing.text";
+import { BRAND_NAME, landingText } from "./landing.text";
 
 // Contact number used for both the "tel:" and WhatsApp ("wa.me") links in
 // the floating contact button and the Contact section below. Kept in one
@@ -40,6 +44,7 @@ const CONTACT_PHONE_INTL = "8801624114405"; // wa.me needs country code, no "+" 
 // Labels come from landingText.nav[key].
 const NAV_LINKS = [
   { href: "#about", key: "about" },
+  { href: "#institutions", key: "institutions" },
   { href: "#why", key: "why" },
   { href: "#getting-started", key: "gettingStarted" },
   { href: "#service", key: "service" },
@@ -50,6 +55,7 @@ const FEATURE_ICONS = [Users, Users2, UserPlus, CalendarCheck, ClipboardList, Wa
 const WHY_ICONS = [Clock, ShieldCheck, BarChart3, ShieldCheck, LayoutDashboard, Users2];
 const STEP_ICONS = [UserPlus, Settings, Users2, ClipboardList, LayoutDashboard];
 const SERVICE_ICONS = [PhoneCall, PlayCircle, Wrench, FileCheck2, Rocket];
+const INSTITUTION_ICONS = [BookOpen, School, Building2, Baby];
 const MOCK_ICONS = [Users, Users2, UserPlus, CalendarCheck, ClipboardList, Wallet];
 
 /* ---------------------------------------------------------
@@ -77,6 +83,36 @@ function FeatureCard({ icon, title, desc }: { icon: ReactNode; title: string; de
       </div>
       <h3 className="text-base font-bold text-slate-900">{title}</h3>
       <p className="mt-1.5 text-sm leading-6 text-slate-600">{desc}</p>
+    </div>
+  );
+}
+
+function InstitutionCard({
+  icon,
+  title,
+  desc,
+  points,
+}: {
+  icon: ReactNode;
+  title: string;
+  desc: string;
+  points: string[];
+}) {
+  return (
+    <div className="flex flex-col rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-600 text-white">
+        {icon}
+      </div>
+      <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+      <p className="mt-1.5 text-sm leading-6 text-slate-600">{desc}</p>
+      <ul className="mt-4 space-y-2 text-sm text-slate-700">
+        {points.map((point) => (
+          <li key={point} className="flex items-start gap-2">
+            <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-600" />
+            <span>{point}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -128,7 +164,7 @@ function StepItem({
   );
 }
 
-export default function QmsLandingPage() {
+export default function PlatformLandingPage() {
   const t = useText(landingText);
   const lang = useLang();
   const adminAppLoginUrl = getAdminAppLoginUrl();
@@ -181,9 +217,9 @@ export default function QmsLandingPage() {
             </span>
             <span className="leading-tight">
               <span className="block text-sm font-extrabold tracking-tight text-slate-900">
-                QMS
+                {BRAND_NAME}
               </span>
-              <span className="block text-[11px] text-slate-500">Qawmi Madrasa System</span>
+              <span className="block text-[11px] text-slate-500">{t.brandTagline}</span>
             </span>
           </a>
 
@@ -328,7 +364,7 @@ export default function QmsLandingPage() {
                   <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/70" />
                 </div>
                 <span className="text-[11px] font-medium text-slate-400">
-                  qms.hikmahit.com/dashboard
+                  {t.mockUrl}
                 </span>
               </div>
               <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -354,7 +390,35 @@ export default function QmsLandingPage() {
         </div>
       </section>
 
-      {/* ---------------- About QMS ---------------- */}
+      {/* ---------------- Institution types ---------------- */}
+      <section id="institutions" className="bg-slate-50 py-20">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <SectionEyebrow>{t.institutionsEyebrow}</SectionEyebrow>
+            <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-900">
+              {t.institutionsTitle}
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-slate-600">{t.institutionsBody}</p>
+          </div>
+
+          <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {t.institutions.map((card, i) => {
+              const Icon = INSTITUTION_ICONS[i];
+              return (
+                <InstitutionCard
+                  key={card.title}
+                  icon={<Icon size={22} />}
+                  title={card.title}
+                  desc={card.desc}
+                  points={card.points}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ---------------- About ---------------- */}
       <section id="about" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
           <SectionEyebrow>{t.aboutEyebrow}</SectionEyebrow>
@@ -374,7 +438,7 @@ export default function QmsLandingPage() {
         </div>
       </section>
 
-      {/* ---------------- Why Choose QMS ---------------- */}
+      {/* ---------------- Why Choose ---------------- */}
       <section id="why" className="relative overflow-hidden bg-[#0b1220] py-20">
         <div
           aria-hidden
@@ -543,7 +607,7 @@ export default function QmsLandingPage() {
                   href="#top"
                   className="font-semibold text-slate-700 transition hover:text-emerald-700"
                 >
-                  QMS
+                  {BRAND_NAME}
                 </a>{" "}
                 {t.poweredBy}{" "}
                 <a

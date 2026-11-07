@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "QMS — মাদ্রাসা ম্যানেজমেন্ট (Admin)",
-  "short_name": "QMS Admin",
-  "description": "কওমি মাদ্রাসার সম্পূর্ণ ডিজিটাল ম্যানেজমেন্ট সিস্টেম — Powered by Hikmah IT",
+  "name": "Hikmah EMS — শিক্ষা প্রতিষ্ঠান ম্যানেজমেন্ট (Admin)",
+  "short_name": "Hikmah EMS Admin",
+  "description": "মাদ্রাসা, স্কুল, কলেজ ও কিন্ডারগার্টেনের সম্পূর্ণ ডিজিটাল ম্যানেজমেন্ট সিস্টেম — Powered by Hikmah IT",
   "lang": "bn",
   "start_url": "/",
   "scope": "/",

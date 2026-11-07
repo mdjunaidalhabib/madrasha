@@ -104,7 +104,7 @@ export interface PwaManifestOptions {
   /** The madrasa's logo-derived icons. Omitted/null => no icons at all (no default). */
   icons?: BrandIconSource | null;
   /** Default true: also hand `name` to the install banner. Pass false where the
-   * banner already has its own label (the admin panel's "QMS Admin"). */
+   * banner already has its own label (the admin panel's "Hikmah EMS Admin"). */
   announceName?: boolean;
   /** Default "standalone". "minimal-ui" makes installed desktop Chrome draw its
    * own Back / Reload buttons in the title bar, right after the app icon. */

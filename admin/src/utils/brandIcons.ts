@@ -16,9 +16,9 @@ import { platformIconBase, type BrandIconSource } from "@madrasha/shared-ui/src/
  * - No logo (or not known yet) => no icon at all. There is no default icon.
  */
 
-const APP_NAME = "QMS — মাদ্রাসা ম্যানেজমেন্ট (Admin)";
-const APP_SHORT_NAME = "QMS Admin";
-const APP_DESCRIPTION = "কওমি মাদ্রাসার সম্পূর্ণ ডিজিটাল ম্যানেজমেন্ট সিস্টেম — Powered by Hikmah IT";
+const APP_NAME = "Hikmah EMS — শিক্ষা প্রতিষ্ঠান ম্যানেজমেন্ট (Admin)";
+const APP_SHORT_NAME = "Hikmah EMS Admin";
+const APP_DESCRIPTION = "মাদ্রাসা, স্কুল, কলেজ ও কিন্ডারগার্টেনের সম্পূর্ণ ডিজিটাল ম্যানেজমেন্ট সিস্টেম — Powered by Hikmah IT";
 
 // Last version the server reported. Lets the very first paint (and the manifest
 // the browser reads on load) already carry the right icon instead of flashing

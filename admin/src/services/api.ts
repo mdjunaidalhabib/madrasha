@@ -135,7 +135,7 @@ const AUTH_ENDPOINTS_WITHOUT_REFRESH = ["/auth/login", "/auth/refresh", "/auth/l
 
 // sessionStorage key LoginPage reads on mount to show TenantBlockedScreen
 // after a mid-session 410/423 redirect (see the response interceptor below).
-export const TENANT_BLOCK_STORAGE_KEY = "qms:tenant-block";
+export const TENANT_BLOCK_STORAGE_KEY = "ems:tenant-block";
 
 api.interceptors.response.use(
   (res) => {

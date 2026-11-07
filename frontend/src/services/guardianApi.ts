@@ -30,7 +30,7 @@ guardianApi.interceptors.request.use((config) => {
 
 // sessionStorage key GuardianLoginPage reads on mount to show
 // TenantBlockedScreen after a mid-session 410/423 redirect below.
-export const GUARDIAN_TENANT_BLOCK_STORAGE_KEY = "qms:guardian-tenant-block";
+export const GUARDIAN_TENANT_BLOCK_STORAGE_KEY = "ems:guardian-tenant-block";
 
 guardianApi.interceptors.response.use(
   (res) => res,

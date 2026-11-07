@@ -20,7 +20,7 @@ function SiteInstallPrompt() {
   return (
     <InstallPrompt
       appName={t.appName}
-      storageKey="qms-site:pwa-dismissed-at"
+      storageKey="ems-site:pwa-dismissed-at"
     />
   );
 }

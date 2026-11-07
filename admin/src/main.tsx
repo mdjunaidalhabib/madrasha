@@ -23,8 +23,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <Toaster />
       <ConfirmDialog />
       <InstallPrompt
-        appName="QMS Admin"
-        storageKey="qms-admin:pwa-dismissed-at"
+        appName="Hikmah EMS Admin"
+        storageKey="ems-admin:pwa-dismissed-at"
         hideOnPaths={/\/print\//}
       />
     </ErrorBoundary>

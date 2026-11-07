@@ -153,7 +153,7 @@ Point each container at its own subdomain and set the backend's
 `CORS_ORIGINS` / `ADMIN_BASE_URL` (and `INTERNAL_ADMIN_URL` for PDF export) accordingly, and set `admin`'s
 `VITE_PUBLIC_SITE_URL` build-time variable to `frontend/`'s public origin.
 `frontend/` additionally needs `VITE_PLATFORM_ROOT_HOST` set to its own
-public domain (e.g. `qms.hikmahit.com`) so it can tell the platform's own
+public domain (e.g. `ems.hikmahit.com`) so it can tell the platform's own
 domain apart from a tenant's connected custom domain — see "Custom domains"
 above.
 

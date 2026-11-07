@@ -607,7 +607,7 @@ const madrasaAdminChildren = [
       { path: "profile", element: withSuspense(<ProfileSettingsPage />) },
       { path: "plan", element: withSuspense(<PlanSettingsPage />) },
       // Not module/permission-gated — every tenant admin can see who
-      // built/maintains their QMS.
+      // built/maintains their system.
       { path: "about", element: withSuspense(<HikmahItPage />) },
       {
         path: "branding",

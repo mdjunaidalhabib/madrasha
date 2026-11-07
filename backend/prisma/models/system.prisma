@@ -139,7 +139,7 @@ model PlatformVendorService {
   /// maps this to an actual icon via a small fixed lookup, falling back to
   /// a generic icon for unrecognized keys.
   iconKey   String   @default("Sparkles") @map("icon_key") @db.VarChar(50)
-  /// Marks the one service every viewer here is already using (QMS itself)
+  /// Marks the one service every viewer here is already using (the platform itself)
   /// so it renders with a "আপনি ব্যবহার করছেন" badge instead of as an upsell.
   isCurrent Boolean  @default(false) @map("is_current")
   sortOrder Int      @default(0) @map("sort_order")

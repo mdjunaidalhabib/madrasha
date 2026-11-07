@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import PageLoader from "@madrasha/shared-ui/src/components/ui/PageLoader";
 import { isPlatformRootHost } from "../../utils/platformHost";
 import { resolveDomainToSlug } from "../../services/domainResolve";
-import QmsLandingPage from "./QmsLandingPage";
+import PlatformLandingPage from "./PlatformLandingPage";
 import DomainNotConnected from "./DomainNotConnected";
 import PublicWebsitePage from "../website/PublicWebsitePage";
 
@@ -30,7 +30,7 @@ export default function RootRoute() {
     };
   }, [onPlatformHost]);
 
-  if (onPlatformHost) return <QmsLandingPage />;
+  if (onPlatformHost) return <PlatformLandingPage />;
 
   if (state === "loading") return <PageLoader />;
 

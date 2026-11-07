@@ -218,7 +218,7 @@ function AdminLogoSettingsCard() {
           icons={pending ? pendingIcons : savedIcons}
           loading={!!pending && iconsLoading}
           error={!!pending && iconsFailed}
-          tabTitle="QMS Admin"
+          tabTitle="Hikmah EMS Admin"
           note={pending ? "এটি নতুন লোগোর প্রিভিউ — “সেভ করুন” চাপলে কার্যকর হবে।" : "অ্যাডমিন প্যানেলে এই আইকনগুলোই এখন চালু আছে।"}
         />
       )}

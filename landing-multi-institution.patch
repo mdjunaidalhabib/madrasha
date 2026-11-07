@@ -1,0 +1,820 @@
+diff --git a/ARCHITECTURE.md b/ARCHITECTURE.md
+index 49cfa53..a52db5b 100644
+--- a/ARCHITECTURE.md
++++ b/ARCHITECTURE.md
+@@ -153,7 +153,7 @@ Point each container at its own subdomain and set the backend's
+ `CORS_ORIGINS` / `ADMIN_BASE_URL` (and `INTERNAL_ADMIN_URL` for PDF export) accordingly, and set `admin`'s
+ `VITE_PUBLIC_SITE_URL` build-time variable to `frontend/`'s public origin.
+ `frontend/` additionally needs `VITE_PLATFORM_ROOT_HOST` set to its own
+-public domain (e.g. `qms.hikmahit.com`) so it can tell the platform's own
++public domain (e.g. `ems.hikmahit.com`) so it can tell the platform's own
+ domain apart from a tenant's connected custom domain — see "Custom domains"
+ above.
+ 
+diff --git a/admin/index.html b/admin/index.html
+index 3486ccf..8f4f84b 100644
+--- a/admin/index.html
++++ b/admin/index.html
+@@ -3,10 +3,10 @@
+   <head>
+     <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+-    <title>QMS Admin</title>
++    <title>Hikmah EMS Admin</title>
+     <meta
+       name="description"
+-      content="QMS হলো কওমি মাদ্রাসার জন্য একটি সম্পূর্ণ ডিজিটাল ম্যানেজমেন্ট সিস্টেম — Student, Teacher, Admission, Attendance, Examination, Accounts ও Reports এক প্ল্যাটফর্মে। Powered by Hikmah IT."
++      content="Hikmah EMS হলো মাদ্রাসা, স্কুল, কলেজ ও কিন্ডারগার্টেনের জন্য একটি সম্পূর্ণ ডিজিটাল ম্যানেজমেন্ট সিস্টেম — Student, Teacher, Admission, Attendance, Examination, Accounts ও Reports এক প্ল্যাটফর্মে। Powered by Hikmah IT."
+     />
+     <meta name="theme-color" content="#059669" />
+     <link rel="manifest" href="/manifest.webmanifest" />
+@@ -16,7 +16,7 @@
+     <meta name="mobile-web-app-capable" content="yes" />
+     <meta name="apple-mobile-web-app-capable" content="yes" />
+     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+-    <meta name="apple-mobile-web-app-title" content="QMS Admin" />
++    <meta name="apple-mobile-web-app-title" content="Hikmah EMS Admin" />
+     <script>
+       (function () {
+         try {
+diff --git a/admin/public/manifest.webmanifest b/admin/public/manifest.webmanifest
+index 6faa268..998e462 100644
+--- a/admin/public/manifest.webmanifest
++++ b/admin/public/manifest.webmanifest
+@@ -1,8 +1,8 @@
+ {
+   "id": "/",
+-  "name": "QMS — মাদ্রাসা ম্যানেজমেন্ট (Admin)",
+-  "short_name": "QMS Admin",
+-  "description": "কওমি মাদ্রাসার সম্পূর্ণ ডিজিটাল ম্যানেজমেন্ট সিস্টেম — Powered by Hikmah IT",
++  "name": "Hikmah EMS — শিক্ষা প্রতিষ্ঠান ম্যানেজমেন্ট (Admin)",
++  "short_name": "Hikmah EMS Admin",
++  "description": "মাদ্রাসা, স্কুল, কলেজ ও কিন্ডারগার্টেনের সম্পূর্ণ ডিজিটাল ম্যানেজমেন্ট সিস্টেম — Powered by Hikmah IT",
+   "lang": "bn",
+   "start_url": "/",
+   "scope": "/",
+diff --git a/admin/src/app/router.tsx b/admin/src/app/router.tsx
+index e27ab8f..e1290bc 100644
+--- a/admin/src/app/router.tsx
++++ b/admin/src/app/router.tsx
+@@ -607,7 +607,7 @@ const madrasaAdminChildren = [
+       { path: "profile", element: withSuspense(<ProfileSettingsPage />) },
+       { path: "plan", element: withSuspense(<PlanSettingsPage />) },
+       // Not module/permission-gated — every tenant admin can see who
+-      // built/maintains their QMS.
++      // built/maintains their system.
+       { path: "about", element: withSuspense(<HikmahItPage />) },
+       {
+         path: "branding",
+diff --git a/admin/src/features/vendor/vendor.text.ts b/admin/src/features/vendor/vendor.text.ts
+index dcca369..7c8cd9c 100644
+--- a/admin/src/features/vendor/vendor.text.ts
++++ b/admin/src/features/vendor/vendor.text.ts
+@@ -9,12 +9,12 @@ export const vendorText = defineText({
+     facebook: "ফেসবুক",
+     viewProfile: "প্রোফাইল দেখুন",
+     website: "ওয়েবসাইট",
+-    subtitle: "আপনার QMS সিস্টেমটি যারা তৈরি ও রক্ষণাবেক্ষণ করছে",
++    subtitle: "আপনার Hikmah EMS সিস্টেমটি যারা তৈরি ও রক্ষণাবেক্ষণ করছে",
+     founder: "প্রতিষ্ঠাতা",
+     contact: "যোগাযোগ",
+     address: "ঠিকানা",
+     ourServices: "আমাদের সেবাসমূহ",
+-    ourServicesHint: "QMS ছাড়াও আমরা যা তৈরি করে দিই",
++    ourServicesHint: "Hikmah EMS ছাড়াও আমরা যা তৈরি করে দিই",
+     youAreUsing: "আপনি ব্যবহার করছেন",
+     allServices: "সকল সেবা ও বিস্তারিত",
+   },
+@@ -26,12 +26,12 @@ export const vendorText = defineText({
+     facebook: "Facebook",
+     viewProfile: "View profile",
+     website: "Website",
+-    subtitle: "The team that builds and maintains your QMS system",
++    subtitle: "The team that builds and maintains your Hikmah EMS system",
+     founder: "Founder",
+     contact: "Contact",
+     address: "Address",
+     ourServices: "Our Services",
+-    ourServicesHint: "What else we build besides QMS",
++    ourServicesHint: "What else we build besides Hikmah EMS",
+     youAreUsing: "You are using this",
+     allServices: "All services & details",
+   },
+diff --git a/admin/src/main.tsx b/admin/src/main.tsx
+index 8a1dfa2..a05cbf3 100644
+--- a/admin/src/main.tsx
++++ b/admin/src/main.tsx
+@@ -23,8 +23,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
+       <Toaster />
+       <ConfirmDialog />
+       <InstallPrompt
+-        appName="QMS Admin"
+-        storageKey="qms-admin:pwa-dismissed-at"
++        appName="Hikmah EMS Admin"
++        storageKey="ems-admin:pwa-dismissed-at"
+         hideOnPaths={/\/print\//}
+       />
+     </ErrorBoundary>
+diff --git a/admin/src/services/api.ts b/admin/src/services/api.ts
+index ff55321..1bc0ef1 100644
+--- a/admin/src/services/api.ts
++++ b/admin/src/services/api.ts
+@@ -135,7 +135,7 @@ const AUTH_ENDPOINTS_WITHOUT_REFRESH = ["/auth/login", "/auth/refresh", "/auth/l
+ 
+ // sessionStorage key LoginPage reads on mount to show TenantBlockedScreen
+ // after a mid-session 410/423 redirect (see the response interceptor below).
+-export const TENANT_BLOCK_STORAGE_KEY = "qms:tenant-block";
++export const TENANT_BLOCK_STORAGE_KEY = "ems:tenant-block";
+ 
+ api.interceptors.response.use(
+   (res) => {
+diff --git a/admin/src/utils/brandIcons.ts b/admin/src/utils/brandIcons.ts
+index 781924c..e974d95 100644
+--- a/admin/src/utils/brandIcons.ts
++++ b/admin/src/utils/brandIcons.ts
+@@ -16,9 +16,9 @@ import { platformIconBase, type BrandIconSource } from "@madrasha/shared-ui/src/
+  * - No logo (or not known yet) => no icon at all. There is no default icon.
+  */
+ 
+-const APP_NAME = "QMS — মাদ্রাসা ম্যানেজমেন্ট (Admin)";
+-const APP_SHORT_NAME = "QMS Admin";
+-const APP_DESCRIPTION = "কওমি মাদ্রাসার সম্পূর্ণ ডিজিটাল ম্যানেজমেন্ট সিস্টেম — Powered by Hikmah IT";
++const APP_NAME = "Hikmah EMS — শিক্ষা প্রতিষ্ঠান ম্যানেজমেন্ট (Admin)";
++const APP_SHORT_NAME = "Hikmah EMS Admin";
++const APP_DESCRIPTION = "মাদ্রাসা, স্কুল, কলেজ ও কিন্ডারগার্টেনের সম্পূর্ণ ডিজিটাল ম্যানেজমেন্ট সিস্টেম — Powered by Hikmah IT";
+ 
+ // Last version the server reported. Lets the very first paint (and the manifest
+ // the browser reads on load) already carry the right icon instead of flashing
+diff --git a/backend/prisma/models/system.prisma b/backend/prisma/models/system.prisma
+index 228c844..356c9b2 100644
+--- a/backend/prisma/models/system.prisma
++++ b/backend/prisma/models/system.prisma
+@@ -139,7 +139,7 @@ model PlatformVendorService {
+   /// maps this to an actual icon via a small fixed lookup, falling back to
+   /// a generic icon for unrecognized keys.
+   iconKey   String   @default("Sparkles") @map("icon_key") @db.VarChar(50)
+-  /// Marks the one service every viewer here is already using (QMS itself)
++  /// Marks the one service every viewer here is already using (the platform itself)
+   /// so it renders with a "আপনি ব্যবহার করছেন" badge instead of as an upsell.
+   isCurrent Boolean  @default(false) @map("is_current")
+   sortOrder Int      @default(0) @map("sort_order")
+diff --git a/backend/src/core/app.ts b/backend/src/core/app.ts
+index 707aa4f..cd70ce3 100644
+--- a/backend/src/core/app.ts
++++ b/backend/src/core/app.ts
+@@ -76,7 +76,7 @@ app.use(rateLimit(config.rateLimit));
+ app.get("/health", (_req, res) => {
+   res.json({
+     success: true,
+-    message: "QMS Backend is running successfully.",
++    message: "Hikmah EMS Backend is running successfully.",
+     service: "Qawmi Madrasa Management System API",
+     provider: "Hikmah IT",
+     status: "OK",
+diff --git a/backend/src/modules/super-admin/vendor-promo.service.ts b/backend/src/modules/super-admin/vendor-promo.service.ts
+index 44fb76c..8e1cc86 100644
+--- a/backend/src/modules/super-admin/vendor-promo.service.ts
++++ b/backend/src/modules/super-admin/vendor-promo.service.ts
+@@ -13,11 +13,11 @@ import { t } from "../../shared/i18n";
+ // stored in the DB is nullable, and a null/empty value falls back to these.
+ const DEFAULTS = {
+   companyName: "Hikmah IT",
+-  tagline: "আপনার QMS-এর নির্মাতা প্রতিষ্ঠান",
++  tagline: "আপনার Hikmah EMS-এর নির্মাতা প্রতিষ্ঠান",
+   teaserText: "ওয়েবসাইট, ই-কমার্স প্ল্যাটফর্ম, হোস্টিং সহ আরও সেবা দিই আমরা।",
+   heroTitle: "ই-কমার্স ও মাদরাসা ম্যানেজমেন্ট সফটওয়্যার",
+   heroText:
+-    "আপনি এখন যে QMS ব্যবহার করছেন সেটি আমাদের তৈরি। এছাড়াও ব্যবসা ও শিক্ষা প্রতিষ্ঠানের জন্য ওয়েবসাইট, ই-কমার্স প্ল্যাটফর্ম ও আরও ডিজিটাল সমাধান দিয়ে থাকি — প্রয়োজন হলে নিচের তথ্য থেকে যোগাযোগ করুন।",
++    "আপনি এখন যে Hikmah EMS ব্যবহার করছেন সেটি আমাদের তৈরি। এছাড়াও ব্যবসা ও শিক্ষা প্রতিষ্ঠানের জন্য ওয়েবসাইট, ই-কমার্স প্ল্যাটফর্ম ও আরও ডিজিটাল সমাধান দিয়ে থাকি — প্রয়োজন হলে নিচের তথ্য থেকে যোগাযোগ করুন।",
+   founderName: "Md Junaid Al Habib",
+   founderTitle: "প্রতিষ্ঠাতা ও সিইও",
+   phoneDisplay: "01624114405",
+diff --git a/frontend/index.html b/frontend/index.html
+index 6f08600..f5b47d7 100644
+--- a/frontend/index.html
++++ b/frontend/index.html
+@@ -3,10 +3,10 @@
+   <head>
+     <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+-    <title>QMS — Qawmi Madrasa Management System | Hikmah IT</title>
++    <title>Hikmah EMS — Education Management System for Madrasa, School, College &amp; Kindergarten | Hikmah IT</title>
+     <meta
+       name="description"
+-      content="QMS হলো কওমি মাদ্রাসার জন্য একটি সম্পূর্ণ ডিজিটাল ম্যানেজমেন্ট সিস্টেম — Student, Teacher, Admission, Attendance, Examination, Accounts ও Reports এক প্ল্যাটফর্মে। Powered by Hikmah IT."
++      content="Hikmah EMS হলো মাদ্রাসা, স্কুল, কলেজ ও কিন্ডারগার্টেনের জন্য একটি সম্পূর্ণ ডিজিটাল ম্যানেজমেন্ট সিস্টেম — Student, Teacher, Admission, Attendance, Examination, Accounts ও Reports এক প্ল্যাটফর্মে। Powered by Hikmah IT."
+     />
+     <meta name="theme-color" content="#059669" />
+     <link rel="manifest" href="/manifest.webmanifest" />
+diff --git a/frontend/src/features/landing/QmsLandingPage.tsx b/frontend/src/features/landing/PlatformLandingPage.tsx
+similarity index 90%
+rename from frontend/src/features/landing/QmsLandingPage.tsx
+rename to frontend/src/features/landing/PlatformLandingPage.tsx
+index c577874..9d39b22 100644
+--- a/frontend/src/features/landing/QmsLandingPage.tsx
++++ b/frontend/src/features/landing/PlatformLandingPage.tsx
+@@ -25,11 +25,15 @@ import {
+   PhoneCall,
+   Menu,
+   X,
++  BookOpen,
++  School,
++  Baby,
++  Building2,
+ } from "lucide-react";
+ import ContactFab from "./ContactFab";
+ import { getAdminAppLoginUrl } from "../../utils/adminAppUrl";
+ import { LanguageSwitcher, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+-import { landingText } from "./landing.text";
++import { BRAND_NAME, landingText } from "./landing.text";
+ 
+ // Contact number used for both the "tel:" and WhatsApp ("wa.me") links in
+ // the floating contact button and the Contact section below. Kept in one
+@@ -40,6 +44,7 @@ const CONTACT_PHONE_INTL = "8801624114405"; // wa.me needs country code, no "+"
+ // Labels come from landingText.nav[key].
+ const NAV_LINKS = [
+   { href: "#about", key: "about" },
++  { href: "#institutions", key: "institutions" },
+   { href: "#why", key: "why" },
+   { href: "#getting-started", key: "gettingStarted" },
+   { href: "#service", key: "service" },
+@@ -50,6 +55,7 @@ const FEATURE_ICONS = [Users, Users2, UserPlus, CalendarCheck, ClipboardList, Wa
+ const WHY_ICONS = [Clock, ShieldCheck, BarChart3, ShieldCheck, LayoutDashboard, Users2];
+ const STEP_ICONS = [UserPlus, Settings, Users2, ClipboardList, LayoutDashboard];
+ const SERVICE_ICONS = [PhoneCall, PlayCircle, Wrench, FileCheck2, Rocket];
++const INSTITUTION_ICONS = [BookOpen, School, Building2, Baby];
+ const MOCK_ICONS = [Users, Users2, UserPlus, CalendarCheck, ClipboardList, Wallet];
+ 
+ /* ---------------------------------------------------------
+@@ -81,6 +87,36 @@ function FeatureCard({ icon, title, desc }: { icon: ReactNode; title: string; de
+   );
+ }
+ 
++function InstitutionCard({
++  icon,
++  title,
++  desc,
++  points,
++}: {
++  icon: ReactNode;
++  title: string;
++  desc: string;
++  points: string[];
++}) {
++  return (
++    <div className="flex flex-col rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
++      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-600 text-white">
++        {icon}
++      </div>
++      <h3 className="text-lg font-bold text-slate-900">{title}</h3>
++      <p className="mt-1.5 text-sm leading-6 text-slate-600">{desc}</p>
++      <ul className="mt-4 space-y-2 text-sm text-slate-700">
++        {points.map((point) => (
++          <li key={point} className="flex items-start gap-2">
++            <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-600" />
++            <span>{point}</span>
++          </li>
++        ))}
++      </ul>
++    </div>
++  );
++}
++
+ function WhyCard({ icon, title, desc }: { icon: ReactNode; title: string; desc: string }) {
+   return (
+     <div className="flex gap-4 rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
+@@ -128,7 +164,7 @@ function StepItem({
+   );
+ }
+ 
+-export default function QmsLandingPage() {
++export default function PlatformLandingPage() {
+   const t = useText(landingText);
+   const lang = useLang();
+   const adminAppLoginUrl = getAdminAppLoginUrl();
+@@ -181,9 +217,9 @@ export default function QmsLandingPage() {
+             </span>
+             <span className="leading-tight">
+               <span className="block text-sm font-extrabold tracking-tight text-slate-900">
+-                QMS
++                {BRAND_NAME}
+               </span>
+-              <span className="block text-[11px] text-slate-500">Qawmi Madrasa System</span>
++              <span className="block text-[11px] text-slate-500">{t.brandTagline}</span>
+             </span>
+           </a>
+ 
+@@ -328,7 +364,7 @@ export default function QmsLandingPage() {
+                   <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/70" />
+                 </div>
+                 <span className="text-[11px] font-medium text-slate-400">
+-                  qms.hikmahit.com/dashboard
++                  {t.mockUrl}
+                 </span>
+               </div>
+               <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+@@ -354,7 +390,35 @@ export default function QmsLandingPage() {
+         </div>
+       </section>
+ 
+-      {/* ---------------- About QMS ---------------- */}
++      {/* ---------------- Institution types ---------------- */}
++      <section id="institutions" className="bg-slate-50 py-20">
++        <div className="mx-auto max-w-6xl px-4 sm:px-6">
++          <div className="mx-auto max-w-2xl text-center">
++            <SectionEyebrow>{t.institutionsEyebrow}</SectionEyebrow>
++            <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-900">
++              {t.institutionsTitle}
++            </h2>
++            <p className="mt-3 text-sm leading-7 text-slate-600">{t.institutionsBody}</p>
++          </div>
++
++          <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
++            {t.institutions.map((card, i) => {
++              const Icon = INSTITUTION_ICONS[i];
++              return (
++                <InstitutionCard
++                  key={card.title}
++                  icon={<Icon size={22} />}
++                  title={card.title}
++                  desc={card.desc}
++                  points={card.points}
++                />
++              );
++            })}
++          </div>
++        </div>
++      </section>
++
++      {/* ---------------- About ---------------- */}
+       <section id="about" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+         <div className="mx-auto max-w-2xl text-center">
+           <SectionEyebrow>{t.aboutEyebrow}</SectionEyebrow>
+@@ -374,7 +438,7 @@ export default function QmsLandingPage() {
+         </div>
+       </section>
+ 
+-      {/* ---------------- Why Choose QMS ---------------- */}
++      {/* ---------------- Why Choose ---------------- */}
+       <section id="why" className="relative overflow-hidden bg-[#0b1220] py-20">
+         <div
+           aria-hidden
+@@ -543,7 +607,7 @@ export default function QmsLandingPage() {
+                   href="#top"
+                   className="font-semibold text-slate-700 transition hover:text-emerald-700"
+                 >
+-                  QMS
++                  {BRAND_NAME}
+                 </a>{" "}
+                 {t.poweredBy}{" "}
+                 <a
+diff --git a/frontend/src/features/landing/RootRoute.tsx b/frontend/src/features/landing/RootRoute.tsx
+index 562bbec..1c5174b 100644
+--- a/frontend/src/features/landing/RootRoute.tsx
++++ b/frontend/src/features/landing/RootRoute.tsx
+@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
+ import PageLoader from "@madrasha/shared-ui/src/components/ui/PageLoader";
+ import { isPlatformRootHost } from "../../utils/platformHost";
+ import { resolveDomainToSlug } from "../../services/domainResolve";
+-import QmsLandingPage from "./QmsLandingPage";
++import PlatformLandingPage from "./PlatformLandingPage";
+ import DomainNotConnected from "./DomainNotConnected";
+ import PublicWebsitePage from "../website/PublicWebsitePage";
+ 
+@@ -30,7 +30,7 @@ export default function RootRoute() {
+     };
+   }, [onPlatformHost]);
+ 
+-  if (onPlatformHost) return <QmsLandingPage />;
++  if (onPlatformHost) return <PlatformLandingPage />;
+ 
+   if (state === "loading") return <PageLoader />;
+ 
+diff --git a/frontend/src/features/landing/landing.text.ts b/frontend/src/features/landing/landing.text.ts
+index 36fca91..56ec360 100644
+--- a/frontend/src/features/landing/landing.text.ts
++++ b/frontend/src/features/landing/landing.text.ts
+@@ -1,80 +1,134 @@
+ import { defineText } from "@madrasha/shared-ui/src/i18n";
+ 
+ type Card = { title: string; desc: string };
++type InstitutionCard = { title: string; desc: string; points: string[] };
+ 
+-/** Platform (QMS) marketing landing page - not a tenant site, so no
+- * institution placeholders here: it always talks about madrasas. */
++/** Platform brand shown on the marketing landing page. Change it here (and in
++ * frontend/index.html) to rename the product - nothing else on the page
++ * hardcodes it. */
++export const BRAND_NAME = "Hikmah EMS";
++
++/** Platform marketing landing page - not a tenant site, so no institution
++ * placeholders here: it speaks to every institution type the platform
++ * supports (madrasa, school, kindergarten). */
+ export const landingText = defineText({
+   bn: {
+     nav: {
+       about: "পরিচিতি",
+-      why: "কেন QMS",
++      institutions: "প্রতিষ্ঠান",
++      why: `কেন ${BRAND_NAME}`,
+       gettingStarted: "ব্যবহার গাইড",
+       service: "সেবা নিন",
+       contact: "যোগাযোগ",
+     } as Record<string, string>,
++    brandTagline: "মাদ্রাসা · স্কুল · কলেজ · কিন্ডারগার্টেন",
+     goToAdmin: "অ্যাডমিন প্যানেলে যান",
+     closeMenu: "মেনু বন্ধ করুন",
+     openMenu: "মেনু খুলুন",
+-    heroLine1: "কওমি মাদ্রাসা পরিচালনার",
++    heroLine1: "মাদ্রাসা, স্কুল, কলেজ ও কিন্ডারগার্টেন পরিচালনার",
+     heroLine2: "সম্পূর্ণ ডিজিটাল সমাধান",
+-    heroBody:
+-      "QMS (Qawmi Madrasa Management System) একটি আধুনিক সফটওয়্যার, যা দিয়ে ছাত্র, শিক্ষক, ভর্তি, হাজিরা, পরীক্ষা-ফলাফল ও হিসাব — সবকিছু এক জায়গা থেকে সহজে পরিচালনা করা যায়।",
++    heroBody: `${BRAND_NAME} (Education Management System) একটি আধুনিক সফটওয়্যার, যা দিয়ে ছাত্র-শিক্ষার্থী, শিক্ষক, ভর্তি, হাজিরা, পরীক্ষা-ফলাফল ও হিসাব — সবকিছু এক জায়গা থেকে সহজে পরিচালনা করা যায়। প্রতিষ্ঠানের ধরন অনুযায়ী ক্লাস, বিষয় ও পরিভাষা আপনাআপনি সাজানো হয়।`,
+     getService: "সেবাটি নিন",
+     learnMore: "আরও জানুন",
+-    badges: ["নিরাপদ ও নির্ভরযোগ্য ডেটা", "বাংলা, ইংরেজি ও আরবি ইন্টারফেস", "মোবাইল ও ডেস্কটপ সাপোর্ট"],
++    badges: ["নিরাপদ ও নির্ভরযোগ্য ডেটা", "বাংলা ও ইংরেজি ইন্টারফেস", "মোবাইল ও ডেস্কটপ সাপোর্ট"],
+     mockModules: ["Students", "Teachers", "Admission", "Attendance", "Examination", "Accounts"],
++    mockUrl: "hikmahit.com/dashboard",
+     resultReady: "ফলাফল প্রস্তুত",
+     oneClickReport: "এক ক্লিকে রিপোর্ট",
+-    aboutEyebrow: "About QMS",
+-    aboutTitle: "মাদ্রাসার সকল কার্যক্রম একটি প্ল্যাটফর্মে",
+-    aboutBody:
+-      "কওমি মাদ্রাসার দৈনন্দিন প্রশাসনিক ও একাডেমিক কাজগুলো সহজ ও গোছালো করতে QMS তৈরি করা হয়েছে। প্রতিটি মডিউল বাস্তব প্রয়োজন বিবেচনা করে ডিজাইন করা।",
++    institutionsEyebrow: "Who It's For",
++    institutionsTitle: "আপনার প্রতিষ্ঠান যেটাই হোক, সিস্টেম মানিয়ে নেয়",
++    institutionsBody:
++      "প্রতিষ্ঠান তৈরির সময় ধরন বেছে নিলেই ক্লাস-কাঠামো, বিষয়ের তালিকা, পরিভাষা ও রিপোর্টের ধরন সেই অনুযায়ী প্রস্তুত হয়ে যায়।",
++    institutions: [
++      {
++        title: "মাদ্রাসা",
++        desc: "কওমি ও আবাসিক মাদ্রাসার নিজস্ব প্রয়োজন মাথায় রেখে তৈরি।",
++        points: [
++          "বিভাগ ও কিতাবভিত্তিক শ্রেণি-কাঠামো",
++          "আরবি নাম ও মুমতাজ/জায়্যিদ ধরনের গ্রেড",
++          "আবাসিক ও এতিম শিক্ষার্থীর তথ্য",
++          "সনদ ও প্রশংসাপত্র",
++        ],
++      },
++      {
++        title: "স্কুল",
++        desc: "প্রাথমিক থেকে মাধ্যমিক পর্যন্ত বোর্ড-ধাঁচের কাঠামো।",
++        points: [
++          "প্রাথমিক, নিম্ন মাধ্যমিক ও SSC (বিজ্ঞান, ব্যবসায়, মানবিক)",
++          "GPA ভিত্তিক ফলাফল ও মার্কশিট",
++          "অ্যাডমিট কার্ড ও সার্টিফিকেট",
++          "অভিভাবক পোর্টাল",
++        ],
++      },
++      {
++        title: "কলেজ",
++        desc: "উচ্চ মাধ্যমিক পর্যায়ের গ্রুপভিত্তিক শিক্ষা ব্যবস্থাপনা।",
++        points: [
++          "একাদশ ও দ্বাদশ শ্রেণি (বিজ্ঞান, ব্যবসায়, মানবিক)",
++          "গ্রুপ অনুযায়ী বিষয় ও ১ম/২য় পত্র",
++          "GPA ভিত্তিক ফলাফল ও মার্কশিট",
++          "জুলাই–জুন শিক্ষাবর্ষ, সার্টিফিকেট ও অভিভাবক পোর্টাল",
++        ],
++      },
++      {
++        title: "কিন্ডারগার্টেন",
++        desc: "ছোট শিক্ষার্থীদের প্রতিষ্ঠানের জন্য সহজ ও গোছানো ব্যবস্থাপনা।",
++        points: [
++          "প্লে, নার্সারি, কেজি ও ১ম–৫ম শ্রেণি",
++          "ভর্তি ও মাসিক ফি ব্যবস্থাপনা",
++          "দৈনিক হাজিরা",
++          "অভিভাবক পোর্টাল ও নোটিশ",
++        ],
++      },
++    ] as InstitutionCard[],
++    aboutEyebrow: `About ${BRAND_NAME}`,
++    aboutTitle: "প্রতিষ্ঠানের সকল কার্যক্রম একটি প্ল্যাটফর্মে",
++    aboutBody: `মাদ্রাসা, স্কুল, কলেজ ও কিন্ডারগার্টেনের দৈনন্দিন প্রশাসনিক ও একাডেমিক কাজগুলো সহজ ও গোছালো করতে ${BRAND_NAME} তৈরি করা হয়েছে। প্রতিটি মডিউল বাস্তব প্রয়োজন বিবেচনা করে ডিজাইন করা।`,
+     features: [
+       { title: "Student Management", desc: "শিক্ষার্থীদের তথ্য, প্রোফাইল ও একাডেমিক রেকর্ড সহজে সংরক্ষণ ও পরিচালনা করুন।" },
+       { title: "Teacher Management", desc: "শিক্ষকদের নিয়োগ, প্রোফাইল ও দায়িত্ব বণ্টন এক জায়গা থেকে নিয়ন্ত্রণ করুন।" },
+       { title: "Admission", desc: "নতুন শিক্ষার্থী ভর্তি প্রক্রিয়া দ্রুত, নির্ভুল ও ডিজিটালভাবে সম্পন্ন করুন।" },
+       { title: "Attendance", desc: "দৈনিক হাজিরা রেকর্ড রাখুন এবং উপস্থিতির প্রবণতা সহজে বিশ্লেষণ করুন।" },
+       { title: "Examination & Result", desc: "পরীক্ষা পরিচালনা, নম্বর এন্ট্রি ও ফলাফল প্রকাশ স্বয়ংক্রিয়ভাবে করুন।" },
+-      { title: "Accounts", desc: "আয়-ব্যয়, ফান্ড ও আর্থিক হিসাব স্বচ্ছভাবে ট্র্যাক করুন।" },
++      { title: "Accounts", desc: "আয়-ব্যয়, ফি ও আর্থিক হিসাব স্বচ্ছভাবে ট্র্যাক করুন।" },
+       { title: "Reports", desc: "একাডেমিক, আর্থিক ও প্রশাসনিক রিপোর্ট মুহূর্তেই তৈরি ও প্রিন্ট করুন।" },
+       { title: "SMS / Notification", desc: "অভিভাবক ও শিক্ষকদের কাছে গুরুত্বপূর্ণ তথ্য দ্রুত পৌঁছে দিন।" },
+-      { title: "Settings ও অন্যান্য", desc: "মাদ্রাসার নিজস্ব প্রয়োজন অনুযায়ী সিস্টেম কাস্টমাইজ ও নিয়ন্ত্রণ করুন।" },
++      { title: "Settings ও অন্যান্য", desc: "প্রতিষ্ঠানের নিজস্ব প্রয়োজন অনুযায়ী সিস্টেম কাস্টমাইজ ও নিয়ন্ত্রণ করুন।" },
+     ] as Card[],
+-    whyEyebrow: "Why Choose QMS",
+-    whyTitle: "কেন আপনার মাদ্রাসার জন্য QMS",
++    whyEyebrow: `Why Choose ${BRAND_NAME}`,
++    whyTitle: `কেন আপনার প্রতিষ্ঠানের জন্য ${BRAND_NAME}`,
+     why: [
+       { title: "সময় সাশ্রয়", desc: "ম্যানুয়াল রেজিস্টার ও হিসাবের ঝামেলা ছাড়াই কাজ হবে দ্রুত ও সহজ।" },
+       { title: "নির্ভুল তথ্য সংরক্ষণ", desc: "প্রতিটি তথ্য নির্ভুলভাবে ডিজিটালি সংরক্ষিত থাকে, ভুলের সম্ভাবনা কমে যায়।" },
+       { title: "সহজ রিপোর্ট", desc: "জটিল হিসাব-নিকাশ এক ক্লিকে রিপোর্ট আকারে দেখুন ও প্রিন্ট করুন।" },
+-      { title: "নিরাপদ ডেটা", desc: "মাদ্রাসার তথ্য সুরক্ষিত সার্ভারে নিরাপদে সংরক্ষিত থাকে।" },
++      { title: "নিরাপদ ডেটা", desc: "প্রতিষ্ঠানের তথ্য সুরক্ষিত সার্ভারে নিরাপদে সংরক্ষিত থাকে।" },
+       { title: "Modern Dashboard", desc: "প্রতিদিনের কার্যক্রম এক নজরে দেখার জন্য আধুনিক ড্যাশবোর্ড।" },
+       { title: "Multi-user Support", desc: "প্রশাসন, শিক্ষক ও কর্মচারীরা একসাথে নিজ নিজ দায়িত্বে কাজ করতে পারবেন।" },
+     ] as Card[],
+     startEyebrow: "Getting Started",
+     startTitle: "কীভাবে ব্যবহার শুরু করবেন",
+-    startBody: "মাত্র কয়েকটি ধাপে আপনার মাদ্রাসা QMS ব্যবহার শুরু করতে পারবে।",
++    startBody: `মাত্র কয়েকটি ধাপে আপনার প্রতিষ্ঠান ${BRAND_NAME} ব্যবহার শুরু করতে পারবে।`,
+     step: (n: string) => `ধাপ ${n}`,
+     steps: [
+-      { title: "অ্যাকাউন্ট তৈরি", desc: "আপনার মাদ্রাসার জন্য একটি QMS অ্যাকাউন্ট খুলুন।" },
+-      { title: "মাদ্রাসার তথ্য সেটআপ", desc: "মাদ্রাসার নাম, ঠিকানা, লোগো ও প্রয়োজনীয় তথ্য যুক্ত করুন।" },
++      { title: "অ্যাকাউন্ট তৈরি", desc: `আপনার প্রতিষ্ঠানের ধরন (মাদ্রাসা, স্কুল, কলেজ বা কিন্ডারগার্টেন) অনুযায়ী একটি ${BRAND_NAME} অ্যাকাউন্ট খুলুন।` },
++      { title: "প্রতিষ্ঠানের তথ্য সেটআপ", desc: "প্রতিষ্ঠানের নাম, ঠিকানা, লোগো ও প্রয়োজনীয় তথ্য যুক্ত করুন।" },
+       { title: "শিক্ষক ও শিক্ষার্থী যুক্ত করা", desc: "শিক্ষক ও শিক্ষার্থীদের প্রোফাইল সিস্টেমে যুক্ত করুন।" },
+-      { title: "ক্লাস, বিভাগ ও বিষয় সেটআপ", desc: "মাদ্রাসার একাডেমিক কাঠামো অনুযায়ী ক্লাস, বিভাগ ও বিষয় নির্ধারণ করুন।" },
+-      { title: "দৈনন্দিন ব্যবহার", desc: "হাজিরা, পরীক্ষা, হিসাব ও রিপোর্ট — প্রতিদিনের কাজে QMS ব্যবহার শুরু করুন।" },
++      { title: "ক্লাস, স্তর ও বিষয় সেটআপ", desc: "প্রতিষ্ঠানের একাডেমিক কাঠামো অনুযায়ী ক্লাস, স্তর ও বিষয় নির্ধারণ করুন।" },
++      { title: "দৈনন্দিন ব্যবহার", desc: `হাজিরা, পরীক্ষা, হিসাব ও রিপোর্ট — প্রতিদিনের কাজে ${BRAND_NAME} ব্যবহার শুরু করুন।` },
+     ] as Card[],
+     serviceEyebrow: "How to Get This Service",
+     serviceTitle: "যেভাবে সেবাটি নিতে পারবেন",
+-    serviceBody: "Hikmah IT-এর সহায়তায় সম্পূর্ণ ঝামেলাহীনভাবে QMS চালু করুন।",
++    serviceBody: `Hikmah IT-এর সহায়তায় সম্পূর্ণ ঝামেলাহীনভাবে ${BRAND_NAME} চালু করুন।`,
+     service: [
+       { title: "যোগাযোগ", desc: "ফোন বা ইমেইলে আমাদের সাথে যোগাযোগ করুন।" },
+       { title: "ডেমো", desc: "সিস্টেমের একটি লাইভ ডেমো দেখুন।" },
+-      { title: "সেটআপ", desc: "আপনার মাদ্রাসার জন্য সিস্টেম কনফিগার করা হবে।" },
++      { title: "সেটআপ", desc: "আপনার প্রতিষ্ঠানের জন্য সিস্টেম কনফিগার করা হবে।" },
+       { title: "ট্রেনিং", desc: "ব্যবহারকারীদের প্রয়োজনীয় প্রশিক্ষণ দেওয়া হবে।" },
+       { title: "লাইভ চালু", desc: "সম্পূর্ণ প্রস্তুত হয়ে গেলে সিস্টেম লাইভ চালু হবে।" },
+     ] as Card[],
+     contactNow: "এখনই যোগাযোগ করুন",
+     contactEyebrow: "Contact Us",
+-    contactBody: "আপনার মাদ্রাসার জন্য QMS চালু করতে আজই যোগাযোগ করুন। আমরা আছি প্রতিটি ধাপে পাশে।",
++    contactBody: `আপনার প্রতিষ্ঠানের জন্য ${BRAND_NAME} চালু করতে আজই যোগাযোগ করুন। আমরা আছি প্রতিটি ধাপে পাশে।`,
+     phone: "ফোন",
+     email: "ইমেইল",
+     address: "ঠিকানা",
+@@ -92,73 +146,120 @@ export const landingText = defineText({
+   en: {
+     nav: {
+       about: "About",
+-      why: "Why QMS",
++      institutions: "Institutions",
++      why: `Why ${BRAND_NAME}`,
+       gettingStarted: "Guide",
+       service: "Get Started",
+       contact: "Contact",
+     },
++    brandTagline: "Madrasa · School · College · Kindergarten",
+     goToAdmin: "Go to Admin Panel",
+     closeMenu: "Close menu",
+     openMenu: "Open menu",
+     heroLine1: "A complete digital solution",
+-    heroLine2: "for running a Qawmi madrasa",
+-    heroBody:
+-      "QMS (Qawmi Madrasa Management System) is modern software for managing students, teachers, admission, attendance, exams & results and accounts — all easily from one place.",
++    heroLine2: "for madrasas, schools, colleges & kindergartens",
++    heroBody: `${BRAND_NAME} (Education Management System) is modern software for managing students, teachers, admission, attendance, exams & results and accounts — all easily from one place. Classes, subjects and terminology are set up automatically for your type of institution.`,
+     getService: "Get the Service",
+     learnMore: "Learn More",
+-    badges: ["Secure and reliable data", "Bangla, English & Arabic interface", "Mobile and desktop support"],
++    badges: ["Secure and reliable data", "Bangla & English interface", "Mobile and desktop support"],
+     mockModules: ["Students", "Teachers", "Admission", "Attendance", "Examination", "Accounts"],
++    mockUrl: "hikmahit.com/dashboard",
+     resultReady: "Results ready",
+     oneClickReport: "One-click reports",
+-    aboutEyebrow: "About QMS",
+-    aboutTitle: "Every madrasa activity on one platform",
+-    aboutBody:
+-      "QMS was built to make the daily administrative and academic work of Qawmi madrasas simple and organized. Every module is designed around real needs.",
++    institutionsEyebrow: "Who It's For",
++    institutionsTitle: "Whatever your institution, the system adapts",
++    institutionsBody:
++      "Pick your institution type when it is created and the class structure, subject list, terminology and report styles are prepared to match.",
++    institutions: [
++      {
++        title: "Madrasa",
++        desc: "Built around the real needs of Qawmi and residential madrasas.",
++        points: [
++          "Division- and kitab-based class structure",
++          "Arabic names and Mumtaz/Jayyid-style grades",
++          "Residential and orphan student records",
++          "Sanad and testimonial certificates",
++        ],
++      },
++      {
++        title: "School",
++        desc: "A board-style structure from primary through secondary.",
++        points: [
++          "Primary, junior secondary and SSC (Science, Business, Humanities)",
++          "GPA-based results and marksheets",
++          "Admit cards and certificates",
++          "Guardian portal",
++        ],
++      },
++      {
++        title: "College",
++        desc: "Group-based management for higher secondary education.",
++        points: [
++          "Class Eleven & Twelve (Science, Business, Humanities)",
++          "Group-wise subjects with 1st/2nd papers",
++          "GPA-based results and marksheets",
++          "July–June academic year, certificates and guardian portal",
++        ],
++      },
++      {
++        title: "Kindergarten",
++        desc: "Simple, organized management for institutions of young learners.",
++        points: [
++          "Play, Nursery, KG and Class 1–5",
++          "Admission and monthly fee management",
++          "Daily attendance",
++          "Guardian portal and notices",
++        ],
++      },
++    ],
++    aboutEyebrow: `About ${BRAND_NAME}`,
++    aboutTitle: "Every institution activity on one platform",
++    aboutBody: `${BRAND_NAME} was built to make the daily administrative and academic work of madrasas, schools, colleges and kindergartens simple and organized. Every module is designed around real needs.`,
+     features: [
+       { title: "Student Management", desc: "Easily store and manage student information, profiles and academic records." },
+       { title: "Teacher Management", desc: "Handle teacher recruitment, profiles and duty assignments from one place." },
+       { title: "Admission", desc: "Complete new student admissions quickly, accurately and digitally." },
+       { title: "Attendance", desc: "Keep daily attendance records and easily analyze attendance trends." },
+       { title: "Examination & Result", desc: "Run exams, enter marks and publish results automatically." },
+-      { title: "Accounts", desc: "Track income, expenses, funds and finances transparently." },
++      { title: "Accounts", desc: "Track income, expenses, fees and finances transparently." },
+       { title: "Reports", desc: "Generate and print academic, financial and administrative reports instantly." },
+       { title: "SMS / Notification", desc: "Deliver important information to guardians and teachers quickly." },
+-      { title: "Settings & More", desc: "Customize and control the system to fit your madrasa's own needs." },
++      { title: "Settings & More", desc: "Customize and control the system to fit your institution's own needs." },
+     ],
+-    whyEyebrow: "Why Choose QMS",
+-    whyTitle: "Why QMS for your madrasa",
++    whyEyebrow: `Why Choose ${BRAND_NAME}`,
++    whyTitle: `Why ${BRAND_NAME} for your institution`,
+     why: [
+       { title: "Saves Time", desc: "Work becomes fast and easy without the hassle of manual registers and ledgers." },
+       { title: "Accurate Records", desc: "Every record is stored digitally and accurately, reducing the chance of errors." },
+       { title: "Easy Reports", desc: "View and print complex accounts as reports with a single click." },
+-      { title: "Secure Data", desc: "Your madrasa's data is kept safe on secure servers." },
++      { title: "Secure Data", desc: "Your institution's data is kept safe on secure servers." },
+       { title: "Modern Dashboard", desc: "A modern dashboard to see daily activity at a glance." },
+       { title: "Multi-user Support", desc: "Administration, teachers and staff can work together, each in their own role." },
+     ],
+     startEyebrow: "Getting Started",
+     startTitle: "How to get started",
+-    startBody: "Your madrasa can start using QMS in just a few steps.",
++    startBody: `Your institution can start using ${BRAND_NAME} in just a few steps.`,
+     step: (n) => `Step ${n}`,
+     steps: [
+-      { title: "Create an account", desc: "Open a QMS account for your madrasa." },
+-      { title: "Set up madrasa details", desc: "Add the madrasa's name, address, logo and other necessary details." },
++      { title: "Create an account", desc: `Open a ${BRAND_NAME} account for your type of institution — madrasa, school, college or kindergarten.` },
++      { title: "Set up institution details", desc: "Add the institution's name, address, logo and other necessary details." },
+       { title: "Add teachers and students", desc: "Add teacher and student profiles to the system." },
+-      { title: "Set up classes, divisions and subjects", desc: "Define classes, divisions and subjects according to your madrasa's academic structure." },
+-      { title: "Daily use", desc: "Attendance, exams, accounts and reports — start using QMS for your daily work." },
++      { title: "Set up classes, levels and subjects", desc: "Define classes, levels and subjects according to your institution's academic structure." },
++      { title: "Daily use", desc: `Attendance, exams, accounts and reports — start using ${BRAND_NAME} for your daily work.` },
+     ],
+     serviceEyebrow: "How to Get This Service",
+     serviceTitle: "How you can get the service",
+-    serviceBody: "Launch QMS completely hassle-free with the help of Hikmah IT.",
++    serviceBody: `Launch ${BRAND_NAME} completely hassle-free with the help of Hikmah IT.`,
+     service: [
+       { title: "Contact", desc: "Get in touch with us by phone or email." },
+       { title: "Demo", desc: "See a live demo of the system." },
+-      { title: "Setup", desc: "The system will be configured for your madrasa." },
++      { title: "Setup", desc: "The system will be configured for your institution." },
+       { title: "Training", desc: "Users will receive the necessary training." },
+       { title: "Go Live", desc: "Once everything is ready, the system goes live." },
+     ],
+     contactNow: "Contact Us Now",
+     contactEyebrow: "Contact Us",
+-    contactBody: "Contact us today to launch QMS for your madrasa. We are with you at every step.",
++    contactBody: `Contact us today to launch ${BRAND_NAME} for your institution. We are with you at every step.`,
+     phone: "Phone",
+     email: "Email",
+     address: "Address",
+diff --git a/frontend/src/main.tsx b/frontend/src/main.tsx
+index b7c2830..3fbe686 100644
+--- a/frontend/src/main.tsx
++++ b/frontend/src/main.tsx
+@@ -20,7 +20,7 @@ function SiteInstallPrompt() {
+   return (
+     <InstallPrompt
+       appName={t.appName}
+-      storageKey="qms-site:pwa-dismissed-at"
++      storageKey="ems-site:pwa-dismissed-at"
+     />
+   );
+ }
+diff --git a/frontend/src/services/guardianApi.ts b/frontend/src/services/guardianApi.ts
+index 20a1d44..a57edb3 100644
+--- a/frontend/src/services/guardianApi.ts
++++ b/frontend/src/services/guardianApi.ts
+@@ -30,7 +30,7 @@ guardianApi.interceptors.request.use((config) => {
+ 
+ // sessionStorage key GuardianLoginPage reads on mount to show
+ // TenantBlockedScreen after a mid-session 410/423 redirect below.
+-export const GUARDIAN_TENANT_BLOCK_STORAGE_KEY = "qms:guardian-tenant-block";
++export const GUARDIAN_TENANT_BLOCK_STORAGE_KEY = "ems:guardian-tenant-block";
+ 
+ guardianApi.interceptors.response.use(
+   (res) => res,
+diff --git a/packages/shared-ui/src/navigation/navHistory.ts b/packages/shared-ui/src/navigation/navHistory.ts
+index 5f37177..8a0eadf 100644
+--- a/packages/shared-ui/src/navigation/navHistory.ts
++++ b/packages/shared-ui/src/navigation/navHistory.ts
+@@ -12,7 +12,7 @@
+  * history stack, so the in-app Back button stays consistent with them.
+  */
+ 
+-const TRAIL_KEY = "qms:nav-trail";
++const TRAIL_KEY = "ems:nav-trail";
+ 
+ type Trail = Record<string, string>;
+ 
+diff --git a/packages/shared-ui/src/pwa/InstallPrompt.tsx b/packages/shared-ui/src/pwa/InstallPrompt.tsx
+index fcf6b76..624d348 100644
+--- a/packages/shared-ui/src/pwa/InstallPrompt.tsx
++++ b/packages/shared-ui/src/pwa/InstallPrompt.tsx
+@@ -5,7 +5,7 @@ import { commonText, localizeDigits, useLang, useText } from "../i18n";
+ import { pwaText } from "./pwa.text";
+ 
+ interface InstallPromptProps {
+-  /** Shown as the banner heading, e.g. "QMS Admin" or the madrasa's name. */
++  /** Shown as the banner heading, e.g. "Hikmah EMS Admin" or the madrasa's name. */
+   appName: string;
+   description?: string;
+   /** localStorage key that remembers a ✕ click; separate per app. */
+diff --git a/packages/shared-ui/src/pwa/pwa.ts b/packages/shared-ui/src/pwa/pwa.ts
+index 025b8e7..1b71a07 100644
+--- a/packages/shared-ui/src/pwa/pwa.ts
++++ b/packages/shared-ui/src/pwa/pwa.ts
+@@ -104,7 +104,7 @@ export interface PwaManifestOptions {
+   /** The madrasa's logo-derived icons. Omitted/null => no icons at all (no default). */
+   icons?: BrandIconSource | null;
+   /** Default true: also hand `name` to the install banner. Pass false where the
+-   * banner already has its own label (the admin panel's "QMS Admin"). */
++   * banner already has its own label (the admin panel's "Hikmah EMS Admin"). */
+   announceName?: boolean;
+   /** Default "standalone". "minimal-ui" makes installed desktop Chrome draw its
+    * own Back / Reload buttons in the title bar, right after the app icon. */
+diff --git a/super-admin/index.html b/super-admin/index.html
+index f706684..12e31a2 100644
+--- a/super-admin/index.html
++++ b/super-admin/index.html
+@@ -3,7 +3,7 @@
+   <head>
+     <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+-    <title>Super Admin — QMS | Hikmah IT</title>
++    <title>Super Admin — Hikmah EMS | Hikmah IT</title>
+     <meta name="theme-color" content="#059669" />
+     <script>
+       (function () {
+diff --git a/super-admin/src/features/super-admin/settings/SuperAdminSettingsPage.tsx b/super-admin/src/features/super-admin/settings/SuperAdminSettingsPage.tsx
+index 685ef87..eaf7365 100644
+--- a/super-admin/src/features/super-admin/settings/SuperAdminSettingsPage.tsx
++++ b/super-admin/src/features/super-admin/settings/SuperAdminSettingsPage.tsx
+@@ -218,7 +218,7 @@ function AdminLogoSettingsCard() {
+           icons={pending ? pendingIcons : savedIcons}
+           loading={!!pending && iconsLoading}
+           error={!!pending && iconsFailed}
+-          tabTitle="QMS Admin"
++          tabTitle="Hikmah EMS Admin"
+           note={pending ? "এটি নতুন লোগোর প্রিভিউ — “সেভ করুন” চাপলে কার্যকর হবে।" : "অ্যাডমিন প্যানেলে এই আইকনগুলোই এখন চালু আছে।"}
+         />
+       )}
+diff --git a/super-admin/src/features/super-admin/vendor-promo/SuperAdminVendorPromoPage.tsx b/super-admin/src/features/super-admin/vendor-promo/SuperAdminVendorPromoPage.tsx
+index a89916b..cec6de9 100644
+--- a/super-admin/src/features/super-admin/vendor-promo/SuperAdminVendorPromoPage.tsx
++++ b/super-admin/src/features/super-admin/vendor-promo/SuperAdminVendorPromoPage.tsx
+@@ -378,7 +378,7 @@ function ServicesList() {
+       <h2 className="mb-1 text-lg font-bold text-slate-900 dark:text-slate-100">আমাদের সেবাসমূহ</h2>
+       <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+         বিস্তারিত পেজে "আমাদের সেবাসমূহ" গ্রিডে যা দেখা যাবে। "বর্তমানে ব্যবহার করছে" চিহ্নিত
+-        সার্ভিসটি (সাধারণত QMS) ব্যাজসহ আলাদাভাবে দেখানো হয়।
++        সার্ভিসটি (সাধারণত Hikmah EMS) ব্যাজসহ আলাদাভাবে দেখানো হয়।
+       </p>
+ 
+       <div className="mb-4 rounded-xl border border-dashed border-gray-300 p-3 dark:border-slate-700">
+@@ -415,7 +415,7 @@ function ServicesList() {
+               checked={addForm.is_current}
+               onChange={(e) => setAddForm((p) => ({ ...p, is_current: e.target.checked }))}
+             />
+-            এটাই বর্তমানে ব্যবহার করছে (QMS)
++            এটাই বর্তমানে ব্যবহার করছে (Hikmah EMS)
+           </label>
+           <button
+             type="button"
+@@ -557,7 +557,7 @@ function ServicesList() {
+               checked={editForm.is_current}
+               onChange={(e) => setEditForm((p) => ({ ...p, is_current: e.target.checked }))}
+             />
+-            এটাই বর্তমানে ব্যবহার করছে (QMS)
++            এটাই বর্তমানে ব্যবহার করছে (Hikmah EMS)
+           </label>
+         </div>
+         <div className="mt-4 flex justify-end gap-2">

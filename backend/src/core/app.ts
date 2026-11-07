@@ -76,7 +76,7 @@ app.use(rateLimit(config.rateLimit));
 app.get("/health", (_req, res) => {
   res.json({
     success: true,
-    message: "QMS Backend is running successfully.",
+    message: "Hikmah EMS Backend is running successfully.",
     service: "Qawmi Madrasa Management System API",
     provider: "Hikmah IT",
     status: "OK",

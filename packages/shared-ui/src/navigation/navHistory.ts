@@ -12,7 +12,7 @@
  * history stack, so the in-app Back button stays consistent with them.
  */
 
-const TRAIL_KEY = "qms:nav-trail";
+const TRAIL_KEY = "ems:nav-trail";
 
 type Trail = Record<string, string>;
 
