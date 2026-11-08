@@ -5,7 +5,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const port = Number(env.VITE_PORT) || 5183;
   const apiBase = (env.VITE_API_URL || "http://localhost:5000/api").replace(/\/$/, "");
-  const socialImageUrl = `${apiBase}/platform-brand/social-preview.png`;
+  const socialImageUrl = `${apiBase}/platform-brand/icon/icon-512.png`;
 
   return {
     plugins: [
