@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getPublicPlatformBrand, getPublicPlatformIcon } from "./platform-brand.controller";
+import { getPublicPlatformBrand, getPublicPlatformIcon, getPublicPlatformSocialPreview } from "./platform-brand.controller";
 
 /**
  * PUBLIC (no auth, no tenant): the main admin panel's own favicon / PWA icons,
@@ -11,6 +11,7 @@ import { getPublicPlatformBrand, getPublicPlatformIcon } from "./platform-brand.
 const router = Router();
 
 router.get("/", getPublicPlatformBrand);
+router.get("/social-preview.png", getPublicPlatformSocialPreview);
 router.get("/icon/:file", getPublicPlatformIcon);
 
 export default router;

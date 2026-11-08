@@ -30,7 +30,7 @@ function SiteInstallPrompt() {
 }
 
 setupChunkReloadOnPreloadError();
-installReportFontFace();
+installReportFontFace({ uiDisplay: "swap" });
 void setupTenantManifest();
 router.subscribe(({ location }) => { void setupTenantManifest(location.pathname); });
 setupPwa();

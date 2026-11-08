@@ -2,14 +2,12 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import axios from "axios";
 import { ArrowRight, Check, CheckCircle2, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { useLang, useText } from "@madrasha/shared-ui/src/i18n";
-import LandingLanguageSwitcher from "./LandingLanguageSwitcher";
 import { API_BASE_URL } from "@madrasha/shared-ui/src/services/apiConfig";
 import DemoPlanFields from "./DemoPlanFields";
 import { useDemoPlanStore } from "./demo-plan.store";
 import { useToastStore, type ToastOptions, type ToastType } from "@madrasha/shared-ui/src/store/toastStore";
 import { demoPlanText } from "./demo-plan.text";
 import { FieldError, RequiredMark, invalidFieldClass } from "./DemoFormFeedback";
-import { useLightLandingTheme } from "./useLightLandingTheme";
 
 const inputClass =
   "mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10";
@@ -441,24 +439,3 @@ export default function LeadCapture() {
   );
 }
 
-export function DemoLandingPage() {
-  useLightLandingTheme();
-  const bn = useLang() === "bn";
-  return (
-    <main className="min-h-screen bg-emerald-50">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <a href="/" className="text-2xl font-black tracking-tight text-slate-900">
-          EMS<span className="text-emerald-700">.</span>
-        </a>
-        <LandingLanguageSwitcher />
-      </header>
-      <LeadCapture />
-      <footer className="px-6 pb-8 text-center text-xs text-slate-600">
-        EMS · Hikmah IT · <a href="tel:01624114405">01624114405</a> ·{" "}
-        <a href="/" className="underline">
-          {bn ? "মূল ওয়েবসাইট" : "Visit website"}
-        </a>
-      </footer>
-    </main>
-  );
-}

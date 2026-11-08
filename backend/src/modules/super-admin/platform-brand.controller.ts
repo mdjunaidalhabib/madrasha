@@ -61,6 +61,18 @@ export const getPublicPlatformBrand = async (_req: Request, res: Response) => {
   }
 };
 
+/** Unversioned URL in static HTML: always revalidate against the current logo. */
+export const getPublicPlatformSocialPreview = async (_req: Request, res: Response) => {
+  try {
+    const png = await platformBrandService.getSocialPreview();
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("Cache-Control", "no-store, max-age=0");
+    res.type("image/png").send(png);
+  } catch (error) {
+    respondError(res, error, "getPublicPlatformSocialPreview ERROR:");
+  }
+};
+
 export const getPublicPlatformIcon = async (req: Request, res: Response) => {
   try {
     const png = await platformBrandService.getIcon(String(req.params.file || ""));

@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import PageLoader from "@madrasha/shared-ui/src/components/ui/PageLoader";
 import { isPlatformRootHost } from "../../utils/platformHost";
 import { resolveDomainToSlug } from "../../services/domainResolve";
-import PlatformLandingPage from "./PlatformLandingPage";
 import DomainNotConnected from "./DomainNotConnected";
-import PublicWebsitePage from "../website/PublicWebsitePage";
+
+// Load only the page selected by the hostname. Static imports here also
+// preload the institution website when the visitor only needs EMS marketing.
+const PlatformLandingPage = lazy(() => import("./PlatformLandingPage"));
+const PublicWebsitePage = lazy(() => import("../website/PublicWebsitePage"));
 
 // The root "/" route is hostname-aware: on the platform's own domain it's
 // the marketing landing page, on any other (tenant custom) domain it's that
@@ -30,11 +33,11 @@ export default function RootRoute() {
     };
   }, [onPlatformHost]);
 
-  if (onPlatformHost) return <PlatformLandingPage />;
+  if (onPlatformHost) return <Suspense fallback={<PageLoader />}><PlatformLandingPage /></Suspense>;
 
   if (state === "loading") return <PageLoader />;
 
   if (state === "not-found") return <DomainNotConnected />;
 
-  return <PublicWebsitePage slug={slug} />;
+  return <Suspense fallback={<PageLoader />}><PublicWebsitePage slug={slug} /></Suspense>;
 }

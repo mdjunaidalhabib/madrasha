@@ -6,6 +6,7 @@ import { prisma } from "../../shared/database/prisma";
 import { logger } from "../../shared/logger/logger";
 import { t } from "../../shared/i18n";
 import { BRAND_ICON_SPECS, decodePreviewImage, renderBrandIcon, renderBrandIconPreviews } from "../public-website/brand-icon.service";
+import { renderPlatformSocialPreview } from "./platform-social-preview";
 
 /**
  * Brand assets of the MAIN ADMIN PANEL, owned by the Super Admin
@@ -37,6 +38,18 @@ const remember = (key: string, png: Buffer) => {
 const findRow = () => prisma.platformBrandSetting.findFirst({ orderBy: { id: "asc" } });
 
 export const platformBrandService = {
+  /** Read the current master on every request so replacements/removals take effect. */
+  async getSocialPreview(): Promise<Buffer> {
+    const row = await findRow();
+    const logo = row?.adminLogo || null;
+    const key = `social:${logo ? platformLogoVersion(logo) : "default"}`;
+    const hit = cache.get(key);
+    if (hit) return hit;
+    const png = await renderPlatformSocialPreview(logo ? decodeImageDataUri(logo) : null);
+    remember(key, png);
+    return png;
+  },
+
   /** Super Admin view: the stored master (for the preview) + its version. */
   async getAdminLogo() {
     const row = await findRow();

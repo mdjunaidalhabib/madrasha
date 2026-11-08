@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "check:landing-bundle": "vite build --manifest && node scripts/check-landing-bundle.mjs",
     "preview": "vite preview --host 0.0.0.0 --port 5183",
     "start": "vite preview --host 0.0.0.0 --port 5183",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",

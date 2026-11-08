@@ -73,4 +73,27 @@ describe("platform (admin panel) logo", () => {
     expect(platformLogoVersion("a")).toBe(platformLogoVersion("a"));
     expect(platformLogoVersion("a")).not.toBe(platformLogoVersion("b"));
   });
+
+  it("renders the saved logo in the share card, updating on replacement and deletion", async () => {
+    const centerPixel = async (png: Buffer) => {
+      const { data, info } = await sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+      const offset = (295 * info.width + 220) * info.channels;
+      return Array.from(data.subarray(offset, offset + 3));
+    };
+    await platformBrandService.saveAdminLogo(await logoDataUri({ r: 5, g: 150, b: 105 }));
+    const first = await platformBrandService.getSocialPreview();
+    const meta = await sharp(first).metadata();
+    expect([meta.format, meta.width, meta.height]).toEqual(["png", 1200, 630]);
+    expect(await centerPixel(first)).toEqual([5, 150, 105]);
+
+    await platformBrandService.saveAdminLogo(await logoDataUri({ r: 200, g: 30, b: 30 }));
+    const second = await platformBrandService.getSocialPreview();
+    expect(await centerPixel(second)).toEqual([200, 30, 30]);
+    expect(second.equals(first)).toBe(false);
+
+    await platformBrandService.deleteAdminLogo();
+    const fallback = await platformBrandService.getSocialPreview();
+    expect(await centerPixel(fallback)).not.toEqual([200, 30, 30]);
+    expect((await sharp(fallback).metadata()).width).toBe(1200);
+  });
 });

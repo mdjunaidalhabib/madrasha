@@ -135,7 +135,7 @@ function AdminLogoSettingsCard() {
       const data = await savePlatformAdminLogo(pending);
       setCurrent(data);
       setPending(null);
-      toast("লোগো সেভ হয়েছে — অ্যাডমিন প্যানেলের Favicon ও PWA আইকন আপডেট হবে", "success");
+      toast("লোগো সেভ হয়েছে — EMS শেয়ার প্রিভিউ, অ্যাডমিন প্যানেলের Favicon ও PWA আইকন আপডেট হবে", "success");
     } catch (err: any) {
       logger.error("SAVE ADMIN PANEL LOGO ERROR:", err);
       toast(err?.response?.data?.message || "লোগো সেভ করা যায়নি", "error");
@@ -177,7 +177,7 @@ function AdminLogoSettingsCard() {
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">অ্যাডমিন প্যানেলের লোগো (Favicon ও PWA আইকন)</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              এই লোগোটিই মূল অ্যাডমিন প্যানেলের ব্রাউজার Favicon এবং PWA অ্যাপ আইকন হিসেবে ব্যবহার হবে। এটি কোনো মাদ্রাসার ব্র্যান্ডিং লোগো
+              এই লোগোটিই EMS লিংক শেয়ারের প্রিভিউ ব্যানার, মূল অ্যাডমিন প্যানেলের ব্রাউজার Favicon এবং PWA অ্যাপ আইকন হিসেবে ব্যবহার হবে। এটি কোনো মাদ্রাসার ব্র্যান্ডিং লোগো
               বদলায় না।
             </p>
           </div>
