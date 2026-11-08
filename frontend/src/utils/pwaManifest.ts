@@ -1,5 +1,6 @@
 import { disablePwaInstall, setPwaManifest } from "@madrasha/shared-ui/src/pwa/pwa";
-import { applyBrandFavicon, logoVersion, tenantIconBase } from "@madrasha/shared-ui/src/pwa/brandIcons";
+import { applyBrandFavicon, logoVersion, platformIconBase, tenantIconBase } from "@madrasha/shared-ui/src/pwa/brandIcons";
+import { API_BASE_URL } from "@madrasha/shared-ui/src/services/apiConfig";
 import { resolveDomainToSlug } from "../services/domainResolve";
 import { getPublicWebsite } from "../services/publicWebsiteApi";
 import { isPlatformRootHost } from "./platformHost";
@@ -45,13 +46,22 @@ export function setTenantBrand({ name, slug, logo }: { name?: string | null; slu
   });
 }
 
-function applyPlatformIcons() {
+async function applyPlatformIcons(version: number) {
   applyBrandFavicon(null);
-  const link = document.createElement("link");
-  link.rel = "icon";
-  link.href = "/icons/favicon-32.png";
-  document.head.appendChild(link);
-  // No apple-touch-icon or manifest on the EMS marketing pages.
+  try {
+    const response = await fetch(`${API_BASE_URL}/platform-brand`, { cache: "no-store" });
+    if (!response.ok) return;
+    const body = await response.json();
+    // A late platform response must never overwrite an institution's own icon.
+    if (version !== routeVersion) return;
+    const logoVersion = body?.data?.version;
+    applyBrandFavicon(typeof logoVersion === "string" && logoVersion
+      ? { base: platformIconBase(), version: logoVersion }
+      : null);
+  } catch {
+    // Leave the icon blank until the platform's saved logo can be verified.
+  }
+  // Marketing pages use the saved platform favicon without enabling PWA install.
 }
 
 /** Runs before React and on navigation, including direct guardian portal visits. */
@@ -66,7 +76,7 @@ export async function setupTenantManifest(pathname = window.location.pathname) {
     brandRequest++;
     activeSlug = null;
     disablePwaInstall();
-    applyPlatformIcons();
+    await applyPlatformIcons(version);
     return;
   }
 
