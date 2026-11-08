@@ -1,110 +1,97 @@
-import { setPwaManifest, setStaticPwaIcon } from "@madrasha/shared-ui/src/pwa/pwa";
-import { logoVersion, tenantIconBase, type BrandIconSource } from "@madrasha/shared-ui/src/pwa/brandIcons";
-import { getResolvedDomainSlugSync } from "../services/domainResolve";
+import { disablePwaInstall, setPwaManifest } from "@madrasha/shared-ui/src/pwa/pwa";
+import { applyBrandFavicon, logoVersion, tenantIconBase } from "@madrasha/shared-ui/src/pwa/brandIcons";
+import { resolveDomainToSlug } from "../services/domainResolve";
+import { getPublicWebsite } from "../services/publicWebsiteApi";
 import { isPlatformRootHost } from "./platformHost";
 import { getText } from "@madrasha/shared-ui/src/i18n";
 import { appText } from "../app/app.text";
 
-const RESERVED = new Set(["", "admin", "api", "assets", "login", "super-admin", "guardian", "admission", "contact"]);
+const RESERVED = new Set(["", "m", "demo", "admin", "api", "assets", "login", "super-admin", "guardian", "admission", "contact"]);
 
-/**
- * Where the installed app should open for the madrasa being visited:
- * "/m/<slug>" or "/<slug>" on the platform domain, "/" on a custom domain.
- * Without this the static manifest's start_url "/" would open the platform's
- * landing page instead of the madrasa the visitor installed it from.
- */
+/** Both public URL aliases identify the same installed institution app. */
 export function getTenantStartUrl(pathname = window.location.pathname) {
   if (!isPlatformRootHost()) return "/";
   const [first = "", second = ""] = pathname.split("/").filter(Boolean);
-  if (first === "m" && second) return `/m/${second}`;
-  return RESERVED.has(first) ? "/" : `/${first}`;
+  const slug = first === "m" ? second : first;
+  return RESERVED.has(slug) ? "/" : `/${slug}/`;
 }
 
-// null until the tenant's own name is known - then the translated
-// institution word ("মাদ্রাসা" / "School" ...) stands in.
-let currentName: string | null = null;
+let activeSlug: string | null = null;
+let routeVersion = 0;
+let lastPathname = "";
+let brandRequest = 0;
 
-// The madrasa's logo-derived icons. null = no logo (or not known yet) - the
-// favicon / manifest icons then stay empty; there is no platform fallback.
-let currentIcons: BrandIconSource | null = null;
-
-// Remembers each madrasa's last logo fingerprint so pages that never load the
-// website payload (guardian portal, a reload straight onto /admission) still
-// get the right icon from the first paint.
-const cacheKey = (slug: string) => `brand-icon:${slug}`;
-const readCachedVersion = (slug: string) => {
-  try {
-    return localStorage.getItem(cacheKey(slug));
-  } catch {
-    return null;
-  }
-};
-const writeCachedVersion = (slug: string, version: string | null) => {
-  try {
-    if (version) localStorage.setItem(cacheKey(slug), version);
-    else localStorage.removeItem(cacheKey(slug));
-  } catch {
-    /* storage unavailable - icons just lose the first-paint head start */
-  }
-};
-
-const slugFromStartUrl = (startUrl: string) => startUrl.split("/").filter(Boolean).pop() || "";
-
-/** Call as soon as the madrasa's name is known to label the installed app with it. */
-export function setTenantManifestName(name?: string | null) {
-  if (!name || name === currentName) return;
-  currentName = name;
-  setupTenantManifest();
-}
-
-/**
- * Call once the madrasa's public data is loaded: its name AND its logo (the
- * logo from Branding Settings becomes the favicon + PWA icon). Pass a falsy
- * `logo` when the madrasa has none - the icons are then cleared.
- */
+/** Apply only the brand belonging to the current route; ignore late responses. */
 export function setTenantBrand({ name, slug, logo }: { name?: string | null; slug?: string | null; logo?: string | null }) {
-  if (name) currentName = name;
-  if (slug) {
-    const version = logo ? logoVersion(logo) : null;
-    currentIcons = version ? { base: tenantIconBase(slug), version } : null;
-    writeCachedVersion(slug, version);
+  if (!slug || slug !== activeSlug) return;
+  const icons = logo ? { base: tenantIconBase(slug), version: logoVersion(logo) } : null;
+  applyBrandFavicon(icons);
+  if (!name || !icons) {
+    disablePwaInstall();
+    return;
   }
-  setupTenantManifest();
+
+  const startUrl = isPlatformRootHost() ? `/${encodeURIComponent(slug)}/` : "/";
+  setPwaManifest({
+    name,
+    shortName: name,
+    // Stable across /m/:slug, /:slug and guardian/admission pages.
+    id: `/${encodeURIComponent(slug)}`,
+    startUrl,
+    // The trailing slash keeps similarly named institutions outside this app.
+    scope: startUrl,
+    description: getText(appText).pwaDescription(name),
+    icons,
+  });
 }
 
-/** The platform's own landing page keeps the platform's static manifest/icons;
- * those are not a madrasa default and never appear on a madrasa's pages. */
 function applyPlatformIcons() {
-  document
-    .querySelectorAll('link[rel~="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]')
-    .forEach((el) => el.remove());
-  const add = (rel: string, href: string, extra: Record<string, string> = {}) => {
-    const link = document.createElement("link");
-    link.rel = rel;
-    Object.entries(extra).forEach(([k, v]) => link.setAttribute(k, v));
-    link.href = href;
-    document.head.appendChild(link);
-  };
-  add("icon", "/icons/favicon-32.png", { type: "image/png", sizes: "32x32" });
-  add("apple-touch-icon", "/icons/apple-touch-icon.png");
-  setStaticPwaIcon("/icons/icon-192.png");
+  applyBrandFavicon(null);
+  const link = document.createElement("link");
+  link.rel = "icon";
+  link.href = "/icons/favicon-32.png";
+  document.head.appendChild(link);
+  // No apple-touch-icon or manifest on the EMS marketing pages.
 }
 
-export function setupTenantManifest() {
-  const startUrl = getTenantStartUrl();
-  // Platform landing page itself - keep the static manifest.
-  if (startUrl === "/" && isPlatformRootHost()) {
+/** Runs before React and on navigation, including direct guardian portal visits. */
+export async function setupTenantManifest(pathname = window.location.pathname) {
+  if (pathname === lastPathname) return;
+  lastPathname = pathname;
+  const version = ++routeVersion;
+  const platform = isPlatformRootHost();
+  const startUrl = getTenantStartUrl(pathname);
+
+  if (platform && startUrl === "/") {
+    brandRequest++;
+    activeSlug = null;
+    disablePwaInstall();
     applyPlatformIcons();
     return;
   }
 
-  if (!currentIcons) {
-    const slug = slugFromStartUrl(startUrl) || getResolvedDomainSlugSync();
-    const version = slug ? readCachedVersion(slug) : null;
-    if (slug && version) currentIcons = { base: tenantIconBase(slug), version };
+  // Custom hosts cannot install anything until domain resolution succeeds.
+  if (!platform && activeSlug === null) {
+    disablePwaInstall();
+    applyBrandFavicon(null);
   }
+  const slug = platform ? decodeURIComponent(startUrl.split("/")[1]) : await resolveDomainToSlug();
+  if (version !== routeVersion) return;
+  if (slug === activeSlug) return;
+  activeSlug = slug;
+  const request = ++brandRequest;
+  disablePwaInstall();
+  applyBrandFavicon(null);
+  if (!slug) return;
 
-  const text = getText(appText);
-  const name = currentName || text.appName;
-  setPwaManifest({ name, startUrl, description: text.pwaDescription(name), icons: currentIcons });
+  try {
+    const data = await getPublicWebsite(slug);
+    if (activeSlug !== slug || request !== brandRequest) return;
+    const madrasa = data?.madrasa;
+    if (madrasa?.slug === slug) {
+      setTenantBrand({ name: madrasa.name, slug, logo: madrasa.logo_url });
+    }
+  } catch {
+    // Failed, unavailable or unknown institutions must not offer a generic app.
+  }
 }

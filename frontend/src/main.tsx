@@ -8,8 +8,9 @@ import ErrorBoundary from "@madrasha/shared-ui/src/components/ui/ErrorBoundary";
 import { setupChunkReloadOnPreloadError } from "@madrasha/shared-ui/src/utils/chunkReload";
 import { installReportFontFace } from "@madrasha/shared-ui/src/utils/reportFontFace";
 import InstallPrompt from "@madrasha/shared-ui/src/pwa/InstallPrompt";
-import { setupPwa } from "@madrasha/shared-ui/src/pwa/pwa";
+import { setupPwa, usePwaInstall } from "@madrasha/shared-ui/src/pwa/pwa";
 import { setupTenantManifest } from "./utils/pwaManifest";
+import { router } from "./app/router";
 import { useText } from "@madrasha/shared-ui/src/i18n";
 import { appText } from "./app/app.text";
 
@@ -17,17 +18,21 @@ import { appText } from "./app/app.text";
 // (the manifest name, once known, takes precedence inside InstallPrompt).
 function SiteInstallPrompt() {
   const t = useText(appText);
+  const { installEnabled, appId } = usePwaInstall();
+  if (!installEnabled || !appId) return null;
   return (
     <InstallPrompt
       appName={t.appName}
-      storageKey="ems-site:pwa-dismissed-at"
+      key={appId}
+      storageKey={`ems-site:pwa-dismissed-at:${appId}`}
     />
   );
 }
 
 setupChunkReloadOnPreloadError();
 installReportFontFace();
-setupTenantManifest();
+void setupTenantManifest();
+router.subscribe(({ location }) => { void setupTenantManifest(location.pathname); });
 setupPwa();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

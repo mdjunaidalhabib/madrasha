@@ -20,6 +20,8 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 interface PwaState {
+  installEnabled: boolean;
+  appId: string | null;
   deferredPrompt: BeforeInstallPromptEvent | null;
   installed: boolean;
   /** Set by setPwaManifest() - lets the banner show the tenant's own name. */
@@ -28,7 +30,7 @@ interface PwaState {
   iconUrl: string | null;
 }
 
-let state: PwaState = { deferredPrompt: null, installed: false, appName: null, iconUrl: null };
+let state: PwaState = { installEnabled: true, appId: null, deferredPrompt: null, installed: false, appName: null, iconUrl: null };
 const listeners = new Set<() => void>();
 
 const setState = (patch: Partial<PwaState>) => {
@@ -55,6 +57,7 @@ export function setupPwa() {
 
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
+    if (!state.installEnabled) return;
     setState({ deferredPrompt: e as BeforeInstallPromptEvent });
   });
 
@@ -71,8 +74,7 @@ export function setupPwa() {
   }
 }
 
-/** For pages that keep a static (non-tenant) manifest, e.g. the platform's own
- * landing page: tells the install banner which icon that manifest carries. */
+/** For apps that keep a static manifest: supplies the install banner icon. */
 export const setStaticPwaIcon = (iconUrl: string | null) => {
   if (state.iconUrl !== iconUrl) setState({ iconUrl });
 };
@@ -80,7 +82,7 @@ export const setStaticPwaIcon = (iconUrl: string | null) => {
 /** Opens the browser's native install dialog. Returns true if the user accepted. */
 export async function promptInstall(): Promise<boolean> {
   const evt = state.deferredPrompt;
-  if (!evt) return false;
+  if (!state.installEnabled || !evt) return false;
   await evt.prompt();
   const { outcome } = await evt.userChoice;
   // A prompt event is single-use.
@@ -95,12 +97,22 @@ const subscribe = (l: () => void) => {
 
 export const usePwaInstall = () => useSyncExternalStore(subscribe, () => state);
 
+/** Remove installability while the public site has no verified tenant brand. */
+export function disablePwaInstall() {
+  document.querySelectorAll('link[rel="manifest"]').forEach((link) => link.remove());
+  const appleTitle = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
+  if (appleTitle) appleTitle.content = "";
+  setState({ installEnabled: false, appId: null, appName: null, iconUrl: null, deferredPrompt: null, installed: isStandalone() });
+}
+
 export interface PwaManifestOptions {
   name: string;
   shortName?: string;
   description?: string;
   /** Path the installed app opens at, e.g. "/m/darul-uloom". */
   startUrl?: string;
+  id?: string;
+  scope?: string;
   /** The madrasa's logo-derived icons. Omitted/null => no icons at all (no default). */
   icons?: BrandIconSource | null;
   /** Default true: also hand `name` to the install banner. Pass false where the
@@ -124,6 +136,8 @@ export function setPwaManifest({
   shortName,
   description,
   startUrl = "/",
+  id = startUrl,
+  scope = "/",
   icons = null,
   announceName = true,
   display = "standalone",
@@ -131,13 +145,13 @@ export function setPwaManifest({
   const origin = window.location.origin;
   const abs = (p: string) => new URL(p, origin).href;
   const manifest = {
-    id: abs(startUrl),
+    id: abs(id),
     name,
     short_name: shortName || name.slice(0, 24),
     description,
     lang: "bn",
     start_url: abs(startUrl),
-    scope: abs("/"),
+    scope: abs(scope),
     display,
     orientation: "any",
     background_color: "#ffffff",
@@ -161,5 +175,14 @@ export function setPwaManifest({
 
   const iconUrl = icons ? brandIconUrl(icons, "icon-192.png") : null;
   const nextName = announceName ? name : state.appName;
-  if (state.appName !== nextName || state.iconUrl !== iconUrl) setState({ appName: nextName, iconUrl });
+  const identityChanged = state.appId !== manifest.id;
+  if (identityChanged || !state.installEnabled || state.appName !== nextName || state.iconUrl !== iconUrl) {
+    setState({
+      installEnabled: true,
+      appId: manifest.id,
+      appName: nextName,
+      iconUrl,
+      ...(identityChanged ? { deferredPrompt: null, installed: isStandalone() } : {}),
+    });
+  }
 }

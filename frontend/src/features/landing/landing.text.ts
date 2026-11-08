@@ -72,6 +72,7 @@ export const landingText = defineText({
           "আরবি নাম ও মুমতাজ/জায়্যিদ ধরনের গ্রেড",
           "আবাসিক ও এতিম শিক্ষার্থীর তথ্য",
           "সনদ ও প্রশংসাপত্র",
+          "অভিভাবক পোর্টাল",
         ],
       },
       {
@@ -227,6 +228,7 @@ export const landingText = defineText({
           "Arabic names and Mumtaz/Jayyid-style grades",
           "Residential and orphan student records",
           "Sanad and testimonial certificates",
+          "Guardian portal",
         ],
       },
       {

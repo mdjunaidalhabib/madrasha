@@ -34,8 +34,8 @@ describe("subscription pricing", () => {
     expect(selected === "CUSTOM" ? selected : selected.name).toBe(expected);
   });
   it("uses the cycle's price and preserves legacy prices when renewal price is missing", () => {
-    expect(priceForCycle(plan("Basic"), "FIRST")).toBe(5000);
-    expect(priceForCycle(plan("Basic"), "RENEWAL")).toBe(2000);
+    expect(priceForCycle(plan("Basic"), "FIRST")).toBe(6000);
+    expect(priceForCycle(plan("Basic"), "RENEWAL")).toBe(3000);
     expect(priceForCycle({ price: "2400", studentLimit: 100 }, "RENEWAL")).toBe(2400);
   });
   it.each([

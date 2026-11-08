@@ -9,6 +9,7 @@ import { useDemoPlanStore } from "./demo-plan.store";
 import { useToastStore, type ToastOptions, type ToastType } from "@madrasha/shared-ui/src/store/toastStore";
 import { demoPlanText } from "./demo-plan.text";
 import { FieldError, RequiredMark, invalidFieldClass } from "./DemoFormFeedback";
+import { useLightLandingTheme } from "./useLightLandingTheme";
 
 const inputClass =
   "mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10";
@@ -180,25 +181,25 @@ export default function LeadCapture() {
   return (
     <section
       id="demo"
-      className="relative scroll-mt-24 overflow-hidden bg-[#091d20] px-4 py-20 sm:px-6"
+      className="relative scroll-mt-24 overflow-hidden bg-emerald-50 px-4 py-20 sm:px-6"
     >
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -left-40 top-0 h-[500px] w-[500px] rounded-full bg-emerald-500/10 blur-3xl"
       />
       <div className="relative mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1fr_1.05fr]">
-        <div className="text-white">
-          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-xs font-semibold text-emerald-300">
+        <div className="text-slate-900">
+          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-4 py-2 text-xs font-semibold text-emerald-700">
             <Sparkles size={14} />{" "}
             {say("আপনার প্রতিষ্ঠানের পরবর্তী পদক্ষেপ", "YOUR NEXT CHAPTER STARTS HERE")}
           </span>
           <h2 className="mt-6 text-3xl font-bold leading-tight sm:text-5xl">
             {say("প্রতিষ্ঠান পরিচালনা হোক", "Less paperwork.")}
-            <span className="mt-3 block text-emerald-300">
+            <span className="mt-3 block text-emerald-700">
               {say("আরও সহজ, আরও স্মার্ট।", "More possibilities.")}
             </span>
           </h2>
-          <p className="mt-6 max-w-md text-base leading-8 text-slate-300">
+          <p className="mt-6 max-w-md text-base leading-8 text-slate-600">
             {say(
               "EMS কীভাবে আপনার প্রতিষ্ঠানের ভর্তি, হাজিরা, ফি ও ফলাফল এক জায়গায় আনতে পারে—দেখুন একটি ব্যক্তিগত ডেমোতে।",
               "See how EMS brings admissions, attendance, fees and results together in a personal walkthrough for your institution.",
@@ -216,23 +217,23 @@ export default function LeadCapture() {
               ),
               say("শুরু করার প্রতিটি ধাপে সহযোগিতা", "Support to help your team get started"),
             ].map((text) => (
-              <div key={text} className="flex items-center gap-3 text-sm text-slate-200">
-                <span className="rounded-full bg-emerald-400/15 p-1 text-emerald-300">
+              <div key={text} className="flex items-center gap-3 text-sm text-slate-700">
+                <span className="rounded-full bg-emerald-400/15 p-1 text-emerald-700">
                   <Check size={15} />
                 </span>
                 {text}
               </div>
             ))}
           </div>
-          <div className="flex items-center gap-3 border-t border-white/10 pt-6 text-sm text-slate-400">
-            <ShieldCheck className="shrink-0 text-emerald-400" size={22} />
+          <div className="flex items-center gap-3 border-t border-slate-200 pt-6 text-sm text-slate-600">
+            <ShieldCheck className="shrink-0 text-emerald-700" size={22} />
             {say(
               "কোনো পেমেন্ট ছাড়াই ডেমোর অনুরোধ করুন।",
               "Request your demo. No payment required.",
             )}
           </div>
         </div>
-        <div className="rounded-3xl border border-white/15 bg-white p-6 shadow-2xl sm:p-9">
+        <div className="rounded-3xl border border-emerald-100 bg-white p-6 shadow-xl shadow-emerald-900/10 sm:p-9">
           {done ? (
             <div
               role="status"
@@ -441,17 +442,18 @@ export default function LeadCapture() {
 }
 
 export function DemoLandingPage() {
+  useLightLandingTheme();
   const bn = useLang() === "bn";
   return (
-    <main className="min-h-screen bg-[#091d20]">
+    <main className="min-h-screen bg-emerald-50">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <a href="/" className="text-2xl font-black tracking-tight text-white">
-          EMS<span className="text-emerald-400">.</span>
+        <a href="/" className="text-2xl font-black tracking-tight text-slate-900">
+          EMS<span className="text-emerald-700">.</span>
         </a>
         <LandingLanguageSwitcher />
       </header>
       <LeadCapture />
-      <footer className="px-6 pb-8 text-center text-xs text-slate-400">
+      <footer className="px-6 pb-8 text-center text-xs text-slate-600">
         EMS · Hikmah IT · <a href="tel:01624114405">01624114405</a> ·{" "}
         <a href="/" className="underline">
           {bn ? "মূল ওয়েবসাইট" : "Visit website"}

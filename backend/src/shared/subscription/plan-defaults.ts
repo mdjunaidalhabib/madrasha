@@ -2,9 +2,9 @@
  * Existing Basic/Standard/Premium keep their IDs, subscription references and
  * edited values. Never delete or reprice a legacy plan during a re-seed. */
 const rows = [
-  ["Starter", "স্টার্টার", 50, 3000, 1000, "Start small", "ছোট প্রতিষ্ঠানের জন্য", "#047857"],
-  ["Basic", "বেসিক", 100, 5000, 2000, "Build your foundation", "ভিত্তি গড়ার জন্য", "#0369A1"],
-  ["Standard", "স্ট্যান্ডার্ড", 200, 8000, 3000, "Room to grow", "বেড়ে ওঠার জন্য", "#4338CA"],
+  ["Starter", "স্টার্টার", 50, 4000, 2000, "Start small", "ছোট প্রতিষ্ঠানের জন্য", "#047857"],
+  ["Basic", "বেসিক", 100, 6000, 3000, "Build your foundation", "ভিত্তি গড়ার জন্য", "#0369A1"],
+  ["Standard", "স্ট্যান্ডার্ড", 200, 9000, 4000, "Room to grow", "বেড়ে ওঠার জন্য", "#4338CA"],
   [
     "Plus",
     "প্লাস",

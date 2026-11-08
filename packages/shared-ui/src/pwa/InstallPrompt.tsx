@@ -32,7 +32,7 @@ export default function InstallPrompt({
   storageKey = "pwa:install-dismissed-at",
   hideOnPaths,
 }: InstallPromptProps) {
-  const { deferredPrompt, installed, appName: manifestName, iconUrl } = usePwaInstall();
+  const { installEnabled, deferredPrompt, installed, appName: manifestName, iconUrl } = usePwaInstall();
   const t = useText(pwaText);
   const c = useText(commonText);
   const lang = useLang();
@@ -53,7 +53,7 @@ export default function InstallPrompt({
   const canInstall = !!deferredPrompt || ios;
   const blockedPath = hideOnPaths?.test(window.location.pathname);
 
-  if (!ready || dismissed || installed || isStandalone() || !canInstall || blockedPath) return null;
+  if (!installEnabled || !ready || dismissed || installed || isStandalone() || !canInstall || blockedPath) return null;
 
   const close = () => {
     try {

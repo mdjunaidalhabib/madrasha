@@ -38,6 +38,7 @@ import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import LandingLanguageSwitcher from "./LandingLanguageSwitcher";
 import LandingMobileMenu from "./LandingMobileMenu";
 import { BRAND_NAME, landingText } from "./landing.text";
+import { useLightLandingTheme } from "./useLightLandingTheme";
 
 // Contact number used for both the "tel:" and WhatsApp ("wa.me") links in
 // the floating contact button and the Contact section below. Kept in one
@@ -65,7 +66,7 @@ const MOCK_ICONS = [Users, Users2, UserPlus, CalendarCheck, ClipboardList, Walle
 
 /* ---------------------------------------------------------
    Design tokens for this page:
-   - ink        #0b1220  (deep navy-black hero surface)
+   - ink        slate-900 (headings on light surfaces)
    - emerald    #059669  (primary brand — trust / growth)
    - emerald-dk #047857
    - gold       #c98a2c  (muted calligraphic accent, used sparingly)
@@ -124,13 +125,13 @@ function InstitutionCard({
 
 function WhyCard({ icon, title, desc }: { icon: ReactNode; title: string; desc: string }) {
   return (
-    <div className="flex gap-4 rounded-2xl bg-white/5 p-5 ring-1 ring-white/10">
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
+    <div className="flex gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-700">
         {icon}
       </div>
       <div>
-        <h3 className="font-bold text-white">{title}</h3>
-        <p className="mt-1 text-sm leading-6 text-slate-300">{desc}</p>
+        <h3 className="font-bold text-slate-900">{title}</h3>
+        <p className="mt-1 text-sm leading-6 text-slate-600">{desc}</p>
       </div>
     </div>
   );
@@ -170,6 +171,7 @@ function StepItem({
 }
 
 export default function PlatformLandingPage() {
+  useLightLandingTheme();
   const t = useText(landingText);
   const lang = useLang();
   const adminAppLoginUrl = getAdminAppLoginUrl();
@@ -417,17 +419,17 @@ export default function PlatformLandingPage() {
       </section>
 
       {/* ---------------- Why Choose ---------------- */}
-      <section id="why" className="relative overflow-hidden bg-[#0b1220] py-20">
+      <section id="why" className="relative overflow-hidden bg-slate-50 py-20">
         <div
           aria-hidden
           className="pointer-events-none absolute end-0 top-0 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl"
         />
         <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold tracking-wide text-emerald-300">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold tracking-wide text-emerald-700">
               {t.whyEyebrow}
             </div>
-            <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-white">
+            <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-900">
               {t.whyTitle}
             </h2>
           </div>
@@ -519,51 +521,48 @@ export default function PlatformLandingPage() {
       {/* ---------------- Contact ---------------- */}
       <PricingSection />
       <LeadCapture />
-      <section id="contact" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-        <div className="overflow-hidden rounded-3xl bg-[#0b1220]">
-          <div className="grid grid-cols-1 lg:grid-cols-5">
-            <div className="p-8 sm:p-10 lg:col-span-2">
-              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-500/20">
-                {t.contactEyebrow}
+      <section id="contact" aria-labelledby="contact-heading" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-10 sm:px-6 sm:py-12">
+        <div className="relative overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
+          <div aria-hidden="true" className="absolute inset-y-0 start-0 w-1 bg-gradient-to-b from-emerald-400 to-teal-700" />
+          <div className="grid lg:grid-cols-[0.8fr_2.6fr]">
+            <div className="flex items-center gap-3 border-b border-emerald-100 bg-gradient-to-br from-emerald-50 to-white px-6 py-5 lg:border-b-0 lg:border-e lg:py-6">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-200 bg-white text-emerald-700 shadow-sm">
+                <MessageSquareText size={19} aria-hidden="true" />
+              </span>
+              <div>
+                <h2 id="contact-heading" className="text-lg font-bold text-slate-900">{t.contactEyebrow}</h2>
+                <p className="mt-0.5 text-xs font-medium tracking-wide text-emerald-700">Hikmah IT</p>
               </div>
-              <h2 className="mt-4 text-2xl font-extrabold text-white">Hikmah IT</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-400">
-                {t.contactBody}
-              </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-px bg-white/10 sm:grid-cols-3 lg:col-span-3">
+            <div className="grid divide-y divide-slate-100 sm:grid-cols-[0.85fr_1.2fr_1fr] sm:divide-x sm:divide-y-0 rtl:sm:divide-x-reverse">
               <a
                 href={`tel:${CONTACT_PHONE_DISPLAY}`}
-                className="flex flex-col gap-3 bg-[#0b1220] p-8 transition hover:bg-white/[0.03]"
+                className="group flex min-w-0 items-center gap-3 px-5 py-5 transition hover:bg-emerald-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600"
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
-                  <Phone size={18} />
+                <Phone size={17} aria-hidden="true" className="shrink-0 text-emerald-600" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[11px] text-slate-500">{t.phone}</span>
+                  <span className="mt-1 block text-sm font-semibold text-slate-900" dir="ltr">{CONTACT_PHONE_DISPLAY}</span>
                 </span>
-                <span className="text-xs font-medium text-slate-400">{t.phone}</span>
-                <span className="text-sm font-semibold text-white" dir="ltr">
-                  {CONTACT_PHONE_DISPLAY}
-                </span>
+                <ArrowRight size={14} aria-hidden="true" className="shrink-0 text-slate-300 transition group-hover:text-emerald-600 rtl:rotate-180" />
               </a>
               <a
                 href="mailto:hikmahitcenter@gmail.com"
-                className="flex flex-col gap-3 bg-[#0b1220] p-8 transition hover:bg-white/[0.03]"
+                className="group flex min-w-0 items-center gap-3 px-5 py-5 transition hover:bg-emerald-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600"
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
-                  <Mail size={18} />
+                <Mail size={17} aria-hidden="true" className="shrink-0 text-emerald-600" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[11px] text-slate-500">{t.email}</span>
+                  <span className="mt-1 block break-all text-sm font-semibold text-slate-900" dir="ltr">hikmahitcenter@gmail.com</span>
                 </span>
-                <span className="text-xs font-medium text-slate-400">{t.email}</span>
-                <span className="break-all text-sm font-semibold text-white">
-                  hikmahitcenter@gmail.com
-                </span>
+                <ArrowRight size={14} aria-hidden="true" className="shrink-0 text-slate-300 transition group-hover:text-emerald-600 rtl:rotate-180" />
               </a>
-              <div className="flex flex-col gap-3 bg-[#0b1220] p-8">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
-                  <MapPin size={18} />
-                </span>
-                <span className="text-xs font-medium text-slate-400">{t.address}</span>
-                <span className="text-sm font-semibold text-white">
-                  {t.addressValue}
+              <div className="flex min-w-0 items-center gap-3 px-5 py-5">
+                <MapPin size={17} aria-hidden="true" className="shrink-0 text-emerald-600" />
+                <span className="min-w-0">
+                  <span className="block text-[11px] text-slate-500">{t.address}</span>
+                  <span className="mt-1 block text-sm font-medium leading-5 text-slate-700">{t.addressValue}</span>
                 </span>
               </div>
             </div>

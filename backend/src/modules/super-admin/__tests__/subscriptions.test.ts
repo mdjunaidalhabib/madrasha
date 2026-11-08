@@ -58,7 +58,7 @@ describe("subscription purchase and renewal", () => {
     const result = await service.purchase(7, { plan_id: basic.id, transaction_id: "receipt-1" });
     expect(result).toMatchObject({
       cycle: "FIRST",
-      pricePaid: 5000,
+      pricePaid: 6000,
       studentLimitAtStart: 100,
       startDate: now,
       endDate: new Date(+now + 364 * day),
@@ -68,7 +68,7 @@ describe("subscription purchase and renewal", () => {
       expect.objectContaining({
         madrasaId: 7,
         subscriptionId: 30,
-        amount: 5000,
+        amount: 6000,
         status: "paid",
         transactionId: "receipt-1",
       }),

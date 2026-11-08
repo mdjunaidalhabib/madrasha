@@ -18,7 +18,7 @@ describe("super-admin plan controls", () => {
   });
   it.each([
     { price: -1 },
-    { renewalPrice: 6000 },
+    { renewalPrice: 7000 },
     { extraStudentPriceFirst: -1 },
     { accentColor: "red" },
     { price: "oops" },
@@ -36,8 +36,8 @@ describe("super-admin plan controls", () => {
       isFeatured: 1,
       nameBn: "নতুন নাম",
       accentColor: "#abc",
-      price: 5000,
-      renewalPrice: 2000,
+      price: 6000,
+      renewalPrice: 3000,
       extraStudentPriceFirst: 50,
     });
   });
@@ -86,7 +86,7 @@ describe("super-admin plan controls", () => {
     await expect(service.updatePlan(2, { showOnLanding: 0 }, 123)).resolves.toBeUndefined();
     expect(repo.updateActiveById).toHaveBeenCalledWith(
       2,
-      expect.objectContaining({ showOnLanding: 0, price: 5000 }),
+      expect.objectContaining({ showOnLanding: 0, price: 6000 }),
     );
     expect(await service.planWarnings()).toHaveLength(1);
     expect(logActivity).toHaveBeenCalledWith(
