@@ -47,6 +47,7 @@ describe("device management", () => {
     } as any);
 
     expect(created.raw_key).toMatch(/^adk_/);
+    expect(created.madrasa_id).toBe(10);
     expect(JSON.stringify(created)).not.toContain("654321");
     expect(created).not.toHaveProperty("api_key_hash");
     expect(created).not.toHaveProperty("comm_password");
@@ -64,6 +65,7 @@ describe("device management", () => {
   it("rotate-key issues a new key and invalidates the old hash", async () => {
     const created = await service.createDevice(10, { name: "Gate", ip: "10.0.0.5" } as any);
     const rotated = await service.rotateKey(10, created.id);
+    expect(rotated.madrasa_id).toBe(10);
     expect(rotated.raw_key).not.toBe(created.raw_key);
     expect(db.attendanceDevice[0].apiKeyHash).toBe(hashDeviceKey(rotated.raw_key));
     expect(db.attendanceDevice[0].apiKeyHash).not.toBe(hashDeviceKey(created.raw_key));

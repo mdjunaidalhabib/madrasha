@@ -218,11 +218,12 @@ export default function AttendanceDevicesPage() {
       danger: true,
       onConfirm: async () => {
         try {
-          const { raw_key } = await attendanceDeviceApi.rotateKey(device.id);
+          const { raw_key, madrasa_id } = await attendanceDeviceApi.rotateKey(device.id);
           setRevealed({
             deviceCode: device.device_id,
             deviceName: device.name,
             rawKey: raw_key,
+            institutionId: madrasa_id,
             rotated: true,
           });
         } catch {
@@ -512,12 +513,13 @@ export default function AttendanceDevicesPage() {
         onClose={onFormClose}
         onCreated={(created) => {
           setFormOpen(false);
-          const { raw_key, ...device } = created;
+          const { raw_key, madrasa_id, ...device } = created;
           setDevices((prev) => [...prev.filter((d) => d.id !== device.id), device]);
           setRevealed({
             deviceCode: device.device_id,
             deviceName: device.name,
             rawKey: raw_key,
+            institutionId: madrasa_id,
             rotated: false,
           });
           void refresh();

@@ -54,7 +54,9 @@ export interface UpdateDevicePayload {
   is_active?: boolean;
 }
 
-export type CreatedDevice = AttendanceDevice & { raw_key: string };
+export type DeviceKeyResponse = { raw_key: string; madrasa_id: number };
+
+export type CreatedDevice = AttendanceDevice & DeviceKeyResponse;
 
 export interface StudentMapping {
   student_id: number;

@@ -10,6 +10,7 @@ import type {
   ClassSummary,
   CreateDevicePayload,
   CreatedDevice,
+  DeviceKeyResponse,
   DeviceSettings,
   Enrollment,
   MappingPage,
@@ -105,7 +106,7 @@ export const attendanceDeviceApi = {
   },
 
   rotateKey: async (id: number) =>
-    unwrap<{ raw_key: string }>(await api.post(`${BASE}/devices/${id}/rotate-key`)),
+    unwrap<DeviceKeyResponse>(await api.post(`${BASE}/devices/${id}/rotate-key`)),
 
   requestTest: async (id: number) => {
     await api.post(`${BASE}/devices/${id}/request-test`);

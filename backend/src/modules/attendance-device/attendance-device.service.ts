@@ -159,7 +159,7 @@ export class AttendanceDeviceService {
       });
       logger.info("Attendance device created", { madrasaId, deviceId: device.id });
       // raw_key is returned ONLY here and by rotate-key; only its hash is stored.
-      return { ...toDeviceDto(device, this.now()), raw_key: rawKey };
+      return { ...toDeviceDto(device, this.now()), madrasa_id: device.madrasaId, raw_key: rawKey };
     } catch (err) {
       if ((err as { code?: string })?.code === "P2002") {
         throw new ConflictError(t({ bn: "এই ডিভাইস আইডি ইতিমধ্যে ব্যবহৃত হয়েছে", en: "This device ID is already in use" }));
@@ -201,7 +201,7 @@ export class AttendanceDeviceService {
     const res = await this.repository.updateDevice(madrasaId, id, { apiKeyHash: hashDeviceKey(rawKey) });
     if (res.count === 0) throw new NotFoundError(t({ bn: "ডিভাইস পাওয়া যায়নি", en: "Device not found" }));
     logger.info("Attendance device key rotated", { madrasaId, deviceId: id });
-    return { id: device.id, device_id: device.deviceCode, raw_key: rawKey };
+    return { id: device.id, device_id: device.deviceCode, madrasa_id: device.madrasaId, raw_key: rawKey };
   }
 
   async requestTest(madrasaId: number, id: number) {

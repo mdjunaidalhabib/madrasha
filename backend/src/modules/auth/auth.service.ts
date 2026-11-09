@@ -145,6 +145,7 @@ export class AuthService {
       refreshToken,
       user: {
         id: user.id,
+        madrasa_id: user.madrasaId,
         name: user.name,
         email: user.email,
         role_id: user.roleId,

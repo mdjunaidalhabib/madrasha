@@ -12,6 +12,7 @@ export type RevealedKey = {
   deviceCode: string;
   deviceName: string;
   rawKey: string;
+  institutionId: number;
   rotated: boolean;
 };
 
@@ -51,7 +52,8 @@ export default function DeviceKeyModal({
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const apiBaseUrl = connectorApiBaseUrl();
-  const inst = Number(institutionId);
+  // Use the tenant that issued this key, including for older persisted sessions.
+  const inst = Number(revealed?.institutionId ?? institutionId);
   const canPair = !!slug && Number.isInteger(inst) && inst > 0;
 
   const pairingCode =
@@ -74,7 +76,7 @@ export default function DeviceKeyModal({
         {
           apiBaseUrl,
           madrasaSlug: slug,
-          institutionId: canPair ? inst : 0,
+          institutionId: Number.isInteger(inst) && inst > 0 ? inst : 0,
           deviceId: revealed.deviceCode,
           deviceKeyFile: "./secrets/device.key",
         },

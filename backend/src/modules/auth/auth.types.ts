@@ -19,6 +19,7 @@ export interface UnlockCredentials {
 
 export interface AuthenticatedUserSummary {
   id: number;
+  madrasa_id: number;
   name: string;
   email: string;
   role_id: number;
