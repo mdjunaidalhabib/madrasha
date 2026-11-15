@@ -54,6 +54,17 @@ const getDefaultMargins = (size: PaperSize): PageMargins => {
   return { top: value, right: value, bottom: value, left: value };
 };
 
+// Pagination depends on fonts and DOM measurements. A fixed delay can print
+// the loading/first-pass page, especially just after changing a filter or size.
+const waitForPrintPreview = async () => {
+  const deadline = Date.now() + 15_000;
+  while (document.querySelector('[data-report-ready="false"]')) {
+    if (Date.now() >= deadline) return false;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return true;
+};
+
 const MARGIN_SIDE_LABEL_KEYS = {
   top: "marginTop",
   right: "marginRight",
@@ -111,6 +122,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
   const [internalMargins, setInternalMargins] = useState<PageMargins>(getDefaultMargins("a4"));
   const [marginPanelOpen, setMarginPanelOpen] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [preparingPrint, setPreparingPrint] = useState(false);
   // "downloading" = the PDF is ready and the browser is fetching it (the
   // button shows that instead of "তৈরি হচ্ছে", and cancel no longer applies).
   const [pdfPhase, setPdfPhase] = useState<"generating" | "downloading">("generating");
@@ -292,12 +304,18 @@ const DataExportPrintActions = <T extends Record<string, any>>({
     XLSX.writeFile(workbook, `${fileName}.xlsx`);
   };
 
-  const printData = () => {
-    applyPreviewSettings(paperSize, orientation);
-
-    setTimeout(() => {
+  const printData = async () => {
+    setPreparingPrint(true);
+    try {
+      applyPreviewSettings(paperSize, orientation);
+      if (!(await waitForPrintPreview())) {
+        useToastStore.getState().show(t.previewNotReady, "error");
+        return;
+      }
       window.print();
-    }, 150);
+    } finally {
+      setPreparingPrint(false);
+    }
   };
 
   // Captures the already-rendered preview pages (the exact same
@@ -323,6 +341,10 @@ const DataExportPrintActions = <T extends Record<string, any>>({
   // TeacherListPage), see this file's module doc comment on
   // ServerPdfExportConfig.
   const downloadClientPdf = async () => {
+    if (!(await waitForPrintPreview())) {
+      useToastStore.getState().show(t.previewNotReady, "error");
+      return;
+    }
     const pageEls = Array.from(
       // .marksheet-half = A4-landscape marksheet sheet's inner A5 halves (part of
       // the sheet page itself, not separate pages).
@@ -715,6 +737,8 @@ const DataExportPrintActions = <T extends Record<string, any>>({
           <button
             type="button"
             onClick={printData}
+            disabled={preparingPrint}
+            aria-busy={preparingPrint}
             className="flex h-8 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md bg-slate-700 px-3 text-[13px] font-semibold text-white shadow-sm transition hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 sm:flex-none"
           >
             <Printer className="h-3 w-3" />

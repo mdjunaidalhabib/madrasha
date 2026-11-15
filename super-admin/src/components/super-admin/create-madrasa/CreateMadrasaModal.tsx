@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { Link } from "react-router-dom";
+import { Globe2, ExternalLink } from "lucide-react";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import BasicInfoSection from "./BasicInfoSection";
 import PlanSection, { RegBlockPreviewRow } from "./PlanSection";
@@ -356,6 +358,17 @@ export default function CreateMadrasaModal({ plans, onClose, onSubmit }: Props) 
           errors={errors}
           onChange={(field, value) => setForm((prev) => ({ ...prev, [field]: value }))}
         />
+
+        <div className="flex gap-3 rounded-xl border border-teal-200 bg-teal-50 p-4 dark:border-teal-900 dark:bg-teal-950/30">
+          <Globe2 className="mt-0.5 h-5 w-5 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+          <div>
+            <h4 className="font-semibold text-teal-900 dark:text-teal-200">{t.websiteDemoTitle}</h4>
+            <p className="mt-1 text-sm text-teal-800 dark:text-teal-300">{t.websiteDemoHint}</p>
+            <Link to="/websites" target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-teal-700 underline underline-offset-4 hover:text-teal-900 dark:text-teal-300">
+              {t.websiteDemoSetup}<ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+            </Link>
+          </div>
+        </div>
 
         <div className="space-y-3">
           <h4 className="font-semibold text-gray-700 dark:text-slate-200">{t.typeAndLanguage}</h4>

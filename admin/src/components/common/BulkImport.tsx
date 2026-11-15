@@ -11,6 +11,7 @@ interface BulkImportModalProps {
   onClose: () => void;
   onSubmit?: () => void;
   submitLabel?: string;
+  completed?: boolean;
   children: ReactNode;
 }
 
@@ -22,6 +23,7 @@ export function BulkImportModal({
   onClose,
   onSubmit,
   submitLabel,
+  completed = false,
   children,
 }: BulkImportModalProps) {
   const c = useText(commonText);
@@ -99,33 +101,37 @@ export function BulkImportModal({
             disabled={loading}
             aria-label={c.close}
             title={c.close}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-600 bg-red-600 text-white shadow-sm transition hover:border-red-700 hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">{children}</div>
-        <div className="flex shrink-0 flex-col-reverse gap-2 border-t bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:justify-end sm:px-5">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-            className="rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            {c.close}
-          </button>
-          {onSubmit && (
-            <button
-              type="button"
-              onClick={onSubmit}
-              disabled={loading}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-              {submitLabel}
-            </button>
-          )}
-        </div>
+        {(completed || onSubmit) && (
+          <div className="flex shrink-0 flex-col-reverse gap-2 border-t bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:justify-end sm:px-5">
+            {completed && (
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={loading}
+                className="rounded-lg border border-red-600 bg-red-600 px-5 py-2.5 text-sm font-medium text-white transition hover:border-red-700 hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {c.close}
+              </button>
+            )}
+            {!completed && onSubmit && (
+              <button
+                type="button"
+                onClick={onSubmit}
+                disabled={loading}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                {submitLabel}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -231,9 +237,193 @@ export function BulkImportPreview({
           {clearLabel}
         </button>
       </div>
-      <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
-        <div className="max-h-[55dvh] overflow-auto sm:max-h-[420px]">{children}</div>
+      {children}
+    </div>
+  );
+}
+
+export interface BulkImportColumn<T> {
+  key: string;
+  label: string;
+  render: (row: T, index: number) => ReactNode;
+  emphasis?: boolean;
+}
+
+function BulkImportTable<T>({
+  rows,
+  columns,
+  wide = false,
+}: {
+  rows: T[];
+  columns: BulkImportColumn<T>[];
+  wide?: boolean;
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+      <div className="max-h-[55dvh] overflow-auto sm:max-h-[420px]">
+        <table
+          className="w-full text-xs sm:text-sm"
+          style={{ minWidth: wide ? Math.max(560, columns.length * 80) : 560 }}
+        >
+          <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800">
+            <tr>
+              {columns.map((column) => (
+                <th
+                  key={column.key}
+                  className="whitespace-nowrap border-b px-2.5 py-2 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300 sm:px-3 sm:py-3"
+                >
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => (
+              <tr
+                key={index}
+                className="border-b transition last:border-b-0 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
+              >
+                {columns.map((column) => (
+                  <td
+                    key={column.key}
+                    className={`whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3 ${column.emphasis ? "font-semibold text-slate-900 dark:text-slate-100" : ""}`}
+                  >
+                    {column.render(row, index)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
+  );
+}
+
+export function BulkImportStatus({ updated, children }: { updated: boolean; children: ReactNode }) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${updated ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+interface BulkImportWizardProps<T, R> {
+  open: boolean;
+  loading: boolean;
+  title: string;
+  subtitle: string;
+  rows: T[];
+  columns: BulkImportColumn<T>[];
+  previewTitle: string;
+  previewSubtitle: string;
+  clearLabel: string;
+  submitLabel: string;
+  upload: Omit<BulkImportUploadStepsProps<T>, "loading" | "onDataUpload" | "onDownloadTemplate">;
+  result: null | {
+    title: string;
+    inserted: number;
+    updated: number;
+    insertedLabel: string;
+    updatedLabel: string;
+    notice?: string;
+    uploadAnotherLabel: string;
+    rows: R[];
+    columns: BulkImportColumn<R>[];
+  };
+  onClose: () => void;
+  onClear: () => void;
+  onSubmit: () => void;
+  onDataUpload: (rows: T[]) => void;
+  onDownloadTemplate: () => void;
+}
+
+/** All bulk imports share the entire upload, preview and completion UI. */
+export function BulkImportWizard<T, R>({
+  open,
+  loading,
+  title,
+  subtitle,
+  rows,
+  columns,
+  previewTitle,
+  previewSubtitle,
+  clearLabel,
+  submitLabel,
+  upload,
+  result,
+  onClose,
+  onClear,
+  onSubmit,
+  onDataUpload,
+  onDownloadTemplate,
+}: BulkImportWizardProps<T, R>) {
+  const lang = useLang();
+  if (!open) return null;
+  return (
+    <BulkImportModal
+      title={title}
+      subtitle={subtitle}
+      compact={!result && rows.length === 0}
+      loading={loading}
+      onClose={onClose}
+      completed={Boolean(result)}
+      onSubmit={!result && rows.length > 0 ? onSubmit : undefined}
+      submitLabel={submitLabel}
+    >
+      {result ? (
+        <div>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 sm:text-lg">
+                {result.title}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {result.insertedLabel}{" "}
+                <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                  {localizeDigits(result.inserted, lang)}
+                </span>
+                {" | "}
+                {result.updatedLabel}{" "}
+                <span className="font-semibold text-amber-700 dark:text-amber-400">
+                  {localizeDigits(result.updated, lang)}
+                </span>
+              </p>
+              {result.notice && (
+                <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">{result.notice}</p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={onClear}
+              disabled={loading}
+              className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
+            >
+              {result.uploadAnotherLabel}
+            </button>
+          </div>
+          <BulkImportTable rows={result.rows} columns={result.columns} />
+        </div>
+      ) : rows.length === 0 ? (
+        <BulkImportUploadSteps
+          {...upload}
+          loading={loading}
+          onDataUpload={onDataUpload}
+          onDownloadTemplate={onDownloadTemplate}
+        />
+      ) : (
+        <BulkImportPreview
+          title={previewTitle}
+          subtitle={previewSubtitle}
+          clearLabel={clearLabel}
+          loading={loading}
+          onClear={onClear}
+        >
+          <BulkImportTable rows={rows} columns={columns} wide />
+        </BulkImportPreview>
+      )}
+    </BulkImportModal>
   );
 }

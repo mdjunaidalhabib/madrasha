@@ -112,7 +112,9 @@ const STAFF_NAME_FIELDS = {
   name_en: "nameEn",
 } as const;
 
-export type StaffNamesItem = { id: number } & Partial<Record<keyof typeof STAFF_NAME_FIELDS, string | null>>;
+export type StaffNamesItem = { id: number } & Partial<
+  Record<keyof typeof STAFF_NAME_FIELDS, string | null>
+>;
 
 export class StaffService {
   constructor(private readonly repository: StaffRepository = staffRepository) {}
@@ -144,7 +146,8 @@ export class StaffService {
 
     const created = await this.repository.runTransaction(async (tx) => {
       await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
-      const nextRegistrationNo = (await this.repository.getMaxRegistrationNoOnTx(tx, madrasaId)) + 1;
+      const nextRegistrationNo =
+        (await this.repository.getMaxRegistrationNoOnTx(tx, madrasaId)) + 1;
 
       return this.repository.createOnTx(tx, {
         ...data,
@@ -153,6 +156,74 @@ export class StaffService {
     });
 
     return created.id;
+  }
+
+  async bulkCreateStaff(rows: StaffPayloadDto[], madrasaId: number | undefined) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+    if (!Array.isArray(rows) || rows.length === 0 || rows.length > 1000) {
+      throw new BadRequestError(
+        t({ bn: "১ থেকে ১০০০টি স্টাফের তথ্য দিন", en: "Provide between 1 and 1000 staff rows" }),
+      );
+    }
+    const normalized = rows.map((row, index) => {
+      if (
+        !row ||
+        typeof row !== "object" ||
+        Array.isArray(row) ||
+        typeof row.name_bn !== "string"
+      ) {
+        throw new BadRequestError(`Row ${index + 2}: Name is required`);
+      }
+      const error = validateStaffPayload(row);
+      if (error) throw new BadRequestError(`Row ${index + 2}: ${error}`);
+      const data = normalizeStaffPayload(row as Record<string, unknown>, madrasaId);
+      if (data.nid != null) data.nid = String(data.nid).trim() || null;
+      return data;
+    });
+    return this.repository.runTransaction(async (tx) => {
+      await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
+      let registrationNo = await this.repository.getMaxRegistrationNoOnTx(tx, madrasaId);
+      let inserted = 0;
+      let updated = 0;
+      const preview: {
+        row: number;
+        id: number;
+        action: "create" | "update";
+        nid: string | null;
+        name: string;
+      }[] = [];
+      for (const [index, data] of normalized.entries()) {
+        const existing = data.nid
+          ? await this.repository.findByNidOnTx(tx, madrasaId, data.nid)
+          : null;
+        if (existing) {
+          const { madrasaId: _tenant, ...update } = data;
+          await this.repository.updateManyForTenantOnTx(tx, existing.id, madrasaId, update);
+          updated++;
+          preview.push({
+            row: index + 2,
+            id: existing.id,
+            action: "update",
+            nid: data.nid,
+            name: data.nameBn,
+          });
+        } else {
+          const created = await this.repository.createOnTx(tx, {
+            ...data,
+            registrationNo: ++registrationNo,
+          } as Prisma.StaffUncheckedCreateInput);
+          inserted++;
+          preview.push({
+            row: index + 2,
+            id: created.id,
+            action: "create",
+            nid: data.nid,
+            name: data.nameBn,
+          });
+        }
+      }
+      return { inserted, updated, preview };
+    });
   }
 
   async updateStaff(id: number, madrasaId: number | undefined, rawBody: Record<string, any>) {
@@ -221,7 +292,10 @@ export class StaffService {
     );
 
     const byDesignation = designationGroups
-      .map((group) => ({ designation: group.designation || "অনির্ধারিত", count: group._count._all }))
+      .map((group) => ({
+        designation: group.designation || "অনির্ধারিত",
+        count: group._count._all,
+      }))
       .sort((a, b) => b.count - a.count);
 
     return {
@@ -240,12 +314,21 @@ export class StaffService {
    * TeacherService.updateNamesBulk. */
   async updateNamesBulk(madrasaId: number | undefined, items: StaffNamesItem[]) {
     if (!madrasaId) throw new TenantNotResolvedError();
-    if (!items.length) throw new BadRequestError(t({ bn: "items আবশ্যক", en: "items is required" }));
+    if (!items.length)
+      throw new BadRequestError(t({ bn: "items আবশ্যক", en: "items is required" }));
 
     const ids = items.map((i) => Number(i.id));
-    const found = new Set((await this.repository.findIdsForTenant(madrasaId, ids)).map((r) => r.id));
+    const found = new Set(
+      (await this.repository.findIdsForTenant(madrasaId, ids)).map((r) => r.id),
+    );
     const missing = ids.filter((id) => !found.has(id));
-    if (missing.length) throw new BadRequestError(t({ bn: `স্টাফ পাওয়া যায়নি: ${missing.join(", ")}`, en: `Staff not found: ${missing.join(", ")}` }));
+    if (missing.length)
+      throw new BadRequestError(
+        t({
+          bn: `স্টাফ পাওয়া যায়নি: ${missing.join(", ")}`,
+          en: `Staff not found: ${missing.join(", ")}`,
+        }),
+      );
 
     const updates = items.map((item) => {
       const data: Record<string, string | null> = {};
@@ -253,7 +336,8 @@ export class StaffService {
         const raw = (item as Record<string, unknown>)[key];
         if (raw === undefined) continue;
         const value = typeof raw === "string" ? raw.trim() : null;
-        if (key === "name_bn" && !value) throw new BadRequestError(t({ bn: "বাংলা নাম আবশ্যক", en: "Bangla name is required" }));
+        if (key === "name_bn" && !value)
+          throw new BadRequestError(t({ bn: "বাংলা নাম আবশ্যক", en: "Bangla name is required" }));
         data[column] = value || null;
       }
       return { id: Number(item.id), data };

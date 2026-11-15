@@ -250,7 +250,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
 
   if (!sidebarLoaded) {
     return (
-      <AdminSidebarShell collapsed={collapsed} header={header} footer={footer}>
+      <AdminSidebarShell collapsed={collapsed} expandedWidth="w-64" header={header} footer={footer}>
         <div className="space-y-2">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="flex items-center gap-2 px-3 py-2">
@@ -264,7 +264,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
   }
 
   return (
-    <AdminSidebarShell collapsed={collapsed} header={header} footer={footer}>
+    <AdminSidebarShell collapsed={collapsed} expandedWidth="w-64" header={header} footer={footer}>
       {sidebar.map((module) => {
           const Icon = ICONS[module.key] || Folder;
           const visibleChildren = module.children?.filter((c) => !c.disabled) || [];
@@ -311,7 +311,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                   isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
                 }`}
               >
-                <div className="ms-6 space-y-1 overflow-hidden border-s border-slate-200 ps-3 dark:border-slate-700">
+                <div className="ms-4 space-y-1 overflow-hidden border-s border-slate-200 ps-2 dark:border-slate-700">
                   {visibleChildren.map((child) => (
                     <NavLink
                       key={child.key}
@@ -321,9 +321,9 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                       onFocus={() => prefetchAdminRoute(childPath(module.key, child.key))}
                       className={() => childItemClass(isActiveModule && activeChildKey === child.key)}
                     >
-                      <span>{sidebarChildLabel(t, module.key, child.key, child.label)}</span>
+                      <span className="min-w-0 flex-1 truncate whitespace-nowrap" title={sidebarChildLabel(t, module.key, child.key, child.label)}>{sidebarChildLabel(t, module.key, child.key, child.label)}</span>
                       {Boolean(child.count) && (
-                        <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-bold text-white">
+                        <span aria-live="polite" aria-atomic="true" className="inline-flex h-5 min-w-6 shrink-0 items-center justify-center rounded-md bg-amber-50 px-1.5 font-sans text-[11px] font-semibold tabular-nums text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-800">
                           {child.count}
                         </span>
                       )}

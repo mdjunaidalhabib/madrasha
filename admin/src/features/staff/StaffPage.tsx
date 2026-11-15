@@ -9,6 +9,12 @@ import api from "../../services/api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { getText, useText } from "@madrasha/shared-ui/src/i18n";
 import { teacherStaffText } from "../teachers/teacherStaff.text";
+import BulkPersonnelUploadModal, {
+  type ExcelPersonnelRow,
+  type BulkPersonnelResult,
+} from "../../components/common/BulkPersonnelUploadModal";
+import { bulkImportText } from "../../components/common/bulkImport.text";
+import { Upload } from "lucide-react";
 
 export interface StaffFormData {
   name_bn: string;
@@ -106,10 +112,73 @@ const calculateAge = (dob?: string) => {
 
 const StaffPage: React.FC = () => {
   const t = useText(teacherStaffText);
+  const b = useText(bulkImportText);
   const [formData, setFormData] = useState<StaffFormData>(initialState);
   useUnsavedChangesGuard(formData !== initialState);
   const [errors, setErrors] = useState<StaffFormErrors>({});
   const [loading, setLoading] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [excelRows, setExcelRows] = useState<ExcelPersonnelRow[]>([]);
+  const [bulkResult, setBulkResult] = useState<BulkPersonnelResult | null>(null);
+
+  const clearBulk = () => {
+    setExcelRows([]);
+    setBulkResult(null);
+  };
+  const closeBulk = () => {
+    clearBulk();
+    setBulkOpen(false);
+  };
+  const downloadBulkTemplate = async () => {
+    const XLSX = await import("xlsx-js-style");
+    const keys = Object.keys(initialState).filter((key) => key !== "age");
+    const sheet = XLSX.utils.aoa_to_sheet([
+      keys.map((key) => (key === "name_bn" ? "name_bn*" : key)),
+    ]);
+    sheet["!cols"] = keys.map(() => ({ wch: 22 }));
+    const guide = XLSX.utils.aoa_to_sheet([
+      ["Required", "name_bn"],
+      ["gender", "1 = Male, 2 = Female"],
+      ["Dates", "YYYY-MM-DD"],
+      ["nid / phone / parent_phone", "Format as text to preserve leading zeroes"],
+    ]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, "Staff Template");
+    XLSX.utils.book_append_sheet(workbook, guide, "Guide");
+    XLSX.writeFile(workbook, "staff-template.xlsx");
+  };
+  const submitBulk = async () => {
+    const missingName = excelRows.findIndex((row) => !String(row.name_bn || row.name || "").trim());
+    if (missingName >= 0) {
+      useToastStore.getState().show(b.nameRequired(String(missingName + 2)), "error");
+      return;
+    }
+    try {
+      setLoading(true);
+      const staff = excelRows.map((row) =>
+        makePayload({
+          ...initialState,
+          ...row,
+          name_bn: String(row.name_bn || row.name || "").trim(),
+          nid: String(row.nid || ""),
+          gender: toGenderNumber(row.gender),
+          age: row.age == null || row.age === "" ? calculateAge(row.dob) : Number(row.age),
+          phone: cleanPhone(row.phone || ""),
+          parent_phone: cleanPhone(row.parent_phone || ""),
+          experience_year: String(row.experience_year ?? ""),
+          experience_month: String(row.experience_month ?? ""),
+          salary: String(row.salary ?? ""),
+        }),
+      );
+      const response = await api.post("/staff/bulk", { staff });
+      setBulkResult(response.data);
+      setExcelRows([]);
+    } catch (error: any) {
+      useToastStore.getState().show(error?.response?.data?.message || b.failed, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const validateForm = () => {
     const newErrors: StaffFormErrors = {};
@@ -167,7 +236,9 @@ const StaffPage: React.FC = () => {
       setFormData(initialState);
       setErrors({});
     } catch (error: any) {
-      useToastStore.getState().show(error?.response?.data?.message || getText(teacherStaffText).staffAddFailed, "error");
+      useToastStore
+        .getState()
+        .show(error?.response?.data?.message || getText(teacherStaffText).staffAddFailed, "error");
     } finally {
       setLoading(false);
     }
@@ -175,12 +246,30 @@ const StaffPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-3xl font-bold text-center mb-6 dark:text-slate-100">{t.staffRegistration}</h1>
+      <h1 className="text-3xl font-bold text-center mb-6 dark:text-slate-100">
+        {t.staffRegistration}
+      </h1>
+      <div className="mb-4 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setBulkOpen(true)}
+          disabled={loading}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          <Upload className="h-4 w-4" aria-hidden="true" />
+          {t.bulkUpload}
+        </button>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <StaffImageUpload formData={formData} setFormData={setFormData} />
 
-        <StaffInfo formData={formData} setFormData={setFormData} errors={errors} setErrors={setErrors} />
+        <StaffInfo
+          formData={formData}
+          setFormData={setFormData}
+          errors={errors}
+          setErrors={setErrors}
+        />
 
         <StaffParentInfo formData={formData} setFormData={setFormData} />
 
@@ -188,6 +277,19 @@ const StaffPage: React.FC = () => {
 
         <SubmitButton loading={loading} text={t.saveStaff} />
       </form>
+      <BulkPersonnelUploadModal
+        kind="staff"
+        open={bulkOpen}
+        loading={loading}
+        excelTeachers={excelRows}
+        result={bulkResult}
+        requiredColumns={["name_bn"]}
+        onClose={closeBulk}
+        onClear={clearBulk}
+        onDataUpload={setExcelRows}
+        onSubmit={submitBulk}
+        onDownloadTemplate={downloadBulkTemplate}
+      />
     </div>
   );
 };

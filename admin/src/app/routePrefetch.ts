@@ -1,3 +1,5 @@
+import { canPrefetch } from "@madrasha/shared-ui/src/utils/canPrefetch";
+
 const routeLoaders: Record<string, () => Promise<unknown>> = {
   dashboard: () => import("../features/dashboard/DashboardPage"),
   "ihtemam/pending": () => import("../features/students/PendingAdmissionsPage"),
@@ -21,7 +23,8 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   "talimat/settings/grade": () => import("../features/talimat/settings/GradeSettingsPage"),
   "talimat/settings/documents": () => import("../features/talimat/TalimatDocumentsPage"),
   "talimat/settings/sessions": () => import("../features/session/SessionPage"),
-  "talimat/settings/registration": () => import("../features/talimat/settings/RegistrationBlockSettingsPage"),
+  "talimat/settings/registration": () =>
+    import("../features/talimat/settings/RegistrationBlockSettingsPage"),
   "students/new": () => import("../features/students/AdmissionPage"),
   students: () => import("../features/students/StudentListPage"),
   "fee-management": () => import("../features/fee/FeeStructurePage"),
@@ -31,7 +34,8 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   "communication/single-send": () => import("../features/notifications/SingleSendPage"),
   "communication/bulk-send": () => import("../features/notifications/BulkSendPage"),
   "communication/history": () => import("../features/notifications/NotificationHistoryPage"),
-  "communication/auto-settings": () => import("../features/notifications/AutoNotificationSettingsPage"),
+  "communication/auto-settings": () =>
+    import("../features/notifications/AutoNotificationSettingsPage"),
   routine: () => import("../features/routine/ClassExamRoutinePage"),
   "students/promotion": () => import("../features/students/StudentPromotionPage"),
   "attendance/mark": () => import("../features/attendance/AttendanceMarkPage"),
@@ -67,9 +71,9 @@ const prefetchedRoutes = new Set<string>();
 
 /** Download a page chunk when the user hovers/focuses its menu item. */
 export function prefetchAdminRoute(path: string) {
-  const normalized = path.replace(/^\/+|\/+$/g, "");
+  const normalized = path.replace(/^\/+|\/+$/g, "") || "dashboard";
   const loader = routeLoaders[normalized];
-  if (!loader || prefetchedRoutes.has(normalized)) return;
+  if (!loader || prefetchedRoutes.has(normalized) || !canPrefetch()) return;
 
   prefetchedRoutes.add(normalized);
   void loader().catch(() => prefetchedRoutes.delete(normalized));

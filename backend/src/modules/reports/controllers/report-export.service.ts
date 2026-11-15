@@ -293,7 +293,7 @@ export class ReportExportService {
       // images are in rather than throwing.
       stage = "images-wait";
       try {
-        await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete), {
+        await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete), null, {
           timeout: 15_000,
         });
       } catch {

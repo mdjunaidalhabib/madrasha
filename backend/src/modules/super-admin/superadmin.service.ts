@@ -7,7 +7,11 @@ import { provisionWebsiteOnTx } from "../public-website/website-template.service
 import { hashPassword } from "../../shared/utils/hash.util";
 import { buildPeriodExpr } from "../../shared/utils/period-expr.util";
 import { normalizeHost } from "../../shared/utils/host.util";
-import { parseInstitutionType, parseLanguage, resolveDefaultLanguage } from "../../shared/utils/institution.util";
+import {
+  parseInstitutionType,
+  parseLanguage,
+  resolveDefaultLanguage,
+} from "../../shared/utils/institution.util";
 import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { TransactionClient } from "../../shared/database/transaction";
 import { superAdminRepository, SuperAdminRepository } from "./superadmin.repository";
@@ -54,7 +58,10 @@ const DEFAULT_PROTECTED_ROLE_KEY = "MUHTAMIM";
  * the Nazera class, Hifz in the Hifz class) is a 100-mark exam — every other
  * subject there (Tajweed, Masael, ...) is a 50-mark exam. Every other
  * division's subjects stay at the usual 100. */
-const getDefaultFullMark = (book: { name: string | null; class: { name: string | null; division: { keyName: string | null } | null } | null }) => {
+const getDefaultFullMark = (book: {
+  name: string | null;
+  class: { name: string | null; division: { keyName: string | null } | null } | null;
+}) => {
   if (book.class?.division?.keyName !== "nazera_hifz") return 100;
   return book.name === book.class.name ? 100 : 50;
 };
@@ -157,7 +164,10 @@ export class SuperAdminService {
   }
 
   async createMadrasa(dto: CreateMadrasaRequestDto) {
-    if (!dto.name) throw new BadRequestError(t({ bn: "প্রতিষ্ঠানের নাম আবশ্যক", en: "Institution name required" }));
+    if (!dto.name)
+      throw new BadRequestError(
+        t({ bn: "প্রতিষ্ঠানের নাম আবশ্যক", en: "Institution name required" }),
+      );
 
     const divisionIds = cleanNumberArray(dto.divisions);
     const moduleIds = cleanNumberArray(dto.modules);
@@ -241,7 +251,13 @@ export class SuperAdminService {
       moduleIds: number[];
       classIds: number[];
       bookIds: number[];
-      users: { role: string; name?: string; email: string; password?: string; passwordHash?: string }[];
+      users: {
+        role: string;
+        name?: string;
+        email: string;
+        password?: string;
+        passwordHash?: string;
+      }[];
     },
   ) {
     const { institutionType, divisionIds, moduleIds, classIds, bookIds } = input;
@@ -266,7 +282,10 @@ export class SuperAdminService {
       const permissionRows = isMuhtamimRole(r.key)
         ? await this.repository.findAllPermissionIdsOnTx(tx)
         : DEFAULT_ROLE_PERMISSION_KEYS[r.key]?.length
-          ? await this.repository.findPermissionIdsByKeysOnTx(tx, DEFAULT_ROLE_PERMISSION_KEYS[r.key])
+          ? await this.repository.findPermissionIdsByKeysOnTx(
+              tx,
+              DEFAULT_ROLE_PERMISSION_KEYS[r.key],
+            )
           : [];
 
       if (permissionRows.length) {
@@ -314,7 +333,10 @@ export class SuperAdminService {
       defaultSettings.some((setting) => setting.name === "fail_mark");
     if (!templatesReady) {
       throw new BadRequestError(
-        t({ bn: "নতুন প্রতিষ্ঠানের টেমপ্লেট নেই। প্রতিষ্ঠান তৈরির আগে npx prisma db seed চালান।", en: "New-institution templates are missing. Run npx prisma db seed before creating an institution." }),
+        t({
+          bn: "নতুন প্রতিষ্ঠানের টেমপ্লেট নেই। প্রতিষ্ঠান তৈরির আগে npx prisma db seed চালান।",
+          en: "New-institution templates are missing. Run npx prisma db seed before creating an institution.",
+        }),
       );
     }
 
@@ -373,17 +395,22 @@ export class SuperAdminService {
        Default exams cover সকল বিভাগ, so every
        activated class gets a row. */
     const defaultFeeStructures = await this.repository.findDefaultFeeStructuresOnTx(tx);
-    const examFeeTemplates = defaultFeeStructures.filter((s) => s.feeType === EXAM_FEE_CATEGORY_NAME);
+    const examFeeTemplates = defaultFeeStructures.filter(
+      (s) => s.feeType === EXAM_FEE_CATEGORY_NAME,
+    );
     const examFeeRows = createdExams.flatMap((exam) =>
       classIds.flatMap((classId) => {
         const template =
-          examFeeTemplates.find((t) => t.classId === classId) ?? examFeeTemplates.find((t) => t.classId === null);
+          examFeeTemplates.find((t) => t.classId === classId) ??
+          examFeeTemplates.find((t) => t.classId === null);
         return template ? [{ ...template, classId, examId: exam.id, isActive: false }] : [];
       }),
     );
     const relevantFeeStructures = [
       ...defaultFeeStructures.filter(
-        (s) => s.feeType !== EXAM_FEE_CATEGORY_NAME && (s.classId === null || classIds.includes(s.classId)),
+        (s) =>
+          s.feeType !== EXAM_FEE_CATEGORY_NAME &&
+          (s.classId === null || classIds.includes(s.classId)),
       ),
       ...examFeeRows,
     ];
@@ -414,7 +441,10 @@ export class SuperAdminService {
     const booksByClassId = new Map<number, { subject: string; divisionId: number | null }[]>();
     for (const b of routineSeedBooks) {
       const list = booksByClassId.get(b.classId) ?? [];
-      list.push({ subject: b.nameBn || b.name || "বিষয়", divisionId: b.class?.divisionId ?? null });
+      list.push({
+        subject: b.nameBn || b.name || "বিষয়",
+        divisionId: b.class?.divisionId ?? null,
+      });
       booksByClassId.set(b.classId, list);
     }
 
@@ -499,7 +529,12 @@ export class SuperAdminService {
     if (newDivisions.length) {
       await this.repository.seedMadrasaDivisionsOnTx(
         tx,
-        newDivisions.map(({ item, sortOrder }) => ({ madrasaId, divisionId: item.id, isActive: 0, sortOrder })),
+        newDivisions.map(({ item, sortOrder }) => ({
+          madrasaId,
+          divisionId: item.id,
+          isActive: 0,
+          sortOrder,
+        })),
       );
     }
     await this.repository.activateMadrasaDivisionsOnTx(tx, madrasaId, divisionIds);
@@ -509,7 +544,11 @@ export class SuperAdminService {
     if (allModules.length) {
       await this.repository.seedMadrasaModulesOnTx(
         tx,
-        allModules.map((m) => ({ madrasaId, moduleId: m.id, isActive: options.resetFirst ? 0 : 1 })),
+        allModules.map((m) => ({
+          madrasaId,
+          moduleId: m.id,
+          isActive: options.resetFirst ? 0 : 1,
+        })),
       );
     }
     await this.repository.activateMadrasaModulesOnTx(tx, madrasaId, moduleIds);
@@ -526,7 +565,12 @@ export class SuperAdminService {
     if (newClasses.length) {
       await this.repository.seedMadrasaClassesOnTx(
         tx,
-        newClasses.map(({ item, sortOrder }) => ({ madrasaId, classId: item.id, isActive: 0, sortOrder })),
+        newClasses.map(({ item, sortOrder }) => ({
+          madrasaId,
+          classId: item.id,
+          isActive: 0,
+          sortOrder,
+        })),
       );
     }
     await this.repository.activateMadrasaClassesOnTx(tx, madrasaId, classIds);
@@ -574,7 +618,10 @@ export class SuperAdminService {
         normalizedCustomDomain = normalizeHost(dto.custom_domain);
         if (!normalizedCustomDomain) throw new InvalidCustomDomainError();
 
-        const conflict = await this.repository.findActiveCustomDomainConflict(normalizedCustomDomain, id);
+        const conflict = await this.repository.findActiveCustomDomainConflict(
+          normalizedCustomDomain,
+          id,
+        );
         if (conflict) throw new CustomDomainConflictError();
       }
     }
@@ -603,8 +650,12 @@ export class SuperAdminService {
         ...(dto.is_active === undefined ? {} : { isActive: Number(dto.is_active) }),
         ...(dto.website_status ? { websiteStatus: dto.website_status as WebsiteStatus } : {}),
         ...(normalizedCustomDomain === undefined ? {} : { customDomain: normalizedCustomDomain }),
-        ...(parseInstitutionType(dto.institution_type) ? { institutionType: parseInstitutionType(dto.institution_type) } : {}),
-        ...(parseLanguage(dto.default_language) === undefined ? {} : { defaultLanguage: parseLanguage(dto.default_language) }),
+        ...(parseInstitutionType(dto.institution_type)
+          ? { institutionType: parseInstitutionType(dto.institution_type) }
+          : {}),
+        ...(parseLanguage(dto.default_language) === undefined
+          ? {}
+          : { defaultLanguage: parseLanguage(dto.default_language) }),
       });
 
       if (dto.plan_id) {
@@ -613,7 +664,10 @@ export class SuperAdminService {
         newPlanId = plan.id;
         newPlanName = plan.name;
 
-        const current = await tx.madrasaSubscription.findFirst({ where: { madrasaId: id, isActive: 1 }, orderBy: { id: "desc" } });
+        const current = await tx.madrasaSubscription.findFirst({
+          where: { madrasaId: id, isActive: 1 },
+          orderBy: { id: "desc" },
+        });
         // Existing edit forms submit the unchanged plan on every save.
         if (current?.planId !== plan.id) {
           const subscription = await subscriptionsService.purchaseOnTx(tx, id, dto);
@@ -648,7 +702,10 @@ export class SuperAdminService {
           // The edit form re-sends status/plan on every save - log them only
           // when they actually changed, so unchanged values don't show up.
           website_status: changeOf(before?.websiteStatus, dto.website_status),
-          plan: newPlanName && newPlanId !== beforePlan?.planId ? { from: beforePlan?.plan?.name ?? "", to: newPlanName } : undefined,
+          plan:
+            newPlanName && newPlanId !== beforePlan?.planId
+              ? { from: beforePlan?.plan?.name ?? "", to: newPlanName }
+              : undefined,
         }),
       });
     });
@@ -691,7 +748,10 @@ export class SuperAdminService {
       if (!madrasa) throw new MadrasaNotFoundError();
       if (madrasa.deletedAt) {
         throw new TrashedMadrasaOperationError(
-          t({ bn: "এই প্রতিষ্ঠানটি ট্র্যাশে আছে। আগে ট্র্যাশ পেজ থেকে পুনরুদ্ধার করুন।", en: "This institution is in trash. Restore it from the Trash page first." }),
+          t({
+            bn: "এই প্রতিষ্ঠানটি ট্র্যাশে আছে। আগে ট্র্যাশ পেজ থেকে পুনরুদ্ধার করুন।",
+            en: "This institution is in trash. Restore it from the Trash page first.",
+          }),
         );
       }
     }
@@ -704,7 +764,12 @@ export class SuperAdminService {
       const madrasa = await this.repository.findMadrasaDeletedAt(id);
       if (!madrasa) throw new MadrasaNotFoundError();
       if (madrasa.deletedAt) {
-        throw new TrashedMadrasaOperationError(t({ bn: "এই প্রতিষ্ঠানটি ইতিমধ্যে ট্র্যাশে আছে।", en: "This institution is already in trash." }));
+        throw new TrashedMadrasaOperationError(
+          t({
+            bn: "এই প্রতিষ্ঠানটি ইতিমধ্যে ট্র্যাশে আছে।",
+            en: "This institution is already in trash.",
+          }),
+        );
       }
     }
   }
@@ -727,7 +792,10 @@ export class SuperAdminService {
 
   async restoreMadrasa(id: number) {
     const madrasa = await this.repository.findTrashedMadrasaSlug(id);
-    if (!madrasa) throw new NotFoundError(t({ bn: "ট্র্যাশে থাকা প্রতিষ্ঠান পাওয়া যায়নি", en: "Trashed institution not found" }));
+    if (!madrasa)
+      throw new NotFoundError(
+        t({ bn: "ট্র্যাশে থাকা প্রতিষ্ঠান পাওয়া যায়নি", en: "Trashed institution not found" }),
+      );
 
     // Safety net: a trashed madrasa's slug is reserved (see makeUniqueSlug),
     // so this should never actually find a conflict — but we keep the check
@@ -816,7 +884,8 @@ export class SuperAdminService {
 
   async deleteMadrasaUser(madrasaId: number, userId: number) {
     if (!madrasaId) throw new InvalidMadrasaIdError();
-    if (!userId) throw new BadRequestError(t({ bn: "ব্যবহারকারীর id সঠিক নয়", en: "Invalid user id" }));
+    if (!userId)
+      throw new BadRequestError(t({ bn: "ব্যবহারকারীর id সঠিক নয়", en: "Invalid user id" }));
 
     const user = await this.repository.findMadrasaUserById(userId, madrasaId);
     if (!user) throw new UserNotFoundError();
@@ -851,7 +920,8 @@ export class SuperAdminService {
     dto: { name?: string; email?: string; password?: string },
   ) {
     if (!madrasaId) throw new InvalidMadrasaIdError();
-    if (!userId) throw new BadRequestError(t({ bn: "ব্যবহারকারীর id সঠিক নয়", en: "Invalid user id" }));
+    if (!userId)
+      throw new BadRequestError(t({ bn: "ব্যবহারকারীর id সঠিক নয়", en: "Invalid user id" }));
 
     const user = await this.repository.findMadrasaUserById(userId, madrasaId);
     if (!user) throw new UserNotFoundError();
@@ -861,7 +931,12 @@ export class SuperAdminService {
     const password = dto.password || "";
 
     if (!name && !email && !password) {
-      throw new BadRequestError(t({ bn: "name, email বা password অন্তত একটা দিতে হবে", en: "Provide at least one of name, email or password" }));
+      throw new BadRequestError(
+        t({
+          bn: "name, email বা password অন্তত একটা দিতে হবে",
+          en: "Provide at least one of name, email or password",
+        }),
+      );
     }
 
     const data: Prisma.UserUncheckedUpdateInput = {};
@@ -911,7 +986,8 @@ export class SuperAdminService {
     dto: { role_id?: number | string; is_active?: boolean | number },
   ) {
     if (!madrasaId) throw new InvalidMadrasaIdError();
-    if (!userId) throw new BadRequestError(t({ bn: "ব্যবহারকারীর id সঠিক নয়", en: "Invalid user id" }));
+    if (!userId)
+      throw new BadRequestError(t({ bn: "ব্যবহারকারীর id সঠিক নয়", en: "Invalid user id" }));
 
     const user = await this.repository.findMadrasaUserById(userId, madrasaId);
     if (!user) throw new UserNotFoundError();
@@ -931,7 +1007,13 @@ export class SuperAdminService {
 
     if (dto.is_active !== undefined) data.isActive = dto.is_active ? 1 : 0;
 
-    if (!Object.keys(data).length) throw new BadRequestError(t({ bn: "role_id বা is_active অন্তত একটা দিতে হবে", en: "Provide at least one of role_id or is_active" }));
+    if (!Object.keys(data).length)
+      throw new BadRequestError(
+        t({
+          bn: "role_id বা is_active অন্তত একটা দিতে হবে",
+          en: "Provide at least one of role_id or is_active",
+        }),
+      );
 
     await this.repository.updateMadrasaUserCredentials(userId, data);
 
@@ -950,11 +1032,17 @@ export class SuperAdminService {
   }
 
   async getSuperAdminStats() {
-    const [active, inactive, trashed, totalMadrasas, students] = await this.repository.countDashboardStats();
-
-    const recentActivities = await this.repository.findRecentActivities();
-    const expiringPlans = await this.repository.findExpiringPlans();
-    const expiredPlans = await this.repository.findExpiredPlans();
+    const [
+      [active, inactive, trashed, totalMadrasas, students],
+      recentActivities,
+      expiringPlans,
+      expiredPlans,
+    ] = await Promise.all([
+      this.repository.countDashboardStats(),
+      this.repository.findRecentActivities(),
+      this.repository.findExpiringPlans(),
+      this.repository.findExpiredPlans(),
+    ]);
 
     return {
       totalMadrasas,
@@ -988,9 +1076,10 @@ export class SuperAdminService {
   }
 
   async permanentDeleteMadrasa(id: number) {
-    await this.repository.runTransaction((tx) => this.repository.permanentDeleteCascadeOnTx(tx, id));
+    await this.repository.runTransaction((tx) =>
+      this.repository.permanentDeleteCascadeOnTx(tx, id),
+    );
   }
-
 }
 
 export const superAdminService = new SuperAdminService();

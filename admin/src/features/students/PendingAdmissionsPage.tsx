@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { studentPath } from "./studentRoute";
 import { admissionApi } from "../../services/phase1Api";
 import { studentFeeDiscountApi, type FeePreviewRow } from "../../services/phase2Api";
-import { refreshSidebar } from "../../services/sidebarApi";
-import { useSidebarStore } from "../../store/sidebarStore";
+import { refreshSidebarCounts } from "../../services/sidebarApi";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
@@ -250,12 +249,6 @@ const PendingAdmissionsPage = () => {
   // Refreshes the sidebar's পেন্ডিং ভর্তি অনুমোদন badge right after an
   // approve/reject so the count updates immediately instead of waiting out
   // the sidebar GET cache's TTL or a full page reload.
-  const refreshSidebarCounts = () => {
-    refreshSidebar()
-      .then((data) => useSidebarStore.getState().setItems(data))
-      .catch((err) => logger.error("Sidebar refresh failed:", err));
-  };
-
   const removeRows = (ids: (string | number)[]) => {
     const idSet = new Set(ids);
     setRows((prev) => prev.filter((row) => !idSet.has(row.id)));

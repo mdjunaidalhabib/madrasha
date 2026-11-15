@@ -9,6 +9,7 @@ import { usePlanStore } from "../../store/planStore";
 import { planText } from "../../features/admin/settings/settingsPages.text";
 import { logoutSession } from "../../services/profileApi";
 import PlanBadge from "../topbar/PlanBadge";
+import { prefetchAdminRoute } from "../../app/routePrefetch";
 
 const PlanSettingsPage = lazy(() => import("../../features/admin/settings/PlanSettingsPage"));
 
@@ -27,6 +28,12 @@ export default function PlanAccessBoundary({ children }: { children: ReactNode }
   const [refreshing, setRefreshing] = useState(false);
   const sequence = useRef(0);
   const blocked = block !== null;
+
+  // Download code during the plan round trip without mounting a protected
+  // page or starting its data effects before access has been checked.
+  useEffect(() => {
+    if (!blocked && !plan) prefetchAdminRoute(location.pathname);
+  }, [blocked, plan, location.pathname]);
 
   const refresh = useCallback(
     async (signal?: AbortSignal) => {

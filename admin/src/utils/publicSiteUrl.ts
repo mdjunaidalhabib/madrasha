@@ -15,5 +15,11 @@ const PUBLIC_SITE_URL = (import.meta.env.VITE_PUBLIC_SITE_URL as string | undefi
 // custom domain, see frontend's useCustomDomainRedirect), this just saves
 // that one extra hop for links built here.
 export function getPublicSiteUrl(slug: string, customDomain?: string | null) {
-  return customDomain ? `https://${customDomain}` : `${PUBLIC_SITE_URL}/${slug}`;
+  const domain = customDomain?.trim();
+  if (domain) return `https://${domain}`;
+  const tenantSlug = slug.trim();
+  if (!tenantSlug) return undefined;
+  // Explicit tenant namespace avoids platform routes such as /demo, which
+  // redirects to the EMS landing page instead of displaying that tenant.
+  return `${PUBLIC_SITE_URL.replace(/\/+$/, "")}/m/${encodeURIComponent(tenantSlug)}`;
 }

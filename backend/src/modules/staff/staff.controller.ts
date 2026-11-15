@@ -16,6 +16,11 @@ export const createStaff = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
+export const bulkCreateStaff = asyncHandler(async (req: Request, res: Response) => {
+  const result = await staffService.bulkCreateStaff(req.body?.staff, req.tenant?.madrasa_id);
+  return ApiResponse.success(res, { statusCode: HttpStatus.CREATED, extra: result });
+});
+
 export const getStaffList = asyncHandler(async (req: Request, res: Response) => {
   const madrasaId = req.tenant?.madrasa_id;
   const data = await staffService.listStaff(madrasaId);
@@ -58,5 +63,8 @@ export const deleteStaff = asyncHandler(async (req: Request, res: Response) => {
 export const updateStaffNamesBulk = asyncHandler(async (req: Request, res: Response) => {
   const madrasaId = req.tenant?.madrasa_id;
   const data = await staffService.updateNamesBulk(madrasaId, req.body.items || []);
-  return ApiResponse.success(res, { message: t({ bn: "স্টাফদের নাম আপডেট হয়েছে", en: "Staff names updated" }), data });
+  return ApiResponse.success(res, {
+    message: t({ bn: "স্টাফদের নাম আপডেট হয়েছে", en: "Staff names updated" }),
+    data,
+  });
 });

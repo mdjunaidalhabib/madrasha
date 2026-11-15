@@ -45,6 +45,12 @@ export class SidebarRepository {
     });
   }
 
+  countRejectedAdmissions(madrasaId: number) {
+    return prisma.student.count({
+      where: { madrasaId, admissionStatus: "REJECTED", deletedAt: null },
+    });
+  }
+
   /** Badge count for the হিসাব > ভর্তি ফি পেন্ডিং sidebar item - how many
    * distinct students still owe their admission fee (counting students, not
    * invoices, so one student can't inflate it). Deliberately scoped to

@@ -7,6 +7,7 @@ import AddressInfo from "../../components/teachers-admission/AddressInfo";
 import SubmitButton from "../../components/teachers-admission/SubmitButton";
 import BulkTeacherUploadModal, {
   ExcelTeacherRow,
+  BulkTeacherUploadResult,
 } from "../../components/teachers-admission/BulkTeacherUploadModal";
 import api, { cachedGet } from "../../services/api";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
@@ -126,6 +127,7 @@ const TeacherPage: React.FC = () => {
   useUnsavedChangesGuard(formData !== initialState);
   const [errors, setErrors] = useState<TeacherFormErrors>({});
   const [excelTeachers, setExcelTeachers] = useState<ExcelTeacherRow[]>([]);
+  const [bulkResult, setBulkResult] = useState<BulkTeacherUploadResult | null>(null);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [divisions, setDivisions] = useState<DivisionItem[]>([]);
@@ -151,7 +153,8 @@ const TeacherPage: React.FC = () => {
     const newErrors: TeacherFormErrors = {};
 
     if (!formData.name_bn.trim()) newErrors.name_bn = getText(teacherStaffText).enterTeacherName;
-    if (!formData.academic_division) newErrors.academic_division = getText(teacherStaffText).selectAcademicDivision;
+    if (!formData.academic_division)
+      newErrors.academic_division = getText(teacherStaffText).selectAcademicDivision;
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -380,6 +383,7 @@ const TeacherPage: React.FC = () => {
   const handleBulkModalClose = () => {
     setBulkModalOpen(false);
     setExcelTeachers([]);
+    setBulkResult(null);
   };
 
   const handleExcelSubmit = async () => {
@@ -389,17 +393,40 @@ const TeacherPage: React.FC = () => {
     try {
       setLoading(true);
       const res = await progressTask.run(
-        { title: pt.bulkUploadTitle, steps: [pt.stepValidate, pt.stepSave, pt.stepFinish], estimate: true },
+        {
+          title: pt.bulkUploadTitle,
+          steps: [pt.stepValidate, pt.stepSave, pt.stepFinish],
+          estimate: true,
+        },
         () => api.post("/teachers/bulk", { teachers: makeExcelPayload() }),
       );
-      useToastStore.getState().show(
-        getText(teacherStaffText).bulkUploadSuccess(String(res.data?.inserted || 0), String(res.data?.updated || 0)),
-        "success",
-      );
+      useToastStore
+        .getState()
+        .show(
+          getText(teacherStaffText).bulkUploadSuccess(
+            String(res.data?.inserted || 0),
+            String(res.data?.updated || 0),
+          ),
+          "success",
+        );
       setExcelTeachers([]);
-      setBulkModalOpen(false);
+      setBulkResult({
+        inserted: Number(res.data?.inserted || 0),
+        updated: Number(res.data?.updated || 0),
+        preview: (res.data?.preview || []).map(
+          (row: { row: number; id: number; action: "create" | "update"; nid: string | null }) => ({
+            ...row,
+            name: excelTeachers[row.row - 2]?.name_bn || excelTeachers[row.row - 2]?.name || "-",
+          }),
+        ),
+      });
     } catch (error: any) {
-      useToastStore.getState().show(error?.response?.data?.message || getText(teacherStaffText).bulkUploadFailed, "error");
+      useToastStore
+        .getState()
+        .show(
+          error?.response?.data?.message || getText(teacherStaffText).bulkUploadFailed,
+          "error",
+        );
     } finally {
       setLoading(false);
     }
@@ -417,7 +444,12 @@ const TeacherPage: React.FC = () => {
       setFormData(initialState);
       setErrors({});
     } catch (error: any) {
-      useToastStore.getState().show(error?.response?.data?.message || getText(teacherStaffText).teacherAddFailed, "error");
+      useToastStore
+        .getState()
+        .show(
+          error?.response?.data?.message || getText(teacherStaffText).teacherAddFailed,
+          "error",
+        );
     } finally {
       setLoading(false);
     }
@@ -427,7 +459,9 @@ const TeacherPage: React.FC = () => {
     <div className="max-w-6xl mx-auto p-6">
       <ProgressOverlay {...progressTask.overlayProps} />
       <div className="relative mb-6">
-        <h1 className="text-3xl font-bold text-center dark:text-slate-100">{t.teacherRegistration}</h1>
+        <h1 className="text-3xl font-bold text-center dark:text-slate-100">
+          {t.teacherRegistration}
+        </h1>
 
         <button
           type="button"
@@ -460,10 +494,14 @@ const TeacherPage: React.FC = () => {
         open={bulkModalOpen}
         loading={loading}
         excelTeachers={excelTeachers}
+        result={bulkResult}
         requiredColumns={requiredColumns}
         onClose={handleBulkModalClose}
         onDataUpload={setExcelTeachers}
-        onClear={() => setExcelTeachers([])}
+        onClear={() => {
+          setExcelTeachers([]);
+          setBulkResult(null);
+        }}
         onSubmit={handleExcelSubmit}
         onDownloadTemplate={downloadTemplate}
         divisions={divisions}

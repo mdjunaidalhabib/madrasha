@@ -13,6 +13,7 @@ import BulkAdmissionModal, {
   ExcelAdmissionRow,
 } from "../../components/admission/BulkAdmissionModal";
 import api, { cachedGet } from "../../services/api";
+import { refreshSidebarCounts } from "../../services/sidebarApi";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
@@ -599,6 +600,7 @@ const AdmissionPage = () => {
         updated: res.data?.updated || 0,
         preview: res.data?.preview || [],
       });
+      void refreshSidebarCounts();
       setExcelStudents([]);
     } catch (err: any) {
       useToastStore
@@ -693,6 +695,7 @@ const AdmissionPage = () => {
         previousAcademicYear: res.data?.previousAcademicYear || "-",
         academicYear: formData.academicYear,
       });
+      void refreshSidebarCounts();
     } catch (err: any) {
       useToastStore.getState().show(err?.response?.data?.message || getText(admissionPageText).failed, "error");
     } finally {

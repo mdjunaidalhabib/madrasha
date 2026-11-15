@@ -1,0 +1,36 @@
+import { defineText } from "@madrasha/shared-ui/src/i18n";
+
+export const bulkImportText = defineText({
+  bn: {
+    done: "একসাথে আপলোড সম্পন্ন হয়েছে",
+    inserted: "নতুন:",
+    updated: "আপডেট:",
+    state: "অবস্থা",
+    createdBadge: "নতুন",
+    updatedBadge: "আপডেট",
+    uploadAnother: "আরেকটি Excel আপলোড করুন",
+    staffTitle: "একসাথে স্টাফ ভর্তি (Excel)",
+    staffSubtitle: "Excel ফাইল আপলোড করে একসাথে একাধিক স্টাফ যোগ করুন",
+    staffPreview: "স্টাফ প্রিভিউ",
+    staffSubmit: "সকল স্টাফ জমা দিন",
+    staffUpload: "স্টাফ Excel আপলোড করুন",
+    nameRequired: (row: string) => `সারি ${row}: নাম বাধ্যতামূলক`,
+    failed: "বাল্ক আপলোড ব্যর্থ হয়েছে",
+  },
+  en: {
+    done: "Bulk upload completed",
+    inserted: "New:",
+    updated: "Updated:",
+    state: "Status",
+    createdBadge: "New",
+    updatedBadge: "Updated",
+    uploadAnother: "Upload another Excel",
+    staffTitle: "Bulk staff admission (Excel)",
+    staffSubtitle: "Upload an Excel file to add multiple staff members",
+    staffPreview: "Staff preview",
+    staffSubmit: "Submit all staff",
+    staffUpload: "Upload staff Excel",
+    nameRequired: (row) => `Row ${row}: Name is required`,
+    failed: "Bulk upload failed",
+  },
+});

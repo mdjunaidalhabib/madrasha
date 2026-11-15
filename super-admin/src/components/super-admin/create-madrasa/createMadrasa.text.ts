@@ -3,6 +3,9 @@ import { defineBilingualText } from "@madrasha/shared-ui/src/i18n";
 /** Create / edit institution form (create-madrasa/* sections). */
 export const createMadrasaText = defineBilingualText({
   bn: {
+    websiteDemoTitle: "প্রাথমিক ওয়েবসাইট ডেমো",
+    websiteDemoHint: "ডেমোর স্বয়ংক্রিয় সেটআপ চালু থাকলে নতুন প্রতিষ্ঠান এই ডেমো অনুযায়ী নিজস্ব ওয়েবসাইট পাবে। পরে প্রতিষ্ঠানের অ্যাডমিন ওয়েবসাইট সেটিংস থেকে সেটি পরিবর্তন করতে পারবে।",
+    websiteDemoSetup: "ডেমো সেটআপ খুলুন",
     // Basic info
     basicInfo: "মৌলিক তথ্য",
     institutionNameRequired: "প্রতিষ্ঠানের নাম *",
@@ -85,6 +88,9 @@ export const createMadrasaText = defineBilingualText({
     userDeleted: "ইউজার মুছে ফেলা হয়েছে",
   },
   en: {
+    websiteDemoTitle: "Starter website demo",
+    websiteDemoHint: "When automatic demo setup is enabled, the new institution receives its own website based on that demo. Its admin can customize it later in Website Settings.",
+    websiteDemoSetup: "Open demo setup",
     basicInfo: "Basic Information",
     institutionNameRequired: "Institution Name *",
     slugOptional: "Slug (optional)",

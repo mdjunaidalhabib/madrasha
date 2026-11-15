@@ -1,10 +1,12 @@
 import { prisma } from "../../shared/database/prisma";
 import {
   DASHBOARD_RECENT_TRANSACTIONS_LIMIT,
+  DASHBOARD_OVERDUE_FEES_LIST_LIMIT,
   DASHBOARD_UPCOMING_EXAMS_LIMIT,
 } from "./dashboard.constants";
 import {
   AttendanceTrendRow,
+  OverdueFeesSummary,
   FundBalanceRow,
   IncomeExpenseTrendRow,
   ImportantLinkRow,
@@ -143,26 +145,52 @@ export class DashboardRepository {
    * showing here until reviewed - but once a Muhtamim rejects it, the
    * admission is cancelled and that fee is no longer collectible, so it
    * must stop showing as outstanding. */
-  async findOverdueInvoices(madrasaId: number) {
-    return prisma.invoice.findMany({
-      where: {
-        madrasaId,
-        dueDate: { lte: endOfTodayUTC() },
-        status: { in: ["UNPAID", "PARTIALLY_PAID"] },
-        student: { admissionStatus: { not: "REJECTED" } },
-      },
-      select: {
-        id: true,
-        studentId: true,
-        title: true,
-        amount: true,
-        paidAmount: true,
-        waivedAmount: true,
-        dueDate: true,
-        student: { select: { nameBn: true } },
-      },
-      orderBy: { dueDate: "asc" },
-    });
+  async findOverdueSummary(madrasaId: number): Promise<OverdueFeesSummary> {
+    // Aggregate every qualifying invoice in PostgreSQL, returning only the
+    // largest student balances. Totals are calculated BEFORE limiting the list.
+    const [row] = await prisma.$queryRaw<
+      {
+        count: bigint;
+        studentCount: bigint;
+        totalDue: number;
+        list: (Omit<OverdueFeesSummary["list"][number], "oldestDueDate"> & {
+          oldestDueDate: string;
+        })[];
+      }[]
+    >`
+      WITH overdue AS (
+        SELECT i.student_id, s.name_bn,
+          COUNT(*) AS invoice_count, MIN(i.due_date) AS oldest_due_date,
+          SUM(i.amount - i.paid_amount - COALESCE(i.waived_amount, 0)) AS remaining
+        FROM invoices i JOIN students s ON s.id = i.student_id
+        WHERE i.madrasa_id = ${madrasaId}
+          AND i.due_date <= ${endOfTodayUTC()}
+          AND i.status IN ('UNPAID', 'PARTIALLY_PAID')
+          AND s.admission_status <> 'REJECTED'
+        GROUP BY i.student_id, s.name_bn
+      )
+      SELECT COALESCE(SUM(invoice_count), 0)::bigint AS count,
+        COUNT(*) AS "studentCount", COALESCE(SUM(remaining), 0) AS "totalDue",
+        COALESCE((
+          SELECT jsonb_agg(jsonb_build_object(
+            'studentId', student_id, 'studentName', name_bn,
+            'invoiceCount', invoice_count, 'oldestDueDate', oldest_due_date,
+            'remaining', remaining
+          ) ORDER BY remaining DESC, oldest_due_date, student_id)
+          FROM (SELECT * FROM overdue ORDER BY remaining DESC, oldest_due_date, student_id
+            LIMIT ${DASHBOARD_OVERDUE_FEES_LIST_LIMIT}) top_due
+        ), '[]'::jsonb) AS list
+      FROM overdue
+    `;
+    return {
+      count: Number(row?.count || 0),
+      studentCount: Number(row?.studentCount || 0),
+      totalDue: Number(row?.totalDue || 0),
+      list: (row?.list || []).map((item) => ({
+        ...item,
+        oldestDueDate: new Date(item.oldestDueDate),
+      })),
+    };
   }
 
   // `periodExpr` is server-built (buildPeriodExpr, a fixed 3-branch
@@ -205,8 +233,17 @@ export class DashboardRepository {
       // Active exams only - dormant (demo / not yet started) exams keep
       // their routines but aren't really "upcoming". Same-day slots follow
       // start time, then শ্রেণি order, so the list reads like the routine.
-      where: { madrasaId, examDate: { gte: startOfTodayUTC() }, exam: { deletedAt: null, isActive: true } },
-      orderBy: [{ examDate: "asc" }, { startTime: "asc" }, { class: { sortOrder: "asc" } }, { id: "asc" }],
+      where: {
+        madrasaId,
+        examDate: { gte: startOfTodayUTC() },
+        exam: { deletedAt: null, isActive: true },
+      },
+      orderBy: [
+        { examDate: "asc" },
+        { startTime: "asc" },
+        { class: { sortOrder: "asc" } },
+        { id: "asc" },
+      ],
       take: DASHBOARD_UPCOMING_EXAMS_LIMIT,
       include: {
         exam: { select: { name: true } },

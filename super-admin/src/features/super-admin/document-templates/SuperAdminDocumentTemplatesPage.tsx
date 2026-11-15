@@ -1,3 +1,4 @@
+import LazyResource from "@madrasha/shared-ui/src/components/ui/LazyResource";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Star, Pencil, Trash2, Plus, CheckCircle2 } from "lucide-react";
@@ -18,7 +19,7 @@ import {
   deleteSystemTemplate,
   setSystemDefaultTemplate,
 } from "../../../services/superAdminDocumentTemplateApi";
-import type { TemplateDetailDto, TemplateListItemDto } from "../../../services/documentTemplateTypes";
+import type { TemplateListItemDto } from "../../../services/documentTemplateTypes";
 import { getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { documentTemplatesText } from "./documentTemplates.text";
 
@@ -39,7 +40,8 @@ const ALL_TYPES: BackendDocumentType[] = [
 // clearly at a consistent, larger card size.
 const THUMB_MAX_WIDTH = 300;
 const THUMB_MAX_HEIGHT = 380;
-const thumbScale = (width: number, height: number) => Math.min(THUMB_MAX_WIDTH / width, THUMB_MAX_HEIGHT / height);
+const thumbScale = (width: number, height: number) =>
+  Math.min(THUMB_MAX_WIDTH / width, THUMB_MAX_HEIGHT / height);
 
 const PLACEHOLDER_ROW: Record<string, any> = {
   student_name: "Md Abdullah",
@@ -61,7 +63,6 @@ export default function SuperAdminDocumentTemplatesPage() {
   const [type, setType] = useState<BackendDocumentType>("ID_CARD");
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<TemplateListItemDto[]>([]);
-  const [details, setDetails] = useState<Record<number, TemplateDetailDto>>({});
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -73,8 +74,6 @@ export default function SuperAdminDocumentTemplatesPage() {
     try {
       const list = await listSystemTemplates(type);
       setItems(list);
-      const detailEntries = await Promise.all(list.map((item) => getSystemTemplate(item.id).then((d) => [item.id, d] as const)));
-      setDetails(Object.fromEntries(detailEntries));
     } catch {
       setError(getText(documentTemplatesText).listLoadFailed);
     } finally {
@@ -87,7 +86,8 @@ export default function SuperAdminDocumentTemplatesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
 
-  const openInDesigner = (id: number) => navigate(`/document-templates/${id}/edit`);
+  const openInDesigner = (id: number) =>
+    navigate(`/document-templates/${id}/edit`);
 
   const handleCreate = async (name: string) => {
     setBusyId(-1);
@@ -116,7 +116,10 @@ export default function SuperAdminDocumentTemplatesPage() {
   };
 
   const handleDelete = async (item: TemplateListItemDto) => {
-    if (!window.confirm(getText(documentTemplatesText).confirmDelete(item.name))) return;
+    if (
+      !window.confirm(getText(documentTemplatesText).confirmDelete(item.name))
+    )
+      return;
     setBusyId(item.id);
     try {
       await deleteSystemTemplate(item.id);
@@ -162,7 +165,9 @@ export default function SuperAdminDocumentTemplatesPage() {
             type="button"
             onClick={() => setType(dt)}
             className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-              type === dt ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400" : "border-slate-200 bg-white text-slate-600 hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-blue-800"
+              type === dt
+                ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400"
+                : "border-slate-200 bg-white text-slate-600 hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-blue-800"
             }`}
           >
             {getDocumentTypeLabel(dt)}
@@ -170,7 +175,11 @@ export default function SuperAdminDocumentTemplatesPage() {
         ))}
       </div>
 
-      {error && <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-400">{error}</div>}
+      {error && (
+        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-400">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <SkeletonCard lines={6} />
@@ -181,38 +190,65 @@ export default function SuperAdminDocumentTemplatesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => {
-            const detail = details[item.id];
-            const version = detail?.published || detail?.draft;
-            const scale = version ? thumbScale(version.width, version.height) : 1;
-
             return (
-              <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-                <div
-                  className="mx-auto mb-3 flex items-center justify-center rounded-lg border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800"
-                  style={{ width: THUMB_MAX_WIDTH, height: THUMB_MAX_HEIGHT }}
+              <div
+                key={item.id}
+                className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
+              >
+                <LazyResource
+                  key={`${item.id}:${item.updated_at}`}
+                  id={item.id}
+                  load={getSystemTemplate}
                 >
-                  {version && (
-                    <div style={{ width: version.width * scale, height: version.height * scale, overflow: "hidden" }}>
-                      <DocumentPreview
-                        layout={{
-                          id: String(item.id),
-                          kind: DOCUMENT_TYPE_TO_KIND[type],
-                          width: version.width,
-                          height: version.height,
-                          background: version.background || undefined,
-                          layers: version.layers,
+                  {(detail) => {
+                    const version = detail.published || detail.draft;
+                    const scale = version
+                      ? thumbScale(version.width, version.height)
+                      : 1;
+                    return (
+                      <div
+                        className="mx-auto mb-3 flex items-center justify-center rounded-lg border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800"
+                        style={{
+                          width: THUMB_MAX_WIDTH,
+                          height: THUMB_MAX_HEIGHT,
                         }}
-                        row={PLACEHOLDER_ROW}
-                        zoom={scale}
-                      />
-                    </div>
-                  )}
-                </div>
+                      >
+                        {version && (
+                          <div
+                            style={{
+                              width: version.width * scale,
+                              height: version.height * scale,
+                              overflow: "hidden",
+                            }}
+                          >
+                            <DocumentPreview
+                              layout={{
+                                id: String(item.id),
+                                kind: DOCUMENT_TYPE_TO_KIND[type],
+                                width: version.width,
+                                height: version.height,
+                                background: version.background || undefined,
+                                layers: version.layers,
+                              }}
+                              row={PLACEHOLDER_ROW}
+                              zoom={scale}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }}
+                </LazyResource>
 
                 <div className="mb-2 flex items-center gap-1.5">
-                  <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{item.name}</span>
+                  <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    {item.name}
+                  </span>
                   {item.is_system_default && (
-                    <span title={t.systemDefault} className="text-amber-500 dark:text-amber-400">
+                    <span
+                      title={t.systemDefault}
+                      className="text-amber-500 dark:text-amber-400"
+                    >
                       <CheckCircle2 size={14} />
                     </span>
                   )}

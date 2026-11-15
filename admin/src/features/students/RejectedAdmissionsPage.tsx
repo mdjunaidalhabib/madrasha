@@ -8,8 +8,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { studentPath } from "./studentRoute";
 import { admissionApi } from "../../services/phase1Api";
 import { studentFeeDiscountApi, type FeePreviewRow } from "../../services/phase2Api";
-import { refreshSidebar } from "../../services/sidebarApi";
-import { useSidebarStore } from "../../store/sidebarStore";
+import { refreshSidebarCounts } from "../../services/sidebarApi";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
@@ -166,12 +165,6 @@ const RejectedAdmissionsPage = () => {
     return rows.filter((row) => String(row.session_id ?? "") === sessionFilter);
   }, [rows, sessionFilter]);
 
-  const refreshSidebarCounts = () => {
-    refreshSidebar()
-      .then((data) => useSidebarStore.getState().setItems(data))
-      .catch((err) => logger.error("Sidebar refresh failed:", err));
-  };
-
   const removeRows = (ids: (string | number)[]) => {
     const idSet = new Set(ids);
     setRows((prev) => prev.filter((row) => !idSet.has(row.id)));
@@ -281,6 +274,7 @@ const RejectedAdmissionsPage = () => {
           );
           useToastStore.getState().show(t.deletedForever, "success");
           removeRows([student.id]);
+          void refreshSidebarCounts();
         } catch (err: any) {
           const msg = err?.response?.data?.message || t.deleteFailed;
           useToastStore.getState().show(msg, "error");
@@ -314,7 +308,10 @@ const RejectedAdmissionsPage = () => {
           }
           const succeededIds = students.filter((student) => done.has(Number(student.id))).map((student) => student.id);
           const failedCount = students.length - succeededIds.length;
-          if (succeededIds.length > 0) removeRows(succeededIds);
+          if (succeededIds.length > 0) {
+            removeRows(succeededIds);
+            void refreshSidebarCounts();
+          }
           if (failedCount === 0) {
             useToastStore.getState().show(t.deleted, "success");
           } else if (succeededIds.length === 0) {

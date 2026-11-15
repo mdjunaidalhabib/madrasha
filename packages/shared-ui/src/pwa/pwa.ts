@@ -1,5 +1,10 @@
 import { useSyncExternalStore } from "react";
-import { applyBrandFavicon, brandIconUrl, brandManifestIcons, type BrandIconSource } from "./brandIcons";
+import {
+  applyBrandFavicon,
+  brandIconUrl,
+  brandManifestIcons,
+  type BrandIconSource,
+} from "./brandIcons";
 
 /**
  * PWA install plumbing shared by the admin panel and the public website.
@@ -30,7 +35,14 @@ interface PwaState {
   iconUrl: string | null;
 }
 
-let state: PwaState = { installEnabled: true, appId: null, deferredPrompt: null, installed: false, appName: null, iconUrl: null };
+let state: PwaState = {
+  installEnabled: true,
+  appId: null,
+  deferredPrompt: null,
+  installed: false,
+  appName: null,
+  iconUrl: null,
+};
 const listeners = new Set<() => void>();
 
 const setState = (patch: Partial<PwaState>) => {
@@ -40,6 +52,7 @@ const setState = (patch: Partial<PwaState>) => {
 
 export const isStandalone = () =>
   window.matchMedia?.("(display-mode: standalone)").matches ||
+  window.matchMedia?.("(display-mode: minimal-ui)").matches ||
   (navigator as Navigator & { standalone?: boolean }).standalone === true;
 
 export const isIos = () =>
@@ -66,11 +79,15 @@ export function setupPwa() {
   });
 
   if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js").catch(() => {
-        // Not fatal - the site works fine without it, it's just not installable.
-      });
-    });
+    const register = () => {
+      navigator.serviceWorker
+        .register("/sw.js", { updateViaCache: "none" })
+        .catch(() => {
+          // Not fatal - the site works fine without it, it's just not installable.
+        });
+    };
+    if (document.readyState === "complete") register();
+    else window.addEventListener("load", register, { once: true });
   }
 }
 
@@ -86,7 +103,10 @@ export async function promptInstall(): Promise<boolean> {
   await evt.prompt();
   const { outcome } = await evt.userChoice;
   // A prompt event is single-use.
-  setState({ deferredPrompt: null, installed: outcome === "accepted" || state.installed });
+  setState({
+    deferredPrompt: null,
+    installed: outcome === "accepted" || state.installed,
+  });
   return outcome === "accepted";
 }
 
@@ -99,10 +119,21 @@ export const usePwaInstall = () => useSyncExternalStore(subscribe, () => state);
 
 /** Remove installability while the public site has no verified tenant brand. */
 export function disablePwaInstall() {
-  document.querySelectorAll('link[rel="manifest"]').forEach((link) => link.remove());
-  const appleTitle = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
+  document
+    .querySelectorAll('link[rel="manifest"]')
+    .forEach((link) => link.remove());
+  const appleTitle = document.querySelector<HTMLMetaElement>(
+    'meta[name="apple-mobile-web-app-title"]',
+  );
   if (appleTitle) appleTitle.content = "";
-  setState({ installEnabled: false, appId: null, appName: null, iconUrl: null, deferredPrompt: null, installed: isStandalone() });
+  setState({
+    installEnabled: false,
+    appId: null,
+    appName: null,
+    iconUrl: null,
+    deferredPrompt: null,
+    installed: isStandalone(),
+  });
 }
 
 export interface PwaManifestOptions {
@@ -168,7 +199,9 @@ export function setPwaManifest({
   const href = `data:application/manifest+json;charset=utf-8,${encodeURIComponent(JSON.stringify(manifest))}`;
   if (link.href !== href) link.href = href;
 
-  const appleTitle = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
+  const appleTitle = document.querySelector<HTMLMetaElement>(
+    'meta[name="apple-mobile-web-app-title"]',
+  );
   if (appleTitle) appleTitle.content = manifest.short_name;
   // Browser tab / iOS home-screen icon follow the same logo as the manifest.
   applyBrandFavicon(icons);
@@ -176,13 +209,20 @@ export function setPwaManifest({
   const iconUrl = icons ? brandIconUrl(icons, "icon-192.png") : null;
   const nextName = announceName ? name : state.appName;
   const identityChanged = state.appId !== manifest.id;
-  if (identityChanged || !state.installEnabled || state.appName !== nextName || state.iconUrl !== iconUrl) {
+  if (
+    identityChanged ||
+    !state.installEnabled ||
+    state.appName !== nextName ||
+    state.iconUrl !== iconUrl
+  ) {
     setState({
       installEnabled: true,
       appId: manifest.id,
       appName: nextName,
       iconUrl,
-      ...(identityChanged ? { deferredPrompt: null, installed: isStandalone() } : {}),
+      ...(identityChanged
+        ? { deferredPrompt: null, installed: isStandalone() }
+        : {}),
     });
   }
 }

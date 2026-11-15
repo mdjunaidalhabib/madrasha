@@ -1565,6 +1565,41 @@ html[data-print-size][data-print-orientation] .print-page-preview.marksheet-half
     transform: none !important;
   }
 
+  /* Reports live inside the dashboard's fixed-height flex/scroll layout.
+     Visibility alone leaves those boxes in the print layout; positioned
+     ancestors can also trap the absolute print area inside a clipped box.
+     Put report pages in normal flow and remove only the surrounding UI.
+     Keep descendants untouched (card grids, two-up sheets and branding).
+     This also excludes the off-screen pagination measurement copies. */
+  body:has(.print-pages) *:not(.print-pages):not(.print-pages *):not(:has(.print-pages)) {
+    display: none !important;
+  }
+
+  body:has(.print-pages),
+  body:has(.print-pages) *:has(.print-pages) {
+    display: block !important;
+    position: static !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: visible !important;
+    transform: none !important;
+    contain: none !important;
+    content-visibility: visible !important;
+    box-shadow: none !important;
+    background: white !important;
+  }
+
+  .print-area.print-pages {
+    position: static !important;
+  }
+
   .print-preview-wrap {
     display: block !important;
     margin: 0 !important;

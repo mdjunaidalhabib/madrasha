@@ -18,7 +18,9 @@ const RESERVED_ROOT_PATHS = new Set([
 ]);
 
 export function getTenantSlugFromPath(pathname = window.location.pathname) {
-  const firstSegment = pathname.split("/").filter(Boolean)[0] || "";
+  const segments = pathname.split("/").filter(Boolean);
+  const firstSegment = segments[0] || "";
+  if (firstSegment === "m" && segments[1]) return decodeURIComponent(segments[1]);
   if (!RESERVED_ROOT_PATHS.has(firstSegment)) return firstSegment;
   // On the platform's own domain a reserved-looking first segment really
   // does mean "no slug here" (e.g. "/login"). On a tenant's custom domain

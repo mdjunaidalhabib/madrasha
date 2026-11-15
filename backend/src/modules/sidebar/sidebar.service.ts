@@ -150,13 +150,19 @@ export class SidebarService {
     }
 
     const moduleIds = modules.map((m) => m.id);
-    const [features, pendingAdmissionsCount, pendingFeeStudentsCount, overdueFeeStudentsCount] =
-      await Promise.all([
-        this.repository.findFeaturesByModuleIds(moduleIds),
-        this.repository.countPendingAdmissions(madrasaId),
-        this.repository.countPendingFeeStudents(madrasaId, admissionFeeTypes),
-        this.repository.countOverdueFeeStudents(madrasaId),
-      ]);
+    const [
+      features,
+      pendingAdmissionsCount,
+      rejectedAdmissionsCount,
+      pendingFeeStudentsCount,
+      overdueFeeStudentsCount,
+    ] = await Promise.all([
+      this.repository.findFeaturesByModuleIds(moduleIds),
+      this.repository.countPendingAdmissions(madrasaId),
+      this.repository.countRejectedAdmissions(madrasaId),
+      this.repository.countPendingFeeStudents(madrasaId, admissionFeeTypes),
+      this.repository.countOverdueFeeStudents(madrasaId),
+    ]);
 
     return modules.map((mod) => {
       const disabled = !isModuleAllowed(roleKey, permissionKeys, mod.keyName || "");
@@ -233,6 +239,11 @@ export class SidebarService {
         if (pendingChild) {
           pendingChild.label = "পেন্ডিং ভর্তি অনুমোদন";
           if (pendingAdmissionsCount > 0) pendingChild.count = pendingAdmissionsCount;
+        }
+
+        const rejectedChild = children.find((child) => child.key === "rejected");
+        if (rejectedChild && rejectedAdmissionsCount > 0) {
+          rejectedChild.count = rejectedAdmissionsCount;
         }
 
         // "ফি সেটাপ" moved here from ছাত্র বিভাগ/শিক্ষার্থী - surfaces it

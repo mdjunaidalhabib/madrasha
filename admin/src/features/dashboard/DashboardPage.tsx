@@ -1,22 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatCurrency, getLang, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import ChartCard from "@madrasha/shared-ui/src/components/ui/ChartCard";
+import DeferredContent from "@madrasha/shared-ui/src/components/ui/DeferredContent";
+import { lazy, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  formatCurrency,
+  getLang,
+  localizeDigits,
+  useLang,
+  useText,
+} from "@madrasha/shared-ui/src/i18n";
 import { dashboardText } from "./dashboard.text";
 import { Link } from "react-router-dom";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  Bar,
-  BarChart,
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+
 import {
   AlertTriangle,
   Banknote,
@@ -41,30 +35,24 @@ import {
 import { cachedGet } from "../../services/api";
 import StatTile from "@madrasha/shared-ui/src/components/ui/StatTile";
 import Card, { CardHeader } from "@madrasha/shared-ui/src/components/ui/Card";
-import ChartCard from "@madrasha/shared-ui/src/components/ui/ChartCard";
-import { useThemeStore } from "@madrasha/shared-ui/src/store/themeStore";
 import { useAuthStore } from "../../store/authStore";
 import { getPublicSiteUrl } from "../../utils/publicSiteUrl";
 import VendorPromoCard from "../vendor/VendorPromoCard";
 
 const money = (value: number | string) => formatCurrency(value || 0, getLang());
 
-type IncomeExpensePoint = { period: string; total_income: number; total_expense: number };
-type AttendancePoint = { period: string; percentage: number };
-type DashboardTrends = { incomeExpense: IncomeExpensePoint[]; attendance: AttendancePoint[] };
+const DashboardChart = lazy(() => import("./DashboardChart"));
 
-const FUND_COLORS = [
-  "#6366f1",
-  "#10b981",
-  "#f59e0b",
-  "#f43f5e",
-  "#0ea5e9",
-  "#8b5cf6",
-  "#14b8a6",
-  "#eab308",
-];
-const GENDER_COLORS = ["#3b82f6", "#f43f5e"];
-const CHANNEL_COLORS = ["#0ea5e9", "#f59e0b"];
+type IncomeExpensePoint = {
+  period: string;
+  total_income: number;
+  total_expense: number;
+};
+type AttendancePoint = { period: string; percentage: number };
+type DashboardTrends = {
+  incomeExpense: IncomeExpensePoint[];
+  attendance: AttendancePoint[];
+};
 
 export default function DashboardPage() {
   const t = useText(dashboardText);
@@ -74,9 +62,6 @@ export default function DashboardPage() {
   const [trendsLoading, setTrendsLoading] = useState(true);
   const madrasaSlug = useAuthStore((s) => s.madrasaSlug) || "";
   const publicUrl = getPublicSiteUrl(madrasaSlug);
-  const isDark = useThemeStore((s) => s.theme) === "dark";
-  const gridColor = isDark ? "#334155" : "#e2e8f0";
-  const axisColor = isDark ? "#64748b" : "#94a3b8";
 
   // ttlMs: 0 bypasses the shared GET cache entirely for this call. বকেয়া ফি
   // (overdueFees) and every other summary number here come from this one
@@ -94,7 +79,9 @@ export default function DashboardPage() {
     loadDashboard();
     (async () => {
       try {
-        const res = await cachedGet<DashboardTrends>("/dashboard/trends?groupBy=monthly");
+        const res = await cachedGet<DashboardTrends>(
+          "/dashboard/trends?groupBy=monthly",
+        );
         setTrends(res.data);
       } finally {
         setTrendsLoading(false);
@@ -116,12 +103,20 @@ export default function DashboardPage() {
     today.setHours(0, 0, 0, 0);
     return (data?.upcomingExams || [])
       .filter((exam: any) => new Date(exam.examDate) >= today)
-      .sort((a: any, b: any) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime());
+      .sort(
+        (a: any, b: any) =>
+          new Date(a.examDate).getTime() - new Date(b.examDate).getTime(),
+      );
   }, [data?.upcomingExams]);
 
   const getChannelTotal = (method: "online" | "offline") => {
-    const row = (data?.paymentMethodTotals || []).find((r: any) => r.payment_method === method);
-    return { income: Number(row?.income || 0), expense: Number(row?.expense || 0) };
+    const row = (data?.paymentMethodTotals || []).find(
+      (r: any) => r.payment_method === method,
+    );
+    return {
+      income: Number(row?.income || 0),
+      expense: Number(row?.expense || 0),
+    };
   };
   const onlineTotal = getChannelTotal("online");
   const offlineTotal = getChannelTotal("offline");
@@ -205,31 +200,6 @@ export default function DashboardPage() {
         },
       ];
 
-  const fundData = (data?.fundBalances || [])
-    .map((fund: any) => ({
-      fund: fund.fund || t.unassigned,
-      balance: Number(fund.balance) || 0,
-    }))
-    .filter((fund: any) => fund.balance > 0);
-
-  const genderData = data
-    ? [
-        { name: t.boys, value: data.studentsByGender?.male ?? 0 },
-        { name: t.girls, value: data.studentsByGender?.female ?? 0 },
-      ].filter((g) => g.value > 0)
-    : [];
-
-  const channelData = data
-    ? [
-        { channel: t.online, income: onlineTotal.income, expense: onlineTotal.expense },
-        { channel: t.offline, income: offlineTotal.income, expense: offlineTotal.expense },
-      ]
-    : [];
-
-  const channelShareData = channelData
-    .map((c) => ({ name: c.channel, value: c.income + c.expense }))
-    .filter((c) => c.value > 0);
-
   // Rendered twice: right after the stat tiles on mobile, in the sidebar on xl.
   const quickActions = (
     <Card>
@@ -284,7 +254,9 @@ export default function DashboardPage() {
               ? Array.from({ length: 10 }).map((_, i) => (
                   <StatTile key={i} label="" value="" loading size="sm" />
                 ))
-              : cards.map((card) => <StatTile key={card.label} {...card} size="sm" />)}
+              : cards.map((card) => (
+                  <StatTile key={card.label} {...card} size="sm" />
+                ))}
           </div>
 
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -299,7 +271,9 @@ export default function DashboardPage() {
                   value={data.attendanceToday.percentage}
                   variant="percentage"
                   tone="emerald"
-                  subLabel={t.attendanceTaken(localizeDigits(data.attendanceToday.total, lang))}
+                  subLabel={t.attendanceTaken(
+                    localizeDigits(data.attendanceToday.total, lang),
+                  )}
                   to={`/attendance/mark`}
                   size="sm"
                   icon={<CheckCircle2 className="h-5 w-5" strokeWidth={1.75} />}
@@ -317,10 +291,14 @@ export default function DashboardPage() {
                   value={data.overdueFees.totalDue}
                   variant="currency"
                   tone="rose"
-                  subLabel={t.overdueStudents(localizeDigits(data.overdueFees.studentCount, lang))}
+                  subLabel={t.overdueStudents(
+                    localizeDigits(data.overdueFees.studentCount, lang),
+                  )}
                   to={`/fee/overdue-fee`}
                   size="sm"
-                  icon={<AlertTriangle className="h-5 w-5" strokeWidth={1.75} />}
+                  icon={
+                    <AlertTriangle className="h-5 w-5" strokeWidth={1.75} />
+                  }
                 />
                 <StatTile
                   label={t.upcomingExams}
@@ -353,14 +331,22 @@ export default function DashboardPage() {
                   className="flex items-center gap-2.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-sm dark:bg-slate-800"
                 >
                   <span className="w-24 shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-center text-[11px] font-medium tabular-nums text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                    {new Date(exam.examDate).toLocaleDateString("bn-BD", { day: "numeric", month: "short" })}
+                    {new Date(exam.examDate).toLocaleDateString("bn-BD", {
+                      day: "numeric",
+                      month: "short",
+                    })}
                   </span>
                   <span className="min-w-0 flex-1 truncate">
                     <span className="font-medium text-slate-700 dark:text-slate-200">
                       {exam.examName}
                       {exam.className ? ` · ${exam.className}` : ""}
                     </span>
-                    {exam.subject && <span className="text-slate-500 dark:text-slate-400"> — {exam.subject}</span>}
+                    {exam.subject && (
+                      <span className="text-slate-500 dark:text-slate-400">
+                        {" "}
+                        — {exam.subject}
+                      </span>
+                    )}
                   </span>
                   {exam.startTime && exam.endTime && (
                     <span className="shrink-0 text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
@@ -373,128 +359,70 @@ export default function DashboardPage() {
           </Card>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <ChartCard
-              title={t.incomeExpenseTrend}
-              subtitle={t.last12Months}
-              loading={trendsLoading}
-              empty={!trendsLoading && !trends?.incomeExpense?.length}
-              height="h-48"
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={trends?.incomeExpense || []}
-                  margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+            <DeferredContent
+              fallback={
+                <ChartCard
+                  title={t.incomeExpenseTrend}
+                  subtitle={t.last12Months}
+                  loading
+                  height="h-48"
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-                  <XAxis dataKey="period" stroke={axisColor} tick={{ fontSize: 12 }} />
-                  <YAxis stroke={axisColor} tick={{ fontSize: 12 }} width={48} />
-                  <Tooltip
-                    formatter={(value: unknown) => money(Number(value))}
-                    contentStyle={{
-                      backgroundColor: isDark ? "#1e293b" : "#ffffff",
-                      border: `1px solid ${gridColor}`,
-                      borderRadius: 12,
-                      fontSize: 13,
-                    }}
-                    labelStyle={{ color: isDark ? "#e2e8f0" : "#0f172a" }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 13 }} />
-                  <Line
-                    type="monotone"
-                    dataKey="total_income"
-                    name={t.income}
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="total_expense"
-                    name={t.expense}
-                    stroke="#f43f5e"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartCard>
+                  {null}
+                </ChartCard>
+              }
+            >
+              <DashboardChart
+                variant={0}
+                data={data}
+                trends={trends}
+                loading={loading}
+                trendsLoading={trendsLoading}
+              />
+            </DeferredContent>
 
-            <ChartCard
-              title={t.attendanceRate}
-              subtitle={t.attendanceRateSub}
-              loading={trendsLoading}
-              empty={!trendsLoading && !trends?.attendance?.length}
-              height="h-48"
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={trends?.attendance || []}
-                  margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+            <DeferredContent
+              fallback={
+                <ChartCard
+                  title={t.attendanceRate}
+                  subtitle={t.attendanceRateSub}
+                  loading
+                  height="h-48"
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-                  <XAxis dataKey="period" stroke={axisColor} tick={{ fontSize: 12 }} />
-                  <YAxis stroke={axisColor} tick={{ fontSize: 12 }} width={40} domain={[0, 100]} />
-                  <Tooltip
-                    formatter={(value: unknown) => `${Number(value)}%`}
-                    contentStyle={{
-                      backgroundColor: isDark ? "#1e293b" : "#ffffff",
-                      border: `1px solid ${gridColor}`,
-                      borderRadius: 12,
-                      fontSize: 13,
-                    }}
-                    labelStyle={{ color: isDark ? "#e2e8f0" : "#0f172a" }}
-                  />
-                  <Bar
-                    dataKey="percentage"
-                    name={t.attendancePct}
-                    fill="#6366f1"
-                    radius={[6, 6, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
+                  {null}
+                </ChartCard>
+              }
+            >
+              <DashboardChart
+                variant={1}
+                data={data}
+                trends={trends}
+                loading={loading}
+                trendsLoading={trendsLoading}
+              />
+            </DeferredContent>
           </div>
 
           <div className="grid gap-4 xl:grid-cols-3">
-            <ChartCard
-              title={t.fundDistribution}
-              subtitle={t.fundDistributionSub}
-              loading={loading}
-              empty={!loading && fundData.length === 0}
-              height="h-48"
+            <DeferredContent
+              fallback={
+                <ChartCard
+                  title={t.fundDistribution}
+                  subtitle={t.fundDistributionSub}
+                  loading
+                  height="h-48"
+                >
+                  {null}
+                </ChartCard>
+              }
             >
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={fundData}
-                    dataKey="balance"
-                    nameKey="fund"
-                    innerRadius={48}
-                    outerRadius={80}
-                    paddingAngle={3}
-                  >
-                    {fundData.map((entry: any, index: number) => (
-                      <Cell
-                        key={entry.fund}
-                        fill={FUND_COLORS[index % FUND_COLORS.length]}
-                        stroke="none"
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: unknown) => money(Number(value))}
-                    contentStyle={{
-                      backgroundColor: isDark ? "#1e293b" : "#ffffff",
-                      border: `1px solid ${gridColor}`,
-                      borderRadius: 12,
-                      fontSize: 13,
-                    }}
-                    labelStyle={{ color: isDark ? "#e2e8f0" : "#0f172a" }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartCard>
+              <DashboardChart
+                variant={2}
+                data={data}
+                trends={trends}
+                loading={loading}
+                trendsLoading={trendsLoading}
+              />
+            </DeferredContent>
 
             <Card>
               <CardHeader
@@ -525,116 +453,70 @@ export default function DashboardPage() {
               </div>
             </Card>
 
-            <ChartCard
-              title={t.genderRatio}
-              subtitle={t.genderRatioSub}
-              loading={loading}
-              empty={!loading && genderData.length === 0}
-              height="h-48"
+            <DeferredContent
+              fallback={
+                <ChartCard
+                  title={t.genderRatio}
+                  subtitle={t.genderRatioSub}
+                  loading
+                  height="h-48"
+                >
+                  {null}
+                </ChartCard>
+              }
             >
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={genderData}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={48}
-                    outerRadius={80}
-                    paddingAngle={3}
-                  >
-                    {genderData.map((entry, index) => (
-                      <Cell
-                        key={entry.name}
-                        fill={GENDER_COLORS[index % GENDER_COLORS.length]}
-                        stroke="none"
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: unknown) => Number(value).toLocaleString("bn-BD")}
-                    contentStyle={{
-                      backgroundColor: isDark ? "#1e293b" : "#ffffff",
-                      border: `1px solid ${gridColor}`,
-                      borderRadius: 12,
-                      fontSize: 13,
-                    }}
-                    labelStyle={{ color: isDark ? "#e2e8f0" : "#0f172a" }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartCard>
+              <DashboardChart
+                variant={3}
+                data={data}
+                trends={trends}
+                loading={loading}
+                trendsLoading={trendsLoading}
+              />
+            </DeferredContent>
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <ChartCard
-              title={t.onlineVsOffline}
-              subtitle={t.onlineVsOfflineSub}
-              loading={loading}
-              empty={!loading && channelData.every((c) => c.income === 0 && c.expense === 0)}
-              height="h-48"
+            <DeferredContent
+              fallback={
+                <ChartCard
+                  title={t.onlineVsOffline}
+                  subtitle={t.onlineVsOfflineSub}
+                  loading
+                  height="h-48"
+                >
+                  {null}
+                </ChartCard>
+              }
             >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={channelData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-                  <XAxis dataKey="channel" stroke={axisColor} tick={{ fontSize: 12 }} />
-                  <YAxis stroke={axisColor} tick={{ fontSize: 12 }} width={48} />
-                  <Tooltip
-                    formatter={(value: unknown) => money(Number(value))}
-                    contentStyle={{
-                      backgroundColor: isDark ? "#1e293b" : "#ffffff",
-                      border: `1px solid ${gridColor}`,
-                      borderRadius: 12,
-                      fontSize: 13,
-                    }}
-                    labelStyle={{ color: isDark ? "#e2e8f0" : "#0f172a" }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 13 }} />
-                  <Bar dataKey="income" name={t.income} fill="#10b981" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="expense" name={t.expense} fill="#f43f5e" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
+              <DashboardChart
+                variant={4}
+                data={data}
+                trends={trends}
+                loading={loading}
+                trendsLoading={trendsLoading}
+              />
+            </DeferredContent>
 
-            <ChartCard
-              title={t.paymentMethods}
-              subtitle={t.paymentMethodsSub}
-              loading={loading}
-              empty={!loading && channelShareData.length === 0}
-              height="h-48"
+            <DeferredContent
+              fallback={
+                <ChartCard
+                  title={t.paymentMethods}
+                  subtitle={t.paymentMethodsSub}
+                  loading
+                  height="h-48"
+                >
+                  {null}
+                </ChartCard>
+              }
             >
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={channelShareData}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={48}
-                    outerRadius={80}
-                    paddingAngle={3}
-                  >
-                    {channelShareData.map((entry, index) => (
-                      <Cell
-                        key={entry.name}
-                        fill={CHANNEL_COLORS[index % CHANNEL_COLORS.length]}
-                        stroke="none"
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: unknown) => money(Number(value))}
-                    contentStyle={{
-                      backgroundColor: isDark ? "#1e293b" : "#ffffff",
-                      border: `1px solid ${gridColor}`,
-                      borderRadius: 12,
-                      fontSize: 13,
-                    }}
-                    labelStyle={{ color: isDark ? "#e2e8f0" : "#0f172a" }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartCard>
+              <DashboardChart
+                variant={5}
+                data={data}
+                trends={trends}
+                loading={loading}
+                trendsLoading={trendsLoading}
+              />
+            </DeferredContent>
           </div>
         </div>
 
@@ -642,7 +524,10 @@ export default function DashboardPage() {
           <div className="hidden xl:block">{quickActions}</div>
 
           <Card>
-            <CardHeader title={t.importantLinks} subtitle={t.importantLinksSub} />
+            <CardHeader
+              title={t.importantLinks}
+              subtitle={t.importantLinksSub}
+            />
             <div className="space-y-2">
               {(data?.importantLinks || []).length === 0 && !loading && (
                 <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">
@@ -704,7 +589,10 @@ export default function DashboardPage() {
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-300">
-                      {tx.donorName || tx.receiverName || tx.category || tx.fund}
+                      {tx.donorName ||
+                        tx.receiverName ||
+                        tx.category ||
+                        tx.fund}
                     </p>
                     <p className="text-[11px] text-slate-400 dark:text-slate-500">
                       {new Date(tx.entryDate).toLocaleDateString("bn-BD")}
@@ -728,7 +616,11 @@ export default function DashboardPage() {
           <Card>
             <CardHeader
               title={t.overdueList}
-              subtitle={!loading ? t.totalAmount(money(data?.overdueFees?.totalDue || 0)) : undefined}
+              subtitle={
+                !loading
+                  ? t.totalAmount(money(data?.overdueFees?.totalDue || 0))
+                  : undefined
+              }
               actions={
                 <Link
                   className="text-sm font-medium text-indigo-600 dark:text-indigo-400"
@@ -755,7 +647,9 @@ export default function DashboardPage() {
                       {item.studentName}
                     </p>
                     <p className="truncate text-[11px] text-slate-400 dark:text-slate-500">
-                      {t.overdueInvoices(localizeDigits(item.invoiceCount, lang))}
+                      {t.overdueInvoices(
+                        localizeDigits(item.invoiceCount, lang),
+                      )}
                     </p>
                   </div>
                   <span className="shrink-0 text-sm font-bold text-rose-600 dark:text-rose-400">

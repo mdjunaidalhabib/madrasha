@@ -1,4 +1,4 @@
-import { BulkImportModal, BulkImportPreview, BulkImportUploadSteps } from "../common/BulkImport";
+import { BulkImportWizard, BulkImportStatus, type BulkImportColumn } from "../common/BulkImport";
 import {
   useText,
   commonText,
@@ -120,291 +120,129 @@ const BulkAdmissionModal = ({
     return cls?.class_name_bn || id || "-";
   };
 
-  // Arabic-name columns are madrasa-only (the cells below are gated the same way).
-  const previewColumns = [
-    c.serial,
-    t.colNameBn,
-    ...(isMadrasa ? [t.colArabicName] : []),
-    t.colNid,
-    t.gender,
-    t.colDob,
-    t.session,
-    t.colAcademicDivision,
-    t.previousClass,
-    t.currentClass,
-    t.colGuardianPhone,
-    c.fatherName,
-    ...(isMadrasa ? [t.colFatherArabicName] : []),
-    t.fatherNid,
-    t.fatherOccupation,
-    c.motherName,
-    t.motherNid,
-    t.motherOccupation,
-    t.colDivision,
-    t.colDistrict,
-    t.colThana,
-    t.village,
-    c.photo,
+  const field = (
+    key: keyof ExcelAdmissionRow,
+    label: string,
+  ): BulkImportColumn<ExcelAdmissionRow> => ({
+    key,
+    label,
+    render: (row) => row[key] || "-",
+  });
+  const columns: BulkImportColumn<ExcelAdmissionRow>[] = [
+    { key: "serial", label: c.serial, render: (_, index) => index + 1 },
+    {
+      key: "name",
+      label: t.colNameBn,
+      render: (row) => row.name_bn || row.name || "-",
+      emphasis: true,
+    },
+    ...(isMadrasa ? [field("arabic_name", t.colArabicName)] : []),
+    field("nid", t.colNid),
+    { key: "gender", label: t.gender, render: (row) => getGenderName(row.gender) },
+    field("dob", t.colDob),
+    field("academic_year", t.session),
+    {
+      key: "academic_division",
+      label: t.colAcademicDivision,
+      render: (row) => getDivisionName(row.academic_division),
+    },
+    {
+      key: "previous_class",
+      label: t.previousClass,
+      render: (row) => getClassName(row.previous_class),
+    },
+    {
+      key: "current_class",
+      label: t.currentClass,
+      render: (row) => getClassName(row.class_id || row.current_class),
+    },
+    {
+      key: "guardian_phone",
+      label: t.colGuardianPhone,
+      render: (row) => row.guardian_phone || row.parent_phone || "-",
+    },
+    field("father_name", c.fatherName),
+    ...(isMadrasa ? [field("father_arabic_name", t.colFatherArabicName)] : []),
+    field("father_nid", t.fatherNid),
+    field("father_occupation", t.fatherOccupation),
+    field("mother_name", c.motherName),
+    field("mother_nid", t.motherNid),
+    field("mother_occupation", t.motherOccupation),
+    field("division", t.colDivision),
+    field("district", t.colDistrict),
+    field("thana", t.colThana),
+    field("village", t.village),
+    { key: "image", label: c.photo, render: (row) => (row.image ? t.uploaded : "-") },
   ];
-
-  // Upload step is a small dialog; it only widens once there's a table to show.
-  const isUploadStep = !result && excelStudents.length === 0;
-
+  const resultColumns: BulkImportColumn<BulkAdmissionResultRow>[] = [
+    { key: "serial", label: c.serial, render: (row) => row.row },
+    { key: "name", label: c.name, render: (row) => row.name || "-", emphasis: true },
+    { key: "nid", label: t.colNid, render: (row) => row.nid || "-" },
+    {
+      key: "state",
+      label: t.state,
+      render: (row) => (
+        <BulkImportStatus updated={row.action === "update"}>
+          {row.action === "update" ? t.sessionUpdateBadge : t.newAdmissionBadge}
+        </BulkImportStatus>
+      ),
+    },
+    {
+      key: "year",
+      label: t.session,
+      render: (row) =>
+        row.action === "update" && row.previousAcademicYear ? (
+          <>
+            <del>{row.previousAcademicYear}</del>
+            {" → "}
+            {row.academicYear}
+          </>
+        ) : (
+          row.academicYear
+        ),
+    },
+  ];
   return (
-    <BulkImportModal
+    <BulkImportWizard
+      open={open}
+      loading={loading}
       title={t.bulkTitle}
       subtitle={t.bulkSubtitle}
-      compact={isUploadStep}
-      loading={loading}
-      onClose={onClose}
-      onSubmit={!result && excelStudents.length > 0 ? onSubmit : undefined}
+      rows={excelStudents}
+      columns={columns}
+      previewTitle={t.previewStudents}
+      previewSubtitle={t.studentsFound(localizeDigits(excelStudents.length, lang))}
+      clearLabel={t.clearUploaded}
       submitLabel={loading ? t.submitting : t.submitAll}
-    >
-      {result && (
-        <div>
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 sm:text-lg">
-                {t.bulkDone}
-              </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                {t.newAdmissions}{" "}
-                <span className="font-semibold text-emerald-700 dark:text-emerald-400">
-                  {result.inserted}
-                </span>{" "}
-                | {t.sessionUpdates}{" "}
-                <span className="font-semibold text-amber-700 dark:text-amber-400">
-                  {result.updated}
-                </span>
-              </p>
-              <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
-                {t.bulkAwaitingApproval}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={onClear}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 sm:w-auto"
-            >
-              {t.uploadAnother}
-            </button>
-          </div>
-
-          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
-            <div className="max-h-[55dvh] overflow-auto sm:max-h-[420px]">
-              <table className="min-w-[560px] w-full text-xs sm:text-sm">
-                <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800">
-                  <tr>
-                    <th className="whitespace-nowrap border-b px-2.5 py-2 sm:px-3 sm:py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
-                      {c.serial}
-                    </th>
-                    <th className="whitespace-nowrap border-b px-2.5 py-2 sm:px-3 sm:py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
-                      {c.name}
-                    </th>
-                    <th className="whitespace-nowrap border-b px-2.5 py-2 sm:px-3 sm:py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
-                      {t.colNid}
-                    </th>
-                    <th className="whitespace-nowrap border-b px-2.5 py-2 sm:px-3 sm:py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
-                      {t.state}
-                    </th>
-                    <th className="whitespace-nowrap border-b px-2.5 py-2 sm:px-3 sm:py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300">
-                      {t.session}
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {result.preview.map((row) => (
-                    <tr
-                      key={row.row}
-                      className="border-b transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
-                    >
-                      <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">{row.row}</td>
-                      <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3 font-semibold text-slate-900 dark:text-slate-100">
-                        {row.name || "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                        {row.nid || "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                        {row.action === "update" ? (
-                          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
-                            {t.sessionUpdateBadge}
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
-                            {t.newAdmissionBadge}
-                          </span>
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                        {row.action === "update" && row.previousAcademicYear ? (
-                          <>
-                            <span className="text-slate-400 line-through dark:text-slate-500">
-                              {row.previousAcademicYear}
-                            </span>{" "}
-                            → <span className="font-semibold">{row.academicYear}</span>
-                          </>
-                        ) : (
-                          <span className="font-semibold">{row.academicYear}</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isUploadStep && (
-        <BulkImportUploadSteps<ExcelAdmissionRow>
-          templateLabel={t.stepTemplate}
-          uploadLabel={t.stepUpload}
-          hints={[t.requiredFieldsHint, t.genderHint, t.idHint]}
-          downloadLabel={t.downloadTemplate}
-          buttonText={t.uploadAdmissionExcel}
-          loading={loading}
-          requiredColumns={requiredColumns}
-          onDownloadTemplate={onDownloadTemplate}
-          onDataUpload={onDataUpload}
-        />
-      )}
-
-      {!result && excelStudents.length > 0 && (
-        <BulkImportPreview
-          title={t.previewStudents}
-          subtitle={t.studentsFound(localizeDigits(excelStudents.length, lang))}
-          clearLabel={t.clearUploaded}
-          loading={loading}
-          onClear={onClear}
-        >
-          <table className="min-w-[1800px] w-full text-xs sm:text-sm">
-            <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800">
-              <tr>
-                {previewColumns.map((head) => (
-                  <th
-                    key={head}
-                    className="whitespace-nowrap border-b px-2.5 py-2 sm:px-3 sm:py-3 text-start font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300"
-                  >
-                    {head}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-
-            <tbody>
-              {excelStudents.map((student, index) => {
-                const currentClassId = student.class_id || student.current_class;
-
-                return (
-                  <tr
-                    key={index}
-                    className="border-b transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
-                  >
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">{index + 1}</td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3 font-normal text-slate-900 dark:text-slate-100">
-                      {student.name_bn || student.name || "-"}
-                    </td>
-
-                    {isMadrasa && (
-                      <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                        {student.arabic_name || "-"}
-                      </td>
-                    )}
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {student.nid || "-"}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {getGenderName(student.gender)}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {student.dob || "-"}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3 font-semibold text-amber-700">
-                      {student.academic_year || "-"}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {getDivisionName(student.academic_division)}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {getClassName(student.previous_class)}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {getClassName(currentClassId)}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {student.guardian_phone || student.parent_phone || "-"}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {student.father_name || "-"}
-                    </td>
-
-                    {isMadrasa && (
-                      <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                        {student.father_arabic_name || "-"}
-                      </td>
-                    )}
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {student.father_nid || "-"}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {student.father_occupation || "-"}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {student.mother_name || "-"}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {student.mother_nid || "-"}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {student.mother_occupation || "-"}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {student.division || "-"}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {student.district || "-"}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {student.thana || "-"}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {student.village || "-"}
-                    </td>
-
-                    <td className="whitespace-nowrap px-2.5 py-2 sm:px-3 sm:py-3">
-                      {student.image ? t.uploaded : "-"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </BulkImportPreview>
-      )}
-    </BulkImportModal>
+      upload={{
+        templateLabel: t.stepTemplate,
+        uploadLabel: t.stepUpload,
+        hints: [t.requiredFieldsHint, t.genderHint, t.idHint],
+        downloadLabel: t.downloadTemplate,
+        buttonText: t.uploadAdmissionExcel,
+        requiredColumns,
+      }}
+      result={
+        result
+          ? {
+              title: t.bulkDone,
+              inserted: result.inserted,
+              updated: result.updated,
+              insertedLabel: t.newAdmissions,
+              updatedLabel: t.sessionUpdates,
+              notice: t.bulkAwaitingApproval,
+              uploadAnotherLabel: t.uploadAnother,
+              rows: result.preview,
+              columns: resultColumns,
+            }
+          : null
+      }
+      onClose={onClose}
+      onClear={onClear}
+      onSubmit={onSubmit}
+      onDataUpload={onDataUpload}
+      onDownloadTemplate={onDownloadTemplate}
+    />
   );
 };
 

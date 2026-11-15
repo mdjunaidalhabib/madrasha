@@ -26,7 +26,11 @@ import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useLanguageStore } from "@madrasha/shared-ui/src/i18n";
 
 export default function DashboardLayout() {
-  return <PlanAccessBoundary><DashboardShell /></PlanAccessBoundary>;
+  return (
+    <PlanAccessBoundary>
+      <DashboardShell />
+    </PlanAccessBoundary>
+  );
 }
 
 function DashboardShell() {
@@ -36,7 +40,6 @@ function DashboardShell() {
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const location = useLocation();
   const breadcrumbs = useAdminBreadcrumbs();
-  const { date: today, time: nowTime } = useNowLabels();
 
   useEffect(() => {
     document.body.style.overflow = mobileSidebar ? "hidden" : "";
@@ -110,7 +113,7 @@ function DashboardShell() {
         aria-hidden="true"
       />
       <div
-        className={`fixed inset-y-0 start-0 z-50 w-56 max-w-[80%] shadow-xl transition-transform duration-300 ease-out md:hidden ${
+        className={`fixed inset-y-0 start-0 z-50 w-64 max-w-[80%] shadow-xl transition-transform duration-300 ease-out md:hidden ${
           mobileSidebar ? "translate-x-0" : "-translate-x-full rtl:translate-x-full"
         }`}
       >
@@ -122,18 +125,7 @@ function DashboardShell() {
         <Topbar openSidebar={() => setMobileSidebar(true)} />
 
         <main className="flex flex-1 flex-col overflow-y-auto bg-gradient-to-br from-slate-50 via-slate-50 to-indigo-50/30 px-4 pb-4 pt-2 text-slate-900 dark:from-slate-950 dark:via-slate-950 dark:to-slate-950 dark:text-slate-100 md:px-6 md:pb-6 md:pt-4">
-          <PageNavBar
-            breadcrumbs={breadcrumbs}
-            trailing={
-              <div className="mb-4 me-2 hidden shrink-0 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400 md:me-4 md:flex">
-                <Calendar size={14} className="shrink-0" />
-                <span className="truncate">{today}</span>
-                <span className="h-3.5 w-px bg-emerald-300 dark:bg-emerald-800" />
-                <Clock size={14} className="shrink-0" />
-                <span className="tabular-nums">{nowTime}</span>
-              </div>
-            }
-          />
+          <PageNavBar breadcrumbs={breadcrumbs} trailing={<DashboardClock />} />
           {/* min-h-0 এখানে জরুরি — নাহলে flex আইটেম হিসেবে এই div ডিফল্টে
               নিজের কন্টেন্টের সমান height claim করবে, ফলে ভেতরের পেজ (যেমন
               ছাত্র তালিকা) main-এর প্রকৃত খালি জায়গা জানতে পারবে না। */}
@@ -149,6 +141,20 @@ function DashboardShell() {
       </div>
 
       <LockScreen />
+    </div>
+  );
+}
+
+// Keep the second-by-second clock update out of the entire dashboard shell.
+function DashboardClock() {
+  const { date: today, time: nowTime } = useNowLabels();
+  return (
+    <div className="mb-4 me-2 hidden shrink-0 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400 md:me-4 md:flex">
+      <Calendar size={14} className="shrink-0" />
+      <span className="truncate">{today}</span>
+      <span className="h-3.5 w-px bg-emerald-300 dark:bg-emerald-800" />
+      <Clock size={14} className="shrink-0" />
+      <span className="tabular-nums">{nowTime}</span>
     </div>
   );
 }

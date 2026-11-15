@@ -10,8 +10,9 @@ import { isPlatformRootHost } from "./platformHost";
 export function useCustomDomainRedirect(customDomain?: string | null) {
   useEffect(() => {
     if (!customDomain || !isPlatformRootHost()) return;
-    const { pathname, search } = window.location;
-    const rest = pathname.split("/").slice(2).join("/");
-    window.location.replace(`https://${customDomain}/${rest}${search}`);
+    const { pathname, search, hash } = window.location;
+    const segments = pathname.split("/").filter(Boolean);
+    const rest = segments.slice(segments[0] === "m" ? 2 : 1).join("/");
+    window.location.replace(`https://${customDomain}/${rest}${search}${hash}`);
   }, [customDomain]);
 }

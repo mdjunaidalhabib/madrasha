@@ -30,6 +30,10 @@ export class StaffRepository {
     return tx.staff.create({ data });
   }
 
+  findByNidOnTx(tx: TransactionClient, madrasaId: number, nid: string) {
+    return tx.staff.findFirst({ where: { madrasaId, nid, deletedAt: null } });
+  }
+
   /**
    * Acquires a transaction-scoped, namespaced PostgreSQL advisory lock.
    * Mirrors the teacher repository's lock helper so concurrent staff

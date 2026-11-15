@@ -47,16 +47,22 @@ const REPORT_FONT_FACE_CSS = `
 }
 `;
 
-export const installReportFontFace = ({ uiDisplay = "block" }: { uiDisplay?: "block" | "swap" } = {}) => {
-  if (typeof document === "undefined" || document.getElementById(STYLE_ID)) return;
+export const installReportFontFace = ({
+  uiDisplay = "block",
+}: { uiDisplay?: "block" | "swap" } = {}) => {
+  if (typeof document === "undefined" || document.getElementById(STYLE_ID))
+    return;
 
   const style = document.createElement("style");
   style.id = STYLE_ID;
   // Public pages can show fallback text immediately. Report fonts always
   // retain block behavior so print/PDF rendering stays unchanged.
-  style.textContent = REPORT_FONT_FACE_CSS.replace(
-    /font-display: block;(?=\s*}\s*$)/,
-    `font-display: ${uiDisplay};`,
-  );
+  const fontUrl =
+    document
+      .querySelector<HTMLLinkElement>('link[rel="preload"][as="font"]')
+      ?.getAttribute("href") || "/fonts/Kalpurush.ttf";
+  style.textContent = REPORT_FONT_FACE_CSS.split("/fonts/Kalpurush.ttf")
+    .join(fontUrl)
+    .replace(/font-display: block;(?=\s*}\s*$)/, `font-display: ${uiDisplay};`);
   document.head.appendChild(style);
 };

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createStaff,
+  bulkCreateStaff,
   getStaffList,
   getStaffDashboardSummary,
   getStaffById,
@@ -23,10 +24,16 @@ router.use(authMiddleware);
 // NOTE: MUHTAMIM/SUPER_ADMIN always bypass rbacMiddleware (see rbac-policy.ts).
 
 router.post("/", rbacMiddleware("staff.create"), createStaff);
+router.post("/bulk", rbacMiddleware("staff.create"), bulkCreateStaff);
 
 // BULK NAMES - নাম (৩ ভাষা) page; only name_bn/name_ar/name_en. Registered
 // before "/:id" so "names" is never parsed as an :id value.
-router.patch("/names", rbacMiddleware("staff.update"), validate(staffNamesBulkSchema), updateStaffNamesBulk);
+router.patch(
+  "/names",
+  rbacMiddleware("staff.update"),
+  validate(staffNamesBulkSchema),
+  updateStaffNamesBulk,
+);
 
 router.get("/", rbacMiddleware("staff.read"), getStaffList);
 // Must be registered before "/:id" below, otherwise "dashboard-summary"

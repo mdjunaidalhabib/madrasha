@@ -1,6 +1,17 @@
+import LazyResource from "@madrasha/shared-ui/src/components/ui/LazyResource";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Star, Copy, Pencil, Trash2, Plus, CheckCircle2, History, RotateCcw, Loader2 } from "lucide-react";
+import {
+  Star,
+  Copy,
+  Pencil,
+  Trash2,
+  Plus,
+  CheckCircle2,
+  History,
+  RotateCcw,
+  Loader2,
+} from "lucide-react";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
@@ -23,7 +34,6 @@ import {
   setTenantDefault,
   listTemplateVersions,
   restoreTemplateVersion,
-  type TemplateDetailDto,
   type TemplateListItemDto,
   type TemplateVersionDto,
   type TemplateVersionListItemDto,
@@ -81,7 +91,9 @@ function TemplateThumb({
       className="mx-auto mb-3 flex w-full items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-slate-50"
       style={{ maxWidth: THUMB_MAX_WIDTH, height: THUMB_MAX_HEIGHT }}
     >
-      <div style={{ width: version.width * scale, height: version.height * scale, overflow: "hidden" }}>
+      <div
+        style={{ width: version.width * scale, height: version.height * scale, overflow: "hidden" }}
+      >
         <DocumentPreview
           layout={{
             id: kind,
@@ -115,7 +127,6 @@ export default function TenantDocumentTemplateLibrary({
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<TemplateListItemDto[]>([]);
-  const [details, setDetails] = useState<Record<number, TemplateDetailDto>>({});
   const [previewRow, setPreviewRow] = useState<Record<string, any> | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [busyAction, setBusyAction] = useState<"clone" | "default" | "delete" | null>(null);
@@ -135,14 +146,7 @@ export default function TenantDocumentTemplateLibrary({
       const list = await listTemplates(type);
       setItems(list);
 
-      if (list.length) {
-        const [detailEntries, row] = await Promise.all([
-          Promise.all(list.map((item) => getTemplate(item.id).then((d) => [item.id, d] as const))),
-          getPreviewData(list[0].id).catch(() => null),
-        ]);
-        setDetails(Object.fromEntries(detailEntries));
-        setPreviewRow(row);
-      }
+      setPreviewRow(list.length ? await getPreviewData(list[0].id).catch(() => null) : null);
     } catch {
       setError(t.listLoadFailed);
     } finally {
@@ -155,7 +159,8 @@ export default function TenantDocumentTemplateLibrary({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
 
-  const openInDesigner = (id: number) => navigate(`/talimat/settings/documents/${documentTypeToUrlSlug(type)}/${id}/edit`);
+  const openInDesigner = (id: number) =>
+    navigate(`/talimat/settings/documents/${documentTypeToUrlSlug(type)}/${id}/edit`);
 
   const handleCreate = async (name: string) => {
     setBusyId(-1);
@@ -233,7 +238,9 @@ export default function TenantDocumentTemplateLibrary({
     <section className="rounded-2xl border bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t.libraryTitle(title)}</h2>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+            {t.libraryTitle(title)}
+          </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">{t.librarySubtitle}</p>
         </div>
         {canManage && (
@@ -260,7 +267,11 @@ export default function TenantDocumentTemplateLibrary({
         />
       )}
 
-      {error && <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">{error}</div>}
+      {error && (
+        <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">
+          {error}
+        </div>
+      )}
 
       {items.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-600 dark:text-slate-400">
@@ -269,24 +280,40 @@ export default function TenantDocumentTemplateLibrary({
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => {
-            const detail = details[item.id];
-            const version = detail?.published || detail?.draft;
             const isTenantOwned = item.scope === "TENANT";
 
             return (
-              <div key={item.id} className="min-w-0 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+              <div
+                key={item.id}
+                className="min-w-0 rounded-xl border border-slate-200 p-3 dark:border-slate-700"
+              >
                 {/* Thumbnail swatch intentionally stays light — it's the paper backdrop behind an actual document render, same as the report print-preview-wrap. */}
-                {version ? (
-                  <TemplateThumb version={version} kind={DOCUMENT_TYPE_TO_KIND[type]} row={previewRow || {}} />
-                ) : (
-                  <div
-                    className="mx-auto mb-3 w-full rounded-lg border border-slate-100 bg-slate-50"
-                    style={{ maxWidth: THUMB_MAX_WIDTH, height: THUMB_MAX_HEIGHT }}
-                  />
-                )}
+                <LazyResource key={`${item.id}:${item.updated_at}`} id={item.id} load={getTemplate}>
+                  {(detail) => {
+                    const version = detail.published || detail.draft;
+                    return (
+                      <>
+                        {version ? (
+                          <TemplateThumb
+                            version={version}
+                            kind={DOCUMENT_TYPE_TO_KIND[type]}
+                            row={previewRow || {}}
+                          />
+                        ) : (
+                          <div
+                            className="mx-auto mb-3 w-full rounded-lg border border-slate-100 bg-slate-50"
+                            style={{ maxWidth: THUMB_MAX_WIDTH, height: THUMB_MAX_HEIGHT }}
+                          />
+                        )}
+                      </>
+                    );
+                  }}
+                </LazyResource>
 
                 <div className="mb-2 flex items-center gap-1.5">
-                  <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-200">{item.name}</span>
+                  <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-200">
+                    {item.name}
+                  </span>
                   {item.is_tenant_default && (
                     <span title={t.yourDefault} className="text-amber-500">
                       <CheckCircle2 size={14} />
@@ -458,11 +485,18 @@ function VersionHistoryModal({
   };
 
   return (
-    <Modal open title={t.historyTitle(template.name)} onClose={onClose} maxWidthClassName="max-w-lg">
+    <Modal
+      open
+      title={t.historyTitle(template.name)}
+      onClose={onClose}
+      maxWidthClassName="max-w-lg"
+    >
       {loading ? (
         <SkeletonCard lines={4} />
       ) : error ? (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">{error}</div>
+        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">
+          {error}
+        </div>
       ) : versions.length === 0 ? (
         <div className="text-sm text-slate-500 dark:text-slate-400">{t.noVersions}</div>
       ) : (
@@ -473,7 +507,9 @@ function VersionHistoryModal({
               className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-700"
             >
               <div className="text-sm">
-                <span className="font-semibold text-slate-800 dark:text-slate-200">v{v.version_no}</span>{" "}
+                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                  v{v.version_no}
+                </span>{" "}
                 <span
                   className={`ms-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
                     v.status === "PUBLISHED"
