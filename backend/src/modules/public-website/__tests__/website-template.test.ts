@@ -26,6 +26,13 @@ const makeTx = () => ({
 
 describe("default website template", () => {
   afterEach(() => vi.restoreAllMocks());
+  it("preserves donation demo publication and defaults older demo content to visible", () => {
+    const template = structuredClone(DEFAULT_WEBSITE_TEMPLATE);
+    template.donation.isPublished = 0;
+    expect(websiteTemplateSchema.parse(template).donation.isPublished).toBe(0);
+    const { isPublished: _published, ...olderDonation } = template.donation;
+    expect(websiteTemplateSchema.parse({ ...template, donation: olderDonation }).donation.isPublished).toBe(1);
+  });
 
   it("resets only the selected website from the latest saved demo, even when automatic setup is off", async () => {
     const tx = makeTx();

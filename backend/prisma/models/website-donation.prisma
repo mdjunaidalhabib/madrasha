@@ -1,0 +1,10 @@
+// Independent of demo content: resets cannot grant access or replace payment accounts.
+model WebsiteDonationSettings {
+  madrasaId Int @id @map("madrasa_id")
+  allowed Boolean @default(false)
+  config Json @default("{}")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  madrasa Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@map("website_donation_settings")
+}

@@ -1,3 +1,200 @@
+.public-mobile-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: var(--website-accent);
+}
+
+.public-mobile-menu {
+  position: fixed;
+  inset: 0;
+  margin: 0;
+  margin-right: auto;
+  width: min(360px, 88vw);
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 8px 0 32px #0f172a26;
+}
+
+.public-mobile-menu::backdrop {
+  background: #0f172a80;
+  backdrop-filter: blur(5px);
+}
+
+.public-mobile-menu[open] {
+  animation: public-menu-enter 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.public-mobile-menu__content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.public-mobile-menu__brand {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-start;
+  gap: 12px;
+  padding: max(24px, env(safe-area-inset-top)) 20px 24px;
+  border-bottom: 1px solid #e2e8f080;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--menu-accent) 10%, white), white);
+}
+
+.public-mobile-menu__logo {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: white;
+  color: var(--menu-accent);
+}
+
+.public-mobile-menu__close {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #fecaca;
+  border-radius: 50%;
+  background: #fef2f2;
+  color: #dc2626;
+  transition: background 160ms, color 160ms;
+}
+
+.public-mobile-menu__close:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.public-mobile-menu__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px 12px;
+  scrollbar-width: thin;
+}
+
+.public-mobile-menu__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+  transition: background 160ms, color 160ms;
+}
+
+.public-mobile-menu__link:hover { background: #f8fafc; }
+.public-mobile-menu__link.is-active {
+  border-color: color-mix(in srgb, var(--menu-accent) 15%, white);
+  background: color-mix(in srgb, var(--menu-accent) 7%, white);
+  color: var(--menu-accent);
+}
+
+.public-mobile-menu__icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.is-active .public-mobile-menu__icon {
+  background: var(--menu-accent);
+  color: var(--menu-on-accent);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--menu-accent) 20%, transparent);
+}
+
+.public-mobile-menu__arrow { flex-shrink: 0; opacity: 0.45; }
+.is-active .public-mobile-menu__arrow { opacity: 1; }
+
+.public-mobile-menu__footer {
+  flex-shrink: 0;
+  padding: 16px 20px max(16px, env(safe-area-inset-bottom));
+  border-top: 1px solid #e2e8f080;
+  background: #f8fafc;
+}
+
+.public-mobile-menu__admission,
+.public-mobile-menu__login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.public-mobile-menu__admission {
+  background: var(--menu-accent);
+  color: var(--menu-on-accent);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--menu-accent) 20%, transparent);
+}
+
+.public-mobile-menu__login {
+  margin-top: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
+}
+
+.public-mobile-menu :is(a, button):focus-visible,
+.public-mobile-menu-trigger:focus-visible {
+  outline: 2px solid var(--menu-accent, var(--website-accent));
+  outline-offset: 3px;
+}
+
+@keyframes public-menu-enter {
+  from { opacity: 0; translate: -100% 0; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-mobile-menu[open] { animation: none; }
+  .public-mobile-menu__link { transition: none; }
+}
+
+@media (max-height: 480px) {
+  .public-mobile-menu__content { overflow-y: auto; }
+  .public-mobile-menu__scroll { flex: none; overflow: visible; }
+}
+
+@media (min-width: 1024px) {
+  .public-mobile-menu-trigger { display: none; }
+}
+
 .public-website-flow {
   display: flex;
   flex-direction: column;

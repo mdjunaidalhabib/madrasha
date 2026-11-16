@@ -2,6 +2,7 @@ import { defineBilingualText } from "@madrasha/shared-ui/src/i18n";
 
 export const websiteTemplateMenuText = defineBilingualText({
   bn: {
+    donation: "অনুদান (ডেমো)",
     teachers: "{{teacher}}বৃন্দ (ডেমো)",
     general: "সাধারণ সেটিংস",
     appearance: "থিম ও হিরো ব্যানার",
@@ -17,6 +18,7 @@ export const websiteTemplateMenuText = defineBilingualText({
     pages: "পেজ কন্টেন্ট",
   },
   en: {
+    donation: "Donations (demo)",
     teachers: "Demo {{teacher}}s",
     general: "General settings",
     appearance: "Theme & hero banner",

@@ -6,6 +6,7 @@ import AuthGuard from "../components/guards/AuthGuard";
 import ModuleGuard from "../components/guards/ModuleGuard";
 import PermissionGuard from "../components/guards/PermissionGuard";
 import PageLoader from "@madrasha/shared-ui/src/components/ui/PageLoader";
+import WebsiteSettingsSkeleton from "../features/admin/website-builder/WebsiteSettingsSkeleton";
 import LoginPage from "../features/auth/LoginPage";
 const ForgotPasswordPage = lazy(() => import("../features/auth/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("../features/auth/ResetPasswordPage"));
@@ -587,12 +588,14 @@ const madrasaAdminChildren = [
   },
 
   {
-    // ওয়েবসাইট সেটিংস আলাদা, standalone পেজ - সাধারণ সেটিংস হাবের ট্যাব-মেনুর
-    // অংশ না (নিচের SettingsLayout দেখুন), নিজস্ব সরাসরি সাইডবার শর্টকাট আছে।
+    path: "donations",
+    element: <Navigate to="/settings/website?tab=donations" replace />,
+  },
+  {
     path: "settings/website",
     element: (
       <ModuleGuard module="website">
-        <PermissionGuard permission="website.manage">{withSuspense(<AdminWebsiteSettingsPage />)}</PermissionGuard>
+        <PermissionGuard permission="website.manage"><Suspense fallback={<WebsiteSettingsSkeleton />}><AdminWebsiteSettingsPage /></Suspense></PermissionGuard>
       </ModuleGuard>
     ),
   },

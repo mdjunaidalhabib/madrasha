@@ -38,6 +38,7 @@ export type TemplateItem = { isPublished: number; sortOrder?: number } & Record<
 >;
 export type WebsiteTemplate = {
   enabled: boolean;
+  donation: import("@madrasha/shared-ui/src/website/donations").DonationDemoContent;
   settings: TemplateSettings;
   pages: TemplateItem[];
   notices: TemplateItem[];

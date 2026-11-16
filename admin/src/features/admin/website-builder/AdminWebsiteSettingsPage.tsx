@@ -2,13 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { commonText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { confirmWebsiteReset } from "@madrasha/shared-ui/src/website/confirmWebsiteReset";
 import { websiteText } from "./website.text";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import DonationSettings from "./DonationSettings";
+import WebsiteSettingsSkeleton, { websiteSettingsContentClass, websiteSettingsGridClass } from "./WebsiteSettingsSkeleton";
 import {
   Award,
   Bell,
   ExternalLink,
   FileText,
   GalleryHorizontalEnd,
+  Heart,
   Globe,
   Images,
   Link2,
@@ -28,7 +31,6 @@ import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
-import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import BrandImageBox from "../../../components/settings/BrandImageBox";
 import SectionCard from "../../../components/settings/SectionCard";
 import { ToggleSwitch, PublishToggle } from "../../../components/settings/ToggleSwitch";
@@ -44,6 +46,7 @@ import {
   deleteWebsiteSlide,
   deleteWebsiteVideo,
   getWebsiteSettings,
+  getDonationSettings,
   resetOwnWebsite,
   saveWebsiteCommitteeMember,
   saveWebsiteGalleryItem,
@@ -173,6 +176,7 @@ const toggleFields: Array<[keyof WebsiteSettingsPayload, string, string]> = [
 ];
 
 type TabKey =
+  | "donations"
   | "general"
   | "appearance"
   | "notice-bar"
@@ -341,7 +345,14 @@ export default function AdminWebsiteSettingsPage() {
   const setSectionToggle = useSectionTogglesStore((s) => s.setToggle);
   const fetchSectionToggles = useSectionTogglesStore((s) => s.fetchToggles);
 
-  const [tab, setTab] = useState<TabKey>("general");
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState<TabKey>(searchParams.get("tab") === "donations" ? "donations" : "general");
+  const [donationAllowed, setDonationAllowed] = useState(false);
+  useEffect(() => {
+    let current = true;
+    getDonationSettings().then((data) => { if (current) setDonationAllowed(data.allowed === true); }).catch(() => {});
+    return () => { current = false; };
+  }, []);
 
   const [form, setForm] = useState<WebsiteSettingsPayload>(defaultSettings);
   // Mirrors `form` synchronously so queued saves always read the latest
@@ -1018,21 +1029,16 @@ export default function AdminWebsiteSettingsPage() {
     { key: "committee", label: t.tabs["committee"], icon: Users, badge: committee.length },
     { key: "social", label: t.tabs["social"], icon: Share2 },
     { key: "pages", label: t.pageContent, icon: FileText },
+    ...(donationAllowed ? [{ key: "donations" as const, label: lang === "bn" ? "অনুদান" : "Donations", icon: Heart }] : []),
   ];
 
   if (loading) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        <PageHeader title={t.title} />
-        <SkeletonCard lines={3} />
-        <SkeletonCard lines={3} />
-      </div>
-    );
+    return <WebsiteSettingsSkeleton tab={tab} menuCount={tabs.length} />;
   }
 
   return (
     <fieldset disabled={resetting} className="min-w-0 space-y-6 pb-8 md:pb-12">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-24">
+      <div className={websiteSettingsGridClass}>
         <aside className="settings-sidebar no-print self-start rounded-2xl border border-gray-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-4">
           <div className="mb-2 rounded-lg bg-blue-800 px-3 py-2 text-white">
             <h2 className="text-base font-bold">{t.settingsMenu}</h2>
@@ -1077,7 +1083,7 @@ export default function AdminWebsiteSettingsPage() {
           </div>
         </aside>
 
-        <div className="min-w-0 max-w-4xl space-y-6">
+        <div className={websiteSettingsContentClass}>
       <PageHeader
         title={t.title}
         subtitle={t.subtitle}
@@ -1097,7 +1103,7 @@ export default function AdminWebsiteSettingsPage() {
         }
       />
 
-      <div
+      {tab === "general" && <div
         className={`flex items-center justify-between gap-4 rounded-2xl border-2 p-5 shadow-sm transition ${
           (form.is_published as number) !== 0
             ? "border-green-200 bg-green-50/60 dark:border-green-900/50 dark:bg-green-950/20"
@@ -1140,8 +1146,9 @@ export default function AdminWebsiteSettingsPage() {
             onChange={(v) => handleToggle("is_published", v)}
           />
         )}
-      </div>
+      </div>}
 
+      {tab === "donations" && <DonationSettings />}
       {tab === "general" && (
         <div className="space-y-6">
           <SectionCard

@@ -1,4 +1,5 @@
 import { defineText } from "@madrasha/shared-ui/src/i18n";
+import { websiteShellText } from "./websiteShell.text";
 
 export const websiteText = defineText({
   bn: {
@@ -90,9 +91,7 @@ export const websiteText = defineText({
     deleteMemberMessage: (name: string) => `"${name}" কে স্থায়ীভাবে মুছে ফেলতে চান?`,
     memberDeleted: "সদস্য মুছে ফেলা হয়েছে।",
     deleteFailed: "মুছতে সমস্যা হয়েছে।",
-    title: "ওয়েবসাইট সেটিংস",
-    settingsMenu: "সেটিংস মেনু",
-    subtitle: "প্রতিষ্ঠানের পাবলিক ওয়েবসাইটের নাম, লোগো, ব্যানার, নোটিশ, গ্যালারি ও পেজ কন্টেন্ট এখান থেকে পরিচালনা করুন।",
+    ...websiteShellText.bn,
     viewWebsite: "ওয়েবসাইট দেখুন",
     websitePublished: "ওয়েবসাইট প্রকাশিত",
     live: "লাইভ আছে",
@@ -281,9 +280,7 @@ export const websiteText = defineText({
     deleteMemberMessage: (name) => `Permanently delete "${name}"?`,
     memberDeleted: "Member deleted.",
     deleteFailed: "Could not delete.",
-    title: "Website Settings",
-    settingsMenu: "Settings menu",
-    subtitle: "Manage the public website's name, logo, banner, notices, gallery and page content here.",
+    ...websiteShellText.en,
     viewWebsite: "View website",
     websitePublished: "Website published",
     live: "Live",

@@ -1,4 +1,5 @@
 import { Request } from "express";
+import { publicDonationConfig } from "./website-donation.service";
 import { publicDemoTeachers } from "./website-demo-teachers";
 import { WebsiteAdmissionStatus, WebsiteStatus } from "@prisma/client";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../shared/errors";
@@ -140,6 +141,7 @@ export class WebsiteService {
 
     return {
       madrasa: toMadrasaApiDto(madrasa),
+      donation: publicDonationConfig(madrasa.websiteDonations ?? null),
       settings: toWebsiteSettingsApiDto(settings),
       pages: pages.map(toWebsitePageApiDto),
       notices: notices.map(toWebsiteNoticeApiDto),

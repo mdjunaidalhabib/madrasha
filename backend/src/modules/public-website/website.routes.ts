@@ -4,6 +4,7 @@ import { superAdminMiddleware } from "../../shared/middleware/superAdmin.middlew
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
 import {
+  getDonationAccess, updateDonationAccess, getOwnDonationSettings, saveOwnDonationSettings, getOwnDonationDemo,
   deleteAdmissionApplication,
   deleteWebsiteCommitteeMember,
   deleteWebsiteGalleryItem,
@@ -47,6 +48,11 @@ router.post("/public/:slug/admission-full", submitFullAdmissionApplication);
 const adminGuard = [tenantMiddleware, authMiddleware, rbacMiddleware("website.manage")];
 
 router.get("/admin/settings", ...adminGuard, getWebsiteSettings);
+router.get("/admin/donations", ...adminGuard, getOwnDonationSettings);
+router.get("/admin/donations/demo", ...adminGuard, getOwnDonationDemo);
+router.put("/admin/donations", ...adminGuard, saveOwnDonationSettings);
+router.get("/super/madrasas/:id/donations", superAdminMiddleware, getDonationAccess);
+router.patch("/super/madrasas/:id/donations", superAdminMiddleware, updateDonationAccess);
 router.put("/admin/settings", ...adminGuard, upsertWebsiteSettings);
 router.post("/admin/reset", ...adminGuard, resetOwnInstitutionWebsite);
 router.put("/admin/pages", ...adminGuard, upsertWebsitePage);

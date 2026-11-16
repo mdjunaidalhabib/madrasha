@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { websiteDonationService } from "./website-donation.service";
 import { ApiError, BadRequestError } from "../../shared/errors";
 import { HttpStatus } from "../../shared/constants";
 import { websiteService, resolveTenantId } from "./website.service";
@@ -7,6 +8,35 @@ import { t } from "../../shared/i18n";
 import { brandIconService } from "./brand-icon.service";
 import { getWebsiteTemplate, saveWebsiteTemplate, uploadWebsiteTemplateImage, resetWebsiteToTemplate } from "./website-template.service";
 
+export const getDonationAccess = async (req: Request, res: Response) => {
+  try { res.json({ data: await websiteDonationService.get(Number(req.params.id)) }); }
+  catch (error) { respondError(res, error); }
+};
+export const updateDonationAccess = async (req: Request, res: Response) => {
+  try { res.json({ data: await websiteDonationService.setAccess(Number(req.params.id), req.body) }); }
+  catch (error) { respondError(res, error); }
+};
+export const getOwnDonationSettings = async (req: Request, res: Response) => {
+  try {
+    const id = req.tenant?.madrasa_id;
+    if (!id) throw new BadRequestError("Invalid institution ID");
+    res.json({ data: await websiteDonationService.get(id) });
+  } catch (error) { respondError(res, error); }
+};
+export const getOwnDonationDemo = async (req: Request, res: Response) => {
+  try {
+    const id = req.tenant?.madrasa_id;
+    if (!id) throw new BadRequestError("Invalid institution ID");
+    res.json({ data: await websiteDonationService.demo(id) });
+  } catch (error) { respondError(res, error); }
+};
+export const saveOwnDonationSettings = async (req: Request, res: Response) => {
+  try {
+    const id = req.tenant?.madrasa_id;
+    if (!id) throw new BadRequestError("Invalid institution ID");
+    res.json({ data: await websiteDonationService.save(id, req.body) });
+  } catch (error) { respondError(res, error); }
+};
 export const resetInstitutionWebsite = async (req: Request, res: Response) => {
   try {
     await resetWebsiteToTemplate(Number(req.params.id));

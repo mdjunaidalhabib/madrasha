@@ -3,6 +3,16 @@ import { WEBSITE_THEME_KEYS } from "./website.constants";
 import { DEFAULT_WEBSITE_DEMO_TEACHERS, websiteDemoTeachersSchema } from "./website-demo-teachers";
 
 const text = (max = 190) => z.string().max(max);
+export const DEFAULT_DONATION_DEMO = {
+  isPublished: 1 as const,
+  title: "শিক্ষার আলো ছড়িয়ে দিতে পাশে থাকুন",
+  description: "{{institution_name}}-এর শিক্ষার্থীদের পড়াশোনা ও প্রতিষ্ঠানের উন্নয়নে আপনার সহযোগিতা গুরুত্বপূর্ণ। আপনার সামর্থ্য অনুযায়ী অনুদান দিয়ে আমাদের এই পথচলায় অংশ নিন।",
+  instructions: "প্রতিষ্ঠানের দেওয়া পেমেন্ট মাধ্যমে অনুদান পাঠান। রসিদ ও প্রাপ্তি নিশ্চিত করতে প্রতিষ্ঠানের অফিসে যোগাযোগ করুন।",
+};
+const donationDemoSchema = z.object({
+  title: text(150).trim().min(1), description: text(4000), instructions: text(2000),
+  isPublished: z.union([z.literal(0), z.literal(1)]).default(1),
+}).strict();
 const url = (max = 255) =>
   text(max).refine(
     (value) => !value || /^https?:\/\//i.test(value) || /^\/(?!\/)/.test(value),
@@ -20,6 +30,7 @@ const link = text(255).refine(
 export const websiteTemplateSchema = z
   .object({
     enabled: z.boolean(),
+    donation: donationDemoSchema.default(() => ({ ...DEFAULT_DONATION_DEMO })),
     teachers: websiteDemoTeachersSchema.default(() =>
       structuredClone(DEFAULT_WEBSITE_DEMO_TEACHERS),
     ),
@@ -131,6 +142,7 @@ export type WebsiteTemplate = z.infer<typeof websiteTemplateSchema>;
 
 export const DEFAULT_WEBSITE_TEMPLATE: WebsiteTemplate = {
   enabled: true,
+  donation: { ...DEFAULT_DONATION_DEMO },
   teachers: structuredClone(DEFAULT_WEBSITE_DEMO_TEACHERS),
   settings: {
     heroTitle: "জ্ঞান, আদর্শ ও সুন্দর আগামীর পথে",

@@ -62,7 +62,7 @@ export class SidebarService {
     // "admission" filter above).
     let modules = madrasaModules
       .map((mm) => mm.module)
-      .filter((module) => module.keyName !== "admission" && module.keyName !== "activity");
+      .filter((module) => module.keyName !== "admission" && module.keyName !== "activity" && module.keyName !== "donations");
 
     // "attendance" (উপস্থিতি - manual bulk-mark + biometric devices) used to
     // be children ("attendance_mark", "kiosk_devices") of the ছাত্র
@@ -164,7 +164,7 @@ export class SidebarService {
       this.repository.countOverdueFeeStudents(madrasaId),
     ]);
 
-    return modules.map((mod) => {
+    return modules.sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999)).map((mod) => {
       const disabled = !isModuleAllowed(roleKey, permissionKeys, mod.keyName || "");
       const children: SidebarChildItem[] = features
         .filter((f) => f.moduleId === mod.id)

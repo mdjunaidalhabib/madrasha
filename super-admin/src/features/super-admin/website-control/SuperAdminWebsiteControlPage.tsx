@@ -17,6 +17,7 @@ import {
 import { websiteControlText } from "./websiteControl.text";
 import { Globe2, LayoutTemplate, RotateCcw } from "lucide-react";
 import WebsiteTemplateEditor from "./WebsiteTemplateEditor";
+import DonationAccessControl from "./DonationAccessControl";
 import InstitutionWebsiteLink from "../../../components/super-admin/InstitutionWebsiteLink";
 
 type WebsiteStatus = "active" | "limited" | "disabled";
@@ -241,6 +242,7 @@ export default function SuperAdminWebsiteControlPage() {
             <Button disabled={!madrasaId || loading || busy}>{t.updateStatus}</Button>
             {selected && <InstitutionWebsiteLink slug={selected.slug} />}
           </div>
+          <DonationAccessControl key={madrasaId} institutionId={madrasaId} disabled={!selected || loading || busy} />
           <fieldset disabled={!selected || loading || busy || themeLoading || theme === null} className="border-t border-slate-200 pt-5 dark:border-slate-700">
             <legend className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tx("ওয়েবসাইট থিম", "Website theme")}</legend>
             <p className="mb-3 text-xs leading-6 text-slate-500">{themeLoading ? tx("থিম লোড হচ্ছে…", "Loading theme…") : tx("থিম বেছে নিলে সঙ্গে সঙ্গে সংরক্ষণ হবে।", "Choose a theme to save it immediately.")}</p>

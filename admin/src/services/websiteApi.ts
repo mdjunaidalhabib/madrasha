@@ -1,4 +1,8 @@
 import api, { cachedGet } from "./api";
+export async function getDonationSettings(): Promise<{ allowed: boolean }> {
+  const res = await api.get("/website/admin/donations", { silent: true });
+  return res.data.data;
+}
 
 export async function resetOwnWebsite() {
   const res = await api.post("/website/admin/reset", undefined, { silent: true, timeout: 45_000 });

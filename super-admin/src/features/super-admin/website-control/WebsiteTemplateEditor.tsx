@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import InlineTemplateField, { TemplateFieldEditingContext } from "./InlineTemplateField";
 import { WEBSITE_THEMES } from "@madrasha/shared-ui/src/website/themes";
 import WebsiteThemePreview from "@madrasha/shared-ui/src/website/WebsiteThemePreview";
 import {
@@ -12,6 +13,7 @@ import {
   Eye,
   FileText,
   GalleryHorizontalEnd,
+  Heart,
   Globe2,
   Image,
   Images,
@@ -51,6 +53,7 @@ import type {
 const inputClass =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 type Tab =
+  | "donation"
   | "teachers"
   | "general"
   | "appearance"
@@ -164,20 +167,29 @@ const sectionFields: [keyof TemplateSettings, string, string][] = [
   ["showContact", "যোগাযোগ", "Contact"],
 ];
 
-function FieldInput({
+function FieldInput(props: { field: Field; value: string; onChange: (value: string) => void; bn: boolean }) {
+  return <InlineTemplateField label={props.bn ? props.field.bn : props.field.en} value={props.value} required={props.field.required} max={props.field.max ?? (props.field.multiline ? 20000 : 190)} image={props.field.image} bn={props.bn} onApply={props.onChange}>
+    {(draft, onChange, onBusyChange) => <TemplateFieldEditor {...props} value={draft} onChange={onChange} onBusyChange={onBusyChange} />}
+  </InlineTemplateField>;
+}
+
+function TemplateFieldEditor({
   field,
   value,
   onChange,
   bn,
+  onBusyChange,
 }: {
   field: Field;
   value: string;
   onChange: (value: string) => void;
   bn: boolean;
+  onBusyChange: (busy: boolean) => void;
 }) {
   const [failed, setFailed] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  useEffect(() => { onBusyChange(uploading); }, [uploading, onBusyChange]);
   const fieldId = useId();
   const fileInput = useRef<HTMLInputElement>(null);
   const latestChange = useRef(onChange);
@@ -335,7 +347,7 @@ function Toggle({
       aria-checked={checked}
       aria-label={label}
       onClick={onChange}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-500/30 ${checked ? "bg-teal-600" : "bg-slate-300 dark:bg-slate-600"}`}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/30 ${checked ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"}`}
     >
       <span
         className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-all ${checked ? "left-[22px]" : "left-0.5"}`}
@@ -531,6 +543,12 @@ function TemplatePreview({
             </div>
           </div>
         )}
+        {data.donation.isPublished !== 0 && <div className="rounded-xl border border-teal-100 bg-teal-50/50 p-3">
+          <p className="mb-2 flex items-center gap-1 text-[8px] font-semibold text-teal-700"><Heart size={11} />{bn ? "অনুদান — ডেমো" : "Donations — demo"}</p>
+          <h5 className="text-[11px] font-semibold">{personalize(data.donation.title)}</h5>
+          <p className="mt-2 line-clamp-3 text-[9px] leading-relaxed text-slate-500">{personalize(data.donation.description)}</p>
+          <p className="mt-2 rounded-lg border border-dashed border-teal-200 p-2 text-[8px] text-teal-700">{bn ? "অনুমতি পেলে প্রতিষ্ঠান নিজের পেমেন্ট মাধ্যম যোগ করবে" : "Approved institutions add their own payment methods"}</p>
+        </div>}
         {!!s.showMuhtamim && s.muhtamimMessage && (
           <div className="rounded-xl border border-slate-100 p-3">
             <Quote size={14} style={{ color: s.themeColor }} />
@@ -566,6 +584,8 @@ export default function WebsiteTemplateEditor() {
   const [tab, setTab] = useState<Tab>("general");
   const [mobile, setMobile] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [activeEdits, setActiveEdits] = useState(0);
+  const editingChanged = useCallback((editing: boolean) => setActiveEdits((count) => Math.max(0, count + (editing ? 1 : -1))), []);
   const dirty = !!data && JSON.stringify(data) !== saved;
   const load = () => {
     setLoading(true);
@@ -587,14 +607,14 @@ export default function WebsiteTemplateEditor() {
   };
   useEffect(load, []);
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty && activeEdits === 0) return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  }, [dirty, activeEdits]);
   const patch = (next: Partial<WebsiteTemplate>) => {
     setData((prev) => (prev ? { ...prev, ...next } : prev));
     setSuccess(false);
@@ -602,7 +622,7 @@ export default function WebsiteTemplateEditor() {
   const setting = (key: keyof TemplateSettings, value: string | number) =>
     data && patch({ settings: { ...data.settings, [key]: value } });
   const save = async () => {
-    if (!data) return;
+    if (!data || activeEdits > 0) return;
     setSaving(true);
     setError("");
     setSuccess(false);
@@ -626,6 +646,7 @@ export default function WebsiteTemplateEditor() {
     }
   };
   const tabs = [
+    { id: "donation", icon: Heart },
     { id: "general", icon: Settings2 },
     { id: "appearance", icon: Palette },
     { id: "notice-bar", icon: Megaphone },
@@ -678,6 +699,10 @@ export default function WebsiteTemplateEditor() {
       </div>
     );
   const activeTab = tabs.find((item) => item.id === tab)!;
+  const sectionSetting = ({
+    "notice-bar": "showNoticeBar", notices: "showNotices", gallery: "showGallery", video: "showVideoGallery",
+    slider: "showSlider", muhtamim: "showMuhtamim", sovapoti: "showSovapoti", teachers: "showTeachers", committee: "showCommittee",
+  } as Partial<Record<Tab, keyof TemplateSettings>>)[tab];
   const renderSetting = (field: Field) => (
     <FieldInput
       key={field.key}
@@ -740,7 +765,7 @@ export default function WebsiteTemplateEditor() {
           <Button
             type="button"
             onClick={add}
-            disabled={rows.length >= max}
+            disabled={rows.length >= max || activeEdits > 0}
             variant="secondary"
           >
             <Plus size={16} />
@@ -775,7 +800,7 @@ export default function WebsiteTemplateEditor() {
                     update(index, { isPublished: row.isPublished ? 0 : 1 })
                   }
                 />
-                {tx("প্রকাশিত", "Published")}
+                {row.isPublished ? tx("প্রকাশিত", "Published") : tx("অপ্রকাশিত", "Unpublished")}
               </label>
               <div className="flex items-center gap-1">
                 {key !== "notices" && (
@@ -783,7 +808,7 @@ export default function WebsiteTemplateEditor() {
                     <button
                       type="button"
                       title={tx("উপরে নিন", "Move up")}
-                      disabled={index === 0}
+                      disabled={index === 0 || activeEdits > 0}
                       onClick={() => move(index, -1)}
                       className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-25 dark:hover:bg-slate-800"
                     >
@@ -792,7 +817,7 @@ export default function WebsiteTemplateEditor() {
                     <button
                       type="button"
                       title={tx("নিচে নিন", "Move down")}
-                      disabled={index === rows.length - 1}
+                      disabled={index === rows.length - 1 || activeEdits > 0}
                       onClick={() => move(index, 1)}
                       className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-25 dark:hover:bg-slate-800"
                     >
@@ -803,6 +828,7 @@ export default function WebsiteTemplateEditor() {
                 <button
                   type="button"
                   title={tx("মুছে ফেলুন", "Remove item")}
+                  disabled={activeEdits > 0}
                   onClick={() =>
                     patch({ [key]: rows.filter((_, i) => i !== index) })
                   }
@@ -820,6 +846,7 @@ export default function WebsiteTemplateEditor() {
                 <select
                   className={inputClass}
                   value={row.pageKey}
+                  disabled={activeEdits > 0}
                   onChange={(e) => update(index, { pageKey: e.target.value })}
                 >
                   {[
@@ -860,6 +887,7 @@ export default function WebsiteTemplateEditor() {
   };
 
   return (
+    <TemplateFieldEditingContext.Provider value={editingChanged}>
     <div className="space-y-6">
       <PageHeader
         title={tx("ডেমো ওয়েবসাইট সেটিংস", "Demo website settings")}
@@ -885,7 +913,7 @@ export default function WebsiteTemplateEditor() {
                 {tx("ডিফল্ট ডেমো টেমপ্লেট", "Default demo template")}
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                {dirty
+                {activeEdits > 0 ? tx("সম্পাদনা প্রয়োগ বা বাতিল করুন", "Apply or cancel your field edits") : dirty
                   ? tx("পরিবর্তন সংরক্ষণ করা হয়নি", "You have unsaved changes")
                   : tx(
                       "নতুন প্রতিষ্ঠানের জন্য প্রস্তুত",
@@ -906,7 +934,7 @@ export default function WebsiteTemplateEditor() {
             </Button>
             <Button
               type="submit"
-              disabled={saving || !dirty}
+              disabled={saving || !dirty || activeEdits > 0}
               className="!bg-blue-700 hover:!bg-blue-800"
             >
               {saving ? (
@@ -956,7 +984,8 @@ export default function WebsiteTemplateEditor() {
               <button
                 key={item.id}
                 type="button"
-                onClick={() => setTab(item.id)}
+                  onClick={() => setTab(item.id)}
+                  disabled={activeEdits > 0}
                 aria-current={tab === item.id ? "page" : undefined}
                 className={`flex items-center gap-2 rounded-md border px-2.5 py-2 text-start text-sm font-medium transition ${tab === item.id ? "border-blue-700 bg-blue-50 text-blue-900 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-300" : "border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"}`}
               >
@@ -978,6 +1007,10 @@ export default function WebsiteTemplateEditor() {
             ))}
           </nav>
           <fieldset disabled={saving} className="min-w-0 space-y-5">
+            {(sectionSetting || tab === "donation") && <section className="flex items-start justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+              <div className="min-w-0"><h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100">{menuText[tab]}</h3><p className="mt-1 text-xs leading-6 text-gray-500 dark:text-slate-400">{tab === "donation" ? tx("ডেমোতে এই সেকশন দেখাবে। প্রতিষ্ঠানের অনুদানের অনুমতি ও প্রকাশের সেটিংস আলাদা।", "Show this section in the demo. Institution donation access and publication are managed separately.") : tx("নতুন প্রতিষ্ঠানের ওয়েবসাইটে এই সেকশন দেখাবে।", "Show this section on new institution websites.")}</p></div>
+              <div className="flex shrink-0 items-center gap-2"><span className="text-xs text-gray-500 dark:text-slate-400">{tx("প্রকাশ করুন", "Publish")}</span><Toggle checked={tab === "donation" ? data.donation.isPublished !== 0 : !!data.settings[sectionSetting!]} label={tab === "donation" ? tx("ডেমো প্রিভিউতে অনুদান প্রকাশ", "Publish donations in demo preview") : `${menuText[tab]} ${tx("প্রকাশ করুন", "publication")}`} onChange={() => tab === "donation" ? patch({ donation: { ...data.donation, isPublished: data.donation.isPublished === 0 ? 1 : 0 } }) : setting(sectionSetting!, data.settings[sectionSetting!] ? 0 : 1)} /></div>
+            </section>}
             <div className="rounded-xl border border-teal-100 bg-teal-50/70 p-3 text-xs leading-6 text-teal-800 dark:border-teal-900 dark:bg-teal-950/30 dark:text-teal-200">
               {tx("লেখার মধ্যে", "Use")}{" "}
               <code className="rounded bg-white/70 px-1.5 py-0.5 font-mono text-[11px] dark:bg-slate-800">
@@ -988,6 +1021,25 @@ export default function WebsiteTemplateEditor() {
                 "in your copy to automatically insert the institution's name.",
               )}
             </div>
+            {tab === "donation" && (
+              <div className="space-y-5">
+                <div className="rounded-xl border border-teal-200 bg-teal-50 p-4 text-sm leading-7 text-teal-900 dark:border-teal-900 dark:bg-teal-950/30 dark:text-teal-200">
+                  {tx("অনুমতিপ্রাপ্ত প্রতিষ্ঠানের অনুদান পেজের প্রাথমিক লেখা এখানে সাজান। {{institution_name}} প্রতিষ্ঠানের নামে বদলে যাবে। ডেমোর লেখা খসড়া হিসেবে বসবে; প্রতিষ্ঠান নিজের পেমেন্ট মাধ্যম দিয়ে প্রকাশ করবে।", "Prepare the starting donation text for approved institutions. {{institution_name}} becomes the institution’s name. Demo text starts as a draft; each institution adds its own payment methods before publishing.")}
+                </div>
+                {([
+                  { key: "title", bn: "অনুদানের শিরোনাম", en: "Donation title", max: 150, required: true },
+                  { key: "description", bn: "অনুদানের উদ্দেশ্য ও বিবরণ", en: "Purpose and description", max: 4000, multiline: true },
+                  { key: "instructions", bn: "অনুদান পাঠানোর নির্দেশনা", en: "Payment instructions", max: 2000, multiline: true },
+                ] as const).map((field) => <FieldInput key={field.key} field={field} bn={bn} value={data.donation[field.key]} onChange={(value) => patch({ donation: { ...data.donation, [field.key]: value } })} />)}
+                {data.donation.isPublished !== 0 ? <div data-donation-demo-preview className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
+                  <p className="mb-3 flex items-center gap-2 text-xs font-semibold text-teal-700 dark:text-teal-300"><Heart size={15} />{tx("অনুদানের ডেমো প্রিভিউ", "Donation demo preview")}</p>
+                  <h3 className="text-xl font-bold dark:text-slate-100">{data.donation.title}</h3>
+                  <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-500">{data.donation.description.split("{{institution_name}}").join(tx("আপনার প্রতিষ্ঠান", "Your institution"))}</p>
+                  <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800">{tx("পেমেন্ট মাধ্যম — প্রতিষ্ঠান নিজের অ্যাকাউন্ট যোগ করবে", "Payment methods — the institution adds its own accounts")}</div>
+                  <p className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-500">{data.donation.instructions.split("{{institution_name}}").join(tx("আপনার প্রতিষ্ঠান", "Your institution"))}</p>
+                </div> : <p className="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500 dark:border-slate-700">{tx("অনুদানের ডেমো এখন অপ্রকাশিত। লেখা সম্পাদনা করে পরে প্রকাশ করতে পারবেন।", "The donation demo is unpublished. You can edit its content and publish it later.")}</p>}
+              </div>
+            )}
             {tab === "appearance" && (
               <>
                 <Panel
@@ -1313,5 +1365,6 @@ export default function WebsiteTemplateEditor() {
         </div>
       </form>
     </div>
+    </TemplateFieldEditingContext.Provider>
   );
 }

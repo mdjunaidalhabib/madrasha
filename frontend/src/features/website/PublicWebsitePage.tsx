@@ -4,6 +4,11 @@ import {
   ArrowRight,
   Bell,
   ChevronUp,
+  ChevronRight,
+  Home,
+  Images,
+  Users,
+  BookOpen,
   GraduationCap,
   Info,
   Loader2,
@@ -24,6 +29,8 @@ import { getTenantGuardianBase } from "../../utils/tenantSlug";
 import { useCustomDomainRedirect } from "../../utils/useCustomDomainRedirect";
 import { accentStrong, accentText, initials, mixHex, pickTextOn, withAlpha } from "./colorUtils";
 import HeroSlider from "./HeroSlider";
+import DonationSection from "./DonationSection";
+import PublicMobileMenu from "./PublicMobileMenu";
 import ContactSection from "./ContactSection";
 import PlatformSocialLinks, { getWebsiteSocialLinks } from "./PlatformSocialLinks";
 import { SiWhatsapp as WhatsAppIcon } from "react-icons/si";
@@ -369,12 +376,13 @@ export default function PublicWebsitePage({
     if (s.show_committee !== 0 && committee.length) list.push("committee");
     if (s.show_admission !== 0 && pageMap.admission) list.push("admission");
     if (s.show_notices !== 0) list.push("notices");
+    if (data?.donation) list.push("donation");
     if (s.show_contact !== 0) list.push("contact");
     return list;
   }, [data, pageMap, committee.length, settings.muhtamim_message, settings.sovapoti_message, videos.length, teachers.length]);
   const navKeys = useMemo(() => ["home", ...visibleSections], [visibleSections]);
   const primaryNavKeys = useMemo(
-    () => ["home", "about", "admission", "teachers", "notices", "contact"]
+    () => ["home", "about", "admission", "teachers", "notices", "donation", "contact"]
       .filter((key) => key === "home" || visibleSections.includes(key)),
     [visibleSections],
   );
@@ -436,13 +444,6 @@ export default function PublicWebsitePage({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [lightbox, videoLightbox]);
-
-  useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
 
   useEffect(() => {
     const el = galleryGridRef.current;
@@ -636,7 +637,10 @@ export default function PublicWebsitePage({
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
-            className="shrink-0 rounded-lg p-2 text-slate-700 lg:hidden"
+            className="public-mobile-menu-trigger lg:hidden"
+            aria-expanded={menuOpen}
+            aria-controls="public-mobile-menu"
+            aria-haspopup="dialog"
             aria-label={t.menu}
           >
             <Menu size={22} />
@@ -649,88 +653,35 @@ export default function PublicWebsitePage({
         <NoticeMarquee text={settings.notice_bar_text} speed={settings.notice_bar_speed} />
       )}
 
-      {/* Mobile menu: start-side sliding drawer */}
-      <div
-        className={`fixed inset-0 z-[55] bg-black/40 transition-opacity duration-300 lg:hidden ${
-          menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-        onClick={() => setMenuOpen(false)}
-        aria-hidden="true"
-      />
-      <aside
-        className={`fixed inset-y-0 start-0 z-[60] flex w-72 max-w-[80%] flex-col bg-white shadow-2xl transition-transform duration-300 ease-out lg:hidden ${
-          menuOpen ? "translate-x-0" : "-translate-x-full rtl:translate-x-full"
-        }`}
+      <PublicMobileMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        name={madrasa?.name || ""}
+        logo={madrasa?.logo_url}
+        phone={madrasa?.phone}
+        admissionUrl={admissionUrl}
+        guardianLoginUrl={guardianLoginUrl}
+        accent={accentSolid}
+        onAccent={onAccent}
       >
-        <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-4">
-          <div className="flex min-w-0 items-center gap-2">
-            {madrasa?.logo_url ? (
-              <img
-                src={madrasa?.logo_url}
-                alt={t.logo}
-                className="h-9 w-9 shrink-0 rounded-full object-cover shadow ring-2 ring-white"
-              />
-            ) : (
-              <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border" style={{ color: accentSolid, backgroundColor: withAlpha(accentSolid, 0.07), borderColor: withAlpha(accentSolid, 0.12) }}>
-                <GraduationCap size={20} strokeWidth={1.7} />
-              </span>
-            )}
-            <span className="break-words text-sm font-extrabold leading-tight text-slate-900">
-              {madrasa?.name}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setMenuOpen(false)}
-            className="shrink-0 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
-            aria-label={t.closeMenu}
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
-          {primaryNavKeys.map((key) => (
+        {navKeys.map((key) => {
+          const Icon = ({ home: Home, about: Info, admission: BookOpen, teachers: GraduationCap, notices: Bell, contact: Phone, gallery: Images, video: PlayCircle, committee: Users, muhtamim: Quote, sovapoti: Quote } as Record<string, typeof Home>)[key] || Info;
+          const active = activeId === key;
+          return (
             <NavItem
               key={key}
               sectionKey={key} {...navProps}
               onClick={() => setMenuOpen(false)}
-              className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              aria-current={active ? "location" : undefined}
+              className={"public-mobile-menu__link " + (active ? "is-active" : "")}
             >
-              {t.nav[key]}
+              <span className="public-mobile-menu__icon"><Icon size={19} strokeWidth={1.8} aria-hidden="true" /></span>
+              <span className="min-w-0 flex-1">{t.nav[key]}</span>
+              <ChevronRight size={16} className="public-mobile-menu__arrow rtl:rotate-180" aria-hidden="true" />
             </NavItem>
-          ))}
-        </nav>
-
-        <div className="flex flex-col gap-2 border-t border-slate-100 px-3 py-4">
-          <Link
-            to={admissionUrl}
-            onClick={() => setMenuOpen(false)}
-            className="rounded-xl px-4 py-2.5 text-center text-sm font-bold"
-            style={{ backgroundColor: accentSolid, color: onAccent }}
-          >
-            {t.onlineAdmission}
-          </Link>
-          <Link
-            to={guardianLoginUrl}
-            onClick={() => setMenuOpen(false)}
-            className="rounded-xl border px-4 py-2.5 text-center text-sm font-bold"
-            style={{ borderColor: withAlpha(accentSolid, 0.35), color: accentLabel }}
-          >
-            {t.guardianLogin}
-          </Link>
-          {madrasa?.phone && (
-            <a
-              href={`tel:${madrasa.phone}`}
-              className="flex items-center justify-center gap-1.5 py-1 text-sm font-medium text-slate-500"
-            >
-              <Phone size={15} />
-              {madrasa.phone}
-            </a>
-          )}
-          <LanguageSwitcher dropUp className="self-center" />
-        </div>
-      </aside>
+          );
+        })}
+      </PublicMobileMenu>
 
       {view === "contact" ? (
         <ContactSection
@@ -1194,6 +1145,7 @@ export default function PublicWebsitePage({
       )}
 
       {/* Footer */}
+      {view === "home" && data?.donation && <DonationSection config={data.donation} accent={accentLabel} />}
       <footer className="relative bg-slate-950 text-slate-300">
         <div className="h-1 w-full" style={{ backgroundColor: accentSolid }} />
 

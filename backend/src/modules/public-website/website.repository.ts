@@ -32,6 +32,7 @@ export class WebsiteRepository {
         address: true,
         isActive: true,
         websiteStatus: true,
+        websiteDonations: { select: { allowed: true, config: true } },
         institutionType: true,
         defaultLanguage: true,
         reportLogo: true,
