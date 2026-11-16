@@ -1,14 +1,10 @@
 import { ExternalLink } from "lucide-react";
 import { useLang } from "@madrasha/shared-ui/src/i18n";
+import { getPublicWebsiteBaseUrl } from "../../services/publicWebsiteUrl";
 
 export default function InstitutionWebsiteLink({ slug, iconOnly = false }: { slug: string; iconOnly?: boolean }) {
   const lang = useLang();
-  const configuredUrl = import.meta.env.VITE_PUBLIC_APP_URL?.trim();
-  const baseUrl = configuredUrl || (
-    import.meta.env.DEV
-      ? `${window.location.protocol}//${window.location.hostname}:5183`
-      : "https://ems.hikmahit.com"
-  );
+  const baseUrl = getPublicWebsiteBaseUrl();
 
   if (!slug) return null;
   const label = lang === "bn" ? "ওয়েবসাইট দেখুন" : "View website";

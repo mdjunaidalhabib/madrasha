@@ -5,7 +5,14 @@ import { websiteService, resolveTenantId } from "./website.service";
 import { normalizeHost } from "../../shared/utils/host.util";
 import { t } from "../../shared/i18n";
 import { brandIconService } from "./brand-icon.service";
-import { getWebsiteTemplate, saveWebsiteTemplate, uploadWebsiteTemplateImage } from "./website-template.service";
+import { getWebsiteTemplate, saveWebsiteTemplate, uploadWebsiteTemplateImage, resetWebsiteToTemplate } from "./website-template.service";
+
+export const resetInstitutionWebsite = async (req: Request, res: Response) => {
+  try {
+    await resetWebsiteToTemplate(Number(req.params.id));
+    res.json({ message: t({ bn: "ওয়েবসাইট মূল ডেমোতে রিসেট হয়েছে", en: "Website reset to the main demo" }) });
+  } catch (error) { respondError(res, error); }
+};
 
 export const uploadDefaultWebsiteImage = async (req: Request, res: Response) => {
   try { res.json({ data: await uploadWebsiteTemplateImage(req.body.image) }); }

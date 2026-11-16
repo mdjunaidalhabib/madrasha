@@ -8,6 +8,8 @@ import {
   provisionWebsiteOnTx,
   saveWebsiteTemplate,
   uploadWebsiteTemplateImage,
+  resetWebsiteOnTx,
+  resetWebsiteToTemplate,
 } from "../website-template.service";
 
 const makeTx = () => ({
@@ -24,6 +26,43 @@ const makeTx = () => ({
 
 describe("default website template", () => {
   afterEach(() => vi.restoreAllMocks());
+
+  it("resets only the selected website from the latest saved demo, even when automatic setup is off", async () => {
+    const tx = makeTx();
+    const custom = structuredClone(DEFAULT_WEBSITE_TEMPLATE);
+    custom.enabled = false;
+    custom.settings.heroTitle = "Latest saved demo";
+    tx.platformWebsiteTemplate.findUnique.mockResolvedValue({ content: custom } as never);
+    const resetTx = {
+      ...tx,
+      madrasa: { findFirst: vi.fn().mockResolvedValue({ name: "Institution 42" }) },
+      websiteSettings: { deleteMany: vi.fn(), create: vi.fn() },
+      websiteAdmission: { deleteMany: vi.fn() },
+    };
+    for (const table of [tx.websitePage, tx.websiteNotice, tx.websiteSlide, tx.websiteGallery, tx.websiteCommitteeMember, tx.websiteVideo]) {
+      Object.assign(table, { deleteMany: vi.fn() });
+    }
+    await resetWebsiteOnTx(resetTx as any, 42);
+    expect(resetTx.madrasa.findFirst).toHaveBeenCalledWith({ where: { id: 42, deletedAt: null }, select: { name: true } });
+    for (const table of [tx.websitePage, tx.websiteNotice, tx.websiteSlide, tx.websiteGallery, tx.websiteCommitteeMember, tx.websiteVideo, resetTx.websiteSettings]) {
+      expect((table as any).deleteMany).toHaveBeenCalledWith({ where: { madrasaId: 42 } });
+    }
+    expect(resetTx.websiteSettings.create).toHaveBeenCalledWith({ data: { madrasaId: 42, ...personalizeWebsiteTemplate(custom, "Institution 42").settings, demoTeachers: custom.teachers } });
+    expect(tx.websitePage.createMany.mock.calls[0][0].data[0].content).toContain("Institution 42");
+    expect(resetTx.websiteAdmission.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects missing or deleted institutions before changing website content", async () => {
+    const tx = makeTx();
+    const findFirst = vi.fn().mockResolvedValue(null);
+    await expect(resetWebsiteOnTx({ ...tx, madrasa: { findFirst } } as any, 42)).rejects.toThrow("Institution not found");
+    expect(tx.platformWebsiteTemplate.findUnique).not.toHaveBeenCalled();
+    expect(tx.websitePage.createMany).not.toHaveBeenCalled();
+  });
+
+  it.each([0, -1, 1.5, NaN, Infinity])("rejects invalid reset institution ID %s", async (id) => {
+    await expect(resetWebsiteToTemplate(id)).rejects.toThrow("Invalid institution ID");
+  });
 
   it("rejects invalid image payloads and explains missing cloud storage", async () => {
     await expect(uploadWebsiteTemplateImage(null)).rejects.toThrow("Image is required");
@@ -50,6 +89,14 @@ describe("default website template", () => {
     ]);
     expect(DEFAULT_WEBSITE_TEMPLATE.slides.length).toBeGreaterThan(0);
     expect(DEFAULT_WEBSITE_TEMPLATE.gallery.length).toBeGreaterThan(0);
+    expect(DEFAULT_WEBSITE_TEMPLATE.teachers.length).toBeGreaterThan(0);
+    expect(DEFAULT_WEBSITE_TEMPLATE.videos.length).toBeGreaterThan(0);
+  });
+
+  it("loads older saved templates with sample profiles and preserves intentionally empty profiles", () => {
+    const { teachers, ...legacy } = DEFAULT_WEBSITE_TEMPLATE;
+    expect(websiteTemplateSchema.parse(legacy).teachers).toEqual(teachers);
+    expect(websiteTemplateSchema.parse({ ...legacy, teachers: [] }).teachers).toEqual([]);
   });
 
   it("personalizes a copy without mutating the global template or link destinations", () => {

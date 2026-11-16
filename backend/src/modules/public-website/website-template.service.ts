@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
-import { BadRequestError } from "../../shared/errors";
+import { BadRequestError, NotFoundError } from "../../shared/errors";
 import { buildObjectKey, r2Service } from "../../shared/storage/r2.service";
 import { decodeImageDataUri, presetFor, processImage } from "../../shared/storage/image-processing";
 import { platformSettingsService } from "../super-admin/platform-settings.service";
@@ -92,6 +92,36 @@ export function personalizeWebsiteTemplate(
   return copy;
 }
 
+export async function resetWebsiteToTemplate(madrasaId: number) {
+  if (!Number.isSafeInteger(madrasaId) || madrasaId <= 0) {
+    throw new BadRequestError("Invalid institution ID");
+  }
+  await prisma.$transaction((tx) => resetWebsiteOnTx(tx, madrasaId), { timeout: 30_000 });
+}
+
+export async function resetWebsiteOnTx(tx: Prisma.TransactionClient, madrasaId: number) {
+  const madrasa = await tx.madrasa.findFirst({
+    where: { id: madrasaId, deletedAt: null },
+    select: { name: true },
+  });
+  if (!madrasa) throw new NotFoundError("Institution not found");
+  const { content } = await getWebsiteTemplate(tx);
+  const template = personalizeWebsiteTemplate(content, madrasa.name);
+
+  // All replacements share a transaction. Admissions and institution records
+  // are intentionally outside the website content reset.
+  const where = { madrasaId };
+  await tx.websitePage.deleteMany({ where });
+  await tx.websiteNotice.deleteMany({ where });
+  await tx.websiteSlide.deleteMany({ where });
+  await tx.websiteGallery.deleteMany({ where });
+  await tx.websiteCommitteeMember.deleteMany({ where });
+  await tx.websiteVideo.deleteMany({ where });
+  await tx.websiteSettings.deleteMany({ where });
+  await tx.websiteSettings.create({ data: { madrasaId, ...template.settings, demoTeachers: template.teachers } });
+  await copyWebsiteContentOnTx(tx, madrasaId, template);
+}
+
 export async function provisionWebsiteOnTx(tx: Prisma.TransactionClient, madrasaId: number) {
   const { content } = await getWebsiteTemplate(tx);
   if (!content.enabled) return;
@@ -103,10 +133,18 @@ export async function provisionWebsiteOnTx(tx: Prisma.TransactionClient, madrasa
   // WebsiteSettings' unique tenant key makes provisioning idempotent. An
   // existing website, including deliberately emptied sections, is preserved.
   const claimed = await tx.websiteSettings.createMany({
-    data: [{ madrasaId, ...template.settings }],
+    data: [{ madrasaId, ...template.settings, demoTeachers: template.teachers }],
     skipDuplicates: true,
   });
   if (!claimed.count) return;
+  await copyWebsiteContentOnTx(tx, madrasaId, template);
+}
+
+async function copyWebsiteContentOnTx(
+  tx: Prisma.TransactionClient,
+  madrasaId: number,
+  template: WebsiteTemplate,
+) {
   if (template.pages.length)
     await tx.websitePage.createMany({ data: template.pages.map((row) => ({ madrasaId, ...row })) });
   if (template.notices.length)

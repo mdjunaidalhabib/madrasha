@@ -5,6 +5,8 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
  * and is never translated. */
 export const websiteText = defineText({
   bn: {
+    contactDetailsPending: "তথ্য এখনো যোগ করা হয়নি",
+    demoTeachersHint: "এগুলো নমুনা শিক্ষক প্রোফাইল। প্রতিষ্ঠানের শিক্ষক তালিকা যুক্ত হলে আসল তথ্য দেখাবে।",
     nav: {
       home: "হোম",
       about: "পরিচিতি",
@@ -79,6 +81,8 @@ export const websiteText = defineText({
     directions: "দিকনির্দেশনা",
   },
   en: {
+    contactDetailsPending: "Details have not been added yet",
+    demoTeachersHint: "These are sample teacher profiles. The institution's teacher list will appear once added.",
     nav: {
       home: "Home",
       about: "About",

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 760">
+  <defs>
+    <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#cde6df"/><stop offset="1" stop-color="#f7edd6"/></linearGradient>
+    <linearGradient id="lawn" x2="0" y2="1"><stop stop-color="#9fb98a"/><stop offset="1" stop-color="#286c56"/></linearGradient>
+    <linearGradient id="wall" x2="1" y2="1"><stop stop-color="#fff6df"/><stop offset="1" stop-color="#d4dcc3"/></linearGradient>
+    <pattern id="arches" width="132" height="160" patternUnits="userSpaceOnUse"><path d="M22 155V75a44 44 0 0 1 88 0v80z" fill="#2b6e60"/><path d="M35 150V78a31 31 0 0 1 62 0v72" fill="#5d9380"/><path d="M66 48v102" stroke="#b5c8a4" stroke-width="3"/></pattern>
+  </defs>
+  <path fill="url(#sky)" d="M0 0h1440v760H0z"/>
+  <circle cx="285" cy="135" r="57" fill="#fff5d6"/>
+  <g fill="#fff" opacity=".5"><ellipse cx="900" cy="100" rx="145" ry="19"/><ellipse cx="1110" cy="180" rx="155" ry="24"/></g>
+  <path d="M0 490q300-65 720 0t720-10v280H0z" fill="url(#lawn)"/>
+  <path d="M185 275h1070v255H185z" fill="url(#wall)"/>
+  <path d="M160 260h1120v23H160z" fill="#357962"/>
+  <path d="M198 345h1044v160H198z" fill="url(#arches)"/>
+  <path d="M560 220h320v310H560z" fill="#f8efd7"/>
+  <path d="M540 208h360v23H540z" fill="#32715e"/>
+  <path d="M635 530V345a85 85 0 0 1 170 0v185z" fill="#255f53"/>
+  <path d="M655 525V350a65 65 0 0 1 130 0v175z" fill="#3d8170"/>
+  <path d="M600 208q120-165 240 0z" fill="#45876c"/>
+  <path d="M720 98V62" stroke="#b6a365" stroke-width="5"/>
+  <path d="M130 260V160h70v100m1040 0V160h70v100" fill="#eee7ca"/>
+  <path d="M120 160q45-85 90 0m1020 0q45-85 90 0" fill="#3b7c66"/>
+  <path d="M640 530 440 760h560L800 530z" fill="#d8cdb0"/>
+  <path d="M657 535 510 760m272-225 147 225" stroke="#e9dfc4" stroke-width="7"/>
+  <ellipse cx="720" cy="664" rx="180" ry="42" fill="#3f6d59" opacity=".25"/>
+  <ellipse cx="720" cy="640" rx="145" ry="37" fill="#eadbb7"/><ellipse cx="720" cy="634" rx="120" ry="25" fill="#79aaa0"/>
+  <path d="M705 630v-65h30v65" fill="#e8d7b1"/><ellipse cx="720" cy="561" rx="62" ry="15" fill="#eaddba"/>
+  <path d="M720 557v-34m-5 10q-25-48-43-3m53 3q25-48 43-3" fill="none" stroke="#a5d3c4" stroke-width="5" stroke-linecap="round"/>
+  <g fill="#24664f"><path d="M70 540Q0 370 110 255q110 120 35 285z"/><path d="M1280 540q-75-180 45-300 115 125 50 300z"/></g>
+  <g fill="#4f8b60"><circle cx="180" cy="520" r="66"/><circle cx="1240" cy="530" r="72"/></g>
+  <g fill="#175746"><ellipse cx="80" cy="700" rx="215" ry="72"/><ellipse cx="1390" cy="700" rx="230" ry="72"/></g>
+  <text x="1405" y="730" text-anchor="end" fill="#e6f4e8" opacity=".65" font-family="sans-serif" font-size="13" letter-spacing="3">DEMO ILLUSTRATION</text>
+</svg>

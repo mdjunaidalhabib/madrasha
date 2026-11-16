@@ -1,0 +1,34 @@
+import { defineBilingualText } from "@madrasha/shared-ui/src/i18n";
+
+export const websiteTemplateMenuText = defineBilingualText({
+  bn: {
+    teachers: "{{teacher}}বৃন্দ (ডেমো)",
+    general: "সাধারণ সেটিংস",
+    appearance: "থিম ও হিরো ব্যানার",
+    "notice-bar": "নোটিশ বার",
+    notices: "নোটিশ",
+    gallery: "গ্যালারি",
+    video: "ভিডিও গ্যালারি",
+    slider: "হিরো স্লাইডার",
+    muhtamim: "{{head}}ের বাণী",
+    sovapoti: "সভাপতির বাণী",
+    committee: "{{institution}} কমিটি",
+    social: "সোশ্যাল মিডিয়া",
+    pages: "পেজ কন্টেন্ট",
+  },
+  en: {
+    teachers: "Demo {{teacher}}s",
+    general: "General settings",
+    appearance: "Theme & hero banner",
+    "notice-bar": "Notice bar",
+    notices: "Notices",
+    gallery: "Gallery",
+    video: "Video gallery",
+    slider: "Hero slider",
+    muhtamim: "{{head}}'s message",
+    sovapoti: "President's message",
+    committee: "{{institution}} committee",
+    social: "Social media",
+    pages: "Page content",
+  },
+});

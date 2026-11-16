@@ -2,15 +2,17 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   ArrowDown,
   ArrowUp,
+  Award,
+  Bell,
   Check,
   CheckCircle2,
   ChevronRight,
   Eye,
   FileText,
+  GalleryHorizontalEnd,
   Globe2,
   Image,
   Images,
-  LayoutTemplate,
   Loader2,
   Megaphone,
   Monitor,
@@ -20,16 +22,19 @@ import {
   RefreshCw,
   Save,
   Settings2,
+  Share2,
   ShieldCheck,
   Smartphone,
-  Sparkles,
   Trash2,
   Upload,
   Users,
   Video,
 } from "lucide-react";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
-import { useLang } from "@madrasha/shared-ui/src/i18n";
+import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
+import { useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { websiteTemplateMenuText } from "./websiteTemplateMenu.text";
+import { resolveWebsiteDemoImage } from "../../../services/publicWebsiteUrl";
 import {
   getDefaultWebsiteTemplate,
   saveDefaultWebsiteTemplate,
@@ -42,19 +47,29 @@ import type {
 } from "./websiteTemplate.types";
 
 const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 type Tab =
-  | "design"
+  | "teachers"
+  | "general"
+  | "appearance"
+  | "notice-bar"
+  | "pages"
+  | "slider"
+  | "notices"
+  | "gallery"
+  | "muhtamim"
+  | "sovapoti"
+  | "committee"
+  | "video"
+  | "social";
+type ListKey =
+  | "teachers"
   | "pages"
   | "slides"
   | "notices"
   | "gallery"
-  | "leadership"
   | "committee"
-  | "videos"
-  | "sections";
-type ListKey =
-  "pages" | "slides" | "notices" | "gallery" | "committee" | "videos";
+  | "videos";
 type Field = {
   key: string;
   bn: string;
@@ -66,6 +81,12 @@ type Field = {
   hint?: string;
 };
 const listFields: Record<ListKey, Field[]> = {
+  teachers: [
+    { key: "name", bn: "নাম", en: "Name", required: true },
+    { key: "designation", bn: "পদবি", en: "Designation" },
+    { key: "subject", bn: "পাঠদানের বিষয়", en: "Subject" },
+    { key: "photoUrl", bn: "ছবি", en: "Photo", image: true, max: 255 },
+  ],
   pages: [
     { key: "title", bn: "শিরোনাম", en: "Title", required: true },
     {
@@ -227,7 +248,7 @@ function FieldInput({
         <div className="flex h-36 items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
           {value && !failed ? (
             <img
-              src={value}
+              src={resolveWebsiteDemoImage(value)}
               alt=""
               className="h-full w-full object-contain"
               onError={() => setFailed(true)}
@@ -333,7 +354,7 @@ function Panel({
   return (
     <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-        <h3 className="font-semibold text-slate-900 dark:text-white">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
           {title}
         </h3>
         {description && (
@@ -414,7 +435,7 @@ function TemplatePreview({
       <div className="relative h-36 overflow-hidden bg-teal-950">
         {!!s.showSlider && slide && (
           <img
-            src={String(slide.imageUrl)}
+            src={resolveWebsiteDemoImage(String(slide.imageUrl))}
             alt=""
             className="h-full w-full object-cover opacity-65"
           />
@@ -471,11 +492,41 @@ function TemplatePreview({
               .map((row, i) => (
                 <img
                   key={i}
-                  src={String(row.imageUrl)}
+                  src={resolveWebsiteDemoImage(String(row.imageUrl))}
                   alt={String(row.title)}
                   className="h-20 w-full rounded-lg bg-slate-100 object-cover"
                 />
               ))}
+          </div>
+        )}
+        {!!s.showTeachers && data.teachers.some((row) => row.isPublished) && (
+          <div className="space-y-2">
+            <h5 className="text-[11px] font-semibold">
+              {bn ? "শিক্ষকমণ্ডলী (নমুনা)" : "Sample teachers"}
+            </h5>
+            <div className="grid grid-cols-2 gap-2">
+              {data.teachers
+                .filter((row) => row.isPublished)
+                .slice(0, 4)
+                .map((row, i) => (
+                  <div
+                    key={i}
+                    className="rounded-lg border border-slate-100 p-2"
+                  >
+                    {row.photoUrl && (
+                      <img
+                        src={resolveWebsiteDemoImage(String(row.photoUrl))}
+                        alt=""
+                        className="mb-1 h-8 w-8 rounded-full object-cover"
+                      />
+                    )}
+                    <p className="text-[9px] font-medium">{row.name}</p>
+                    <p className="text-[8px] text-slate-500">
+                      {row.subject || row.designation}
+                    </p>
+                  </div>
+                ))}
+            </div>
           </div>
         )}
         {!!s.showMuhtamim && s.muhtamimMessage && (
@@ -501,16 +552,16 @@ function TemplatePreview({
 }
 
 export default function WebsiteTemplateEditor() {
+  const menuText = useText(websiteTemplateMenuText);
   const bn = useLang() === "bn";
   const tx = (b: string, e: string) => (bn ? b : e);
   const [data, setData] = useState<WebsiteTemplate | null>(null);
   const [saved, setSaved] = useState("");
-  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [tab, setTab] = useState<Tab>("design");
+  const [tab, setTab] = useState<Tab>("general");
   const [mobile, setMobile] = useState(false);
   const [preview, setPreview] = useState(false);
   const dirty = !!data && JSON.stringify(data) !== saved;
@@ -521,7 +572,6 @@ export default function WebsiteTemplateEditor() {
       .then((result) => {
         setData(result.content);
         setSaved(JSON.stringify(result.content));
-        setUpdatedAt(result.updatedAt);
       })
       .catch(() =>
         setError(
@@ -558,7 +608,6 @@ export default function WebsiteTemplateEditor() {
       const result = await saveDefaultWebsiteTemplate(data);
       setData(result.content);
       setSaved(JSON.stringify(result.content));
-      setUpdatedAt(result.updatedAt);
       setSuccess(true);
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { message?: string } } })
@@ -575,31 +624,29 @@ export default function WebsiteTemplateEditor() {
     }
   };
   const tabs = [
-    {
-      id: "design",
-      icon: Palette,
-      bn: "ডিজাইন ও পরিচিতি",
-      en: "Design & identity",
-    },
-    { id: "pages", icon: FileText, bn: "ওয়েবসাইটের পেজ", en: "Website pages" },
-    { id: "slides", icon: Image, bn: "হোম স্লাইডার", en: "Home slider" },
-    { id: "notices", icon: Megaphone, bn: "নোটিশ বোর্ড", en: "Notice board" },
-    { id: "gallery", icon: Images, bn: "ফটো গ্যালারি", en: "Photo gallery" },
-    {
-      id: "leadership",
-      icon: Quote,
-      bn: "প্রধান ও সভাপতির বাণী",
-      en: "Leadership messages",
-    },
-    { id: "committee", icon: Users, bn: "পরিচালনা পরিষদ", en: "Committee" },
-    { id: "videos", icon: Video, bn: "ভিডিও গ্যালারি", en: "Video gallery" },
-    {
-      id: "sections",
-      icon: Settings2,
-      bn: "সেকশন ও প্রকাশনা",
-      en: "Sections & publishing",
-    },
+    { id: "general", icon: Settings2 },
+    { id: "appearance", icon: Palette },
+    { id: "notice-bar", icon: Megaphone },
+    { id: "notices", icon: Bell },
+    { id: "gallery", icon: Images },
+    { id: "video", icon: Video },
+    { id: "slider", icon: GalleryHorizontalEnd },
+    { id: "muhtamim", icon: Quote },
+    { id: "sovapoti", icon: Award },
+    { id: "teachers", icon: Users },
+    { id: "committee", icon: Users },
+    { id: "social", icon: Share2 },
+    { id: "pages", icon: FileText },
   ] as const;
+  const listTabKeys: Partial<Record<Tab, ListKey>> = {
+    teachers: "teachers",
+    notices: "notices",
+    gallery: "gallery",
+    video: "videos",
+    slider: "slides",
+    committee: "committee",
+    pages: "pages",
+  };
 
   if (loading)
     return (
@@ -655,7 +702,13 @@ export default function WebsiteTemplateEditor() {
       });
     };
     const max =
-      key === "pages" ? 3 : key === "slides" || key === "videos" ? 20 : 30;
+      key === "pages"
+        ? 3
+        : key === "teachers"
+          ? 12
+          : key === "slides" || key === "videos"
+            ? 20
+            : 30;
     const add = () => {
       const row: TemplateItem = {
         isPublished: 1,
@@ -670,6 +723,14 @@ export default function WebsiteTemplateEditor() {
     };
     return (
       <div className="space-y-4">
+        {key === "teachers" && (
+          <p className="rounded-lg bg-blue-50 p-3 text-xs leading-6 text-blue-800 dark:bg-blue-950/30 dark:text-blue-300">
+            {tx(
+              "এগুলো শুধু ওয়েবসাইটের নমুনা প্রোফাইল। আসল শিক্ষক যুক্ত হলে তাঁদের তালিকা দেখাবে।",
+              "These are website sample profiles. Actual teacher records take priority once added.",
+            )}
+          </p>
+        )}
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-slate-500">
             {rows.length} {tx("টি আইটেম", "items")}
@@ -701,7 +762,7 @@ export default function WebsiteTemplateEditor() {
         {rows.map((row, index) => (
           <Panel
             key={`${key}-${index}`}
-            title={`${String(index + 1).padStart(2, "0")} · ${String(row.title || row.name || (key === "pages" ? row.pageKey : "")) || tx(activeTab.bn, activeTab.en)}`}
+            title={`${String(index + 1).padStart(2, "0")} · ${String(row.title || row.name || (key === "pages" ? row.pageKey : "")) || menuText[activeTab.id]}`}
           >
             <div className="flex items-center justify-between gap-3">
               <label className="flex items-center gap-2 text-xs text-slate-500">
@@ -798,106 +859,13 @@ export default function WebsiteTemplateEditor() {
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden rounded-[24px] bg-slate-950 p-6 text-white sm:p-8">
-        <div className="pointer-events-none absolute -right-16 -top-28 h-80 w-80 rounded-full border-[40px] border-teal-500/10" />
-        <div className="pointer-events-none absolute bottom-0 right-32 h-40 w-40 rounded-full bg-teal-400/10 blur-3xl" />
-        <div className="relative flex flex-wrap items-start justify-between gap-5">
-          <div className="max-w-2xl">
-            <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-teal-300/20 bg-teal-300/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-teal-200">
-              <Sparkles size={12} />
-              {tx("ওয়েবসাইট স্টুডিও", "WEBSITE STUDIO")}
-            </span>
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              {tx(
-                "প্রতিটি নতুন শুরু হোক সুন্দর",
-                "A beautiful start for every institution",
-              )}
-            </h2>
-            <p className="mt-3 max-w-xl text-sm leading-7 text-slate-300">
-              {tx(
-                "একবার ডেমো সাজান। নতুন মাদ্রাসার ওয়েবসাইট হবে প্রস্তুত—নিজস্ব নাম, সাজানো পেজ ও আপনার বাছাই করা কনটেন্ট নিয়ে।",
-                "Design your starter website once. Every new institution begins with its own name, complete pages, and your carefully chosen content.",
-              )}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <LayoutTemplate
-              size={35}
-              className="text-teal-300"
-              strokeWidth={1.25}
-            />
-          </div>
-        </div>
-        <div className="relative mt-6 flex flex-wrap gap-x-6 gap-y-2 border-t border-white/10 pt-4 text-xs text-slate-300">
-          <span className="flex items-center gap-2">
-            <CheckCircle2 size={14} className="text-teal-300" />
-            {tx("স্বয়ংক্রিয় সেটআপ", "Automatic setup")}
-          </span>
-          <span className="flex items-center gap-2">
-            <ShieldCheck size={14} className="text-teal-300" />
-            {tx(
-              "প্রতিষ্ঠানের নিজস্ব সম্পাদনা অক্ষত",
-              "Existing edits preserved",
-            )}
-          </span>
-          <span className="flex items-center gap-2">
-            <Palette size={14} className="text-teal-300" />
-            {tx("সম্পূর্ণ কাস্টমাইজযোগ্য", "Fully customizable")}
-          </span>
-        </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        {[
-          [
-            Globe2,
-            tx("স্বয়ংক্রিয় ডেমো", "Automatic demo"),
-            data.enabled
-              ? tx("চালু আছে", "Enabled")
-              : tx("বন্ধ আছে", "Disabled"),
-          ],
-          [
-            FileText,
-            tx("পেজ ও মিডিয়া", "Pages & media"),
-            String(
-              data.pages.length +
-                data.slides.length +
-                data.gallery.length +
-                data.videos.length,
-            ),
-          ],
-          [
-            CheckCircle2,
-            tx("সর্বশেষ সংরক্ষণ", "Last saved"),
-            updatedAt
-              ? new Date(updatedAt).toLocaleDateString(bn ? "bn-BD" : "en-GB", {
-                  timeZone: "Asia/Dhaka",
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })
-              : tx("প্রাথমিক ডেমো", "Starter demo"),
-          ],
-        ].map(([Icon, label, value], i) => {
-          const StatIcon = Icon as typeof Globe2;
-          return (
-            <div
-              key={i}
-              className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
-            >
-              <div className="rounded-xl bg-teal-50 p-2.5 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300">
-                <StatIcon size={19} />
-              </div>
-              <div>
-                <p className="text-[11px] text-slate-500">{label as string}</p>
-                <p className="mt-1 text-sm font-semibold text-slate-800 dark:text-white">
-                  {value as string}
-                </p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <PageHeader
+        title={tx("ডেমো ওয়েবসাইট সেটিংস", "Demo website settings")}
+        subtitle={tx(
+          "মূল ডেমোর ডিজাইন ও কনটেন্ট সাজান। নতুন প্রতিষ্ঠান এবং ওয়েবসাইট রিসেটে এই ডেমো ব্যবহার হবে।",
+          "Manage the main demo design and content used for new institutions and website resets.",
+        )}
+      />
 
       <form
         onSubmit={(e) => {
@@ -929,7 +897,7 @@ export default function WebsiteTemplateEditor() {
               type="button"
               variant="secondary"
               onClick={() => setPreview(!preview)}
-              className="xl:hidden"
+              aria-pressed={preview}
             >
               <Eye size={16} />
               {tx("প্রিভিউ", "Preview")}
@@ -937,7 +905,7 @@ export default function WebsiteTemplateEditor() {
             <Button
               type="submit"
               disabled={saving || !dirty}
-              className="!bg-teal-700 hover:!bg-teal-800"
+              className="!bg-blue-700 hover:!bg-blue-800"
             >
               {saving ? (
                 <Loader2 size={16} className="animate-spin" />
@@ -972,26 +940,38 @@ export default function WebsiteTemplateEditor() {
             )}
           </p>
         )}
-        <div className="grid items-start gap-5 xl:grid-cols-[190px_minmax(0,1fr)_320px] 2xl:grid-cols-[210px_minmax(0,1fr)_360px]">
+        <div
+          className={`grid items-start gap-5 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-8 ${preview ? "2xl:grid-cols-[240px_minmax(0,1fr)_300px]" : ""}`}
+        >
           <nav
             aria-label={tx("টেমপ্লেট সেকশন", "Template sections")}
-            className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900 xl:sticky xl:top-5 xl:flex-col"
+            className="flex flex-col gap-1 rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-5"
           >
+            <h2 className="mb-2 rounded-lg bg-blue-800 px-3 py-2 text-sm font-semibold text-white">
+              {tx("সেটিংস মেনু", "Settings menu")}
+            </h2>
             {tabs.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => setTab(item.id)}
                 aria-current={tab === item.id ? "page" : undefined}
-                className={`flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-3 text-left text-xs font-medium transition ${tab === item.id ? "bg-teal-50 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200" : "text-slate-500 hover:bg-slate-50 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-white"}`}
+                className={`flex items-center gap-2 rounded-md border px-2.5 py-2 text-start text-sm font-medium transition ${tab === item.id ? "border-blue-700 bg-blue-50 text-blue-900 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-300" : "border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"}`}
               >
                 <item.icon size={16} className="shrink-0" />
                 <span className="flex-1 whitespace-nowrap">
-                  {tx(item.bn, item.en)}
+                  {menuText[item.id]}
                 </span>
-                {tab === item.id && (
-                  <ChevronRight size={13} className="hidden xl:block" />
-                )}
+                {item.id !== "pages" &&
+                  listTabKeys[item.id] &&
+                  data[listTabKeys[item.id]!].length > 0 && (
+                    <span
+                      className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold ${tab === item.id ? "bg-blue-600/10 text-blue-700 dark:text-blue-300" : "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"}`}
+                    >
+                      {data[listTabKeys[item.id]!].length}
+                    </span>
+                  )}
+                {tab === item.id && <ChevronRight size={13} />}
               </button>
             ))}
           </nav>
@@ -1006,7 +986,7 @@ export default function WebsiteTemplateEditor() {
                 "in your copy to automatically insert the institution's name.",
               )}
             </div>
-            {tab === "design" && (
+            {tab === "appearance" && (
               <>
                 <Panel
                   title={tx(
@@ -1116,67 +1096,62 @@ export default function WebsiteTemplateEditor() {
                     </div>
                   </div>
                 </Panel>
-                <Panel title={tx("চলমান নোটিশ বার", "Notice ticker")}>
-                  {renderSetting({
-                    key: "noticeBarText",
-                    bn: "নোটিশের লেখা",
-                    en: "Ticker text",
-                    multiline: true,
-                    max: 10000,
-                  })}
-                  <label className="block text-sm text-slate-600 dark:text-slate-300">
-                    {tx("স্ক্রল সময়", "Scroll duration")}:{" "}
-                    {data.settings.noticeBarSpeed} {tx("সেকেন্ড", "seconds")}
-                    <input
-                      type="range"
-                      min={5}
-                      max={60}
-                      value={data.settings.noticeBarSpeed}
-                      onChange={(e) =>
-                        setting("noticeBarSpeed", Number(e.target.value))
-                      }
-                      className="mt-3 w-full accent-teal-600"
-                    />
-                  </label>
-                </Panel>
-                <Panel
-                  title={tx("সোশ্যাল লিংক ও মানচিত্র", "Social links & map")}
-                  description={tx(
-                    "প্রয়োজন হলে ডিফল্ট লিংক দিন; খালি রাখলে কোনো লিংক দেখাবে না।",
-                    "Optional starter links. Leave empty to hide them.",
-                  )}
-                >
-                  {[
-                    { key: "facebookUrl", bn: "ফেসবুক", en: "Facebook" },
-                    { key: "youtubeUrl", bn: "ইউটিউব", en: "YouTube" },
-                    { key: "instagramUrl", bn: "ইনস্টাগ্রাম", en: "Instagram" },
-                    {
-                      key: "whatsappChannelUrl",
-                      bn: "হোয়াটসঅ্যাপ চ্যানেল",
-                      en: "WhatsApp channel",
-                    },
-                    {
-                      key: "mapUrl",
-                      bn: "মানচিত্রের লিংক",
-                      en: "Map URL",
-                      max: 500,
-                    },
-                  ].map((f) => renderSetting({ ...f, max: f.max ?? 255 }))}
-                </Panel>
               </>
             )}
-            {(
-              [
-                "pages",
-                "slides",
-                "notices",
-                "gallery",
-                "committee",
-                "videos",
-              ] as string[]
-            ).includes(tab) && listEditor(tab as ListKey)}
-            {tab === "leadership" &&
-              (["muhtamim", "sovapoti"] as const).map((prefix) => (
+            {tab === "notice-bar" && (
+              <Panel title={tx("চলমান নোটিশ বার", "Notice ticker")}>
+                {renderSetting({
+                  key: "noticeBarText",
+                  bn: "নোটিশের লেখা",
+                  en: "Ticker text",
+                  multiline: true,
+                  max: 10000,
+                })}
+                <label className="block text-sm text-slate-600 dark:text-slate-300">
+                  {tx("স্ক্রল সময়", "Scroll duration")}:{" "}
+                  {data.settings.noticeBarSpeed} {tx("সেকেন্ড", "seconds")}
+                  <input
+                    type="range"
+                    min={5}
+                    max={60}
+                    value={data.settings.noticeBarSpeed}
+                    onChange={(e) =>
+                      setting("noticeBarSpeed", Number(e.target.value))
+                    }
+                    className="mt-3 w-full accent-teal-600"
+                  />
+                </label>
+              </Panel>
+            )}
+            {tab === "social" && (
+              <Panel
+                title={tx("সোশ্যাল লিংক ও মানচিত্র", "Social links & map")}
+                description={tx(
+                  "প্রয়োজন হলে ডিফল্ট লিংক দিন; খালি রাখলে কোনো লিংক দেখাবে না।",
+                  "Optional starter links. Leave empty to hide them.",
+                )}
+              >
+                {[
+                  { key: "facebookUrl", bn: "ফেসবুক", en: "Facebook" },
+                  { key: "youtubeUrl", bn: "ইউটিউব", en: "YouTube" },
+                  { key: "instagramUrl", bn: "ইনস্টাগ্রাম", en: "Instagram" },
+                  {
+                    key: "whatsappChannelUrl",
+                    bn: "হোয়াটসঅ্যাপ চ্যানেল",
+                    en: "WhatsApp channel",
+                  },
+                  {
+                    key: "mapUrl",
+                    bn: "মানচিত্রের লিংক",
+                    en: "Map URL",
+                    max: 500,
+                  },
+                ].map((f) => renderSetting({ ...f, max: f.max ?? 255 }))}
+              </Panel>
+            )}
+            {listTabKeys[tab] && listEditor(listTabKeys[tab]!)}
+            {(tab === "muhtamim" || tab === "sovapoti") &&
+              [tab].map((prefix) => (
                 <Panel
                   key={prefix}
                   title={
@@ -1212,7 +1187,7 @@ export default function WebsiteTemplateEditor() {
                   })}
                 </Panel>
               ))}
-            {tab === "sections" && (
+            {tab === "general" && (
               <>
                 <Panel
                   title={tx(
@@ -1299,7 +1274,7 @@ export default function WebsiteTemplateEditor() {
             )}
           </fieldset>
           <aside
-            className={`${preview ? "block" : "hidden"} space-y-4 xl:sticky xl:top-5 xl:block`}
+            className={`${preview ? "block" : "hidden"} space-y-4 lg:col-start-2 2xl:col-start-auto`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">

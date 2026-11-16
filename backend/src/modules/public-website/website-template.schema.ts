@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_WEBSITE_DEMO_TEACHERS, websiteDemoTeachersSchema } from "./website-demo-teachers";
 
 const text = (max = 190) => z.string().max(max);
 const url = (max = 255) =>
@@ -18,6 +19,9 @@ const link = text(255).refine(
 export const websiteTemplateSchema = z
   .object({
     enabled: z.boolean(),
+    teachers: websiteDemoTeachersSchema.default(() =>
+      structuredClone(DEFAULT_WEBSITE_DEMO_TEACHERS),
+    ),
     settings: z
       .object({
         heroTitle: text(),
@@ -126,6 +130,7 @@ export type WebsiteTemplate = z.infer<typeof websiteTemplateSchema>;
 
 export const DEFAULT_WEBSITE_TEMPLATE: WebsiteTemplate = {
   enabled: true,
+  teachers: structuredClone(DEFAULT_WEBSITE_DEMO_TEACHERS),
   settings: {
     heroTitle: "জ্ঞান, আদর্শ ও সুন্দর আগামীর পথে",
     heroSubtitle:
@@ -158,11 +163,11 @@ export const DEFAULT_WEBSITE_TEMPLATE: WebsiteTemplate = {
     sovapotiPhoto: "/images/website-demo-avatar.svg",
     sovapotiMessage:
       "একটি সুন্দর শিক্ষার পরিবেশ গড়তে শিক্ষক, অভিভাবক ও পরিচালনা পরিষদের সম্মিলিত উদ্যোগ অপরিহার্য। আমাদের এই পথচলায় আপনাকে স্বাগতম। এটি নমুনা বাণী।",
-    facebookUrl: "",
-    youtubeUrl: "",
-    instagramUrl: "",
-    whatsappChannelUrl: "",
-    mapUrl: "",
+    facebookUrl: "https://www.facebook.com/",
+    youtubeUrl: "https://www.youtube.com/",
+    instagramUrl: "https://www.instagram.com/",
+    whatsappChannelUrl: "https://www.whatsapp.com/",
+    mapUrl: "https://www.google.com/maps/search/?api=1&query=Dhaka",
   },
   pages: [
     {
@@ -203,6 +208,18 @@ export const DEFAULT_WEBSITE_TEMPLATE: WebsiteTemplate = {
         "ভর্তি সম্পর্কে জানতে অফিসে যোগাযোগ করুন। প্রতিষ্ঠান কর্তৃপক্ষ এখানে প্রকৃত সময়সূচি ও নির্দেশনা প্রকাশ করবেন।",
       isPublished: 1,
     },
+    {
+      title: "অভিভাবক সভা — নমুনা নোটিশ",
+      content:
+        "শিক্ষার্থীর পড়াশোনা ও অগ্রগতি নিয়ে অভিভাবকদের সঙ্গে নিয়মিত মতবিনিময়ের আয়োজন করা হয়। সভার প্রকৃত তারিখ ও সময় প্রতিষ্ঠান কর্তৃপক্ষ জানাবেন।",
+      isPublished: 1,
+    },
+    {
+      title: "পাঠাগার ও সহশিক্ষা কার্যক্রম — নমুনা",
+      content:
+        "পাঠাভ্যাস, বিতর্ক, ক্রীড়া ও সৃজনশীল কার্যক্রম শিক্ষার্থীর পরিপূর্ণ বিকাশে সহায়ক। এটি নমুনা ঘোষণা; প্রতিষ্ঠানের নিজস্ব কার্যক্রম এখানে প্রকাশ করুন।",
+      isPublished: 1,
+    },
   ],
   slides: [
     {
@@ -210,6 +227,18 @@ export const DEFAULT_WEBSITE_TEMPLATE: WebsiteTemplate = {
       buttonLink: "#about",
       isPublished: 1,
       sortOrder: 1,
+    },
+    {
+      imageUrl: "/images/website-demo-library.svg",
+      buttonLink: "#about",
+      isPublished: 1,
+      sortOrder: 2,
+    },
+    {
+      imageUrl: "/images/website-demo-courtyard.svg",
+      buttonLink: "#admission",
+      isPublished: 1,
+      sortOrder: 3,
     },
   ],
   gallery: [
@@ -225,6 +254,18 @@ export const DEFAULT_WEBSITE_TEMPLATE: WebsiteTemplate = {
       isPublished: 1,
       sortOrder: 2,
     },
+    {
+      title: "পাঠাগারে পড়াশোনা — নমুনা চিত্র",
+      imageUrl: "/images/website-demo-library.svg",
+      isPublished: 1,
+      sortOrder: 3,
+    },
+    {
+      title: "সবুজ প্রাঙ্গণ — নমুনা চিত্র",
+      imageUrl: "/images/website-demo-courtyard.svg",
+      isPublished: 1,
+      sortOrder: 4,
+    },
   ],
   committee: [
     {
@@ -235,6 +276,29 @@ export const DEFAULT_WEBSITE_TEMPLATE: WebsiteTemplate = {
       isPublished: 1,
       sortOrder: 1,
     },
+    {
+      name: "সভাপতি (নমুনা)",
+      designation: "পরিচালনা পরিষদের সভাপতি",
+      photoUrl: "/images/website-demo-avatar.svg",
+      phone: "",
+      isPublished: 1,
+      sortOrder: 2,
+    },
+    {
+      name: "অভিভাবক প্রতিনিধি (নমুনা)",
+      designation: "অভিভাবক সদস্য",
+      photoUrl: "/images/website-demo-avatar.svg",
+      phone: "",
+      isPublished: 1,
+      sortOrder: 3,
+    },
   ],
-  videos: [],
+  videos: [
+    {
+      title: "আমাদের শিক্ষা পরিবেশ — নমুনা ভিডিও",
+      videoUrl: "/videos/website-demo-tour.webm",
+      isPublished: 1,
+      sortOrder: 1,
+    },
+  ],
 };

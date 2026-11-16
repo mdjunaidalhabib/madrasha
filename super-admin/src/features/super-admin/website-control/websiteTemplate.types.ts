@@ -45,6 +45,7 @@ export type WebsiteTemplate = {
   gallery: TemplateItem[];
   committee: TemplateItem[];
   videos: TemplateItem[];
+  teachers: TemplateItem[];
 };
 export type TemplateResponse = {
   content: WebsiteTemplate;

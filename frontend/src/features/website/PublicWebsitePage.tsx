@@ -4,9 +4,8 @@ import {
   ArrowRight,
   Bell,
   ChevronUp,
-  Facebook,
+  GraduationCap,
   Info,
-  Instagram,
   Loader2,
   LogIn,
   Mail,
@@ -16,7 +15,6 @@ import {
   PlayCircle,
   Quote,
   X,
-  Youtube,
   ZoomIn,
 } from "lucide-react";
 import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
@@ -27,6 +25,8 @@ import { useCustomDomainRedirect } from "../../utils/useCustomDomainRedirect";
 import { accentStrong, accentText, initials, mixHex, pickTextOn, withAlpha } from "./colorUtils";
 import HeroSlider from "./HeroSlider";
 import ContactSection from "./ContactSection";
+import PlatformSocialLinks, { getWebsiteSocialLinks } from "./PlatformSocialLinks";
+import { SiWhatsapp as WhatsAppIcon } from "react-icons/si";
 import MapPreview from "./MapPreview";
 import NoticeMarquee from "./NoticeMarquee";
 import { resolveTheme, type ThemeTokens } from "./themes";
@@ -108,20 +108,7 @@ function waLink(phone?: string | null) {
   return digits ? `https://wa.me/${digits}` : "";
 }
 
-function WhatsAppIcon({ size = 20 }: { size?: number }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.472-.148-.67.15-.198.297-.767.966-.94 1.164-.173.198-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.372-.025-.521-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.876 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
-      <path d="M12.001 2C6.478 2 2 6.477 2 12c0 1.82.478 3.53 1.31 5.005L2 22l5.147-1.28A9.96 9.96 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12.001 2zm0 18.222a8.19 8.19 0 0 1-4.169-1.13l-.299-.177-3.055.76.797-2.981-.194-.306A8.19 8.19 0 0 1 3.778 12c0-4.535 3.688-8.222 8.223-8.222 4.535 0 8.222 3.687 8.222 8.222 0 4.535-3.687 8.222-8.222 8.222z" />
-    </svg>
-  );
-}
+
 
 function SectionHeader({
   eyebrow,
@@ -292,7 +279,7 @@ export default function PublicWebsitePage({
   const [showTop, setShowTop] = useState(false);
   const [activeId, setActiveId] = useState("");
   const [lightbox, setLightbox] = useState<{ url: string; title: string } | null>(null);
-  const [videoLightbox, setVideoLightbox] = useState<{ url: string; title: string } | null>(null);
+  const [videoLightbox, setVideoLightbox] = useState<{ url: string; title: string; native?: boolean } | null>(null);
   const [galleryInView, setGalleryInView] = useState(false);
   const galleryGridRef = useRef<HTMLDivElement | null>(null);
 
@@ -373,6 +360,11 @@ export default function PublicWebsitePage({
     return list;
   }, [data, pageMap, committee.length, settings.muhtamim_message, settings.sovapoti_message, videos.length, teachers.length]);
   const navKeys = useMemo(() => ["home", ...visibleSections], [visibleSections]);
+  const primaryNavKeys = useMemo(
+    () => ["home", "about", "admission", "teachers", "notices", "contact"]
+      .filter((key) => key === "home" || visibleSections.includes(key)),
+    [visibleSections],
+  );
 
   // Left column (main reading flow) vs. right sidebar (notices + বাণী + committee),
   // in the fixed order the sidebar was designed around: notices on top, then
@@ -502,7 +494,9 @@ export default function PublicWebsitePage({
                 <Skeleton className="h-3 w-20" />
               </div>
             </div>
-            <div className="hidden shrink-0 items-center gap-2 lg:flex">
+
+
+          <div className="hidden shrink-0 items-center gap-1.5 lg:flex">
               <Skeleton className="h-9 w-28 rounded-xl" />
               <Skeleton className="h-9 w-28 rounded-xl" />
             </div>
@@ -545,26 +539,11 @@ export default function PublicWebsitePage({
       ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(madrasa.address)}`
       : "");
 
-  const socials = [
-    settings.facebook_url && { href: settings.facebook_url, label: "Facebook", icon: <Facebook size={15} /> },
-    settings.youtube_url && { href: settings.youtube_url, label: "YouTube", icon: <Youtube size={15} /> },
-    settings.instagram_url && { href: settings.instagram_url, label: "Instagram", icon: <Instagram size={15} /> },
-    settings.whatsapp_channel_url && {
-      href: settings.whatsapp_channel_url,
-      label: "WhatsApp",
-      icon: <WhatsAppIcon size={15} />,
-    },
-  ].filter(Boolean) as { href: string; label: string; icon: ReactNode }[];
+  const socials = getWebsiteSocialLinks(settings, t.whatsappChannel);
 
   const hasTopBar = Boolean(madrasa?.phone || madrasa?.email || socials.length);
 
   const sectionBase = "py-16 md:py-24 scroll-mt-28";
-
-  // Band nav colours: "band" uses the theme colour, "dark" a slate-900 bar.
-  const navDark = theme.nav === "dark";
-  const navBg = navDark ? "#0f172a" : accentSolid;
-  const navFg = navDark ? "#ffffff" : onAccent;
-  const navUnderline = navDark ? accentLabelOnDark : onAccent;
 
   return (
     <div id="page-top" className="min-h-screen bg-white text-slate-900">
@@ -587,20 +566,7 @@ export default function PublicWebsitePage({
               )}
             </div>
             {socials.length > 0 && (
-              <div className="flex items-center gap-1.5">
-                {socials.map((social) => (
-                  <a
-                    key={social.label}
-                    href={social.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={social.label}
-                    className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-white"
-                  >
-                    {social.icon}
-                  </a>
-                ))}
-              </div>
+              <PlatformSocialLinks links={socials} compact />
             )}
           </div>
         </div>
@@ -612,7 +578,7 @@ export default function PublicWebsitePage({
           scrolled ? theme.headerScrolled : ""
         }`}
       >
-        {/* Row 1: brand (full name, never truncated) + actions (+ inline nav for the "inline" variant) */}
+        {/* Brand, primary navigation and actions share one row. */}
         <div
           className={`mx-auto flex max-w-[1200px] items-center justify-between gap-3 px-4 transition-all duration-300 ${
             scrolled ? "py-2" : "py-3"
@@ -625,7 +591,7 @@ export default function PublicWebsitePage({
               e.preventDefault();
               window.scrollTo({ top: 0 });
             }}
-            className="flex min-w-0 items-center gap-3"
+            className="flex min-w-0 flex-1 items-center gap-2.5 lg:max-w-[230px] xl:max-w-[280px] 2xl:max-w-[360px]"
           >
             {madrasa?.logo_url ? (
               <img
@@ -634,57 +600,46 @@ export default function PublicWebsitePage({
                 className={`h-11 w-11 shrink-0 ${theme.round} object-cover shadow ring-2 ring-white`}
               />
             ) : (
-              <div
-                className={`flex h-11 w-11 shrink-0 items-center justify-center ${theme.round} text-sm font-bold shadow`}
-                style={{ backgroundColor: accentSolid, color: onAccent }}
-              >
-                {initials(madrasa?.name)}
-              </div>
+              <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border" style={{ color: accentSolid, backgroundColor: withAlpha(accentSolid, 0.07), borderColor: withAlpha(accentSolid, 0.12) }}>
+                <GraduationCap size={24} strokeWidth={1.7} />
+              </span>
             )}
             <div className="min-w-0">
-              <div className="break-words text-base font-extrabold leading-tight text-slate-900 md:text-lg">
+              <div title={madrasa?.name} className="truncate text-base font-extrabold leading-tight text-slate-900 md:text-lg">
                 {madrasa?.name}
               </div>
               <div className="text-[11px] font-semibold tracking-wide text-slate-400">{t.officialWebsite}</div>
             </div>
           </Link>
 
-          {/* Inline nav (modern): links share the brand row instead of a separate band */}
-          {theme.nav === "inline" && (
-            <nav className="no-scrollbar hidden min-w-0 flex-1 overflow-x-auto lg:block">
-              <div className="mx-auto flex w-max items-center gap-0.5">
-                {navKeys.map((key) => {
-                  const active = activeId === key;
-                  return (
-                    <NavItem
-                      key={key}
-                      sectionKey={key} {...navProps}
-                      className={`whitespace-nowrap ${theme.round} px-3 py-1.5 text-[13px] font-semibold transition ${
-                        active ? "" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                      }`}
-                      style={active ? { backgroundColor: withAlpha(accentSolid, 0.1), color: accentLabel } : undefined}
-                    >
-                      {t.nav[key]}
-                    </NavItem>
-                  );
-                })}
-              </div>
-            </nav>
-          )}
+          <nav aria-label={t.menu} className="hidden shrink-0 items-center justify-center gap-0.5 lg:flex xl:gap-1">
+          {primaryNavKeys.map((key) => (
+            <NavItem
+              key={key}
+              sectionKey={key} {...navProps}
+              className="whitespace-nowrap rounded-md px-2 py-2 text-[13px] font-medium transition hover:bg-slate-100 xl:px-2.5"
+              style={activeId === key ? { color: accentLabel, backgroundColor: withAlpha(accentSolid, 0.08) } : { color: "#475569" }}
+            >
+              {t.nav[key]}
+            </NavItem>
+          ))}
+        </nav>
 
-          <div className="hidden shrink-0 items-center gap-2 lg:flex">
-            <LanguageSwitcher />
+          <div className="hidden shrink-0 items-center gap-1.5 lg:flex">
+            <LanguageSwitcher variant="globe" />
             <Link
               to={guardianLoginUrl}
-              className={`${theme.nav === "inline" ? "hidden xl:inline-flex" : "inline-flex"} items-center gap-1.5 whitespace-nowrap ${theme.button} border px-3.5 py-2 text-sm font-bold transition hover:bg-slate-50`}
+              aria-label={t.guardianLogin}
+              title={t.guardianLogin}
+              className={`inline-flex items-center gap-1.5 whitespace-nowrap ${theme.button} border px-2.5 py-2 text-sm font-medium transition hover:bg-slate-50`}
               style={{ borderColor: withAlpha(accentSolid, 0.35), color: accentLabel }}
             >
               <LogIn size={15} />
-              {t.guardianLogin}
+              <span className="hidden 2xl:inline">{t.guardianLogin}</span>
             </Link>
             <Link
               to={admissionUrl}
-              className={`inline-flex items-center gap-1.5 whitespace-nowrap ${theme.button} px-4 py-2 text-sm font-bold ${theme.shadowSm} transition hover:opacity-90`}
+              className={`hidden items-center gap-1.5 whitespace-nowrap ${theme.button} px-3 py-2 text-sm font-semibold xl:inline-flex ${theme.shadowSm} transition hover:opacity-90`}
               style={{ backgroundColor: accentSolid, color: onAccent }}
             >
               {t.onlineAdmission}
@@ -702,27 +657,6 @@ export default function PublicWebsitePage({
           </button>
         </div>
 
-        {/* Row 2: menu bar — distinct band, desktop only (mobile uses the drawer) */}
-        {theme.nav !== "inline" && (
-          <nav className="no-scrollbar hidden overflow-x-auto lg:block" style={{ backgroundColor: navBg }}>
-            <div className="mx-auto flex max-w-[1200px] items-center justify-center gap-1 px-4">
-              {navKeys.map((key) => (
-                <NavItem
-                  key={key}
-                  sectionKey={key} {...navProps}
-                  className="relative whitespace-nowrap px-4 py-3 text-[13px] font-semibold transition hover:!opacity-100"
-                  style={{ color: navFg, opacity: activeId === key ? 1 : 0.78 }}
-                >
-                  {t.nav[key]}
-                  <span
-                    className="absolute inset-x-3 bottom-1.5 h-[2px] rounded-full transition-opacity"
-                    style={{ backgroundColor: navUnderline, opacity: activeId === key ? 1 : 0 }}
-                  />
-                </NavItem>
-              ))}
-            </div>
-          </nav>
-        )}
       </header>
 
       {settings.show_notice_bar !== 0 && (
@@ -751,12 +685,9 @@ export default function PublicWebsitePage({
                 className="h-9 w-9 shrink-0 rounded-full object-cover shadow ring-2 ring-white"
               />
             ) : (
-              <div
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow"
-                style={{ backgroundColor: accentSolid, color: onAccent }}
-              >
-                {initials(madrasa?.name)}
-              </div>
+              <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border" style={{ color: accentSolid, backgroundColor: withAlpha(accentSolid, 0.07), borderColor: withAlpha(accentSolid, 0.12) }}>
+                <GraduationCap size={20} strokeWidth={1.7} />
+              </span>
             )}
             <span className="break-words text-sm font-extrabold leading-tight text-slate-900">
               {madrasa?.name}
@@ -773,7 +704,7 @@ export default function PublicWebsitePage({
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
-          {navKeys.map((key) => (
+          {primaryNavKeys.map((key) => (
             <NavItem
               key={key}
               sectionKey={key} {...navProps}
@@ -811,7 +742,7 @@ export default function PublicWebsitePage({
               {madrasa.phone}
             </a>
           )}
-          <LanguageSwitcher dropUp className="self-center" />
+          <LanguageSwitcher variant="globe" dropUp className="self-center" />
         </div>
       </aside>
 
@@ -995,6 +926,8 @@ export default function PublicWebsitePage({
                                 onClick={() =>
                                   embed
                                     ? setVideoLightbox({ url: embed, title: item.title || t.videoFallback })
+                                    : /\.(mp4|webm|ogg)(?:$|[?#])/i.test(item.video_url)
+                                      ? setVideoLightbox({ url: item.video_url, title: item.title || t.videoFallback, native: true })
                                     : window.open(item.video_url, "_blank", "noopener,noreferrer")
                                 }
                                 className={`group relative aspect-video overflow-hidden text-start ${theme.media} ${theme.gallery}`}
@@ -1046,7 +979,8 @@ export default function PublicWebsitePage({
                             <PersonCard
                               key={teacher.id}
                               name={teacher.name || teacher.teacher_name}
-                              role={teacher.designation || teacher.subject || t.teacherFallback}
+                              photo={teacher.photo_url}
+                              role={[teacher.designation, teacher.subject].filter(Boolean).join(" · ") || t.teacherFallback}
                               accentSolid={accentSolid}
                               accentLabel={accentLabel}
                               onAccent={onAccent}
@@ -1055,6 +989,9 @@ export default function PublicWebsitePage({
                             />
                           ))}
                         </div>
+                        {teachers.some((teacher: any) => teacher.is_demo) && (
+                          <p className="mt-4 text-xs text-slate-500">{t.demoTeachersHint}</p>
+                        )}
                       </div>
                     );
                   }
@@ -1331,12 +1268,9 @@ export default function PublicWebsitePage({
                     className={`h-11 w-11 shrink-0 ${theme.round} object-cover ring-2 ring-white/10`}
                   />
                 ) : (
-                  <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center ${theme.round} text-sm font-bold`}
-                    style={{ backgroundColor: accentSolid, color: onAccent }}
-                  >
-                    {initials(madrasa?.name)}
-                  </div>
+                  <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5" style={{ color: accentLabelOnDark }}>
+                    <GraduationCap size={24} strokeWidth={1.7} />
+                  </span>
                 )}
                 <span className="break-words text-lg font-extrabold leading-tight text-white">
                   {madrasa?.name}
@@ -1347,21 +1281,7 @@ export default function PublicWebsitePage({
               </p>
 
               {socials.length > 0 && (
-                <div className="mt-5 flex items-center gap-2.5">
-                  {socials.map((social) => (
-                    <a
-                      key={social.label}
-                      href={social.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={social.label}
-                      className={`flex h-9 w-9 items-center justify-center ${theme.round} bg-white/5 text-slate-300 ring-1 ring-white/10 transition duration-200 hover:-translate-y-1 hover:bg-[var(--accent)] hover:text-white`}
-                      style={{ ["--accent" as any]: accentSolid }}
-                    >
-                      {social.icon}
-                    </a>
-                  ))}
-                </div>
+                <PlatformSocialLinks links={socials} className="mt-5" />
               )}
             </div>
 
@@ -1385,12 +1305,19 @@ export default function PublicWebsitePage({
               <h3 className="text-sm font-bold uppercase tracking-wide text-white">{t.contact}</h3>
               <span className="mt-2 block h-0.5 w-8 rounded-full" style={{ backgroundColor: accentSolid }} />
               <div className="mt-4 flex flex-col gap-3 text-sm text-slate-400">
-                {madrasa?.phone && (
-                  <a href={`tel:${madrasa.phone}`} className="flex items-start gap-2.5 transition hover:text-white">
-                    <Phone size={16} className="mt-0.5 shrink-0" style={{ color: accentLabelOnDark }} />
-                    <span>{madrasa.phone}</span>
-                  </a>
-                )}
+                {[
+                  { Icon: Phone, label: t.phone, value: madrasa?.phone, href: madrasa?.phone ? `tel:${madrasa.phone}` : undefined },
+                  { Icon: Mail, label: t.email, value: madrasa?.email, href: madrasa?.email ? `mailto:${madrasa.email}` : undefined },
+                  { Icon: MapPin, label: t.address, value: madrasa?.address, href: madrasa?.address ? mapsUrl || undefined : undefined, external: true },
+                ].map(({ Icon, label, value, href, external }) => (
+                  <div key={label} className="flex items-start gap-2.5">
+                    <Icon size={16} className="mt-1 shrink-0" style={{ color: accentLabelOnDark }} />
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-medium text-slate-500">{label}</p>
+                      {value && href ? <a href={href} target={external ? "_blank" : undefined} rel={external ? "noopener noreferrer" : undefined} className="mt-0.5 block break-words leading-6 transition hover:text-white">{value}</a> : <p className="mt-0.5 text-xs leading-6 text-slate-500">{value || t.contactDetailsPending}</p>}
+                    </div>
+                  </div>
+                ))}
                 {madrasa?.phone && (
                   <a
                     href={waLink(madrasa.phone)}
@@ -1398,28 +1325,8 @@ export default function PublicWebsitePage({
                     rel="noreferrer"
                     className="flex items-start gap-2.5 transition hover:text-white"
                   >
-                    <WhatsAppIcon size={16} />
+                    <WhatsAppIcon size={16} color="#25D366" />
                     <span>{t.messageOnWhatsApp}</span>
-                  </a>
-                )}
-                {madrasa?.email && (
-                  <a
-                    href={`mailto:${madrasa.email}`}
-                    className="flex items-start gap-2.5 break-all transition hover:text-white"
-                  >
-                    <Mail size={16} className="mt-0.5 shrink-0" style={{ color: accentLabelOnDark }} />
-                    <span>{madrasa.email}</span>
-                  </a>
-                )}
-                {madrasa?.address && (
-                  <a
-                    href={mapsUrl || undefined}
-                    target={mapsUrl ? "_blank" : undefined}
-                    rel="noreferrer"
-                    className="flex items-start gap-2.5 transition hover:text-white"
-                  >
-                    <MapPin size={16} className="mt-0.5 shrink-0" style={{ color: accentLabelOnDark }} />
-                    <span>{madrasa.address}</span>
                   </a>
                 )}
               </div>
@@ -1533,13 +1440,15 @@ export default function PublicWebsitePage({
             className="animate-lightboxImage aspect-video w-full max-w-3xl overflow-hidden rounded-xl shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <iframe
+            {videoLightbox.native ? (
+              <video src={videoLightbox.url} aria-label={videoLightbox.title} controls autoPlay playsInline className="h-full w-full bg-black" />
+            ) : <iframe
               title={videoLightbox.title}
               src={videoLightbox.url}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               className="h-full w-full border-0"
-            />
+            />}
           </div>
         </div>
       )}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Languages } from "lucide-react";
+import { Check, ChevronDown, Globe2, Languages } from "lucide-react";
 import { useLanguageStore } from "./languageStore";
 import { LANGUAGE_LABELS, type Lang } from "./types";
 
@@ -12,10 +12,12 @@ const SHORT: Record<Lang, string> = { bn: "বাং", en: "EN"};
 export default function LanguageSwitcher({
   className = "",
   dropUp = false,
+  variant = "default",
 }: {
   className?: string;
   /** Open the menu above the button (e.g. in a bottom drawer footer). */
   dropUp?: boolean;
+  variant?: "default" | "globe";
 }) {
   const lang = useLanguageStore((s) => s.lang);
   const languages = useLanguageStore((s) => s.institution.languages);
@@ -46,12 +48,13 @@ export default function LanguageSwitcher({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={LANGUAGE_LABELS[lang]}
-        title={LANGUAGE_LABELS[lang]}
-        className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+        aria-label={variant === "globe" ? (lang === "bn" ? "ভাষা নির্বাচন করুন" : "Choose language") : LANGUAGE_LABELS[lang]}
+        title={variant === "globe" ? "বাংলা / English" : LANGUAGE_LABELS[lang]}
+        className={`inline-flex h-9 items-center gap-1.5 border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 ${variant === "globe" ? "rounded-full" : "rounded-lg"}`}
       >
-        <Languages size={16} />
-        <span>{SHORT[lang]}</span>
+        {variant === "globe" ? <Globe2 size={16} strokeWidth={1.7} aria-hidden="true" /> : <Languages size={16} />}
+        <span>{variant === "globe" && lang === "bn" ? "বাংলা" : SHORT[lang]}</span>
+        {variant === "globe" && <ChevronDown size={12} aria-hidden="true" className={`text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />}
       </button>
 
       {open && (

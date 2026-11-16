@@ -490,6 +490,8 @@ model ActivityLog {
 // ------------------------------------------------------------
 
 model WebsiteSettings {
+  /// Sample website profiles only; never operational teacher records.
+  demoTeachers Json @default("[]") @map("demo_teachers")
   id             Int     @id @default(autoincrement())
   madrasaId      Int     @unique @map("madrasa_id")
   logoUrl        String? @map("logo_url") @db.VarChar(255)

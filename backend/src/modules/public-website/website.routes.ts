@@ -28,6 +28,7 @@ import {
   upsertWebsitePage,
   upsertWebsiteSettings,
   updateWebsiteStatusBySuperAdmin,
+  resetInstitutionWebsite,
 } from "./website.controller";
 
 const router = Router();
@@ -58,6 +59,7 @@ router.delete("/admin/committee/:id", ...adminGuard, deleteWebsiteCommitteeMembe
 router.patch("/admin/admissions/:id/status", ...adminGuard, updateAdmissionApplicationStatus);
 router.delete("/admin/admissions/:id", ...adminGuard, deleteAdmissionApplication);
 router.patch("/super/madrasas/:id/status", superAdminMiddleware, updateWebsiteStatusBySuperAdmin);
+router.post("/super/madrasas/:id/reset", superAdminMiddleware, resetInstitutionWebsite);
 router.get("/super/default-template", superAdminMiddleware, getDefaultWebsiteTemplate);
 router.put("/super/default-template", superAdminMiddleware, updateDefaultWebsiteTemplate);
 router.post("/super/default-template/image", superAdminMiddleware, uploadDefaultWebsiteImage);

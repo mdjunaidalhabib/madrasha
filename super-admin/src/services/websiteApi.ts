@@ -1,5 +1,10 @@
 import adminApi from "./adminApi";
 
+export async function resetMadrasaWebsite(id: number) {
+  const res = await adminApi.post(`/website/super/madrasas/${id}/reset`);
+  return res.data;
+}
+
 export async function uploadWebsiteDemoImage(image: string): Promise<string> {
   const res = await adminApi.post("/website/super/default-template/image", {
     image,
@@ -13,7 +18,8 @@ import type {
 
 export async function getDefaultWebsiteTemplate(): Promise<TemplateResponse> {
   const res = await adminApi.get("/website/super/default-template");
-  return res.data.data;
+  const result = res.data.data;
+  return { ...result, content: { ...result.content, teachers: result.content.teachers ?? [] } };
 }
 
 export async function saveDefaultWebsiteTemplate(

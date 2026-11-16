@@ -1,4 +1,5 @@
 import { Request } from "express";
+import { publicDemoTeachers } from "./website-demo-teachers";
 import { WebsiteAdmissionStatus, WebsiteStatus } from "@prisma/client";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../shared/errors";
 import { websiteRepository, WebsiteRepository } from "./website.repository";
@@ -142,7 +143,7 @@ export class WebsiteService {
       settings: toWebsiteSettingsApiDto(settings),
       pages: pages.map(toWebsitePageApiDto),
       notices: notices.map(toWebsiteNoticeApiDto),
-      teachers,
+      teachers: teachers.length ? teachers : publicDemoTeachers(settings?.demoTeachers),
       gallery: gallery.map(toWebsiteGalleryApiDto),
       slides: slides.map(toWebsiteSlideApiDto),
       committee: committee.map(toWebsiteCommitteeMemberApiDto),

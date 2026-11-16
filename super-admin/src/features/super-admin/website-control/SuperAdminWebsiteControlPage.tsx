@@ -4,7 +4,8 @@ import {
   listMadrasas,
   type MadrasaListItem,
 } from "../../../services/superAdminApi";
-import { updateMadrasaWebsiteStatus } from "../../../services/websiteApi";
+import { updateMadrasaWebsiteStatus, resetMadrasaWebsite } from "../../../services/websiteApi";
+import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import {
   INSTITUTION_TYPE_LABELS,
   getText,
@@ -12,7 +13,7 @@ import {
   useText,
 } from "@madrasha/shared-ui/src/i18n";
 import { websiteControlText } from "./websiteControl.text";
-import { Globe2, LayoutTemplate } from "lucide-react";
+import { Globe2, LayoutTemplate, RotateCcw } from "lucide-react";
 import WebsiteTemplateEditor from "./WebsiteTemplateEditor";
 import InstitutionWebsiteLink from "../../../components/super-admin/InstitutionWebsiteLink";
 
@@ -29,6 +30,9 @@ export default function SuperAdminWebsiteControlPage() {
   const [status, setStatus] = useState<WebsiteStatus>("active");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const tx = (bn: string, en: string) => lang === "bn" ? bn : en;
 
   const selected = useMemo(
     () => madrasas.find((m) => String(m.id) === madrasaId),
@@ -45,10 +49,13 @@ export default function SuperAdminWebsiteControlPage() {
           setStatus((rows[0].website_status as WebsiteStatus) || "active");
         }
       })
+      .catch((err) => setError(err?.response?.data?.message || tx("প্রতিষ্ঠানের তালিকা আনা যায়নি।", "Unable to load institutions.")))
       .finally(() => setLoading(false));
   }, []);
 
   const onSelect = (id: string) => {
+    setMessage("");
+    setError("");
     setMadrasaId(id);
     const row = madrasas.find((m) => String(m.id) === id);
     setStatus((row?.website_status as WebsiteStatus) || "active");
@@ -58,14 +65,45 @@ export default function SuperAdminWebsiteControlPage() {
     e.preventDefault();
     setMessage("");
     if (!madrasaId) return;
-    await updateMadrasaWebsiteStatus(Number(madrasaId), status);
-    setMadrasas((prev) =>
-      prev.map((m) =>
-        String(m.id) === madrasaId ? { ...m, website_status: status } : m,
+    setBusy(true);
+    setError("");
+    try {
+      await updateMadrasaWebsiteStatus(Number(madrasaId), status);
+      setMadrasas((prev) =>
+        prev.map((m) =>
+          String(m.id) === madrasaId ? { ...m, website_status: status } : m,
+        ),
+      );
+      const text = getText(websiteControlText);
+      setMessage(text.updated(text.statuses[status] || status));
+    } catch (err: any) {
+      setError(err?.response?.data?.message || tx("ওয়েবসাইট স্ট্যাটাস বদলানো যায়নি।", "Unable to update website status"));
+    } finally { setBusy(false); }
+  };
+
+  const resetWebsite = () => {
+    if (!selected || busy) return;
+    const institution = selected;
+    useConfirmStore.getState().show({
+      title: tx("মূল ডেমোতে রিসেট করুন", "Reset to main demo"),
+      message: tx(
+        `${institution.name}-এর ওয়েবসাইটের সেটিংস, পেজ, নোটিশ, স্লাইডার, গ্যালারি, বাণী, কমিটি ও ভিডিও সর্বশেষ সংরক্ষিত ডেমো দিয়ে প্রতিস্থাপিত হবে। নিজস্ব ওয়েবসাইট সম্পাদনা মুছে যাবে। ভর্তি আবেদন, শিক্ষার্থী ও প্রতিষ্ঠানের অন্যান্য তথ্য অপরিবর্তিত থাকবে।`,
+        `${institution.name}'s website settings, pages, notices, slides, gallery, messages, committee and videos will be replaced with the latest saved demo. Custom website edits will be removed. Admission applications, students and other institution data will be preserved.`,
       ),
-    );
-    const tx = getText(websiteControlText);
-    setMessage(tx.updated(tx.statuses[status] || status));
+      confirmText: tx("ওয়েবসাইট রিসেট করুন", "Reset website"),
+      danger: true,
+      onConfirm: async () => {
+        setBusy(true);
+        setMessage("");
+        setError("");
+        try {
+          await resetMadrasaWebsite(institution.id);
+          setMessage(tx("ওয়েবসাইট মূল ডেমোতে ফিরে এসেছে।", "Website restored to the main demo."));
+        } catch (err: any) {
+          setError(err?.response?.data?.message || tx("ওয়েবসাইট রিসেট করা যায়নি।", "Unable to reset website."));
+        } finally { setBusy(false); }
+      },
+    });
   };
 
   return (
@@ -111,7 +149,7 @@ export default function SuperAdminWebsiteControlPage() {
               className="mt-1 w-full rounded-xl border px-3 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={madrasaId}
               onChange={(e) => onSelect(e.target.value)}
-              disabled={loading}
+              disabled={loading || busy}
               required
             >
               <option value="">{t.selectInstitution}</option>
@@ -162,6 +200,7 @@ export default function SuperAdminWebsiteControlPage() {
             <select
               className="mt-1 w-full rounded-xl border px-3 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={status}
+              disabled={busy}
               onChange={(e) => setStatus(e.target.value as WebsiteStatus)}
             >
               <option value="active">{t.statuses.active}</option>
@@ -170,9 +209,19 @@ export default function SuperAdminWebsiteControlPage() {
             </select>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button disabled={!madrasaId || loading}>{t.updateStatus}</Button>
+            <Button disabled={!madrasaId || loading || busy}>{t.updateStatus}</Button>
             {selected && <InstitutionWebsiteLink slug={selected.slug} />}
           </div>
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-5 dark:border-slate-700">
+            <div className="max-w-lg">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tx("মূল ডেমোতে ফিরুন", "Restore main demo")}</h2>
+              <p className="mt-1 text-xs leading-6 text-slate-500">{tx("নির্বাচিত প্রতিষ্ঠানের ওয়েবসাইট সর্বশেষ সংরক্ষিত ডেমো দিয়ে প্রতিস্থাপন করুন।", "Replace the selected institution's website with the latest saved demo.")}</p>
+            </div>
+            <Button type="button" variant="secondary" disabled={!selected || loading || busy} onClick={resetWebsite}>
+              <RotateCcw size={14} />{tx("ওয়েবসাইট রিসেট", "Reset website")}
+            </Button>
+          </div>
+          {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{error}</p>}
           {message && (
             <p className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-400">
               {message}
