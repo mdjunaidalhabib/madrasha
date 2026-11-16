@@ -1,0 +1,142 @@
+/* These rules only apply to the three opt-in themes. */
+[data-website-theme="heritage"] {
+  background: #f7f1e5;
+}
+[data-website-theme="heritage"] > header,
+[data-website-theme="heritage"] > section.bg-white {
+  background: #fffcf5;
+}
+[data-website-theme="heritage"] .public-website-hero--arch {
+  width: calc(100% - 2rem);
+  margin-top: 1.5rem;
+  border-radius: 25% 25% 0.75rem 0.75rem / 45% 45% 0.75rem 0.75rem;
+  border: 5px solid #fffcf5;
+  outline: 1px solid #c6aa71;
+  box-shadow: 0 16px 40px #573c1112;
+}
+[data-website-theme="heritage"] .public-website-main > section {
+  padding: 1.5rem;
+  border: 1px solid #d7c49b;
+  background: #fffcf5;
+  border-radius: 2rem 2rem 0.25rem 0.25rem;
+}
+[data-website-theme="heritage"] > footer {
+  border-top: 6px double #c6aa71;
+}
+.public-section-heading--ornament {
+  text-align: center;
+}
+.public-section-heading--ornament h2 {
+  font-family: Georgia, "Noto Serif Bengali", serif;
+  font-weight: 700;
+}
+.public-section-heading--ornament .public-section-ornament {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  color: var(--heading-accent);
+  font-size: 0.75rem;
+}
+.public-section-heading--ornament .public-section-ornament::before,
+.public-section-heading--ornament .public-section-ornament::after {
+  content: "";
+  width: 3rem;
+  border-top: 1px solid currentColor;
+}
+[data-website-theme="campus"] {
+  background: #f0f6f8;
+  padding-top: 0.75rem;
+}
+[data-website-theme="campus"] > header {
+  top: 0.75rem;
+  width: calc(100% - 1.5rem);
+  max-width: 1240px;
+  margin-inline: auto;
+  border-radius: 1.25rem;
+}
+[data-website-theme="campus"] .public-website-hero--sculpted {
+  width: calc(100% - 1.5rem);
+  margin-top: 1.25rem;
+  border-radius: 0.75rem 4rem 0.75rem 4rem;
+  box-shadow: 8px 8px 0 var(--website-accent);
+}
+[data-website-theme="campus"] > section.bg-white {
+  background: transparent;
+}
+[data-website-theme="campus"] .public-website-main > section {
+  border-radius: 2rem;
+  padding: 1.5rem;
+  background: white;
+}
+.public-section-heading--oversized {
+  border-inline-start: 6px solid var(--heading-accent);
+  padding-inline-start: 1.25rem;
+}
+.public-section-heading--oversized .public-section-eyebrow {
+  letter-spacing: 0.12em;
+}
+.public-section-heading--oversized h2 {
+  font-size: clamp(1.75rem, 3vw, 3rem);
+}
+.public-section-heading--oversized .public-section-ornament,
+.public-section-heading--ruled .public-section-ornament {
+  display: none;
+}
+[data-website-theme="editorial"] .public-website-hero--framed {
+  width: calc(100% - 2rem);
+  border-radius: 0;
+  margin-top: 1rem;
+  border-bottom: 6px solid var(--website-accent);
+}
+[data-website-theme="editorial"] .public-website-main > section {
+  border-top: 1px solid #cbd5e1;
+  padding-top: 1.5rem;
+}
+.public-section-heading--ruled {
+  border-bottom: 3px double currentColor;
+  padding-bottom: 1.25rem;
+}
+.public-section-heading--ruled h2 {
+  font-family: Georgia, "Noto Serif Bengali", serif;
+  letter-spacing: -0.025em;
+}
+.public-section-heading--ruled .public-section-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+@media (min-width: 1024px) {
+  [data-website-theme="heritage"] > header > div {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  [data-website-theme="heritage"] > header > div > a:first-child {
+    flex: 0 1 auto;
+    max-width: 70%;
+  }
+  [data-website-theme="heritage"] > header nav {
+    order: 3;
+    width: 100%;
+    border-top: 1px solid #e7d8b8;
+    padding-top: 0.5rem;
+  }
+  [data-website-theme="editorial"] .public-website-flow:has(.public-website-main) > .public-website-sidebar {
+    float: inline-start;
+    width: 26%;
+    margin-inline-start: 0;
+    margin-inline-end: 2.5rem;
+    border-inline-end: 1px solid #cbd5e1;
+    padding-inline-end: 1.5rem;
+  }
+}
+@media (max-width: 639px) {
+  [data-website-theme="heritage"] .public-website-main > section,
+  [data-website-theme="campus"] .public-website-main > section {
+    padding: 1rem;
+  }
+  [data-website-theme="campus"] .public-website-hero--sculpted {
+    border-radius: 0.5rem 2rem 0.5rem 2rem;
+    box-shadow: 4px 4px 0 var(--website-accent);
+  }
+}

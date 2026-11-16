@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { WEBSITE_THEME_KEYS } from "./website.constants";
 import { DEFAULT_WEBSITE_DEMO_TEACHERS, websiteDemoTeachersSchema } from "./website-demo-teachers";
 
 const text = (max = 190) => z.string().max(max);
@@ -27,7 +28,7 @@ export const websiteTemplateSchema = z
         heroTitle: text(),
         heroSubtitle: text(10000),
         themeColor: z.string().regex(/^#[0-9a-f]{6}$/i),
-        themeKey: z.enum(["classic", "modern", "minimal"]),
+        themeKey: z.enum(WEBSITE_THEME_KEYS),
         showNotices: toggle,
         showGallery: toggle,
         showTeachers: toggle,

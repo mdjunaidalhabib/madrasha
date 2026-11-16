@@ -2,7 +2,7 @@ export type TemplateSettings = {
   heroTitle: string;
   heroSubtitle: string;
   themeColor: string;
-  themeKey: "classic" | "modern" | "minimal";
+  themeKey: import("@madrasha/shared-ui/src/website/themes").WebsiteThemeKey;
   showNotices: number;
   showGallery: number;
   showTeachers: number;

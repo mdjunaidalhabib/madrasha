@@ -1,9 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, Globe2, Languages } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { Check, ChevronDown, Globe } from "lucide-react";
 import { useLanguageStore } from "./languageStore";
-import { LANGUAGE_LABELS, type Lang } from "./types";
-
-const SHORT: Record<Lang, string> = { bn: "বাং", en: "EN"};
+import { LANGUAGE_LABELS } from "./types";
 
 /**
  * Topbar language picker - lists only the languages this tenant's institution
@@ -12,71 +10,113 @@ const SHORT: Record<Lang, string> = { bn: "বাং", en: "EN"};
 export default function LanguageSwitcher({
   className = "",
   dropUp = false,
-  variant = "default",
 }: {
   className?: string;
   /** Open the menu above the button (e.g. in a bottom drawer footer). */
   dropUp?: boolean;
-  variant?: "default" | "globe";
 }) {
   const lang = useLanguageStore((s) => s.lang);
   const languages = useLanguageStore((s) => s.institution.languages);
   const setLang = useLanguageStore((s) => s.setLang);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const options = useRef<(HTMLButtonElement | null)[]>([]);
+  const menuId = useId();
+  const triggerId = useId();
+  const label = lang === "bn" ? "ভাষা নির্বাচন করুন" : "Choose language";
 
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => {
+    options.current[languages.indexOf(lang)]?.focus();
+    const onDown = (e: PointerEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
     return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
     };
-  }, [open]);
+  }, [open, lang, languages]);
 
   if (languages.length < 2) return null;
 
   return (
-    <div ref={ref} className={`relative ${className}`}>
+    <div
+      ref={ref}
+      className={`relative shrink-0 ${className}`}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && open) {
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen(false);
+          trigger.current?.focus();
+        }
+      }}
+    >
       <button
+        ref={trigger}
+        id={triggerId}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-haspopup="listbox"
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
+        aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={variant === "globe" ? (lang === "bn" ? "ভাষা নির্বাচন করুন" : "Choose language") : LANGUAGE_LABELS[lang]}
-        title={variant === "globe" ? "বাংলা / English" : LANGUAGE_LABELS[lang]}
-        className={`inline-flex h-9 items-center gap-1.5 border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 ${variant === "globe" ? "rounded-full" : "rounded-lg"}`}
+        aria-controls={open ? menuId : undefined}
+        aria-label={`${label}: ${LANGUAGE_LABELS[lang]}`}
+        title="বাংলা / English"
+        className={`inline-flex h-10 items-center gap-2 rounded-full border border-teal-200 bg-white py-1 pe-3 ps-1 text-sm font-medium text-teal-800 motion-safe:transition-colors hover:border-teal-400 hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 focus-visible:ring-offset-2 ${open ? "ring-2 ring-teal-500/10" : ""}`}
       >
-        {variant === "globe" ? <Globe2 size={16} strokeWidth={1.7} aria-hidden="true" /> : <Languages size={16} />}
-        <span>{variant === "globe" && lang === "bn" ? "বাংলা" : SHORT[lang]}</span>
-        {variant === "globe" && <ChevronDown size={12} aria-hidden="true" className={`text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />}
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-700">
+          <Globe size={17} strokeWidth={1.6} aria-hidden="true" />
+        </span>
+        <span lang={lang}>{LANGUAGE_LABELS[lang]}</span>
+        <ChevronDown size={12} aria-hidden="true" className={`text-teal-600 motion-safe:transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
         <ul
-          role="listbox"
-          className={`absolute end-0 z-50 min-w-[9rem] ${dropUp ? "bottom-full mb-1.5" : "top-full mt-1.5"} overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800`}
+          id={menuId}
+          role="menu"
+          aria-labelledby={triggerId}
+          onKeyDown={(event) => {
+            const index = options.current.indexOf(document.activeElement as HTMLButtonElement);
+            let next: number;
+            if (event.key === "ArrowDown") next = (index + 1) % languages.length;
+            else if (event.key === "ArrowUp") next = (index - 1 + languages.length) % languages.length;
+            else if (event.key === "Home") next = 0;
+            else if (event.key === "End") next = languages.length - 1;
+            else return;
+            event.preventDefault();
+            options.current[next]?.focus();
+          }}
+          className={`absolute end-0 z-50 min-w-[11rem] space-y-1 overflow-hidden rounded-2xl border border-teal-100 bg-white p-1.5 shadow-[0_12px_32px_-8px_rgba(15,118,110,0.2)] ${dropUp ? "bottom-full mb-2.5" : "top-full mt-2.5"}`}
         >
-          {languages.map((code) => (
-            <li key={code}>
+          {languages.map((code, index) => (
+            <li key={code} role="none">
               <button
+                ref={(element) => { options.current[index] = element; }}
                 type="button"
-                role="option"
-                aria-selected={code === lang}
+                role="menuitemradio"
+                aria-checked={code === lang}
+                tabIndex={-1}
                 lang={code}
                 onClick={() => {
                   setLang(code);
                   setOpen(false);
+                  trigger.current?.focus();
                 }}
-                className="flex w-full items-center justify-between gap-3 px-3 py-2 text-start text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700"
+                className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-start text-sm motion-safe:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-500 ${code === lang ? "bg-teal-50 font-semibold text-teal-800" : "text-slate-600 hover:bg-slate-50"}`}
               >
                 <span>{LANGUAGE_LABELS[code]}</span>
-                {code === lang && <Check size={15} className="text-emerald-600" />}
+                {code === lang && <Check size={15} aria-hidden="true" className="text-teal-600" />}
               </button>
             </li>
           ))}

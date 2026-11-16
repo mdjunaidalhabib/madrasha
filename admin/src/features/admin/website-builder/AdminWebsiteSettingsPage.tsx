@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { commonText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { confirmWebsiteReset } from "@madrasha/shared-ui/src/website/confirmWebsiteReset";
 import { websiteText } from "./website.text";
 import { Link } from "react-router-dom";
 import {
@@ -16,6 +17,7 @@ import {
   Pencil,
   Plus,
   Quote,
+  RotateCcw,
   Settings2,
   Share2,
   Trash2,
@@ -42,6 +44,7 @@ import {
   deleteWebsiteSlide,
   deleteWebsiteVideo,
   getWebsiteSettings,
+  resetOwnWebsite,
   saveWebsiteCommitteeMember,
   saveWebsiteGalleryItem,
   saveWebsiteNotice,
@@ -78,7 +81,7 @@ const defaultSettings: WebsiteSettingsPayload = {
   hero_title: "",
   hero_subtitle: "",
   theme_color: "#2563eb",
-  theme_key: "classic",
+  theme_key: "modern",
   show_notices: 1,
   show_gallery: 1,
   show_teachers: 1,
@@ -246,76 +249,14 @@ function PublishAndSubmitAction({
   );
 }
 
-type WebsiteThemeKey = "classic" | "modern" | "minimal";
+type WebsiteThemeKey = import("@madrasha/shared-ui/src/website/themes").WebsiteThemeKey;
 
-const websiteThemes: { key: WebsiteThemeKey; name: string; description: string }[] = [
-  {
-    key: "classic",
-    name: "ক্লাসিক",
-    description: "সাদা হেডারের নিচে রঙিন মেনু ব্যান্ড, নরম শ্যাডো কার্ড (বর্তমান ডিজাইন)",
-  },
-  {
-    key: "modern",
-    name: "মডার্ন",
-    description: "গোলাকার কার্ড, হালকা রঙিন সেকশন ব্যাকগ্রাউন্ড, এক লাইনের হেডার",
-  },
-  {
-    key: "minimal",
-    name: "মিনিমাল",
-    description: "ধারালো কোণ, বর্ডার-ভিত্তিক সাদামাটা ও পরিষ্কার লুক",
-  },
-];
+import { WEBSITE_THEMES } from "@madrasha/shared-ui/src/website/themes";
+import WebsiteThemePreview from "@madrasha/shared-ui/src/website/WebsiteThemePreview";
 
-/** প্রতিটি থিমের ছোট CSS মিনি-প্রিভিউ - শুধু লেআউটের ধরন বোঝানোর জন্য, আসল সাইটের রেন্ডার নয়। */
-function ThemeMiniPreview({ themeKey, accent }: { themeKey: WebsiteThemeKey; accent: string }) {
-  if (themeKey === "classic") {
-    return (
-      <div className="flex h-full flex-col bg-slate-50 dark:bg-slate-800">
-        <div className="flex h-4 items-center gap-1 bg-white px-1.5 dark:bg-slate-900">
-          <span className="h-2 w-2 rounded-full bg-slate-300" />
-          <span className="h-1 w-8 rounded-sm bg-slate-300" />
-        </div>
-        <div className="h-2.5" style={{ backgroundColor: accent }} />
-        <div className="flex flex-1 gap-1.5 p-1.5">
-          <span className="flex-1 rounded bg-white shadow dark:bg-slate-900" />
-          <span className="flex-1 rounded bg-white shadow dark:bg-slate-900" />
-          <span className="flex-1 rounded bg-white shadow dark:bg-slate-900" />
-        </div>
-      </div>
-    );
-  }
-  if (themeKey === "modern") {
-    return (
-      <div className="relative flex h-full flex-col bg-white dark:bg-slate-900">
-        <div className="flex h-4 items-center gap-1 px-1.5">
-          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: accent }} />
-          <span className="ms-auto h-1 w-3 rounded-full bg-slate-300" />
-          <span className="h-1 w-3 rounded-full bg-slate-300" />
-          <span className="h-1 w-3 rounded-full bg-slate-300" />
-        </div>
-        <div className="relative flex flex-1 gap-1.5 p-1.5">
-          <span className="absolute inset-0 opacity-15" style={{ backgroundColor: accent }} />
-          <span className="relative flex-1 rounded-xl bg-white shadow-sm dark:bg-slate-800" />
-          <span className="relative flex-1 rounded-xl bg-white shadow-sm dark:bg-slate-800" />
-          <span className="relative flex-1 rounded-xl bg-white shadow-sm dark:bg-slate-800" />
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="flex h-full flex-col bg-white dark:bg-slate-900">
-      <div className="flex h-4 items-center gap-1 border-b border-slate-300 px-1.5 dark:border-slate-600">
-        <span className="h-2 w-2 border border-slate-400" />
-        <span className="h-1 w-8 bg-slate-300" />
-      </div>
-      <div className="flex flex-1 gap-1.5 p-1.5">
-        <span className="flex-1 border border-slate-300 dark:border-slate-600" />
-        <span className="flex-1 border border-slate-300 dark:border-slate-600" />
-        <span className="flex-1 border border-slate-300 dark:border-slate-600" />
-      </div>
-    </div>
-  );
-}
+const websiteThemes = WEBSITE_THEMES.map((theme) => ({ key: theme.key, name: theme.bn, description: theme.descriptionBn }));
+
+const ThemeMiniPreview = WebsiteThemePreview;
 
 /** থিম বাছাইয়ের রেডিও-গ্রুপ - নেটিভ radio ইনপুট (sr-only) ব্যবহার করায় কিবোর্ডের
  * তীর-চিহ্ন/ট্যাব ও স্ক্রিন-রিডার এমনিতেই কাজ করে। সংরক্ষণ শেষ হওয়ার আগেই নির্বাচন দেখানো হয়,
@@ -334,7 +275,7 @@ function WebsiteThemePicker({
   const selected = pending ?? value;
 
   const choose = async (next: WebsiteThemeKey) => {
-    if (next === selected) return;
+    if (pending || next === selected) return;
     setPending(next);
     try {
       await onSave(next);
@@ -363,6 +304,7 @@ function WebsiteThemePicker({
               name="website_theme_key"
               value={theme.key}
               checked={active}
+              disabled={pending !== null}
               onChange={() => choose(theme.key)}
               className="sr-only"
             />
@@ -390,6 +332,7 @@ function WebsiteThemePicker({
 
 export default function AdminWebsiteSettingsPage() {
   const t = useText(websiteText);
+  const lang = useLang();
   const c = useText(commonText);
   const user = useAuthStore((s) => s.user);
   const slug = useAuthStore((s) => s.madrasaSlug) || "";
@@ -435,6 +378,8 @@ export default function AdminWebsiteSettingsPage() {
   const [savingCommittee, setSavingCommittee] = useState(false);
 
   const [loading, setLoading] = useState(true);
+  const [resetting, setResetting] = useState(false);
+  const resettingRef = useRef(false);
   const [savingToggle, setSavingToggle] = useState<string | null>(null);
 
   const [editingPageIndex, setEditingPageIndex] = useState<number | null>(null);
@@ -513,6 +458,7 @@ export default function AdminWebsiteSettingsPage() {
    * whatever the previous save just committed.
    */
   const queueSettingsSave = (patch: Partial<WebsiteSettingsPayload>) => {
+    if (resettingRef.current) return Promise.reject(new Error(t.resetInProgress));
     const task = async () => {
       const payload: WebsiteSettingsPayload = {
         ...formRef.current,
@@ -526,6 +472,32 @@ export default function AdminWebsiteSettingsPage() {
     const result = settingsSaveQueueRef.current.then(task, task);
     settingsSaveQueueRef.current = result.catch(() => {});
     return result;
+  };
+
+  const websiteSaving = Boolean(savingNotice || savingGallery || savingVideo || savingSlide || savingCommittee || savingToggle || savingPage || savingNoticeEdit || savingGalleryEdit || savingVideoEdit || savingSlideEdit || savingCommitteeEdit);
+
+  const resetWebsite = () => {
+    if (resettingRef.current || loading || websiteSaving) return;
+    confirmWebsiteReset({
+      institutionName: form.name || t.resetInstitutionFallback,
+      lang,
+      onConfirm: async () => {
+        if (resettingRef.current) return;
+        resettingRef.current = true;
+        setResetting(true);
+        try {
+          // Finish queued field saves before replacing the site's content.
+          await settingsSaveQueueRef.current;
+          await resetOwnWebsite();
+          // Reload all settings, lists and drafts from the saved demo.
+          window.location.reload();
+        } catch (err: any) {
+          resettingRef.current = false;
+          setResetting(false);
+          toast(err?.response?.data?.message || t.resetFailed, "error");
+        }
+      },
+    });
   };
 
   const saveSettingsField = async (key: keyof WebsiteSettingsPayload, value: string | number) => {
@@ -1059,7 +1031,7 @@ export default function AdminWebsiteSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <fieldset disabled={resetting} className="min-w-0 space-y-6 pb-8 md:pb-12">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-24">
         <aside className="settings-sidebar no-print self-start rounded-2xl border border-gray-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-4">
           <div className="mb-2 rounded-lg bg-blue-800 px-3 py-2 text-white">
@@ -1237,7 +1209,7 @@ export default function AdminWebsiteSettingsPage() {
             }}
           >
             <WebsiteThemePicker
-              value={websiteThemes.find((t) => t.key === form.theme_key)?.key ?? "classic"}
+              value={websiteThemes.find((t) => t.key === form.theme_key)?.key ?? "modern"}
               accent={form.theme_color || "#2563eb"}
               onSave={(v) => saveSettingsField("theme_key", v)}
             />
@@ -2343,8 +2315,18 @@ export default function AdminWebsiteSettingsPage() {
           </SectionCard>
         </div>
       )}
+
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-red-200 bg-red-50/50 p-5 dark:border-red-900/50 dark:bg-red-950/10">
+        <div className="max-w-xl">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t.resetTitle}</h2>
+          <p className="mt-1 text-xs leading-6 text-slate-600 dark:text-slate-400">{t.resetDescription}</p>
+        </div>
+        <Button type="button" variant="danger" disabled={loading || resetting || websiteSaving} onClick={resetWebsite}>
+          <RotateCcw size={14} />{resetting ? t.resetInProgress : t.resetWebsite}
+        </Button>
+      </div>
         </div>
       </div>
-    </div>
+    </fieldset>
   );
 }

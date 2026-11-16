@@ -14,6 +14,16 @@ export const resetInstitutionWebsite = async (req: Request, res: Response) => {
   } catch (error) { respondError(res, error); }
 };
 
+export const resetOwnInstitutionWebsite = async (req: Request, res: Response) => {
+  try {
+    // The authenticated tenant is authoritative; body/query IDs cannot redirect a reset.
+    const madrasaId = req.tenant?.madrasa_id;
+    if (!madrasaId) throw new BadRequestError("Invalid institution ID");
+    await resetWebsiteToTemplate(madrasaId);
+    res.json({ message: t({ bn: "ওয়েবসাইট মূল ডেমোতে রিসেট হয়েছে", en: "Website reset to the main demo" }) });
+  } catch (error) { respondError(res, error); }
+};
+
 export const uploadDefaultWebsiteImage = async (req: Request, res: Response) => {
   try { res.json({ data: await uploadWebsiteTemplateImage(req.body.image) }); }
   catch (error) { respondError(res, error); }
@@ -297,4 +307,18 @@ export const updateWebsiteStatusBySuperAdmin = async (req: Request, res: Respons
   } catch (error) {
     respondError(res, error);
   }
+};
+
+export const getWebsiteThemeBySuperAdmin = async (req: Request, res: Response) => {
+  try {
+    const theme_key = await websiteService.getWebsiteThemeBySuperAdmin(Number(req.params.id));
+    res.json({ theme_key });
+  } catch (error) { respondError(res, error); }
+};
+
+export const updateWebsiteThemeBySuperAdmin = async (req: Request, res: Response) => {
+  try {
+    const theme_key = await websiteService.updateWebsiteThemeBySuperAdmin(Number(req.params.id), req.body.theme_key);
+    res.json({ message: t({ bn: "ওয়েবসাইট থিম আপডেট হয়েছে", en: "Website theme updated" }), theme_key });
+  } catch (error) { respondError(res, error); }
 };

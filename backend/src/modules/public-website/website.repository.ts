@@ -16,6 +16,10 @@ import {
 } from "./website.constants";
 
 export class WebsiteRepository {
+  findWebsiteInstitution(id: number) {
+    return prisma.madrasa.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
+  }
+
   findPublicMadrasaBySlug(slug: string) {
     return prisma.madrasa.findFirst({
       where: { slug, deletedAt: null },

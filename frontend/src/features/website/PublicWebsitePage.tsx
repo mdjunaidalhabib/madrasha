@@ -40,6 +40,9 @@ import {
   type Lang,
 } from "@madrasha/shared-ui/src/i18n";
 import { websiteText } from "./website.text";
+import SidebarAwareGrid from "./SidebarAwareGrid";
+import "./PublicWebsitePage.css";
+import "./PublicWebsiteThemes.css";
 
 /** YouTube লিংক থেকে ভিডিও আইডি বের করে - এম্বেড প্লেয়ার ও থাম্বনেইল দুটোতেই লাগে। */
 // Menu entry. হোম goes to the top of the home page. যোগাযোগ has no section on the home page — it routes to the
@@ -127,6 +130,16 @@ function SectionHeader({
 }) {
   const line = light ? "rgba(255,255,255,0.5)" : withAlpha(accentSolid, 0.45);
   const titleColor = light ? "text-white" : "text-slate-900";
+
+  if (["ornament", "oversized", "ruled"].includes(theme.sectionHeader)) {
+    return (
+      <div className={`reveal public-section-heading public-section-heading--${theme.sectionHeader}`} style={{ "--heading-accent": light ? "#ffffff" : accentLabel } as CSSProperties}>
+        <p className="public-section-eyebrow text-xs font-bold" style={{ color: light ? "#ffffff" : accentLabel }}>{eyebrow}</p>
+        <h2 className={`mt-3 text-2xl font-extrabold leading-snug md:text-4xl ${titleColor}`}>{title}</h2>
+        <span className="public-section-ornament" aria-hidden="true">◆</span>
+      </div>
+    );
+  }
 
   // Modern: start-aligned, eyebrow as an accent pill, accent bar beside the title.
   if (theme.sectionHeader === "start-bar") {
@@ -225,7 +238,7 @@ function PersonCard({
 }) {
   return (
     <div
-      className={`reveal group overflow-hidden ${theme.card} ${theme.person} text-center`}
+      className={`group overflow-hidden ${theme.card} ${theme.person} text-center`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       <div
@@ -327,12 +340,12 @@ export default function PublicWebsitePage({
   const accentSolid = useMemo(() => accentStrong(themeColor), [themeColor]);
   const accentLabel = useMemo(() => accentText(themeColor), [themeColor]);
   const onAccent = useMemo(() => pickTextOn(accentSolid), [accentSolid]);
-  // Dark gradient stops for the brand-colored panels (about card, admission
-  // band). Darkened enough that white text stays readable whatever theme
+  // Dark gradient stops for the admission band.
+  // Darkened enough that white text stays readable whatever theme
   // color an admin picks; the pure theme color still shows through the glow.
   const accentBand = useMemo(() => mixHex(accentSolid, "#000000", 0.4), [accentSolid]);
   const accentDeep = useMemo(() => mixHex(accentSolid, "#0b1220", 0.72), [accentSolid]);
-  // Theme color lifted for use as an icon tint on the near-black top bar/footer.
+  // Theme color lifted for use as an icon tint on the near-black footer.
   const accentLabelOnDark = useMemo(() => mixHex(accentSolid, "#ffffff", 0.4), [accentSolid]);
   const guardianLoginUrl = `${getTenantGuardianBase(slug)}/login`;
   // Site root for this tenant ("/slug", "/m/slug" or "/" on a custom domain);
@@ -541,37 +554,10 @@ export default function PublicWebsitePage({
 
   const socials = getWebsiteSocialLinks(settings, t.whatsappChannel);
 
-  const hasTopBar = Boolean(madrasa?.phone || madrasa?.email || socials.length);
-
   const sectionBase = "py-16 md:py-24 scroll-mt-28";
 
   return (
-    <div id="page-top" className="min-h-screen bg-white text-slate-900">
-      {/* Top info bar (desktop) */}
-      {hasTopBar && (
-        <div className="hidden bg-slate-950 text-slate-300 lg:block">
-          <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-6 px-4 py-2 text-xs">
-            <div className="flex items-center gap-6">
-              {madrasa?.phone && (
-                <a href={`tel:${madrasa.phone}`} className="flex items-center gap-1.5 transition hover:text-white">
-                  <Phone size={13} style={{ color: accentLabelOnDark }} />
-                  {madrasa.phone}
-                </a>
-              )}
-              {madrasa?.email && (
-                <a href={`mailto:${madrasa.email}`} className="flex items-center gap-1.5 transition hover:text-white">
-                  <Mail size={13} style={{ color: accentLabelOnDark }} />
-                  {madrasa.email}
-                </a>
-              )}
-            </div>
-            {socials.length > 0 && (
-              <PlatformSocialLinks links={socials} compact />
-            )}
-          </div>
-        </div>
-      )}
-
+    <div id="page-top" data-website-theme={theme.key} className="public-website-theme min-h-screen bg-white text-slate-900" style={{ "--website-accent": accentSolid, "--website-tint": withAlpha(accentSolid, 0.06) } as CSSProperties}>
       {/* Header — sticky in normal flow (never overlaps the hero) */}
       <header
         className={`sticky top-0 z-50 bg-white transition-shadow duration-300 ${theme.header} ${
@@ -626,7 +612,7 @@ export default function PublicWebsitePage({
         </nav>
 
           <div className="hidden shrink-0 items-center gap-1.5 lg:flex">
-            <LanguageSwitcher variant="globe" />
+            <LanguageSwitcher />
             <Link
               to={guardianLoginUrl}
               aria-label={t.guardianLogin}
@@ -742,7 +728,7 @@ export default function PublicWebsitePage({
               {madrasa.phone}
             </a>
           )}
-          <LanguageSwitcher variant="globe" dropUp className="self-center" />
+          <LanguageSwitcher dropUp className="self-center" />
         </div>
       </aside>
 
@@ -780,229 +766,10 @@ export default function PublicWebsitePage({
       {(mainFlowKeys.length > 0 || sidebarFlowKeys.length > 0) && (
         <section className={`bg-white ${sectionBase}`}>
           <div className="mx-auto max-w-[1200px] px-4">
-            <div className="grid gap-12 lg:grid-cols-3 lg:gap-14">
-              {/* Main reading column: intro → gallery → video gallery → teachers */}
-              <div className="space-y-16 md:space-y-20 lg:col-span-2">
-                {mainFlowKeys.map((key) => {
-                  if (key === "about") {
-                    return (
-                      <div key="about" id="about" className="scroll-mt-28">
-                        <SectionHeader
-                          eyebrow={t.aboutEyebrow}
-                          title={pageMap.about.title}
-                          accentSolid={accentSolid}
-                          accentLabel={accentLabel}
-                          theme={theme}
-                        />
-                        <div
-                          className="reveal mt-8 border-s-4 ps-5 md:ps-6"
-                          style={{ borderColor: accentSolid }}
-                        >
-                          <p className="whitespace-pre-line text-sm leading-8 text-slate-600 md:text-base md:leading-9">
-                            {pageMap.about.content}
-                          </p>
-                        </div>
-
-                        <div
-                          className={`reveal relative mt-6 overflow-hidden ${theme.panel} p-6 text-white ${theme.shadowXl} md:p-8`}
-                          style={{ background: `linear-gradient(145deg, ${accentBand} 0%, ${accentDeep} 100%)` }}
-                        >
-                          <div
-                            className="pointer-events-none absolute -end-16 -top-16 h-56 w-56 rounded-full blur-3xl"
-                            style={{ backgroundColor: withAlpha(accentSolid, 0.55) }}
-                          />
-                          <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-center gap-3">
-                              {madrasa?.logo_url ? (
-                                <img
-                                  src={madrasa.logo_url}
-                                  alt={t.logo}
-                                  className={`h-12 w-12 shrink-0 ${theme.round} object-cover ring-2 ring-white/30`}
-                                />
-                              ) : (
-                                <div className={`flex h-12 w-12 shrink-0 items-center justify-center ${theme.round} bg-white/15 text-sm font-bold ring-2 ring-white/30`}>
-                                  {initials(madrasa?.name)}
-                                </div>
-                              )}
-                              <div className="min-w-0 space-y-1.5 text-sm text-white/90">
-                                <div className="break-words text-base font-extrabold leading-tight text-white">
-                                  {madrasa?.name}
-                                </div>
-                                {madrasa?.address && (
-                                  <div className="flex items-start gap-2">
-                                    <MapPin size={14} className="mt-0.5 shrink-0 text-white/70" />
-                                    <span>{madrasa.address}</span>
-                                  </div>
-                                )}
-                                {madrasa?.phone && (
-                                  <div className="flex items-start gap-2">
-                                    <Phone size={14} className="mt-0.5 shrink-0 text-white/70" />
-                                    <span>{madrasa.phone}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <Link
-                              to={admissionUrl}
-                              className={`inline-flex shrink-0 items-center justify-center gap-2 ${theme.button} bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-slate-100`}
-                            >
-                              {t.admissionInfoApply}
-                              <ArrowRight size={16} className="rtl:rotate-180" />
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  if (key === "gallery") {
-                    return (
-                      <div key="gallery" id="gallery" className="scroll-mt-28">
-                        <SectionHeader
-                          eyebrow={t.galleryEyebrow}
-                          title={t.galleryTitle}
-                          accentSolid={accentSolid}
-                          accentLabel={accentLabel}
-                          theme={theme}
-                        />
-                        {gallery.length ? (
-                          <div
-                            ref={galleryGridRef}
-                            className={`gallery-grid mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 ${
-                              galleryInView ? "in-view" : ""
-                            }`}
-                          >
-                            {gallery.map((item: any, idx: number) => (
-                              <button
-                                type="button"
-                                key={item.id || item.image_url}
-                                onClick={() => setLightbox({ url: item.image_url, title: item.title || t.galleryFallback })}
-                                className={`gallery-item group relative aspect-square overflow-hidden ${theme.media} ${theme.gallery}`}
-                                style={{ transitionDelay: `${(idx % 12) * 60}ms` }}
-                                aria-label={item.title || t.galleryFallback}
-                              >
-                                <img
-                                  src={item.image_url}
-                                  alt={item.title || t.galleryFallback}
-                                  loading="lazy"
-                                  decoding="async"
-                                  className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/50 to-black/0 opacity-0 transition duration-300 group-hover:opacity-100">
-                                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-lg">
-                                    <ZoomIn size={20} />
-                                  </span>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="mt-8 text-center text-sm text-slate-500">
-                            {t.galleryEmpty}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  if (key === "video") {
-                    return (
-                      <div key="video" id="video" className="scroll-mt-28">
-                        <SectionHeader
-                          eyebrow={t.videoEyebrow}
-                          title={t.videoTitle}
-                          accentSolid={accentSolid}
-                          accentLabel={accentLabel}
-                          theme={theme}
-                        />
-                        <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                          {videos.map((item: any) => {
-                            const thumb = youtubeThumbnail(item.video_url);
-                            const embed = youtubeEmbedUrl(item.video_url);
-                            return (
-                              <button
-                                type="button"
-                                key={item.id || item.video_url}
-                                onClick={() =>
-                                  embed
-                                    ? setVideoLightbox({ url: embed, title: item.title || t.videoFallback })
-                                    : /\.(mp4|webm|ogg)(?:$|[?#])/i.test(item.video_url)
-                                      ? setVideoLightbox({ url: item.video_url, title: item.title || t.videoFallback, native: true })
-                                    : window.open(item.video_url, "_blank", "noopener,noreferrer")
-                                }
-                                className={`group relative aspect-video overflow-hidden text-start ${theme.media} ${theme.gallery}`}
-                                aria-label={item.title || t.videoFallback}
-                              >
-                                {thumb ? (
-                                  <img
-                                    src={thumb}
-                                    alt={item.title || t.videoFallback}
-                                    loading="lazy"
-                                    decoding="async"
-                                    className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center bg-slate-900 text-white/70">
-                                    <PlayCircle size={36} />
-                                  </div>
-                                )}
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/25 transition duration-300 group-hover:bg-black/40">
-                                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-lg">
-                                    <PlayCircle size={24} />
-                                  </span>
-                                </div>
-                                {item.title && (
-                                  <span className="absolute inset-x-0 bottom-0 line-clamp-1 bg-gradient-to-t from-black/70 to-transparent px-3 py-2 text-xs font-semibold text-white">
-                                    {item.title}
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  if (key === "teachers") {
-                    return (
-                      <div key="teachers" id="teachers" className="scroll-mt-28">
-                        <SectionHeader
-                          eyebrow={t.teachersEyebrow}
-                          title={t.teachersTitle}
-                          accentSolid={accentSolid}
-                          accentLabel={accentLabel}
-                          theme={theme}
-                        />
-                        <div className="mt-8 grid gap-5 sm:grid-cols-2">
-                          {teachers.map((teacher: any, idx: number) => (
-                            <PersonCard
-                              key={teacher.id}
-                              name={teacher.name || teacher.teacher_name}
-                              photo={teacher.photo_url}
-                              role={[teacher.designation, teacher.subject].filter(Boolean).join(" · ") || t.teacherFallback}
-                              accentSolid={accentSolid}
-                              accentLabel={accentLabel}
-                              onAccent={onAccent}
-                              theme={theme}
-                              delay={(idx % 4) * 80}
-                            />
-                          ))}
-                        </div>
-                        {teachers.some((teacher: any) => teacher.is_demo) && (
-                          <p className="mt-4 text-xs text-slate-500">{t.demoTeachersHint}</p>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  return null;
-                })}
-              </div>
-
+            <div className="public-website-flow">
               {/* Sidebar: নোটিশ → মুহতামিমের বাণী → সভাপতির বাণী → কমিটি */}
               {sidebarFlowKeys.length > 0 && (
-                <aside className="lg:col-span-1">
+                <aside className="public-website-sidebar">
                   <div className="space-y-6">
                     {sidebarFlowKeys.map((key) => {
                       if (key === "notices") {
@@ -1181,6 +948,180 @@ export default function PublicWebsitePage({
                   </div>
                 </aside>
               )}
+              {/* Main reading column: intro → gallery → video gallery → teachers */}
+              {mainFlowKeys.length > 0 && (
+                <div className="public-website-main">
+                  {mainFlowKeys.map((key) => {
+                    if (key === "about") {
+                      return (
+                        <section key="about" id="about" className="scroll-mt-28">
+                          <SectionHeader
+                            eyebrow={t.aboutEyebrow}
+                            title={pageMap.about.title}
+                            accentSolid={accentSolid}
+                            accentLabel={accentLabel}
+                            theme={theme}
+                          />
+                          <div
+                            className="reveal mt-8 border-s-4 ps-5 md:ps-6"
+                            style={{ borderColor: accentSolid }}
+                          >
+                            <p className="whitespace-pre-line text-sm leading-8 text-slate-600 md:text-base md:leading-9">
+                              {pageMap.about.content}
+                            </p>
+                          </div>
+
+                        </section>
+                      );
+                    }
+
+                    if (key === "gallery") {
+                      return (
+                        <section key="gallery" id="gallery" className="scroll-mt-28">
+                          <SectionHeader
+                            eyebrow={t.galleryEyebrow}
+                            title={t.galleryTitle}
+                            accentSolid={accentSolid}
+                            accentLabel={accentLabel}
+                            theme={theme}
+                          />
+                          {gallery.length ? (
+                            <SidebarAwareGrid
+                              kind="gallery"
+                              gridRef={galleryGridRef}
+                              className={`gallery-grid ${
+                                galleryInView ? "in-view" : ""
+                              }`}
+                            >
+                              {gallery.map((item: any, idx: number) => (
+                                <button
+                                  type="button"
+                                  key={item.id || item.image_url}
+                                  onClick={() => setLightbox({ url: item.image_url, title: item.title || t.galleryFallback })}
+                                  className={`gallery-item group relative aspect-square overflow-hidden ${theme.media} ${theme.gallery}`}
+                                  style={{ transitionDelay: `${(idx % 12) * 60}ms` }}
+                                  aria-label={item.title || t.galleryFallback}
+                                >
+                                  <img
+                                    src={item.image_url}
+                                    alt={item.title || t.galleryFallback}
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/50 to-black/0 opacity-0 transition duration-300 group-hover:opacity-100">
+                                    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-lg">
+                                      <ZoomIn size={20} />
+                                    </span>
+                                  </div>
+                                </button>
+                              ))}
+                            </SidebarAwareGrid>
+                          ) : (
+                            <p className="mt-8 text-center text-sm text-slate-500">
+                              {t.galleryEmpty}
+                            </p>
+                          )}
+                        </section>
+                      );
+                    }
+
+                    if (key === "video") {
+                      return (
+                        <section key="video" id="video" className="scroll-mt-28">
+                          <SectionHeader
+                            eyebrow={t.videoEyebrow}
+                            title={t.videoTitle}
+                            accentSolid={accentSolid}
+                            accentLabel={accentLabel}
+                            theme={theme}
+                          />
+                          <SidebarAwareGrid kind="video">
+                            {videos.map((item: any) => {
+                              const thumb = youtubeThumbnail(item.video_url);
+                              const embed = youtubeEmbedUrl(item.video_url);
+                              return (
+                                <button
+                                  type="button"
+                                  key={item.id || item.video_url}
+                                  onClick={() =>
+                                    embed
+                                      ? setVideoLightbox({ url: embed, title: item.title || t.videoFallback })
+                                      : /\.(mp4|webm|ogg)(?:$|[?#])/i.test(item.video_url)
+                                        ? setVideoLightbox({ url: item.video_url, title: item.title || t.videoFallback, native: true })
+                                      : window.open(item.video_url, "_blank", "noopener,noreferrer")
+                                  }
+                                  className={`group relative aspect-video overflow-hidden text-start ${theme.media} ${theme.gallery}`}
+                                  aria-label={item.title || t.videoFallback}
+                                >
+                                  {thumb ? (
+                                    <img
+                                      src={thumb}
+                                      alt={item.title || t.videoFallback}
+                                      loading="lazy"
+                                      decoding="async"
+                                      className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
+                                    />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center bg-slate-900 text-white/70">
+                                      <PlayCircle size={36} />
+                                    </div>
+                                  )}
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/25 transition duration-300 group-hover:bg-black/40">
+                                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-lg">
+                                      <PlayCircle size={24} />
+                                    </span>
+                                  </div>
+                                  {item.title && (
+                                    <span className="absolute inset-x-0 bottom-0 line-clamp-1 bg-gradient-to-t from-black/70 to-transparent px-3 py-2 text-xs font-semibold text-white">
+                                      {item.title}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </SidebarAwareGrid>
+                        </section>
+                      );
+                    }
+
+                    if (key === "teachers") {
+                      return (
+                        <section key="teachers" id="teachers" className="scroll-mt-28">
+                          <SectionHeader
+                            eyebrow={t.teachersEyebrow}
+                            title={t.teachersTitle}
+                            accentSolid={accentSolid}
+                            accentLabel={accentLabel}
+                            theme={theme}
+                          />
+                          <SidebarAwareGrid>
+                            {teachers.map((teacher: any, idx: number) => (
+                              <PersonCard
+                                key={teacher.id}
+                                name={teacher.name || teacher.teacher_name}
+                                photo={teacher.photo_url}
+                                role={[teacher.designation, teacher.subject].filter(Boolean).join(" · ") || t.teacherFallback}
+                                accentSolid={accentSolid}
+                                accentLabel={accentLabel}
+                                onAccent={onAccent}
+                                theme={theme}
+                                delay={(idx % 4) * 80}
+                              />
+                            ))}
+                          </SidebarAwareGrid>
+                          {teachers.some((teacher: any) => teacher.is_demo) && (
+                            <p className="mt-4 text-xs text-slate-500">{t.demoTeachersHint}</p>
+                          )}
+                        </section>
+                      );
+                    }
+
+                    return null;
+                  })}
+                </div>
+              )}
+
             </div>
           </div>
         </section>

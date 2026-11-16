@@ -1,4 +1,15 @@
 import adminApi from "./adminApi";
+import type { WebsiteThemeKey } from "@madrasha/shared-ui/src/website/themes";
+
+export async function getMadrasaWebsiteTheme(id: number): Promise<WebsiteThemeKey> {
+  const res = await adminApi.get(`/website/super/madrasas/${id}/theme`);
+  return res.data.theme_key;
+}
+
+export async function updateMadrasaWebsiteTheme(id: number, theme_key: WebsiteThemeKey) {
+  const res = await adminApi.patch(`/website/super/madrasas/${id}/theme`, { theme_key });
+  return res.data;
+}
 
 export async function resetMadrasaWebsite(id: number) {
   const res = await adminApi.post(`/website/super/madrasas/${id}/reset`);

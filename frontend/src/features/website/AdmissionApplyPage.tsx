@@ -108,7 +108,7 @@ export default function AdmissionApplyPage() {
   // Theme tokens (radius / shadow style) shared with the public website.
   const theme = resolveTheme(settings.theme_key);
   const cardClass = `${theme.panel} border ${
-    theme.key === "minimal" ? "border-slate-300" : "border-slate-100"
+    theme.key === "editorial" ? "border-slate-300" : "border-slate-100"
   } bg-white ${theme.shadowSm} p-6 md:p-8`;
   const baseInputClass = `mt-1 w-full ${theme.button} border px-3 py-2.5 text-sm outline-none focus:ring-2`;
   const inputClass = `${baseInputClass} border-slate-200`;

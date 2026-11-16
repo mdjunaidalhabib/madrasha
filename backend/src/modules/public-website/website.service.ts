@@ -519,6 +519,31 @@ export class WebsiteService {
     await this.repository.updateWebsiteStatus(id, status as WebsiteStatus);
     return status;
   }
+
+  private async requireWebsiteInstitution(id: number) {
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new BadRequestError("Invalid institution ID");
+    }
+    if (!(await this.repository.findWebsiteInstitution(id))) {
+      throw new NotFoundError("Institution not found");
+    }
+  }
+
+  async getWebsiteThemeBySuperAdmin(id: number) {
+    await this.requireWebsiteInstitution(id);
+    const settings = await this.repository.findSettings(id);
+    return toWebsiteSettingsApiDto(settings ?? {}).theme_key;
+  }
+
+  async updateWebsiteThemeBySuperAdmin(id: number, themeKey: unknown) {
+    if (typeof themeKey !== "string" || !(WEBSITE_THEME_KEYS as readonly string[]).includes(themeKey)) {
+      throw new BadRequestError(t({ bn: "থিম সঠিক নয়", en: "Invalid theme" }));
+    }
+    await this.requireWebsiteInstitution(id);
+    // A theme change must preserve the institution's content and other settings.
+    await this.repository.upsertSettings(id, { themeKey }, { madrasaId: id, themeKey });
+    return themeKey;
+  }
 }
 
 export const websiteService = new WebsiteService();

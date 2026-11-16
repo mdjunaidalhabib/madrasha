@@ -28,7 +28,10 @@ import {
   upsertWebsitePage,
   upsertWebsiteSettings,
   updateWebsiteStatusBySuperAdmin,
+  getWebsiteThemeBySuperAdmin,
+  updateWebsiteThemeBySuperAdmin,
   resetInstitutionWebsite,
+  resetOwnInstitutionWebsite,
 } from "./website.controller";
 
 const router = Router();
@@ -45,6 +48,7 @@ const adminGuard = [tenantMiddleware, authMiddleware, rbacMiddleware("website.ma
 
 router.get("/admin/settings", ...adminGuard, getWebsiteSettings);
 router.put("/admin/settings", ...adminGuard, upsertWebsiteSettings);
+router.post("/admin/reset", ...adminGuard, resetOwnInstitutionWebsite);
 router.put("/admin/pages", ...adminGuard, upsertWebsitePage);
 router.post("/admin/notices", ...adminGuard, saveWebsiteNotice);
 router.delete("/admin/notices/:id", ...adminGuard, deleteWebsiteNotice);
@@ -59,6 +63,8 @@ router.delete("/admin/committee/:id", ...adminGuard, deleteWebsiteCommitteeMembe
 router.patch("/admin/admissions/:id/status", ...adminGuard, updateAdmissionApplicationStatus);
 router.delete("/admin/admissions/:id", ...adminGuard, deleteAdmissionApplication);
 router.patch("/super/madrasas/:id/status", superAdminMiddleware, updateWebsiteStatusBySuperAdmin);
+router.get("/super/madrasas/:id/theme", superAdminMiddleware, getWebsiteThemeBySuperAdmin);
+router.patch("/super/madrasas/:id/theme", superAdminMiddleware, updateWebsiteThemeBySuperAdmin);
 router.post("/super/madrasas/:id/reset", superAdminMiddleware, resetInstitutionWebsite);
 router.get("/super/default-template", superAdminMiddleware, getDefaultWebsiteTemplate);
 router.put("/super/default-template", superAdminMiddleware, updateDefaultWebsiteTemplate);

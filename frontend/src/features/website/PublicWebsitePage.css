@@ -1,0 +1,88 @@
+.public-website-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+.public-website-main {
+  order: 0;
+  min-width: 0;
+}
+
+.public-website-main > section {
+  display: flow-root;
+  margin-bottom: 4rem;
+}
+
+.public-website-main > section:last-child {
+  margin-bottom: 0;
+}
+
+.public-website-sidebar {
+  order: 1;
+  min-width: 0;
+}
+
+.public-website-card-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: var(--website-grid-gap, 1.25rem);
+}
+
+.public-website-card-row + .public-website-card-row {
+  margin-top: var(--website-grid-gap, 1.25rem);
+}
+
+.public-website-gallery-grid {
+  --website-grid-gap: 0.75rem;
+}
+
+.public-website-gallery-grid > .public-website-card-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 640px) {
+  .public-website-gallery-grid > .public-website-card-row {
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  }
+
+  .public-website-video-grid > .public-website-card-row:only-child:has(> button:only-child) {
+    grid-template-columns: minmax(0, 36rem);
+  }
+}
+
+@media (min-width: 768px) {
+  .public-website-main > section {
+    margin-bottom: 5rem;
+  }
+
+  .public-website-main > section:last-child {
+    margin-bottom: 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Each section forms its own formatting context beside the float. Once its
+     top clears the sidebar, the browser gives it the entire available width. */
+  .public-website-flow {
+    display: flow-root;
+  }
+
+  .public-website-main {
+    display: contents;
+  }
+
+  /* Let the heading and each card row avoid the sidebar independently.
+     Rows below the last sidebar card immediately regain the full width. */
+  .public-website-main > :is(#teachers, #gallery, #video) {
+    display: block;
+  }
+
+  .public-website-flow:has(.public-website-main) > .public-website-sidebar {
+    float: inline-end;
+    width: calc((100% - 7rem) / 3);
+    margin-inline-start: 3.5rem;
+    /* A bottom margin also excludes content from the float's area, leaving
+       sections narrow even when they start below the last sidebar card. */
+  }
+}

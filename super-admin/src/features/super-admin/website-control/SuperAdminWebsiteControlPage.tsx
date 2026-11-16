@@ -4,8 +4,10 @@ import {
   listMadrasas,
   type MadrasaListItem,
 } from "../../../services/superAdminApi";
-import { updateMadrasaWebsiteStatus, resetMadrasaWebsite } from "../../../services/websiteApi";
-import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
+import { updateMadrasaWebsiteStatus, resetMadrasaWebsite, getMadrasaWebsiteTheme, updateMadrasaWebsiteTheme } from "../../../services/websiteApi";
+import { WEBSITE_THEMES, type WebsiteThemeKey } from "@madrasha/shared-ui/src/website/themes";
+import WebsiteThemePreview from "@madrasha/shared-ui/src/website/WebsiteThemePreview";
+import { confirmWebsiteReset } from "@madrasha/shared-ui/src/website/confirmWebsiteReset";
 import {
   INSTITUTION_TYPE_LABELS,
   getText,
@@ -31,6 +33,8 @@ export default function SuperAdminWebsiteControlPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [theme, setTheme] = useState<WebsiteThemeKey | null>(null);
+  const [themeLoading, setThemeLoading] = useState(false);
   const [error, setError] = useState("");
   const tx = (bn: string, en: string) => lang === "bn" ? bn : en;
 
@@ -61,6 +65,32 @@ export default function SuperAdminWebsiteControlPage() {
     setStatus((row?.website_status as WebsiteStatus) || "active");
   };
 
+  useEffect(() => {
+    let current = true;
+    setTheme(null);
+    if (!madrasaId) return;
+    setThemeLoading(true);
+    getMadrasaWebsiteTheme(Number(madrasaId))
+      .then((value) => { if (current) setTheme(value); })
+      .catch((err) => { if (current) setError(err?.response?.data?.message || tx("থিম আনা যায়নি।", "Unable to load theme.")); })
+      .finally(() => { if (current) setThemeLoading(false); });
+    return () => { current = false; };
+  }, [madrasaId]);
+
+  const changeTheme = async (next: WebsiteThemeKey) => {
+    if (!madrasaId || busy || themeLoading || next === theme) return;
+    setBusy(true);
+    setMessage("");
+    setError("");
+    try {
+      await updateMadrasaWebsiteTheme(Number(madrasaId), next);
+      setTheme(next);
+      setMessage(tx("ওয়েবসাইট থিম পরিবর্তন হয়েছে।", "Website theme updated."));
+    } catch (err: any) {
+      setError(err?.response?.data?.message || tx("থিম বদলানো যায়নি।", "Unable to update theme."));
+    } finally { setBusy(false); }
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage("");
@@ -84,14 +114,9 @@ export default function SuperAdminWebsiteControlPage() {
   const resetWebsite = () => {
     if (!selected || busy) return;
     const institution = selected;
-    useConfirmStore.getState().show({
-      title: tx("মূল ডেমোতে রিসেট করুন", "Reset to main demo"),
-      message: tx(
-        `${institution.name}-এর ওয়েবসাইটের সেটিংস, পেজ, নোটিশ, স্লাইডার, গ্যালারি, বাণী, কমিটি ও ভিডিও সর্বশেষ সংরক্ষিত ডেমো দিয়ে প্রতিস্থাপিত হবে। নিজস্ব ওয়েবসাইট সম্পাদনা মুছে যাবে। ভর্তি আবেদন, শিক্ষার্থী ও প্রতিষ্ঠানের অন্যান্য তথ্য অপরিবর্তিত থাকবে।`,
-        `${institution.name}'s website settings, pages, notices, slides, gallery, messages, committee and videos will be replaced with the latest saved demo. Custom website edits will be removed. Admission applications, students and other institution data will be preserved.`,
-      ),
-      confirmText: tx("ওয়েবসাইট রিসেট করুন", "Reset website"),
-      danger: true,
+    confirmWebsiteReset({
+      institutionName: institution.name,
+      lang,
       onConfirm: async () => {
         setBusy(true);
         setMessage("");
@@ -99,6 +124,10 @@ export default function SuperAdminWebsiteControlPage() {
         try {
           await resetMadrasaWebsite(institution.id);
           setMessage(tx("ওয়েবসাইট মূল ডেমোতে ফিরে এসেছে।", "Website restored to the main demo."));
+          setThemeLoading(true);
+          try { setTheme(await getMadrasaWebsiteTheme(institution.id)); }
+          catch { setTheme(null); }
+          finally { setThemeLoading(false); }
         } catch (err: any) {
           setError(err?.response?.data?.message || tx("ওয়েবসাইট রিসেট করা যায়নি।", "Unable to reset website."));
         } finally { setBusy(false); }
@@ -125,7 +154,7 @@ export default function SuperAdminWebsiteControlPage() {
           className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition ${view === "status" ? "bg-slate-900 text-white dark:bg-teal-700" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
         >
           <Globe2 size={16} />
-          {lang === "bn" ? "প্রতিষ্ঠানের স্ট্যাটাস" : "Institution status"}
+          {lang === "bn" ? "প্রতিষ্ঠানের থিম ও স্ট্যাটাস" : "Institution theme & status"}
         </button>
       </div>
       <div className={view === "template" ? "" : "hidden"}>
@@ -212,10 +241,23 @@ export default function SuperAdminWebsiteControlPage() {
             <Button disabled={!madrasaId || loading || busy}>{t.updateStatus}</Button>
             {selected && <InstitutionWebsiteLink slug={selected.slug} />}
           </div>
+          <fieldset disabled={!selected || loading || busy || themeLoading || theme === null} className="border-t border-slate-200 pt-5 dark:border-slate-700">
+            <legend className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tx("ওয়েবসাইট থিম", "Website theme")}</legend>
+            <p className="mb-3 text-xs leading-6 text-slate-500">{themeLoading ? tx("থিম লোড হচ্ছে…", "Loading theme…") : tx("থিম বেছে নিলে সঙ্গে সঙ্গে সংরক্ষণ হবে।", "Choose a theme to save it immediately.")}</p>
+            <div role="group" aria-label={tx("ওয়েবসাইট থিম", "Website theme")} className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {WEBSITE_THEMES.map((item) => (
+                <button type="button" key={item.key} aria-pressed={theme === item.key} onClick={() => changeTheme(item.key)} className={`overflow-hidden rounded-xl border-2 p-2 text-start transition disabled:opacity-50 ${theme === item.key ? "border-teal-600 bg-teal-50 dark:bg-teal-950/30" : "border-slate-200 dark:border-slate-700"}`}>
+                  <div className="h-20 overflow-hidden rounded-lg"><WebsiteThemePreview themeKey={item.key} accent="#0f766e" /></div>
+                  <span className="mt-2 block text-sm font-semibold text-slate-800 dark:text-slate-100">{tx(item.bn, item.en)}</span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">{tx(item.descriptionBn, item.descriptionEn)}</span>
+                </button>
+              ))}
+            </div>
+          </fieldset>
           <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-5 dark:border-slate-700">
             <div className="max-w-lg">
               <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tx("মূল ডেমোতে ফিরুন", "Restore main demo")}</h2>
-              <p className="mt-1 text-xs leading-6 text-slate-500">{tx("নির্বাচিত প্রতিষ্ঠানের ওয়েবসাইট সর্বশেষ সংরক্ষিত ডেমো দিয়ে প্রতিস্থাপন করুন।", "Replace the selected institution's website with the latest saved demo.")}</p>
+              <p className="mt-1 text-xs leading-6 text-slate-500">{tx("নির্বাচিত প্রতিষ্ঠানের ওয়েবসাইট সর্বশেষ সংরক্ষিত ডেমো দিয়ে প্রতিস্থাপন করুন। রিসেটের আগে ৩ ধাপে নিশ্চিত করতে হবে।", "Replace the selected institution's website with the latest saved demo. Three confirmations are required before resetting.")}</p>
             </div>
             <Button type="button" variant="secondary" disabled={!selected || loading || busy} onClick={resetWebsite}>
               <RotateCcw size={14} />{tx("ওয়েবসাইট রিসেট", "Reset website")}

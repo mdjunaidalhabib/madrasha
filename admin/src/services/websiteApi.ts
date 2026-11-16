@@ -1,5 +1,10 @@
 import api, { cachedGet } from "./api";
 
+export async function resetOwnWebsite() {
+  const res = await api.post("/website/admin/reset", undefined, { silent: true, timeout: 45_000 });
+  return res.data;
+}
+
 export type WebsiteSettingsPayload = {
   madrasa_id?: number;
   name?: string;

@@ -1,4 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { WEBSITE_THEMES } from "@madrasha/shared-ui/src/website/themes";
+import WebsiteThemePreview from "@madrasha/shared-ui/src/website/WebsiteThemePreview";
 import {
   ArrowDown,
   ArrowUp,
@@ -1055,35 +1057,21 @@ export default function WebsiteTemplateEditor() {
                       {tx("ওয়েবসাইটের থিম", "Website theme")}
                     </p>
                     <div className="grid grid-cols-3 gap-2">
-                      {(["classic", "modern", "minimal"] as const).map(
-                        (theme, i) => (
+                      {WEBSITE_THEMES.map(
+                        (item) => (
                           <button
-                            key={theme}
+                            key={item.key}
                             type="button"
-                            aria-pressed={data.settings.themeKey === theme}
-                            onClick={() => setting("themeKey", theme)}
-                            className={`rounded-xl border-2 p-2.5 text-left transition ${data.settings.themeKey === theme ? "border-teal-600 bg-teal-50/50 dark:bg-teal-950/30" : "border-slate-100 dark:border-slate-700"}`}
+                            aria-pressed={data.settings.themeKey === item.key}
+                            onClick={() => setting("themeKey", item.key)}
+                            className={`rounded-xl border-2 p-2.5 text-left transition ${data.settings.themeKey === item.key ? "border-teal-600 bg-teal-50/50 dark:bg-teal-950/30" : "border-slate-100 dark:border-slate-700"}`}
                           >
-                            <div className="mb-2 space-y-1 rounded-md bg-slate-100 p-2 dark:bg-slate-800">
-                              <div className="h-1.5 w-1/2 rounded bg-slate-300" />
-                              <div
-                                className={`h-6 ${i === 1 ? "rounded-lg" : i === 2 ? "border border-slate-300" : "rounded-sm"}`}
-                                style={{
-                                  background:
-                                    i === 2
-                                      ? "transparent"
-                                      : data.settings.themeColor,
-                                  opacity: 0.7,
-                                }}
-                              />
-                              <div className="flex gap-1">
-                                <i className="h-3 flex-1 rounded-sm bg-slate-200" />
-                                <i className="h-3 flex-1 rounded-sm bg-slate-200" />
-                              </div>
+                            <div className="mb-2 h-20 overflow-hidden rounded-md">
+                              <WebsiteThemePreview themeKey={item.key} accent={data.settings.themeColor} />
                             </div>
                             <span className="flex items-center justify-between text-[11px] font-medium capitalize text-slate-700 dark:text-slate-200">
-                              {tx(["ক্ল্যাসিক", "মডার্ন", "মিনিমাল"][i], theme)}
-                              {data.settings.themeKey === theme && (
+                              {tx(item.bn, item.en)}
+                              {data.settings.themeKey === item.key && (
                                 <CheckCircle2
                                   size={12}
                                   className="text-teal-600"

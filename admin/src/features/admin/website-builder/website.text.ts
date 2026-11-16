@@ -2,6 +2,12 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 
 export const websiteText = defineText({
   bn: {
+    resetTitle: "মূল ডেমোতে ফিরুন",
+    resetDescription: "পাবলিক ওয়েবসাইট সর্বশেষ সংরক্ষিত মূল ডেমো দিয়ে প্রতিস্থাপন করুন। নিজস্ব ওয়েবসাইট সম্পাদনা মুছে যাবে। রিসেটের আগে ৩ ধাপে নিশ্চিত করতে হবে।",
+    resetWebsite: "ওয়েবসাইট রিসেট",
+    resetInProgress: "ওয়েবসাইট রিসেট হচ্ছে…",
+    resetFailed: "ওয়েবসাইট রিসেট করা যায়নি। আবার চেষ্টা করুন।",
+    resetInstitutionFallback: "এই প্রতিষ্ঠান",
     sections: {
       show_notice_bar: ["চলমান নোটিশ বার", "নেভবারের নিচে স্ক্রলিং নোটিশ বার দেখাবে"],
       show_slider: ["হোম স্লাইডার", "হোমপেজে ছবির স্লাইডার দেখাবে"],
@@ -17,9 +23,10 @@ export const websiteText = defineText({
       show_contact: ["যোগাযোগ", "যোগাযোগ তথ্য সেকশন দেখাবে"],
     } as Record<string, [string, string]>,
     themes: {
-      classic: ["ক্লাসিক", "সাদা হেডারের নিচে রঙিন মেনু ব্যান্ড, নরম শ্যাডো কার্ড (বর্তমান ডিজাইন)"],
+      heritage: ["ঐতিহ্য", "ক্রিম ক্যানভাস, খিলান ফ্রেম ও ঐতিহ্যবাহী অলংকরণ"],
+      campus: ["ক্যাম্পাস", "প্রশস্ত রঙিন প্যানেল, ভাসমান হেডার ও প্রাণবন্ত কার্ড"],
+      editorial: ["সম্পাদকীয়", "ম্যাগাজিন বিন্যাস, বাঁ পাশে তথ্য ও রেখাযুক্ত শিরোনাম"],
       modern: ["মডার্ন", "গোলাকার কার্ড, হালকা রঙিন সেকশন ব্যাকগ্রাউন্ড, এক লাইনের হেডার"],
-      minimal: ["মিনিমাল", "ধারালো কোণ, বর্ডার-ভিত্তিক সাদামাটা ও পরিষ্কার লুক"],
     } as Record<string, [string, string]>,
     tabs: {
       general: "সাধারণ সেটিংস",
@@ -186,6 +193,12 @@ export const websiteText = defineText({
     noMembersHint: "কমিটির সদস্য যোগ করলে পাবলিক ওয়েবসাইটে দেখা যাবে।",
   },
   en: {
+    resetTitle: "Restore main demo",
+    resetDescription: "Replace the public website with the latest saved main demo. Custom website edits will be removed. Three confirmations are required before resetting.",
+    resetWebsite: "Reset website",
+    resetInProgress: "Resetting website…",
+    resetFailed: "Unable to reset the website. Please try again.",
+    resetInstitutionFallback: "This institution",
     sections: {
       show_notice_bar: ["Scrolling notice bar", "Shows a scrolling notice bar below the navbar"],
       show_slider: ["Home slider", "Shows the image slider on the homepage"],
@@ -201,9 +214,10 @@ export const websiteText = defineText({
       show_contact: ["Contact", "Shows the contact information section"],
     },
     themes: {
-      classic: ["Classic", "Colored menu band under a white header, soft shadow cards (current design)"],
+      heritage: ["Heritage", "Warm ivory, an arched frame and traditional ornaments"],
+      campus: ["Campus", "Bold panels, a floating header and playful cards"],
+      editorial: ["Editorial", "Magazine layout, left information column and ruled headings"],
       modern: ["Modern", "Rounded cards, lightly tinted section backgrounds, single-line header"],
-      minimal: ["Minimal", "Sharp corners, border-based plain and clean look"],
     },
     tabs: {
       general: "General settings",

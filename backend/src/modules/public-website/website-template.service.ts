@@ -14,9 +14,15 @@ export async function getWebsiteTemplate(
   db: Pick<Prisma.TransactionClient, "platformWebsiteTemplate"> = prisma,
 ) {
   const row = await db.platformWebsiteTemplate.findUnique({ where: { id: 1 } });
+  // Keep saved demo content usable when it references a retired theme.
+  const savedContent = row?.content as Record<string, any> | undefined;
+  const settings = savedContent?.settings;
+  const content = settings && ["classic", "minimal"].includes(settings.themeKey)
+    ? { ...savedContent, settings: { ...settings, themeKey: "modern" } }
+    : savedContent;
   return {
     content: row
-      ? websiteTemplateSchema.parse(row.content)
+      ? websiteTemplateSchema.parse(content)
       : structuredClone(DEFAULT_WEBSITE_TEMPLATE),
     updatedAt: row?.updatedAt ?? null,
   };

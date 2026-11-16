@@ -38,12 +38,12 @@ const TRANSITION_MS = 1000;
 // fills the box with nothing cropped and no blurred bars on any device.
 const HERO_ASPECT = "aspect-[21/9]";
 
-// Per-theme hero shape. "classic" is the original; "rounded" (modern) softens
-// the bottom corners; "flat" (minimal) has square edges.
+// Each supported theme has its own hero shape.
 const HERO_VARIANT_CLASS: Record<HeroVariant, string> = {
-  classic: HERO_ASPECT,
   rounded: `${HERO_ASPECT} rounded-b-[1.75rem] md:rounded-b-[3rem]`,
-  flat: HERO_ASPECT,
+  arch: HERO_ASPECT,
+  sculpted: HERO_ASPECT,
+  framed: HERO_ASPECT,
 };
 
 // One consistent crossfade + gentle scale-in every time a slide changes —
@@ -59,7 +59,7 @@ export default function HeroSlider({
   slides,
   fallbackTitle,
   accentSolid,
-  variant = "classic",
+  variant = "rounded",
   websiteStatus,
   actions,
 }: {
@@ -153,7 +153,7 @@ export default function HeroSlider({
   return (
     <section
       id="top"
-      className={`group relative mx-auto mt-1.5 overflow-hidden rounded-xl text-white max-w-[1200px] md:mt-2 ${HERO_VARIANT_CLASS[variant] ?? HERO_ASPECT}`}
+      className={`public-website-hero public-website-hero--${variant} group relative mx-auto mt-1.5 overflow-hidden rounded-xl text-white max-w-[1200px] md:mt-2 ${HERO_VARIANT_CLASS[variant] ?? HERO_ASPECT}`}
       style={{ background: `linear-gradient(135deg, ${accentSolid} 0%, #05070d 85%)` }}
     >
       {hasSlides && (

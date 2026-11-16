@@ -34,8 +34,7 @@ import ContactFab from "./ContactFab";
 import LeadCapture from "./LeadCapture";
 import PricingSection from "./PricingSection";
 import { getAdminAppLoginUrl } from "../../utils/adminAppUrl";
-import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
-import LandingLanguageSwitcher from "./LandingLanguageSwitcher";
+import { LanguageSwitcher, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import LandingMobileMenu from "./LandingMobileMenu";
 import { BRAND_NAME, landingText } from "./landing.text";
 import { useLightLandingTheme } from "./useLightLandingTheme";
@@ -249,7 +248,7 @@ export default function PlatformLandingPage() {
           </nav>
 
           <div className="flex shrink-0 items-center gap-2">
-            <div className="hidden xl:block"><LandingLanguageSwitcher /></div>
+            <div className="hidden xl:block"><LanguageSwitcher /></div>
             <a
               href={adminAppLoginUrl}
               className="hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700 xl:inline-flex"

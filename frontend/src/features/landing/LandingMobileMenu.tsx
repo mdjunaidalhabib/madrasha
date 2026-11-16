@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { ArrowRight, GraduationCap, X } from "lucide-react";
-import { useLang, useText } from "@madrasha/shared-ui/src/i18n";
-import LandingLanguageSwitcher from "./LandingLanguageSwitcher";
+import { LanguageSwitcher, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { BRAND_NAME, landingText } from "./landing.text";
 
 export default function LandingMobileMenu({
@@ -151,7 +150,7 @@ export default function LandingMobileMenu({
           </a>
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs font-medium text-slate-500">{t.languageLabel}</span>
-            <LandingLanguageSwitcher />
+            <LanguageSwitcher dropUp />
           </div>
         </div>
       </div>
