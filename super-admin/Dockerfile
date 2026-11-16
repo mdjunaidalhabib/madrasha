@@ -8,6 +8,7 @@ COPY super-admin/package.json super-admin/package.json
 RUN npm ci
 COPY packages/shared-ui packages/shared-ui
 COPY super-admin super-admin
+ARG VITE_PUBLIC_APP_URL
 RUN npm run build --workspace=super-admin
 
 FROM nginx:1.27-alpine AS production

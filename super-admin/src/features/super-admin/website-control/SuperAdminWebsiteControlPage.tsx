@@ -14,6 +14,7 @@ import {
 import { websiteControlText } from "./websiteControl.text";
 import { Globe2, LayoutTemplate } from "lucide-react";
 import WebsiteTemplateEditor from "./WebsiteTemplateEditor";
+import InstitutionWebsiteLink from "../../../components/super-admin/InstitutionWebsiteLink";
 
 type WebsiteStatus = "active" | "limited" | "disabled";
 
@@ -168,7 +169,10 @@ export default function SuperAdminWebsiteControlPage() {
               <option value="disabled">{t.statuses.disabled}</option>
             </select>
           </div>
-          <Button disabled={!madrasaId || loading}>{t.updateStatus}</Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button disabled={!madrasaId || loading}>{t.updateStatus}</Button>
+            {selected && <InstitutionWebsiteLink slug={selected.slug} />}
+          </div>
           {message && (
             <p className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-400">
               {message}

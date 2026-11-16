@@ -4,6 +4,7 @@ import { SkeletonList, SkeletonTable } from "@madrasha/shared-ui/src/components/
 import { commonText, formatNumber, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { superAdminText } from "./superAdmin.text";
 import InstitutionTypeBadge, { LanguageChip } from "./InstitutionTypeBadge";
+import InstitutionWebsiteLink from "./InstitutionWebsiteLink";
 import {
   Madrasa,
   Plan,
@@ -52,8 +53,11 @@ export default function MadrasasTable({
           ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
           : "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400";
     return (
-      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${tone}`}>
-        {m.is_active ? t.websiteStatus[status] || status : t.websiteOffSuspended}
+      <span className="inline-flex items-center gap-1">
+        <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium capitalize ${tone}`}>
+          {m.is_active ? t.websiteStatus[status] || status : t.websiteOffSuspended}
+        </span>
+        <InstitutionWebsiteLink slug={m.slug} iconOnly />
       </span>
     );
   };
