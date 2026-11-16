@@ -67,17 +67,21 @@ export class WebsiteRepository {
     });
   }
 
-  // Kept as a raw-query bridge (unchanged interface) since `teachers`
-  // references columns diverging from the current schema - same
-  // graceful-degrade (return [] on failure) behavior as before.
+  // Keep the public response shape while selecting only public profile fields.
   async findTeachersOptional(madrasaId: number): Promise<any[]> {
     try {
-      const rows = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT id, name, designation, subject FROM teachers WHERE madrasa_id=$1 AND deleted_at IS NULL ORDER BY id DESC LIMIT $2`,
-        madrasaId,
-        PUBLIC_TEACHERS_LIMIT,
-      );
-      return rows || [];
+      const rows = await prisma.teacher.findMany({
+        where: { madrasaId, deletedAt: null },
+        select: { id: true, nameBn: true, designation: true },
+        orderBy: { id: "desc" },
+        take: PUBLIC_TEACHERS_LIMIT,
+      });
+      return rows.map((row) => ({
+        id: row.id,
+        name: row.nameBn,
+        designation: row.designation,
+        subject: null,
+      }));
     } catch {
       return [];
     }

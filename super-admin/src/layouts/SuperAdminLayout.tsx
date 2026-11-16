@@ -29,7 +29,7 @@ export default function SuperAdminLayout() {
       {/* Mobile Sidebar */}
       {mobileSidebar && (
         <div className="fixed inset-0 z-50 flex md:hidden">
-          <div className="w-56 shadow-xl">
+          <div className="w-64 max-w-[calc(100vw-3rem)] shadow-xl">
             <SuperAdminSidebar
               collapsed={false}
               onToggleCollapse={() => {}}

@@ -8,6 +8,9 @@ COPY frontend/package.json frontend/package.json
 RUN npm ci
 COPY packages/shared-ui packages/shared-ui
 COPY frontend frontend
+# Vite embeds this URL during compilation. Runtime container variables cannot
+# change the API URL in the generated JavaScript.
+ARG VITE_API_URL
 RUN npm run build --workspace=frontend
 
 FROM nginx:1.27-alpine AS production

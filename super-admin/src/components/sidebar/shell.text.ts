@@ -4,6 +4,8 @@ import { defineBilingualText } from "@madrasha/shared-ui/src/i18n";
 export const shellText = defineBilingualText({
   bn: {
     superAdmin: "সুপার অ্যাডমিন",
+    controlPanel: "প্ল্যাটফর্ম কন্ট্রোল প্যানেল",
+    navigation: "প্রধান মেনু",
     welcome: "স্বাগতম,",
     openMenu: "মেনু খুলুন",
     closeMenu: "মেনু বন্ধ করুন",
@@ -14,8 +16,9 @@ export const shellText = defineBilingualText({
     groups: {
       main: "মূল",
       institutions: "প্রতিষ্ঠান ব্যবস্থাপনা",
-      content: "কন্টেন্ট ও ক্যাটালগ",
-      billing: "বিলিং",
+      content: "একাডেমিক ও টেমপ্লেট",
+      billing: "বিলিং ও সাবস্ক্রিপশন",
+      websites: "ওয়েবসাইট ও প্রচার",
       settings: "সেটিংস",
     },
     nav: {
@@ -40,6 +43,8 @@ export const shellText = defineBilingualText({
   },
   en: {
     superAdmin: "Super Admin",
+    controlPanel: "Platform control panel",
+    navigation: "Main navigation",
     welcome: "Welcome,",
     openMenu: "Open menu",
     closeMenu: "Close menu",
@@ -50,8 +55,9 @@ export const shellText = defineBilingualText({
     groups: {
       main: "Main",
       institutions: "Institution Management",
-      content: "Content & Catalog",
-      billing: "Billing",
+      content: "Academics & Templates",
+      billing: "Billing & Subscriptions",
+      websites: "Websites & Promotion",
       settings: "Settings",
     },
     nav: {
