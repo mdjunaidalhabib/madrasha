@@ -8,6 +8,7 @@ import { getText } from "@madrasha/shared-ui/src/i18n";
 import { appText } from "../app/app.text";
 
 const RESERVED = new Set(["", "m", "demo", "admin", "api", "assets", "login", "super-admin", "guardian", "admission", "contact"]);
+const platformTitle = document.title;
 
 /** Both public URL aliases identify the same installed institution app. */
 export function getTenantStartUrl(pathname = window.location.pathname) {
@@ -25,6 +26,7 @@ let brandRequest = 0;
 /** Apply only the brand belonging to the current route; ignore late responses. */
 export function setTenantBrand({ name, slug, logo }: { name?: string | null; slug?: string | null; logo?: string | null }) {
   if (!slug || slug !== activeSlug) return;
+  document.title = name?.trim() || getText(appText).appName;
   const icons = logo ? { base: tenantIconBase(slug), version: logoVersion(logo) } : null;
   applyBrandFavicon(icons);
   if (!name || !icons) {
@@ -75,6 +77,7 @@ export async function setupTenantManifest(pathname = window.location.pathname) {
   if (platform && startUrl === "/") {
     brandRequest++;
     activeSlug = null;
+    document.title = platformTitle;
     disablePwaInstall();
     await applyPlatformIcons(version);
     return;
@@ -82,6 +85,7 @@ export async function setupTenantManifest(pathname = window.location.pathname) {
 
   // Custom hosts cannot install anything until domain resolution succeeds.
   if (!platform && activeSlug === null) {
+    document.title = getText(appText).appName;
     disablePwaInstall();
     applyBrandFavicon(null);
   }
@@ -89,6 +93,7 @@ export async function setupTenantManifest(pathname = window.location.pathname) {
   if (version !== routeVersion) return;
   if (slug === activeSlug) return;
   activeSlug = slug;
+  document.title = getText(appText).appName;
   const request = ++brandRequest;
   disablePwaInstall();
   applyBrandFavicon(null);

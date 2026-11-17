@@ -312,21 +312,24 @@ export class WebsiteService {
     if (!title) throw new BadRequestError(t({ bn: "নোটিশের শিরোনাম আবশ্যক", en: "Notice title required" }));
 
     if (id) {
-      await this.repository.updateNotice(Number(id), madrasaId, {
+      const result = await this.repository.updateNotice(Number(id), madrasaId, {
         title,
         content: content || null,
         isPublished: boolValue(is_published),
       });
+      if (!result.count) throw new NotFoundError("Notice not found");
+      const saved = await this.repository.findNoticeById(Number(id), madrasaId);
+      if (!saved) throw new NotFoundError("Notice not found");
+      return toWebsiteNoticeApiDto(saved);
     } else {
-      await this.repository.createNotice({
+      const saved = await this.repository.createNotice({
         madrasaId,
         title,
         content: content || null,
         isPublished: boolValue(is_published),
       });
+      return toWebsiteNoticeApiDto(saved);
     }
-
-    return this.repository.findLatestNotice(madrasaId);
   }
 
   async deleteWebsiteNotice(madrasaId: number, id: number) {
@@ -338,23 +341,26 @@ export class WebsiteService {
     if (!image_url) throw new BadRequestError(t({ bn: "ছবির URL আবশ্যক", en: "Image URL required" }));
 
     if (id) {
-      await this.repository.updateGalleryItem(Number(id), madrasaId, {
+      const result = await this.repository.updateGalleryItem(Number(id), madrasaId, {
         title: title || null,
         imageUrl: image_url,
         isPublished: boolValue(is_published),
         sortOrder: Number(sort_order) || 0,
       });
+      if (!result.count) throw new NotFoundError("Gallery item not found");
+      const saved = await this.repository.findGalleryItem(Number(id), madrasaId);
+      if (!saved) throw new NotFoundError("Gallery item not found");
+      return toWebsiteGalleryApiDto(saved);
     } else {
-      await this.repository.createGalleryItem({
+      const saved = await this.repository.createGalleryItem({
         madrasaId,
         title: title || null,
         imageUrl: image_url,
         isPublished: boolValue(is_published),
         sortOrder: Number(sort_order) || 0,
       });
+      return toWebsiteGalleryApiDto(saved);
     }
-
-    return this.repository.findLatestGalleryItem(madrasaId);
   }
 
   async deleteWebsiteGalleryItem(madrasaId: number, id: number) {

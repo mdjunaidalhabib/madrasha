@@ -10,6 +10,7 @@ type ModalProps = {
   // optional
   maxWidthClassName?: string; // e.g. "max-w-xl", "max-w-2xl"
   hideCloseButton?: boolean;
+  closeButtonTone?: "default" | "danger";
 };
 
 export default function Modal({
@@ -19,6 +20,7 @@ export default function Modal({
   children,
   maxWidthClassName = "max-w-xl",
   hideCloseButton = false,
+  closeButtonTone = "default",
 }: ModalProps) {
   const c = useText(commonText);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -113,7 +115,9 @@ export default function Modal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg px-2 py-1 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+              className={`rounded-lg px-2 py-1 text-sm ${closeButtonTone === "danger"
+                ? "text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"}`}
               aria-label={c.close}
               title={c.close}
             >

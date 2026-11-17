@@ -41,8 +41,9 @@ export default function WebsiteSettingsSkeleton({ tab, menuCount = 12 }: { tab?:
   return <div data-website-settings-skeleton className="min-w-0 space-y-6 pb-8 md:pb-12">
     <div className={websiteSettingsGridClass}>
       <aside aria-hidden="true" className="self-start rounded-2xl border border-gray-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-4">
-        <div className="mb-2 rounded-lg bg-blue-800 px-3 py-2 text-white"><h2 className="text-base font-bold">{t.settingsMenu}</h2></div>
-        <div className="space-y-1">{Array.from({ length: menuCount }, (_, index) => <div key={index} className="flex h-[38px] items-center gap-2 rounded-md border border-slate-200 px-2.5 py-2 dark:border-slate-700"><Placeholder className="h-4 w-4 shrink-0" /><Placeholder className={`h-3 ${index % 3 === 0 ? "w-3/4" : "w-1/2"}`} /></div>)}</div>
+        <div className="flex min-h-14 items-center gap-3 px-3 py-2 lg:hidden"><Placeholder className="h-10 w-10 shrink-0 rounded-xl" /><div className="flex-1 space-y-2"><Placeholder className="h-3 w-24" /><Placeholder className="h-4 w-36" /></div><Placeholder className="h-4 w-4" /></div>
+        <div className="mb-2 hidden rounded-lg bg-blue-800 px-3 py-2 text-white lg:block"><h2 className="text-base font-bold">{t.settingsMenu}</h2></div>
+        <div className="hidden space-y-1 lg:block">{Array.from({ length: menuCount }, (_, index) => <div key={index} className="flex h-[38px] items-center gap-2 rounded-md border border-slate-200 px-2.5 py-2 dark:border-slate-700"><Placeholder className="h-4 w-4 shrink-0" /><Placeholder className={`h-3 ${index % 3 === 0 ? "w-3/4" : "w-1/2"}`} /></div>)}</div>
       </aside>
       <div className={websiteSettingsContentClass}>
         <PageHeader title={t.title} subtitle={t.subtitle} actions={<div aria-hidden="true"><Placeholder className="h-10 w-[148px] rounded-full" /></div>} />

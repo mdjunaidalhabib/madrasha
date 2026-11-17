@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { commonText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
@@ -26,6 +28,16 @@ export default function DonationSettings() {
   const [message, setMessage] = useState("");
   const [draft, setDraft] = useState<DonationMethod | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [methodOriginal, setMethodOriginal] = useState<DonationMethod | null>(null);
+  const openMethod = (index: number | null) => {
+    const method = index === null ? emptyMethod : config.methods[index];
+    const next = { ...method, accountType: method.accountType ?? (method.type === "bank" ? undefined : /merchant|মার্চেন্ট/i.test(method.details) ? "merchant" : "personal") };
+    setEditingIndex(index); setDraft(next); setMethodOriginal(next);
+  };
+  const methodValid = !!draft?.accountName.trim() && !!draft?.accountNumber.trim() && !!draft?.accountType &&
+    (draft.type !== "bank" || !!draft.bankName?.trim() && !!draft.branchName?.trim()) &&
+    (!draft.routingNumber || /^[0-9]{9}$/.test(draft.routingNumber));
+  const methodCanSave = !busy && methodValid && (editingIndex === null || JSON.stringify(draft) !== JSON.stringify(methodOriginal));
   const load = async () => {
     setLoading(true); setError("");
     try {
@@ -59,7 +71,7 @@ export default function DonationSettings() {
   };
   const saveMethod = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!draft) return;
+    if (!draft || !methodCanSave) return;
     const method = { ...draft, accountName: draft.accountName.trim(), accountNumber: draft.accountNumber.trim(), details: draft.details.trim() };
     const methods = editingIndex === null ? [...config.methods, method] : config.methods.map((row, index) => index === editingIndex ? method : row);
     try { await persist({ ...config, methods }); setDraft(null); setEditingIndex(null); }
@@ -86,18 +98,18 @@ export default function DonationSettings() {
 
     <SectionCard title={tx("পেমেন্ট মাধ্যম", "Payment methods")} hint={tx("মোবাইল ব্যাংকিং বা ব্যাংক অ্যাকাউন্ট যোগ করুন। তথ্য যাচাই করে সংরক্ষণ করুন।", "Add mobile wallets or bank accounts. Verify the details before saving.")}
       badge={config.methods.length}
-      actions={<Button type="button" variant="secondary" disabled={config.methods.length >= 10 || draft !== null} onClick={() => { setEditingIndex(null); setDraft({ ...emptyMethod }); }}><Plus size={14} />{tx("মাধ্যম যোগ করুন", "Add method")}</Button>}
+      actions={<Button type="button" variant="secondary" disabled={config.methods.length >= 10 || draft !== null} onClick={() => openMethod(null)}><Plus size={14} />{tx("মাধ্যম যোগ করুন", "Add method")}</Button>}
     >
       <div className="space-y-3">
         {config.methods.map((method, index) => <div key={index} className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60">
           <div className="min-w-0 flex-1"><h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100">{lang === "bn" ? donationMethodLabels[method.type].bn : donationMethodLabels[method.type].en}</h3><p className="mt-1 break-words text-sm text-gray-600 dark:text-slate-400">{method.accountName}</p><p className="mt-1 break-all text-sm text-gray-900 dark:text-slate-100"><bdi>{method.accountNumber}</bdi></p>{donationMethodDetails(method, lang) && <p className="mt-1 whitespace-pre-line break-words text-xs text-gray-500 dark:text-slate-400">{donationMethodDetails(method, lang)}</p>}</div>
           <div className="flex shrink-0 items-center gap-1">
-            <button type="button" title={tx("মাধ্যম সম্পাদনা করুন", "Edit method")} disabled={draft !== null} onClick={() => { setEditingIndex(index); setDraft({ ...method, accountType: method.accountType ?? (method.type === "bank" ? undefined : /merchant|মার্চেন্ট/i.test(method.details) ? "merchant" : "personal") }); }} className="rounded-lg p-1.5 text-gray-400 transition hover:bg-blue-50 hover:text-blue-600 disabled:opacity-40 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"><Pencil size={14} /></button>
+            <button type="button" title={tx("মাধ্যম সম্পাদনা করুন", "Edit method")} disabled={draft !== null} onClick={() => openMethod(index)} className="rounded-lg p-1.5 text-gray-400 transition hover:bg-blue-50 hover:text-blue-600 disabled:opacity-40 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400"><Pencil size={14} /></button>
             <button type="button" title={tx("মাধ্যম সরান", "Remove method")} disabled={draft !== null} onClick={() => { void persist({ ...config, methods: config.methods.filter((_, i) => i !== index) }).catch(() => {}); }} className="rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-40 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"><Trash2 size={14} /></button>
           </div>
         </div>)}
         {!config.methods.length && !draft && <p className="py-4 text-center text-sm text-gray-400 dark:text-slate-500">{tx("এখনো কোনো পেমেন্ট মাধ্যম যোগ করা হয়নি।", "No payment methods added yet.")}</p>}
-        {draft && <form onSubmit={saveMethod} className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900/50 dark:bg-blue-950/20">
+        {draft && createPortal(<Modal open title={editingIndex === null ? tx("মাধ্যম যোগ করুন", "Add method") : tx("মাধ্যম সম্পাদনা করুন", "Edit method")} closeButtonTone="danger" onClose={() => { if (!busy) { setDraft(null); setEditingIndex(null); } }}><form onSubmit={saveMethod}><fieldset disabled={busy} className="space-y-4 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/70 to-white p-4 dark:border-indigo-900 dark:from-indigo-950/30 dark:to-slate-900">
           <label className="block"><span className={labelClass}>{tx("মাধ্যম", "Method")}</span><select className={selectClass} value={draft.type} onChange={(e) => { const type = e.target.value as DonationMethod["type"]; setDraft({ ...draft, type, accountType: type === "bank" ? "savings" : "personal", bankName: "", branchName: "", routingNumber: "", details: "" }); }}>{Object.entries(donationMethodLabels).map(([key, label]) => <option key={key} value={key}>{lang === "bn" ? label.bn : label.en}</option>)}</select></label>
           <label className="block"><span className={labelClass}>{tx("অ্যাকাউন্টের ধরন", "Account type")}</span><select required className={selectClass} value={draft.accountType || ""} onChange={(e) => setDraft({ ...draft, accountType: e.target.value as DonationMethod["accountType"] })}><option value="" disabled>{tx("ধরন নির্বাচন করুন", "Select account type")}</option>{(draft.type === "bank" ? ["savings", "current"] as const : ["personal", "merchant"] as const).map((key) => <option key={key} value={key}>{lang === "bn" ? donationAccountTypes[key].bn : donationAccountTypes[key].en}</option>)}</select></label>
           {([
@@ -110,8 +122,8 @@ export default function DonationSettings() {
             <label className="block sm:col-span-2"><span className={labelClass}>{tx("রাউটিং নম্বর (ঐচ্ছিক)", "Routing number (optional)")}</span><Input inputMode="numeric" pattern="[0-9]{9}" maxLength={9} value={draft.routingNumber || ""} onChange={(e) => setDraft({ ...draft, routingNumber: e.target.value.replace(/[^0-9]/g, "") })} placeholder={tx("৯ সংখ্যার রাউটিং নম্বর", "9-digit routing number")} /></label>
           </div>}
           <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"><p className="text-xs font-medium text-gray-500 dark:text-slate-400">{tx("স্বয়ংক্রিয় বিবরণ", "Automatic description")}</p><p className="mt-1 whitespace-pre-line text-sm text-gray-700 dark:text-slate-300">{donationMethodDetails(draft, lang)}</p></div>
-          <div className="flex justify-end gap-2 pt-1"><Button type="button" variant="secondary" onClick={() => { setDraft(null); setEditingIndex(null); }}>{c.cancel}</Button><Button type="submit">{busy ? c.saving : c.save}</Button></div>
-        </form>}
+          <div className="flex justify-end border-t border-indigo-100 pt-4 dark:border-indigo-900"><Button type="submit" disabled={!methodCanSave}>{busy ? c.saving : editingIndex === null ? c.add : c.save}</Button></div>
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}</fieldset></form></Modal>, document.body)}
       </div>
     </SectionCard>
 

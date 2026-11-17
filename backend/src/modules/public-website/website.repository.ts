@@ -241,6 +241,10 @@ export class WebsiteRepository {
     return prisma.websiteNotice.create({ data });
   }
 
+  findNoticeById(id: number, madrasaId: number) {
+    return prisma.websiteNotice.findFirst({ where: { id, madrasaId } });
+  }
+
   findLatestNotice(madrasaId: number) {
     return prisma.websiteNotice.findFirst({
       where: { madrasaId },
@@ -259,6 +263,10 @@ export class WebsiteRepository {
 
   createGalleryItem(data: Prisma.WebsiteGalleryUncheckedCreateInput) {
     return prisma.websiteGallery.create({ data });
+  }
+
+  findGalleryItem(id: number, madrasaId: number) {
+    return prisma.websiteGallery.findFirst({ where: { id, madrasaId } });
   }
 
   findLatestGalleryItem(madrasaId: number) {

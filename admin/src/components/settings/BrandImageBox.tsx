@@ -16,7 +16,10 @@ type Props = {
    * hosted URL on success, or null if cloud storage rejected it / isn't
    * configured (the base64 set via onChange is kept as a fallback then). */
   onUploaded?: (url: string | null) => void;
+  onUploadingChange?: (uploading: boolean) => void;
   shape?: "square" | "wide";
+  imageFit?: "contain" | "cover";
+  variant?: "default" | "gallery";
   /** Overrides the shape-based default ratio badge ("১৬:৯"/"১:১") - for a
    * shape whose real recommended ratio doesn't match either default (e.g.
    * a report header/footer banner, much thinner than 16:9). */
@@ -76,7 +79,10 @@ export default function BrandImageBox({
   onChange,
   onRemove,
   onUploaded,
+  onUploadingChange,
   shape = "square",
+  imageFit = "contain",
+  variant = "default",
   ratioLabel: ratioLabelProp,
   folder = "branding",
   resizeTo,
@@ -86,9 +92,14 @@ export default function BrandImageBox({
   const t = useText(settingsUiText);
   const c = useText(commonText);
 
+  const updateUploading = (active: boolean) => {
+    setUploading(active);
+    onUploadingChange?.(active);
+  };
+
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || uploading) return;
 
     const allowedTypes = ["image/png", "image/jpeg"];
     if (!allowedTypes.includes(file.type)) {
@@ -107,7 +118,12 @@ export default function BrandImageBox({
     }
 
     const reader = new FileReader();
-    reader.onloadend = async () => {
+    updateUploading(true);
+    reader.onerror = () => {
+      onUploaded?.(null);
+      updateUploading(false);
+    };
+    reader.onload = async () => {
       let base64 = reader.result as string;
       if (resizeTo) {
         try {
@@ -119,7 +135,6 @@ export default function BrandImageBox({
       onChange(base64);
 
       try {
-        setUploading(true);
         const res = await uploadApi.uploadImage(base64, folder);
         const data = res.data?.data;
         if (data?.uploaded && data.url) {
@@ -133,7 +148,7 @@ export default function BrandImageBox({
         logger.error("BRANDING IMAGE UPLOAD ERROR:", err);
         onUploaded?.(null);
       } finally {
-        setUploading(false);
+        updateUploading(false);
       }
     };
     reader.readAsDataURL(file);
@@ -144,23 +159,24 @@ export default function BrandImageBox({
   const ratioLabel = ratioLabelProp ?? (shape === "wide" ? t.ratioWide : t.ratioSquare);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+    <div className={variant === "gallery" ? "min-w-0" : "rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"}>
       <p className="font-semibold text-gray-900 dark:text-slate-100">{label}</p>
       {hint && <p className="mt-0.5 text-xs leading-relaxed text-gray-500 dark:text-slate-400">{hint}</p>}
 
       <div
-        onClick={() => fileRef.current?.click()}
+        onClick={() => { if (!uploading) fileRef.current?.click(); }}
         role="button"
         tabIndex={0}
+        aria-disabled={uploading}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") fileRef.current?.click();
+          if (!uploading && (e.key === "Enter" || e.key === " ")) fileRef.current?.click();
         }}
         className={`group relative mt-3 flex cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed bg-gray-50 transition hover:border-blue-400 hover:bg-blue-50/40 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-blue-500 dark:hover:bg-blue-950/30 ${
-          shape === "wide" ? "h-28 w-full" : "h-32 w-32"
+          variant === "gallery" ? `${shape === "wide" ? "aspect-[21/9]" : "aspect-square"} w-full rounded-2xl border-indigo-200 bg-white dark:border-indigo-800 dark:bg-slate-900` : shape === "wide" ? "h-28 w-full" : "h-32 w-32"
         }`}
         style={{
           backgroundImage: value ? `url(${value})` : "none",
-          backgroundSize: "contain",
+          backgroundSize: imageFit,
           backgroundRepeat: "no-repeat",
           backgroundPosition: "center",
         }}
@@ -208,6 +224,7 @@ export default function BrandImageBox({
         type="file"
         ref={fileRef}
         hidden
+        disabled={uploading}
         accept="image/png,image/jpeg"
         onChange={handleFile}
       />

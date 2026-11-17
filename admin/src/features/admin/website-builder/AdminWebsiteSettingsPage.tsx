@@ -1,4 +1,6 @@
+import ResponsiveSettingsMenu from "../../../components/settings/ResponsiveSettingsMenu";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { commonText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { confirmWebsiteReset } from "@madrasha/shared-ui/src/website/confirmWebsiteReset";
 import { websiteText } from "./website.text";
@@ -29,16 +31,16 @@ import {
 } from "lucide-react";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
+import GalleryImageDialog from "./GalleryImageDialog";
+import WebsiteItemDialog, { WebsiteAddCard } from "./WebsiteItemDialog";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
-import BrandImageBox from "../../../components/settings/BrandImageBox";
 import SectionCard from "../../../components/settings/SectionCard";
-import { ToggleSwitch, PublishToggle } from "../../../components/settings/ToggleSwitch";
-import InlineTextField, { textAreaClass } from "../../../components/settings/InlineTextField";
+import { ToggleSwitch } from "../../../components/settings/ToggleSwitch";
+import InlineTextField from "../../../components/settings/InlineTextField";
 import InlineListField from "../../../components/settings/InlineListField";
 import InlineImageField from "../../../components/settings/InlineImageField";
 import { CLOUD_NOT_CONFIGURED_MSG, isPendingCloudUpload } from "../../../utils/cloudUpload";
-import { useSectionTogglesStore } from "../../../store/sectionTogglesStore";
 import {
   deleteWebsiteCommitteeMember,
   deleteWebsiteGalleryItem,
@@ -190,69 +192,6 @@ type TabKey =
   | "social"
   | "pages";
 
-const fieldLabelClass = "mb-1 block text-sm font-medium text-gray-700 dark:text-slate-400";
-const slideLinkHintClass = "mt-1 text-xs text-gray-400 dark:text-slate-500";
-
-const selectFieldClass =
-  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
-
-/** "প্রকাশ করুন" টগল + বাতিল/সংরক্ষণ বাটন - এডিট-ড্রাফট ব্লকগুলোতে (পেজ,
- * নোটিশ, গ্যালারি, স্লাইড, কমিটি) হুবহু একই স্টাইল/অ্যালাইনমেন্ট নিশ্চিত করতে
- * একটাই কম্পোনেন্ট থেকে রেন্ডার হয়, আলাদা আলাদা কপি-পেস্ট না করে। */
-function PublishAndSaveActions({
-  published,
-  onPublishedChange,
-  saving,
-  onCancel,
-  onSave,
-}: {
-  published: boolean;
-  onPublishedChange: (v: boolean) => void;
-  saving: boolean;
-  onCancel: () => void;
-  onSave: () => void;
-}) {
-  const t = useText(websiteText);
-  const c = useText(commonText);
-  return (
-    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-      <PublishToggle checked={published} onChange={onPublishedChange} />
-      <div className="flex gap-2">
-        <Button type="button" variant="secondary" disabled={saving} onClick={onCancel}>
-          {c.cancel}
-        </Button>
-        <Button type="button" disabled={saving} onClick={onSave}>
-          {saving ? c.saving : c.save}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-/** "প্রকাশ করুন" টগল + "যোগ করুন" সাবমিট বাটন - নতুন-আইটেম-যোগ ফর্মগুলোতে
- * (নোটিশ, গ্যালারি, স্লাইড, কমিটি) একই স্টাইলে ব্যবহারের জন্য। */
-function PublishAndSubmitAction({
-  published,
-  onPublishedChange,
-  saving,
-}: {
-  published: boolean;
-  onPublishedChange: (v: boolean) => void;
-  saving: boolean;
-}) {
-  const t = useText(websiteText);
-  const c = useText(commonText);
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <PublishToggle checked={published} onChange={onPublishedChange} />
-      <Button disabled={saving} type="submit" className="gap-1.5">
-        {!saving && <Plus size={15} />}
-        {saving ? c.saving : c.add}
-      </Button>
-    </div>
-  );
-}
-
 type WebsiteThemeKey = import("@madrasha/shared-ui/src/website/themes").WebsiteThemeKey;
 
 import { WEBSITE_THEMES } from "@madrasha/shared-ui/src/website/themes";
@@ -341,9 +280,6 @@ export default function AdminWebsiteSettingsPage() {
   const user = useAuthStore((s) => s.user);
   const slug = useAuthStore((s) => s.madrasaSlug) || "";
   const toast = useToastStore((s) => s.show);
-  const isSectionEnabled = useSectionTogglesStore((s) => s.isEnabled);
-  const setSectionToggle = useSectionTogglesStore((s) => s.setToggle);
-  const fetchSectionToggles = useSectionTogglesStore((s) => s.fetchToggles);
 
   const [searchParams] = useSearchParams();
   const [tab, setTab] = useState<TabKey>(searchParams.get("tab") === "donations" ? "donations" : "general");
@@ -361,9 +297,6 @@ export default function AdminWebsiteSettingsPage() {
   useEffect(() => {
     formRef.current = form;
   }, [form]);
-  useEffect(() => {
-    fetchSectionToggles();
-  }, [fetchSectionToggles]);
   // Every field/toggle save PUTs the *entire* settings object (the backend
   // has no partial-update endpoint), so concurrent saves must be serialized
   // — otherwise a slower request can overwrite a faster one's change with
@@ -378,6 +311,8 @@ export default function AdminWebsiteSettingsPage() {
 
   const [noticeDraft, setNoticeDraft] = useState<WebsiteNoticePayload>(emptyNotice);
   const [galleryDraft, setGalleryDraft] = useState<WebsiteGalleryPayload>(emptyGallery);
+  const [galleryAddOpen, setGalleryAddOpen] = useState(false);
+  const [itemAddOpen, setItemAddOpen] = useState<TabKey | null>(null);
   const [videoDraft, setVideoDraft] = useState<WebsiteVideoPayload>(emptyVideo);
   const [slideDraft, setSlideDraft] = useState<WebsiteSlidePayload>(emptySlide);
   const [committeeDraft, setCommitteeDraft] = useState<WebsiteCommitteeMemberPayload>(emptyCommittee);
@@ -397,9 +332,7 @@ export default function AdminWebsiteSettingsPage() {
   const [pageDraft, setPageDraft] = useState<WebsitePagePayload | null>(null);
   const [savingPage, setSavingPage] = useState(false);
 
-  // Existing items in Notices/Gallery/Slider/Committee are edited in place
-  // (pencil icon on the item itself), the same pattern as t.pageContent
-  // above — the top form is only ever for creating a *new* item.
+  // Add and edit actions share a dialog for each content type.
   const [editingNoticeId, setEditingNoticeId] = useState<number | null>(null);
   const [noticeEditDraft, setNoticeEditDraft] = useState<WebsiteNoticePayload | null>(null);
   const [savingNoticeEdit, setSavingNoticeEdit] = useState(false);
@@ -566,8 +499,7 @@ export default function AdminWebsiteSettingsPage() {
   };
 
   // ---------- Notices ----------
-  const submitNotice = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitNotice = async () => {
     if (!noticeDraft.title?.trim()) {
       toast(t.enterNoticeTitle, "error");
       return;
@@ -577,6 +509,7 @@ export default function AdminWebsiteSettingsPage() {
       const saved = await saveWebsiteNotice(noticeDraft);
       setNotices((prev) => [saved.data, ...prev]);
       setNoticeDraft(emptyNotice);
+      setItemAddOpen(null);
       toast(t.noticeAdded, "success");
     } catch (err) {
       logger.error("SAVE NOTICE ERROR:", err);
@@ -638,8 +571,7 @@ export default function AdminWebsiteSettingsPage() {
   };
 
   // ---------- Video Gallery ----------
-  const submitVideo = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitVideo = async () => {
     if (!videoDraft.video_url?.trim()) {
       toast(t.enterVideoLink, "error");
       return;
@@ -647,16 +579,16 @@ export default function AdminWebsiteSettingsPage() {
     const chosenPosition = videoDraft.sort_order || videos.length + 1;
     setSavingVideo(true);
     try {
-      const saved = await saveWebsiteVideo({ ...videoDraft, sort_order: videos.length + 1 });
-      let nextVideos = [saved.data, ...videos];
-      if (chosenPosition <= videos.length) {
-        nextVideos = reorderBySortOrder(nextVideos, saved.data.id!, chosenPosition);
-        await Promise.all(
-          nextVideos.filter((item) => item.id !== saved.data.id).map((item) => saveWebsiteVideo(item)),
-        );
-      }
+      const appendOrder = Math.max(0, ...videos.map((item) => item.sort_order ?? 0)) + 1;
+      const saved = await saveWebsiteVideo({ ...videoDraft, sort_order: appendOrder });
+      const previousItems = [...videos, saved.data];
+      const nextVideos = reorderBySortOrder(previousItems, saved.data.id!, chosenPosition);
+      await Promise.all(nextVideos
+        .filter((item) => item.sort_order !== previousItems.find((previous) => previous.id === item.id)?.sort_order)
+        .map((item) => saveWebsiteVideo(item)));
       setVideos(nextVideos.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
       setVideoDraft(emptyVideo);
+      setItemAddOpen(null);
       toast(t.videoAdded, "success");
     } catch (err) {
       logger.error("SAVE VIDEO ERROR:", err);
@@ -694,7 +626,7 @@ export default function AdminWebsiteSettingsPage() {
       if (desiredPosition !== currentPosition) {
         nextVideos = reorderBySortOrder(nextVideos, saved.data.id, desiredPosition);
         await Promise.all(
-          nextVideos.filter((item) => item.id !== saved.data.id).map((item) => saveWebsiteVideo(item)),
+          nextVideos.map((item) => saveWebsiteVideo(item)),
         );
       }
 
@@ -731,8 +663,7 @@ export default function AdminWebsiteSettingsPage() {
   };
 
   // ---------- Gallery ----------
-  const submitGallery = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitGallery = async () => {
     if (!galleryDraft.image_url?.trim()) {
       toast(t.uploadImage, "error");
       return;
@@ -744,18 +675,18 @@ export default function AdminWebsiteSettingsPage() {
     const chosenPosition = galleryDraft.sort_order || gallery.length + 1;
     setSavingGallery(true);
     try {
-      const saved = await saveWebsiteGalleryItem({ ...galleryDraft, sort_order: gallery.length + 1 });
-      let nextGallery = [saved.data, ...gallery];
-      if (chosenPosition <= gallery.length) {
-        nextGallery = reorderBySortOrder(nextGallery, saved.data.id!, chosenPosition);
-        await Promise.all(
-          nextGallery
-            .filter((item) => item.id !== saved.data.id)
-            .map((item) => saveWebsiteGalleryItem(item)),
-        );
-      }
+      const appendOrder = Math.max(0, ...gallery.map((item) => item.sort_order ?? 0)) + 1;
+      const saved = await saveWebsiteGalleryItem({ ...galleryDraft, sort_order: appendOrder });
+      const previousGallery = [...gallery, saved.data];
+      const nextGallery = reorderBySortOrder(previousGallery, saved.data.id!, chosenPosition);
+      await Promise.all(
+        nextGallery
+          .filter((item) => item.sort_order !== previousGallery.find((previous) => previous.id === item.id)?.sort_order)
+          .map((item) => saveWebsiteGalleryItem(item)),
+      );
       setGallery(nextGallery.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
       setGalleryDraft(emptyGallery);
+      setGalleryAddOpen(false);
       toast(t.galleryAdded, "success");
     } catch (err) {
       logger.error("SAVE GALLERY ERROR:", err);
@@ -799,7 +730,7 @@ export default function AdminWebsiteSettingsPage() {
       if (desiredPosition !== currentPosition) {
         nextGallery = reorderBySortOrder(nextGallery, saved.data.id, desiredPosition);
         await Promise.all(
-          nextGallery.filter((item) => item.id !== saved.data.id).map((item) => saveWebsiteGalleryItem(item)),
+          nextGallery.map((item) => saveWebsiteGalleryItem(item)),
         );
       }
 
@@ -836,8 +767,7 @@ export default function AdminWebsiteSettingsPage() {
   };
 
   // ---------- Hero slides ----------
-  const submitSlide = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitSlide = async () => {
     if (!slideDraft.image_url?.trim()) {
       toast(t.uploadSlideImage, "error");
       return;
@@ -849,16 +779,16 @@ export default function AdminWebsiteSettingsPage() {
     const chosenPosition = slideDraft.sort_order || slides.length + 1;
     setSavingSlide(true);
     try {
-      const saved = await saveWebsiteSlide({ ...slideDraft, sort_order: slides.length + 1 });
-      let nextSlides = [saved.data, ...slides];
-      if (chosenPosition <= slides.length) {
-        nextSlides = reorderBySortOrder(nextSlides, saved.data.id!, chosenPosition);
-        await Promise.all(
-          nextSlides.filter((item) => item.id !== saved.data.id).map((item) => saveWebsiteSlide(item)),
-        );
-      }
+      const appendOrder = Math.max(0, ...slides.map((item) => item.sort_order ?? 0)) + 1;
+      const saved = await saveWebsiteSlide({ ...slideDraft, sort_order: appendOrder });
+      const previousItems = [...slides, saved.data];
+      const nextSlides = reorderBySortOrder(previousItems, saved.data.id!, chosenPosition);
+      await Promise.all(nextSlides
+        .filter((item) => item.sort_order !== previousItems.find((previous) => previous.id === item.id)?.sort_order)
+        .map((item) => saveWebsiteSlide(item)));
       setSlides(nextSlides.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
       setSlideDraft(emptySlide);
+      setItemAddOpen(null);
       toast(t.slideAdded, "success");
     } catch (err) {
       logger.error("SAVE SLIDE ERROR:", err);
@@ -900,7 +830,7 @@ export default function AdminWebsiteSettingsPage() {
       if (desiredPosition !== currentPosition) {
         nextSlides = reorderBySortOrder(nextSlides, saved.data.id, desiredPosition);
         await Promise.all(
-          nextSlides.filter((item) => item.id !== saved.data.id).map((item) => saveWebsiteSlide(item)),
+          nextSlides.map((item) => saveWebsiteSlide(item)),
         );
       }
 
@@ -937,8 +867,7 @@ export default function AdminWebsiteSettingsPage() {
   };
 
   // ---------- Committee ----------
-  const submitCommitteeMember = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitCommitteeMember = async () => {
     if (!committeeDraft.name?.trim()) {
       toast(t.enterMemberName, "error");
       return;
@@ -952,6 +881,7 @@ export default function AdminWebsiteSettingsPage() {
       const saved = await saveWebsiteCommitteeMember(committeeDraft);
       setCommittee((prev) => [saved.data, ...prev]);
       setCommitteeDraft(emptyCommittee);
+      setItemAddOpen(null);
       toast(t.memberAdded, "success");
     } catch (err) {
       logger.error("SAVE COMMITTEE ERROR:", err);
@@ -1039,17 +969,18 @@ export default function AdminWebsiteSettingsPage() {
   return (
     <fieldset disabled={resetting} className="min-w-0 space-y-6 pb-8 md:pb-12">
       <div className={websiteSettingsGridClass}>
-        <aside className="settings-sidebar no-print self-start rounded-2xl border border-gray-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-4">
-          <div className="mb-2 rounded-lg bg-blue-800 px-3 py-2 text-white">
-            <h2 className="text-base font-bold">{t.settingsMenu}</h2>
-          </div>
-          <div className="space-y-1">
+        <ResponsiveSettingsMenu
+          title={t.settingsMenu}
+          activeLabel={tabs.find((item) => item.key === tab)?.label ?? t.settingsMenu}
+          activeIcon={tabs.find((item) => item.key === tab)?.icon}
+        >
             {tabs.map(({ key, label, icon: Icon, badge }) => {
               const active = tab === key;
               return (
                 <button
                   key={key}
                   type="button"
+                  aria-current={active ? "page" : undefined}
                   onClick={() => setTab(key)}
                   className={`flex w-full items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-start text-sm transition ${
                     active
@@ -1080,8 +1011,7 @@ export default function AdminWebsiteSettingsPage() {
                 </button>
               );
             })}
-          </div>
-        </aside>
+        </ResponsiveSettingsMenu>
 
         <div className={websiteSettingsContentClass}>
       <PageHeader
@@ -1154,10 +1084,6 @@ export default function AdminWebsiteSettingsPage() {
           <SectionCard
             title={t.sectionVisibility}
             hint={t.sectionVisibilityHint}
-            toggle={{
-              checked: isSectionEnabled("website_section_visibility"),
-              onChange: (v) => setSectionToggle("website_section_visibility", v),
-            }}
           >
             <div className="grid gap-3 md:grid-cols-2">
               {toggleFields.map(([key]) => [key, ...(t.sections[String(key)] ?? ["", ""])] as const).map(([key, label, hint]) => (
@@ -1188,10 +1114,6 @@ export default function AdminWebsiteSettingsPage() {
         <div className="space-y-6">
           <SectionCard
             title={t.institutionInfoLogo}
-            toggle={{
-              checked: isSectionEnabled("website_institution_info"),
-              onChange: (v) => setSectionToggle("website_institution_info", v),
-            }}
           >
             <p className="text-sm text-slate-600 dark:text-slate-400">
               {t.brandingNoteBefore}{" "}
@@ -1210,10 +1132,6 @@ export default function AdminWebsiteSettingsPage() {
           <SectionCard
             title={t.websiteTheme}
             hint={t.themeHint}
-            toggle={{
-              checked: isSectionEnabled("website_theme_key"),
-              onChange: (v) => setSectionToggle("website_theme_key", v),
-            }}
           >
             <WebsiteThemePicker
               value={websiteThemes.find((t) => t.key === form.theme_key)?.key ?? "modern"}
@@ -1224,10 +1142,6 @@ export default function AdminWebsiteSettingsPage() {
 
           <SectionCard
             title={t.themeColor}
-            toggle={{
-              checked: isSectionEnabled("website_theme_color"),
-              onChange: (v) => setSectionToggle("website_theme_color", v),
-            }}
           >
             <InlineTextField
               label={t.themeColor}
@@ -1239,10 +1153,6 @@ export default function AdminWebsiteSettingsPage() {
 
           <SectionCard
             title={t.homeBanner}
-            toggle={{
-              checked: isSectionEnabled("website_hero_banner"),
-              onChange: (v) => setSectionToggle("website_hero_banner", v),
-            }}
           >
             <div className="space-y-2">
               <InlineTextField
@@ -1267,10 +1177,6 @@ export default function AdminWebsiteSettingsPage() {
           <SectionCard
             title={t.noticeBar}
             hint={t.noticeBarHint}
-            toggle={{
-              checked: isSectionEnabled("website_notice_bar"),
-              onChange: (v) => setSectionToggle("website_notice_bar", v),
-            }}
           >
             <InlineListField
               label={t.noticeText}
@@ -1308,10 +1214,6 @@ export default function AdminWebsiteSettingsPage() {
         <div className="space-y-6">
           <SectionCard
             title={t.headMessage}
-            toggle={{
-              checked: isSectionEnabled("website_muhtamim_message"),
-              onChange: (v) => setSectionToggle("website_muhtamim_message", v),
-            }}
           >
             <div className="space-y-2">
               <InlineTextField
@@ -1349,10 +1251,6 @@ export default function AdminWebsiteSettingsPage() {
         <div className="space-y-6">
           <SectionCard
             title={t.presidentMessage}
-            toggle={{
-              checked: isSectionEnabled("website_sovapoti_message"),
-              onChange: (v) => setSectionToggle("website_sovapoti_message", v),
-            }}
           >
             <div className="space-y-2">
               <InlineTextField
@@ -1391,10 +1289,6 @@ export default function AdminWebsiteSettingsPage() {
           <SectionCard
             title={t.socialLinks}
             hint={t.socialLinksHint}
-            toggle={{
-              checked: isSectionEnabled("website_social_links"),
-              onChange: (v) => setSectionToggle("website_social_links", v),
-            }}
           >
             <div className="space-y-2">
               <InlineTextField
@@ -1440,44 +1334,14 @@ export default function AdminWebsiteSettingsPage() {
 
       {tab === "pages" && (
         <div className="space-y-6">
+          {pageDraft && createPortal(<WebsiteItemDialog open={editingPageIndex !== null && !!pageDraft} title={c.edit + " · " + t.pageContent} editing draft={pageDraft} original={editingPageIndex === null ? undefined : pages[editingPageIndex]} fields={[{ key: "title", label: t.contentTitle, required: true }, { key: "content", label: t.pageContent, type: "textarea" }]} saving={savingPage} icon={FileText} onChange={(patch) => setPageDraft(previous => previous ? { ...previous, ...patch } : previous)} onClose={cancelEditPage} onSubmit={savePage} />, document.body)}
           <SectionCard
             title={t.pageContent}
             hint={t.pageContentHint}
-            toggle={{
-              checked: isSectionEnabled("website_page_content"),
-              onChange: (v) => setSectionToggle("website_page_content", v),
-            }}
           >
             <div className="space-y-3">
               {pages.map((page, index) =>
-                editingPageIndex === index && pageDraft ? (
-                  <div key={page.page_key} className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900/50 dark:bg-blue-950/20">
-                    <Input
-                      value={pageDraft.title}
-                      onChange={(e) =>
-                        setPageDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))
-                      }
-                      className="max-w-sm"
-                    />
-                    <textarea
-                      className={`${textAreaClass} mt-3`}
-                      rows={5}
-                      value={pageDraft.content || ""}
-                      onChange={(e) =>
-                        setPageDraft((prev) => (prev ? { ...prev, content: e.target.value } : prev))
-                      }
-                    />
-                    <PublishAndSaveActions
-                      published={pageDraft.is_published !== 0}
-                      onPublishedChange={(v) =>
-                        setPageDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
-                      }
-                      saving={savingPage}
-                      onCancel={cancelEditPage}
-                      onSave={savePage}
-                    />
-                  </div>
-                ) : (
+(
                   <div
                     key={page.page_key}
                     className="group rounded-xl border border-gray-100 p-4 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
@@ -1521,74 +1385,29 @@ export default function AdminWebsiteSettingsPage() {
 
       {tab === "notices" && (
         <div className="space-y-6">
-          <SectionCard
-            title={t.addNotice}
-            toggle={{
-              checked: isSectionEnabled("website_notice_add"),
-              onChange: (v) => setSectionToggle("website_notice_add", v),
-            }}
-          >
-            <form onSubmit={submitNotice} className="space-y-3">
-              <Input
-                value={noticeDraft.title || ""}
-                onChange={(e) => setNoticeDraft((prev) => ({ ...prev, title: e.target.value }))}
-                placeholder={t.noticeTitlePlaceholder}
-              />
-              <textarea
-                className={textAreaClass}
-                rows={3}
-                value={noticeDraft.content || ""}
-                onChange={(e) => setNoticeDraft((prev) => ({ ...prev, content: e.target.value }))}
-                placeholder={t.noticeDetailsPlaceholder}
-              />
-              <PublishAndSubmitAction
-                published={noticeDraft.is_published !== 0}
-                onPublishedChange={(v) => setNoticeDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
-                saving={savingNotice}
-              />
-            </form>
-          </SectionCard>
+          {createPortal(<WebsiteItemDialog
+            open={itemAddOpen === "notices" || editingNoticeId !== null}
+            title={editingNoticeId !== null ? c.edit + " · " + t.tabs["notices"] : t.addNotice}
+            editing={editingNoticeId !== null} icon={Bell}
+            draft={noticeEditDraft ?? noticeDraft}
+            original={editingNoticeId === null ? undefined : notices.find(item => item.id === editingNoticeId)}
+            fields={[{ key: "title", label: t.noticeTitlePlaceholder, required: true, placeholder: t.noticeTitlePlaceholder }, { key: "content", label: t.noticeDetailsPlaceholder, type: "textarea" }]}
+            positions={notices.length + (editingNoticeId === null ? 1 : 0)}
+            saving={savingNotice || savingNoticeEdit}
+
+            onChange={(patch) => { if (editingNoticeId !== null) setNoticeEditDraft(previous => previous ? { ...previous, ...patch } : previous); else setNoticeDraft(previous => ({ ...previous, ...patch })); }}
+            onClose={() => { setItemAddOpen(null); cancelEditNotice(); }}
+            onSubmit={async () => { if (editingNoticeId !== null) await saveNoticeEdit(); else await submitNotice(); }}
+          />, document.body)}
 
           <SectionCard
             title={t.allNotices}
             hint={t.allNoticesHint}
-            toggle={{
-              checked: isSectionEnabled("website_notice_list"),
-              onChange: (v) => setSectionToggle("website_notice_list", v),
-            }}
           >
-            {notices.length ? (
               <div className="space-y-3">
+                <WebsiteAddCard label={t.addNotice} onClick={() => setItemAddOpen("notices")} />
                 {notices.map((notice) =>
-                  editingNoticeId === notice.id && noticeEditDraft ? (
-                    <div key={notice.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900/50 dark:bg-blue-950/20">
-                      <Input
-                        value={noticeEditDraft.title || ""}
-                        onChange={(e) =>
-                          setNoticeEditDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))
-                        }
-                        placeholder={t.noticeTitlePlaceholder}
-                      />
-                      <textarea
-                        className={`${textAreaClass} mt-3`}
-                        rows={3}
-                        value={noticeEditDraft.content || ""}
-                        onChange={(e) =>
-                          setNoticeEditDraft((prev) => (prev ? { ...prev, content: e.target.value } : prev))
-                        }
-                        placeholder={t.noticeDetailsPlaceholder}
-                      />
-                      <PublishAndSaveActions
-                        published={noticeEditDraft.is_published !== 0}
-                        onPublishedChange={(v) =>
-                          setNoticeEditDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
-                        }
-                        saving={savingNoticeEdit}
-                        onCancel={cancelEditNotice}
-                        onSave={saveNoticeEdit}
-                      />
-                    </div>
-                  ) : (
+(
                     <div
                       key={notice.id}
                       className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
@@ -1628,7 +1447,7 @@ export default function AdminWebsiteSettingsPage() {
                   ),
                 )}
               </div>
-            ) : (
+            {!notices.length && (
               <EmptyState title={t.noNotices} hint={t.noNoticesHint} />
             )}
           </SectionCard>
@@ -1637,132 +1456,51 @@ export default function AdminWebsiteSettingsPage() {
 
       {tab === "gallery" && (
         <div className="space-y-6">
-          <SectionCard
-            title={t.addImage}
-            toggle={{
-              checked: isSectionEnabled("website_gallery_add"),
-              onChange: (v) => setSectionToggle("website_gallery_add", v),
+          {createPortal(<GalleryImageDialog
+            open={galleryAddOpen || editingGalleryId !== null}
+            editing={editingGalleryId !== null}
+            draft={galleryEditDraft ?? galleryDraft}
+            original={editingGalleryId === null ? undefined : {
+              ...gallery.find((item) => item.id === editingGalleryId)!,
+              sort_order: gallery.findIndex((item) => item.id === editingGalleryId) + 1,
             }}
-          >
-            <form onSubmit={submitGallery} className="space-y-3">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="max-w-xs">
-                  <BrandImageBox
-                    label={c.photo}
-                    folder="gallery"
-                    value={galleryDraft.image_url}
-                    onChange={(url) => setGalleryDraft((prev) => ({ ...prev, image_url: url }))}
-                    onRemove={() => setGalleryDraft((prev) => ({ ...prev, image_url: "" }))}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <label className={fieldLabelClass}>{t.imageTitle}</label>
-                    <Input
-                      value={galleryDraft.title || ""}
-                      onChange={(e) => setGalleryDraft((prev) => ({ ...prev, title: e.target.value }))}
-                      placeholder={t.imageTitlePlaceholder}
-                    />
-                  </div>
-                  <div>
-                    <label className={fieldLabelClass}>{t.position}</label>
-                    <select
-                      value={galleryDraft.sort_order || gallery.length + 1}
-                      onChange={(e) =>
-                        setGalleryDraft((prev) => ({ ...prev, sort_order: Number(e.target.value) }))
-                      }
-                      className={selectFieldClass}
-                    >
-                      {Array.from({ length: gallery.length + 1 }, (_, i) => i + 1).map((pos) => (
-                        <option key={pos} value={pos}>
-                          {pos}
-                          {pos === gallery.length + 1 ? t.atEnd : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <PublishAndSubmitAction
-                published={galleryDraft.is_published !== 0}
-                onPublishedChange={(v) => setGalleryDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
-                saving={savingGallery}
-              />
-            </form>
-          </SectionCard>
+            count={gallery.length}
+            saving={savingGallery || savingGalleryEdit}
+            onChange={(patch) => {
+              if (editingGalleryId !== null) setGalleryEditDraft((previous) => previous ? { ...previous, ...patch } : previous);
+              else setGalleryDraft((previous) => ({ ...previous, ...patch }));
+            }}
+            onClose={() => { setGalleryAddOpen(false); cancelEditGalleryItem(); }}
+            onSubmit={async () => {
+              if (editingGalleryId !== null) await saveGalleryEdit();
+              else await submitGallery();
+            }}
+          />, document.body)}
 
           <SectionCard
             title={t.allImages}
             hint={t.allImagesHint}
-            toggle={{
-              checked: isSectionEnabled("website_gallery_list"),
-              onChange: (v) => setSectionToggle("website_gallery_list", v),
-            }}
+            badge={gallery.length}
           >
-            {gallery.length ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {gallery.map((item) =>
-                  editingGalleryId === item.id && galleryEditDraft ? (
-                    <div key={item.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-3 dark:border-blue-900/50 dark:bg-blue-950/20">
-                      <div className="max-w-xs">
-                        <BrandImageBox
-                          label={c.photo}
-                          folder="gallery"
-                          value={galleryEditDraft.image_url}
-                          onChange={(url) =>
-                            setGalleryEditDraft((prev) => (prev ? { ...prev, image_url: url } : prev))
-                          }
-                          onRemove={() =>
-                            setGalleryEditDraft((prev) => (prev ? { ...prev, image_url: "" } : prev))
-                          }
-                        />
-                      </div>
-                      <div className="mt-3">
-                        <label className={fieldLabelClass}>{t.imageTitle}</label>
-                        <Input
-                          value={galleryEditDraft.title || ""}
-                          onChange={(e) =>
-                            setGalleryEditDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))
-                          }
-                        />
-                      </div>
-                      <div className="mt-3">
-                        <label className={fieldLabelClass}>{t.position}</label>
-                        <select
-                          value={galleryEditDraft.sort_order || gallery.length}
-                          onChange={(e) =>
-                            setGalleryEditDraft((prev) =>
-                              prev ? { ...prev, sort_order: Number(e.target.value) } : prev,
-                            )
-                          }
-                          className={selectFieldClass}
-                        >
-                          {gallery.map((_, i) => (
-                            <option key={i + 1} value={i + 1}>
-                              {i + 1}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <PublishAndSaveActions
-                        published={galleryEditDraft.is_published !== 0}
-                        onPublishedChange={(v) =>
-                          setGalleryEditDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
-                        }
-                        saving={savingGalleryEdit}
-                        onCancel={cancelEditGalleryItem}
-                        onSave={saveGalleryEdit}
-                      />
-                    </div>
-                  ) : (
+              <div className="grid grid-cols-2 items-start gap-3 md:grid-cols-3 xl:grid-cols-4">
+                <button
+                  type="button"
+                  onClick={() => setGalleryAddOpen(true)}
+                  aria-haspopup="dialog"
+                  className="flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/40 p-3 text-center transition hover:border-blue-500 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-blue-900 dark:bg-blue-950/20 dark:hover:border-blue-500 dark:hover:bg-blue-950/40"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300"><Plus size={18} /></span>
+                  <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">{t.addImage}</span>
+                </button>
+                {gallery.map((item) => (
                     <div
                       key={item.id}
-                      className="group rounded-xl border border-gray-100 p-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
+                      className="group min-w-0 rounded-xl border border-gray-100 p-2 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
                     >
                       <img
                         src={item.image_url}
                         alt={item.title || "Gallery"}
-                        className="h-32 w-full rounded-lg object-cover"
+                        className="aspect-square w-full rounded-lg object-cover"
                       />
                       <div className="mt-2 flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -1789,10 +1527,9 @@ export default function AdminWebsiteSettingsPage() {
                         </div>
                       </div>
                     </div>
-                  ),
-                )}
+                ))}
               </div>
-            ) : (
+            {!gallery.length && (
               <EmptyState title={t.noGallery} hint={t.noGalleryHint} />
             )}
           </SectionCard>
@@ -1801,120 +1538,29 @@ export default function AdminWebsiteSettingsPage() {
 
       {tab === "video" && (
         <div className="space-y-6">
-          <SectionCard
-            title={t.addVideo}
-            hint={t.addVideoHint}
-            toggle={{
-              checked: isSectionEnabled("website_video_add"),
-              onChange: (v) => setSectionToggle("website_video_add", v),
-            }}
-          >
-            <form onSubmit={submitVideo} className="space-y-3">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className={fieldLabelClass}>{t.videoLink}</label>
-                  <Input
-                    value={videoDraft.video_url || ""}
-                    onChange={(e) => setVideoDraft((prev) => ({ ...prev, video_url: e.target.value }))}
-                    placeholder="https://youtube.com/watch?v=..."
-                  />
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <label className={fieldLabelClass}>{t.videoTitle}</label>
-                    <Input
-                      value={videoDraft.title || ""}
-                      onChange={(e) => setVideoDraft((prev) => ({ ...prev, title: e.target.value }))}
-                      placeholder={t.videoTitlePlaceholder}
-                    />
-                  </div>
-                  <div>
-                    <label className={fieldLabelClass}>{t.position}</label>
-                    <select
-                      value={videoDraft.sort_order || videos.length + 1}
-                      onChange={(e) =>
-                        setVideoDraft((prev) => ({ ...prev, sort_order: Number(e.target.value) }))
-                      }
-                      className={selectFieldClass}
-                    >
-                      {Array.from({ length: videos.length + 1 }, (_, i) => i + 1).map((pos) => (
-                        <option key={pos} value={pos}>
-                          {pos}
-                          {pos === videos.length + 1 ? t.atEnd : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <PublishAndSubmitAction
-                published={videoDraft.is_published !== 0}
-                onPublishedChange={(v) => setVideoDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
-                saving={savingVideo}
-              />
-            </form>
-          </SectionCard>
+          {createPortal(<WebsiteItemDialog
+            open={itemAddOpen === "video" || editingVideoId !== null}
+            title={editingVideoId !== null ? c.edit + " · " + t.tabs["video"] : t.addVideo}
+            editing={editingVideoId !== null} icon={Video}
+            draft={videoEditDraft ?? videoDraft}
+            original={editingVideoId === null ? undefined : { ...videos.find(item => item.id === editingVideoId)!, sort_order: videos.findIndex(item => item.id === editingVideoId) + 1 }}
+            fields={[{ key: "video_url", label: t.videoLink, required: true, placeholder: "https://youtube.com/watch?v=..." }, { key: "title", label: t.videoTitle, placeholder: t.videoTitlePlaceholder }, { key: "sort_order", label: t.position, type: "position" }]}
+            positions={videos.length + (editingVideoId === null ? 1 : 0)}
+            saving={savingVideo || savingVideoEdit}
+            previewUrl={youtubeThumbnail((videoEditDraft ?? videoDraft).video_url)}
+            onChange={(patch) => { if (editingVideoId !== null) setVideoEditDraft(previous => previous ? { ...previous, ...patch } : previous); else setVideoDraft(previous => ({ ...previous, ...patch })); }}
+            onClose={() => { setItemAddOpen(null); cancelEditVideo(); }}
+            onSubmit={async () => { if (editingVideoId !== null) await saveVideoEdit(); else await submitVideo(); }}
+          />, document.body)}
 
           <SectionCard
             title={t.allVideos}
             hint={t.allVideosHint}
-            toggle={{
-              checked: isSectionEnabled("website_video_list"),
-              onChange: (v) => setSectionToggle("website_video_list", v),
-            }}
           >
-            {videos.length ? (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <WebsiteAddCard label={t.addVideo} onClick={() => setItemAddOpen("video")} />
                 {videos.map((item) =>
-                  editingVideoId === item.id && videoEditDraft ? (
-                    <div key={item.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-3 dark:border-blue-900/50 dark:bg-blue-950/20">
-                      <div>
-                        <label className={fieldLabelClass}>{t.videoLink}</label>
-                        <Input
-                          value={videoEditDraft.video_url || ""}
-                          onChange={(e) =>
-                            setVideoEditDraft((prev) => (prev ? { ...prev, video_url: e.target.value } : prev))
-                          }
-                        />
-                      </div>
-                      <div className="mt-3">
-                        <label className={fieldLabelClass}>{t.videoTitle}</label>
-                        <Input
-                          value={videoEditDraft.title || ""}
-                          onChange={(e) =>
-                            setVideoEditDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))
-                          }
-                        />
-                      </div>
-                      <div className="mt-3">
-                        <label className={fieldLabelClass}>{t.position}</label>
-                        <select
-                          value={videoEditDraft.sort_order || videos.length}
-                          onChange={(e) =>
-                            setVideoEditDraft((prev) =>
-                              prev ? { ...prev, sort_order: Number(e.target.value) } : prev,
-                            )
-                          }
-                          className={selectFieldClass}
-                        >
-                          {videos.map((_, i) => (
-                            <option key={i + 1} value={i + 1}>
-                              {i + 1}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <PublishAndSaveActions
-                        published={videoEditDraft.is_published !== 0}
-                        onPublishedChange={(v) =>
-                          setVideoEditDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
-                        }
-                        saving={savingVideoEdit}
-                        onCancel={cancelEditVideo}
-                        onSave={saveVideoEdit}
-                      />
-                    </div>
-                  ) : (
+(
                     <div
                       key={item.id}
                       className="group rounded-xl border border-gray-100 p-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
@@ -1958,7 +1604,7 @@ export default function AdminWebsiteSettingsPage() {
                   ),
                 )}
               </div>
-            ) : (
+            {!videos.length && (
               <EmptyState title={t.noVideos} hint={t.noVideosHint} />
             )}
           </SectionCard>
@@ -1967,137 +1613,29 @@ export default function AdminWebsiteSettingsPage() {
 
       {tab === "slider" && (
         <div className="space-y-6">
-          <SectionCard
-            title={t.addSlide}
-            toggle={{
-              checked: isSectionEnabled("website_slider_add"),
-              onChange: (v) => setSectionToggle("website_slider_add", v),
-            }}
-          >
-            <form onSubmit={submitSlide} className="space-y-3">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="max-w-xs">
-                  <BrandImageBox
-                    label={t.slideImage}
-                    hint={t.slideImageHint}
-                    ratioLabel={t.ratio219}
-                    folder="gallery"
-                    shape="wide"
-                    resizeTo={{ width: 2100, height: 900 }}
-                    value={slideDraft.image_url}
-                    onChange={(url) => setSlideDraft((prev) => ({ ...prev, image_url: url }))}
-                    onRemove={() => setSlideDraft((prev) => ({ ...prev, image_url: "" }))}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <label className={fieldLabelClass}>{t.linkOptional}</label>
-                    <Input
-                      value={slideDraft.button_link || ""}
-                      placeholder={t.linkPlaceholder}
-                      onChange={(e) => setSlideDraft((prev) => ({ ...prev, button_link: e.target.value }))}
-                    />
-                    <p className={slideLinkHintClass}>{t.slideLinkHint}</p>
-                  </div>
-                  <div>
-                    <label className={fieldLabelClass}>{t.position}</label>
-                    <select
-                      value={slideDraft.sort_order || slides.length + 1}
-                      onChange={(e) =>
-                        setSlideDraft((prev) => ({ ...prev, sort_order: Number(e.target.value) }))
-                      }
-                      className={selectFieldClass}
-                    >
-                      {Array.from({ length: slides.length + 1 }, (_, i) => i + 1).map((pos) => (
-                        <option key={pos} value={pos}>
-                          {pos}
-                          {pos === slides.length + 1 ? t.atEnd : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <PublishAndSubmitAction
-                published={slideDraft.is_published !== 0}
-                onPublishedChange={(v) => setSlideDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
-                saving={savingSlide}
-              />
-            </form>
-          </SectionCard>
+          {createPortal(<WebsiteItemDialog
+            open={itemAddOpen === "slider" || editingSlideId !== null}
+            title={editingSlideId !== null ? c.edit + " · " + t.tabs["slider"] : t.addSlide}
+            editing={editingSlideId !== null} icon={GalleryHorizontalEnd}
+            draft={slideEditDraft ?? slideDraft}
+            original={editingSlideId === null ? undefined : { ...slides.find(item => item.id === editingSlideId)!, sort_order: slides.findIndex(item => item.id === editingSlideId) + 1 }}
+            fields={[{ key: "button_link", label: t.linkOptional, placeholder: t.linkPlaceholder, hint: t.slideLinkHint }, { key: "sort_order", label: t.position, type: "position" }]}
+            positions={slides.length + (editingSlideId === null ? 1 : 0)}
+            saving={savingSlide || savingSlideEdit}
+            image={{ key: "image_url", label: t.slideImage, hint: t.slideImageHint + " " + t.slideImageUploadLimit, ratio: t.ratio219, resizeTo: { width: 2100, height: 900 } }}
+            onChange={(patch) => { if (editingSlideId !== null) setSlideEditDraft(previous => previous ? { ...previous, ...patch } : previous); else setSlideDraft(previous => ({ ...previous, ...patch })); }}
+            onClose={() => { setItemAddOpen(null); cancelEditSlide(); }}
+            onSubmit={async () => { if (editingSlideId !== null) await saveSlideEdit(); else await submitSlide(); }}
+          />, document.body)}
 
           <SectionCard
             title={t.allSlides}
             hint={t.allSlidesHint}
-            toggle={{
-              checked: isSectionEnabled("website_slider_list"),
-              onChange: (v) => setSectionToggle("website_slider_list", v),
-            }}
           >
-            {slides.length ? (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <WebsiteAddCard label={t.addSlide} onClick={() => setItemAddOpen("slider")} />
                 {slides.map((item) =>
-                  editingSlideId === item.id && slideEditDraft ? (
-                    <div key={item.id} className="rounded-xl border border-blue-200 bg-blue-50/40 p-3 dark:border-blue-900/50 dark:bg-blue-950/20">
-                      <div className="max-w-xs">
-                        <BrandImageBox
-                          label={t.slideImage}
-                          hint={t.slideImageHint}
-                          ratioLabel={t.ratio219}
-                          folder="gallery"
-                          shape="wide"
-                          resizeTo={{ width: 2100, height: 900 }}
-                          value={slideEditDraft.image_url}
-                          onChange={(url) =>
-                            setSlideEditDraft((prev) => (prev ? { ...prev, image_url: url } : prev))
-                          }
-                          onRemove={() =>
-                            setSlideEditDraft((prev) => (prev ? { ...prev, image_url: "" } : prev))
-                          }
-                        />
-                      </div>
-                      <div className="mt-3 space-y-3">
-                        <div>
-                          <label className={fieldLabelClass}>{t.linkOptional}</label>
-                          <Input
-                            value={slideEditDraft.button_link || ""}
-                            placeholder={t.linkPlaceholder}
-                            onChange={(e) =>
-                              setSlideEditDraft((prev) => (prev ? { ...prev, button_link: e.target.value } : prev))
-                            }
-                          />
-                          <p className={slideLinkHintClass}>{t.slideLinkHint}</p>
-                        </div>
-                        <div>
-                          <label className={fieldLabelClass}>{t.position}</label>
-                          <select
-                            value={slideEditDraft.sort_order || slides.length}
-                            onChange={(e) =>
-                              setSlideEditDraft((prev) =>
-                                prev ? { ...prev, sort_order: Number(e.target.value) } : prev,
-                              )
-                            }
-                            className={selectFieldClass}
-                          >
-                            {slides.map((_, i) => (
-                              <option key={i + 1} value={i + 1}>
-                                {i + 1}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                      <PublishAndSaveActions
-                        published={slideEditDraft.is_published !== 0}
-                        onPublishedChange={(v) =>
-                          setSlideEditDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
-                        }
-                        saving={savingSlideEdit}
-                        onCancel={cancelEditSlide}
-                        onSave={saveSlideEdit}
-                      />
-                    </div>
-                  ) : (
+(
                     <div
                       key={item.id}
                       className="group rounded-xl border border-gray-100 p-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
@@ -2105,7 +1643,7 @@ export default function AdminWebsiteSettingsPage() {
                       <img
                         src={item.image_url}
                         alt="Slide"
-                        className="h-32 w-full rounded-lg object-cover"
+                        className="aspect-[21/9] w-full rounded-lg object-cover"
                       />
                       <div className="mt-2 flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -2138,7 +1676,7 @@ export default function AdminWebsiteSettingsPage() {
                   ),
                 )}
               </div>
-            ) : (
+            {!slides.length && (
               <EmptyState title={t.noSlides} hint={t.noSlidesHint} />
             )}
           </SectionCard>
@@ -2147,133 +1685,29 @@ export default function AdminWebsiteSettingsPage() {
 
       {tab === "committee" && (
         <div className="space-y-6">
-          <SectionCard
-            title={t.addMember}
-            toggle={{
-              checked: isSectionEnabled("website_committee_add"),
-              onChange: (v) => setSectionToggle("website_committee_add", v),
-            }}
-          >
-            <form onSubmit={submitCommitteeMember} className="space-y-3">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="max-w-[9rem]">
-                  <BrandImageBox
-                    label={c.photo}
-                    folder="gallery"
-                    value={committeeDraft.photo_url}
-                    onChange={(url) => setCommitteeDraft((prev) => ({ ...prev, photo_url: url }))}
-                    onRemove={() => setCommitteeDraft((prev) => ({ ...prev, photo_url: "" }))}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <label className={fieldLabelClass}>{c.name}</label>
-                    <Input
-                      value={committeeDraft.name || ""}
-                      onChange={(e) => setCommitteeDraft((prev) => ({ ...prev, name: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <label className={fieldLabelClass}>{t.designation}</label>
-                    <Input
-                      value={committeeDraft.designation || ""}
-                      onChange={(e) =>
-                        setCommitteeDraft((prev) => ({ ...prev, designation: e.target.value }))
-                      }
-                      placeholder={t.designationPlaceholder}
-                    />
-                  </div>
-                  <div>
-                    <label className={fieldLabelClass}>{t.phoneOptional}</label>
-                    <Input
-                      value={committeeDraft.phone || ""}
-                      onChange={(e) => setCommitteeDraft((prev) => ({ ...prev, phone: e.target.value }))}
-                    />
-                  </div>
-                </div>
-              </div>
-              <PublishAndSubmitAction
-                published={committeeDraft.is_published !== 0}
-                onPublishedChange={(v) => setCommitteeDraft((prev) => ({ ...prev, is_published: v ? 1 : 0 }))}
-                saving={savingCommittee}
-              />
-            </form>
-          </SectionCard>
+          {createPortal(<WebsiteItemDialog
+            open={itemAddOpen === "committee" || editingCommitteeId !== null}
+            title={editingCommitteeId !== null ? c.edit + " · " + t.tabs["committee"] : t.addMember}
+            editing={editingCommitteeId !== null} icon={Users}
+            draft={committeeEditDraft ?? committeeDraft}
+            original={editingCommitteeId === null ? undefined : committee.find(item => item.id === editingCommitteeId)}
+            fields={[{ key: "name", label: c.name, required: true }, { key: "designation", label: t.designation, placeholder: t.designationPlaceholder }, { key: "phone", label: t.phoneOptional }]}
+            positions={committee.length + (editingCommitteeId === null ? 1 : 0)}
+            saving={savingCommittee || savingCommitteeEdit}
+            image={{ key: "photo_url", label: c.photo, hint: t.memberImageHint }}
+            onChange={(patch) => { if (editingCommitteeId !== null) setCommitteeEditDraft(previous => previous ? { ...previous, ...patch } : previous); else setCommitteeDraft(previous => ({ ...previous, ...patch })); }}
+            onClose={() => { setItemAddOpen(null); cancelEditCommitteeMember(); }}
+            onSubmit={async () => { if (editingCommitteeId !== null) await saveCommitteeEdit(); else await submitCommitteeMember(); }}
+          />, document.body)}
 
           <SectionCard
             title={t.members}
             hint={t.membersHint}
-            toggle={{
-              checked: isSectionEnabled("website_committee_list"),
-              onChange: (v) => setSectionToggle("website_committee_list", v),
-            }}
           >
-            {committee.length ? (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <WebsiteAddCard label={t.addMember} onClick={() => setItemAddOpen("committee")} />
                 {committee.map((item) =>
-                  editingCommitteeId === item.id && committeeEditDraft ? (
-                    <div
-                      key={item.id}
-                      className="sm:col-span-2 lg:col-span-3 rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900/50 dark:bg-blue-950/20"
-                    >
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="max-w-[9rem]">
-                          <BrandImageBox
-                            label={c.photo}
-                            folder="gallery"
-                            value={committeeEditDraft.photo_url}
-                            onChange={(url) =>
-                              setCommitteeEditDraft((prev) => (prev ? { ...prev, photo_url: url } : prev))
-                            }
-                            onRemove={() =>
-                              setCommitteeEditDraft((prev) => (prev ? { ...prev, photo_url: "" } : prev))
-                            }
-                          />
-                        </div>
-                        <div className="space-y-3">
-                          <div>
-                            <label className={fieldLabelClass}>{c.name}</label>
-                            <Input
-                              value={committeeEditDraft.name || ""}
-                              onChange={(e) =>
-                                setCommitteeEditDraft((prev) => (prev ? { ...prev, name: e.target.value } : prev))
-                              }
-                            />
-                          </div>
-                          <div>
-                            <label className={fieldLabelClass}>{t.designation}</label>
-                            <Input
-                              value={committeeEditDraft.designation || ""}
-                              onChange={(e) =>
-                                setCommitteeEditDraft((prev) =>
-                                  prev ? { ...prev, designation: e.target.value } : prev,
-                                )
-                              }
-                              placeholder={t.designationPlaceholder}
-                            />
-                          </div>
-                          <div>
-                            <label className={fieldLabelClass}>{t.phoneOptional}</label>
-                            <Input
-                              value={committeeEditDraft.phone || ""}
-                              onChange={(e) =>
-                                setCommitteeEditDraft((prev) => (prev ? { ...prev, phone: e.target.value } : prev))
-                              }
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <PublishAndSaveActions
-                        published={committeeEditDraft.is_published !== 0}
-                        onPublishedChange={(v) =>
-                          setCommitteeEditDraft((prev) => (prev ? { ...prev, is_published: v ? 1 : 0 } : prev))
-                        }
-                        saving={savingCommitteeEdit}
-                        onCancel={cancelEditCommitteeMember}
-                        onSave={saveCommitteeEdit}
-                      />
-                    </div>
-                  ) : (
+(
                     <div
                       key={item.id}
                       className="group flex items-center gap-3 rounded-xl border border-gray-100 p-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
@@ -2316,7 +1750,7 @@ export default function AdminWebsiteSettingsPage() {
                   ),
                 )}
               </div>
-            ) : (
+            {!committee.length && (
               <EmptyState title={t.noMembers} hint={t.noMembersHint} />
             )}
           </SectionCard>

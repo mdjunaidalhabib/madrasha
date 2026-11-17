@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from "react-router-dom";
+import ResponsiveSettingsMenu from "../../../components/settings/ResponsiveSettingsMenu";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   Settings2,
   UserCog,
@@ -42,6 +43,7 @@ const SETTINGS_NAV_ITEMS: {
 ];
 
 export default function SettingsLayout() {
+  const { pathname } = useLocation();
   const user = useAuthStore((s) => s.user);
   const permissions = useAuthStore((s) => s.permissions);
   const modules = useAuthStore((s) => s.modules);
@@ -53,15 +55,18 @@ export default function SettingsLayout() {
     return true;
   });
 
+  const activeItem = visibleItems.find((item) => {
+    const path = item.path ?? `/settings/${item.key}`;
+    return pathname === path || pathname.startsWith(`${path}/`);
+  });
+
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-24">
-      {/* ওয়েবসাইট সেটিংস পেজের নিজস্ব "সেটিংস মেনু" সাইডবারের মতো একই স্টাইল -
-          UI ধারাবাহিকতা রাখতে (দেখুন AdminWebsiteSettingsPage.tsx)। */}
-      <aside className="settings-sidebar no-print self-start rounded-2xl border border-gray-200 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-4">
-        <div className="mb-2 rounded-lg bg-blue-800 px-3 py-2 text-white">
-          <h2 className="text-base font-bold">{t.settingsMenu}</h2>
-        </div>
-        <div className="space-y-1">
+      <ResponsiveSettingsMenu
+        title={t.settingsMenu}
+        activeLabel={activeItem ? t[activeItem.label] : t.settingsMenu}
+        activeIcon={activeItem?.icon}
+      >
           {visibleItems.map((item) => {
             const Icon = item.icon;
             const to = item.path ?? `/settings/${item.key}`;
@@ -93,8 +98,7 @@ export default function SettingsLayout() {
               </NavLink>
             );
           })}
-        </div>
-      </aside>
+      </ResponsiveSettingsMenu>
 
       <div className="min-w-0 max-w-4xl space-y-6">
         <Outlet />
