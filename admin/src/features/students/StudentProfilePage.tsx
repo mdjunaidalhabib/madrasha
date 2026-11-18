@@ -17,6 +17,7 @@ import {
 } from "../../components/common/profileActionStyles";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import StudentProfileSkeleton from "../../components/studentProfile/StudentProfileSkeleton";
+import { studentProfilePageClass } from "../../components/studentProfile/profileStyles";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import AdmissionFormPrintButton from "../../components/admission/AdmissionFormPrintButton";
@@ -379,7 +380,7 @@ const StudentProfilePage = () => {
   if (!student) return <p className="p-6">{t.notFound}</p>;
 
   return (
-    <div className="mx-auto max-w-6xl p-4 sm:p-6">
+    <div className={studentProfilePageClass}>
       {quickNav}
 
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

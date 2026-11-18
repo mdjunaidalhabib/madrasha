@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useLang } from "@madrasha/shared-ui/src/i18n";
 import { Skeleton, SkeletonTable } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import { studentProfilePageClass } from "./profileStyles";
 
 const cardClass = "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900";
 
@@ -20,20 +21,28 @@ export default function StudentProfileSkeleton({ edit = false }: { edit?: boolea
   const lang = useLang();
   const { tab } = useParams();
   const overview = !tab || !["academic", "attendance", "fees", "library"].includes(tab);
-  if (!edit) return <div role="status" aria-busy="true" aria-label={lang === "bn" ? "শিক্ষার্থীর তথ্য লোড হচ্ছে" : "Loading student information"} className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+  if (!edit) return <div role="status" aria-busy="true" aria-label={lang === "bn" ? "শিক্ষার্থীর তথ্য লোড হচ্ছে" : "Loading student information"} className={`${studentProfilePageClass} space-y-6`}>
     <div aria-hidden="true" className="space-y-6 motion-reduce:[&_.animate-pulse]:animate-none">
       <div className={cardClass}>
-        <div className="flex gap-4"><Skeleton className="h-24 w-20 shrink-0 rounded-xl" /><div className="min-w-0 flex-1 space-y-3"><Skeleton className="h-3 w-28" /><Skeleton className="h-7 w-52 max-w-full" /><Skeleton className="h-4 w-32" /></div></div>
-        <div className="mt-5 flex flex-wrap justify-between gap-4 border-t border-slate-100 pt-4 dark:border-slate-800"><Skeleton className="h-6 w-40" /><div className="flex flex-wrap gap-2">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-9 w-24 rounded-lg" />)}</div></div>
+        <div className="grid items-center gap-5 lg:grid-cols-2 lg:gap-8">
+          <div className="flex gap-4"><Skeleton className="h-24 w-20 shrink-0 rounded-xl" /><div className="min-w-0 flex-1 space-y-3"><Skeleton className="h-3 w-28" /><Skeleton className="h-7 w-52 max-w-full" /><Skeleton className="h-4 w-32" /></div></div>
+          <div className="min-w-0 space-y-4 border-t border-slate-100 pt-4 lg:border-s lg:border-t-0 lg:ps-6 lg:pt-0 dark:border-slate-800">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <div key={i} className="min-w-0 space-y-2"><Skeleton className="h-3 w-16 max-w-full" /><Skeleton className="h-5 w-20 max-w-full" /></div>)}</div>
+            <div className="flex flex-wrap gap-2">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-9 w-24 rounded-lg" />)}</div>
+          </div>
+        </div>
       </div>
       <div className="flex gap-3 overflow-hidden border-b border-slate-200 pb-3 dark:border-slate-700">{Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-8 w-24 shrink-0" />)}</div>
       {overview ? <>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <div key={i} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"><Skeleton className="mb-3 h-3 w-24 max-w-full" /><Skeleton className="h-6 w-20" /></div>)}</div>
-        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]"><div className="space-y-5"><StudentReadOnlySkeleton fields={8} /><StudentReadOnlySkeleton fields={10} /></div><div className="space-y-5"><StudentReadOnlySkeleton fields={4} singleColumn /><StudentReadOnlySkeleton fields={2} singleColumn /></div></div>
+        <StudentDetailsSkeleton />
+        <StudentDetailsSkeleton fields={12} />
+        <StudentDetailsSkeleton fields={8} />
+        <StudentDetailsSkeleton fields={4} />
       </> : <SkeletonTable rows={5} columns={tab === "academic" ? 6 : 4} />}
     </div>
   </div>;
-  return <div role="status" aria-busy="true" aria-label={lang === "bn" ? "শিক্ষার্থীর তথ্য লোড হচ্ছে" : "Loading student information"} className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+  return <div role="status" aria-busy="true" aria-label={lang === "bn" ? "শিক্ষার্থীর তথ্য লোড হচ্ছে" : "Loading student information"} className={`${studentProfilePageClass} space-y-6`}>
     <div aria-hidden="true" className="space-y-6">
       {edit && <Skeleton className="h-16 w-full rounded-xl motion-reduce:animate-none" />}
       <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">

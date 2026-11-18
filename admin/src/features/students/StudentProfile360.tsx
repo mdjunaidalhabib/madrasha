@@ -7,9 +7,10 @@ import { profile360Text } from "./StudentProfile360.text";
 import { BookOpen, CalendarCheck, GraduationCap, Wallet } from "lucide-react";
 import StudentProfileHeader from "../../components/studentProfile/StudentProfileHeader";
 import StudentProfileOverview from "../../components/studentProfile/StudentProfileOverview";
+import { studentProfilePageClass } from "../../components/studentProfile/profileStyles";
 import StatTile from "@madrasha/shared-ui/src/components/ui/StatTile";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
-import StudentProfileSkeleton, { StudentReadOnlySkeleton } from "../../components/studentProfile/StudentProfileSkeleton";
+import StudentProfileSkeleton, { StudentDetailsSkeleton } from "../../components/studentProfile/StudentProfileSkeleton";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 
@@ -126,14 +127,14 @@ export default function StudentProfile360() {
 
   if (!student) {
     return (
-      <div className="mx-auto max-w-6xl p-4 sm:p-6">
+      <div className={studentProfilePageClass}>
         <EmptyState title={tx.notFound} />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+    <div className={`${studentProfilePageClass} space-y-6`}>
       <StudentProfileHeader
         student={student}
         details={fullStudent}
@@ -173,7 +174,7 @@ export default function StudentProfile360() {
               <Icon size={18} strokeWidth={1.6} className={`mt-0.5 shrink-0 ${color}`} aria-hidden="true" />
             </div>)}
           </div>
-          {detailsLoading && <div role="status" aria-busy="true" aria-label={lang === "bn" ? "বিস্তারিত তথ্য লোড হচ্ছে" : "Loading student details"} className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]"><div className="space-y-5"><StudentReadOnlySkeleton /><StudentReadOnlySkeleton fields={10} /></div><StudentReadOnlySkeleton fields={4} singleColumn /></div>}
+          {detailsLoading && <div role="status" aria-busy="true" aria-label={lang === "bn" ? "বিস্তারিত তথ্য লোড হচ্ছে" : "Loading student details"} className="space-y-6"><StudentDetailsSkeleton /><StudentDetailsSkeleton fields={12} /><StudentDetailsSkeleton fields={8} /><StudentDetailsSkeleton fields={4} /></div>}
           {fullStudent && <StudentProfileOverview student={fullStudent} summary={student} />}
           {!detailsLoading && !fullStudent && <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"><EmptyState title={tx.detailsUnavailable} /></div>}
         </div>
