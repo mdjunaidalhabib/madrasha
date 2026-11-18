@@ -5,7 +5,7 @@ import { useConfirmStore } from "../store/confirmStore";
 export function confirmWebsiteReset({ institutionName, lang, onConfirm }: {
   institutionName: string;
   lang: Lang;
-  onConfirm: () => Promise<void> | void;
+  onConfirm: (password: string) => Promise<void> | void;
 }) {
   const bn = lang === "bn";
   const steps = bn ? [
@@ -46,8 +46,9 @@ export function confirmWebsiteReset({ institutionName, lang, onConfirm }: {
     useConfirmStore.getState().show({
       ...steps[index],
       danger: true,
+      passwordLabel: index === steps.length - 1 ? (bn ? "আপনার বর্তমান লগইন পাসওয়ার্ড" : "Your current login password") : undefined,
       onCancel: undefined,
-      onConfirm: index === steps.length - 1 ? onConfirm : () => showStep(index + 1),
+      onConfirm: index === steps.length - 1 ? (password) => onConfirm(password!) : () => showStep(index + 1),
     });
   };
   showStep(0);

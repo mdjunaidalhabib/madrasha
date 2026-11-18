@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { verifyWebsiteResetPassword } from "./website-reset-password";
 import { websiteDonationService } from "./website-donation.service";
 import { ApiError, BadRequestError } from "../../shared/errors";
 import { HttpStatus } from "../../shared/constants";
@@ -39,6 +40,7 @@ export const saveOwnDonationSettings = async (req: Request, res: Response) => {
 };
 export const resetInstitutionWebsite = async (req: Request, res: Response) => {
   try {
+    await verifyWebsiteResetPassword(req.user?.id, req.body?.password);
     await resetWebsiteToTemplate(Number(req.params.id));
     res.json({ message: t({ bn: "ওয়েবসাইট মূল ডেমোতে রিসেট হয়েছে", en: "Website reset to the main demo" }) });
   } catch (error) { respondError(res, error); }
@@ -49,6 +51,7 @@ export const resetOwnInstitutionWebsite = async (req: Request, res: Response) =>
     // The authenticated tenant is authoritative; body/query IDs cannot redirect a reset.
     const madrasaId = req.tenant?.madrasa_id;
     if (!madrasaId) throw new BadRequestError("Invalid institution ID");
+    await verifyWebsiteResetPassword(req.user?.id, req.body?.password, madrasaId);
     await resetWebsiteToTemplate(madrasaId);
     res.json({ message: t({ bn: "ওয়েবসাইট মূল ডেমোতে রিসেট হয়েছে", en: "Website reset to the main demo" }) });
   } catch (error) { respondError(res, error); }

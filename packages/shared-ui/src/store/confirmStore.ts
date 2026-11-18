@@ -6,7 +6,8 @@ type ConfirmState = {
   message?: string;
   confirmText?: string;
   danger?: boolean;
-  onConfirm?: () => Promise<void> | void;
+  passwordLabel?: string;
+  onConfirm?: (password?: string) => Promise<void> | void;
   onCancel?: () => void;
   /** Bumped on every show() - lets ConfirmDialog detect whether its own
    * onConfirm handler re-opened the dialog (chaining a second confirmation
@@ -20,6 +21,6 @@ type ConfirmState = {
 export const useConfirmStore = create<ConfirmState>((set) => ({
   open: false,
   generation: 0,
-  show: (opts) => set((state) => ({ open: true, ...opts, generation: state.generation + 1 })),
+  show: (opts) => set((state) => ({ open: true, passwordLabel: undefined, ...opts, generation: state.generation + 1 })),
   hide: () => set({ open: false }),
 }));

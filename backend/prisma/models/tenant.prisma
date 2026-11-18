@@ -531,6 +531,7 @@ model WebsiteSettings {
   youtubeUrl         String? @map("youtube_url") @db.VarChar(255)
   instagramUrl       String? @map("instagram_url") @db.VarChar(255)
   whatsappChannelUrl String? @map("whatsapp_channel_url") @db.VarChar(255)
+  socialLinks        Json?   @map("social_links")
   mapUrl             String? @map("map_url") @db.VarChar(500)
 
   createdAt DateTime @default(now()) @map("created_at")

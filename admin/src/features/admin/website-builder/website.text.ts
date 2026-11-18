@@ -7,6 +7,7 @@ export const websiteText = defineText({
     resetDescription: "পাবলিক ওয়েবসাইট সর্বশেষ সংরক্ষিত মূল ডেমো দিয়ে প্রতিস্থাপন করুন। নিজস্ব ওয়েবসাইট সম্পাদনা মুছে যাবে। রিসেটের আগে ৩ ধাপে নিশ্চিত করতে হবে।",
     resetWebsite: "ওয়েবসাইট রিসেট",
     resetInProgress: "ওয়েবসাইট রিসেট হচ্ছে…",
+    resetSuccess: "ওয়েবসাইট সফলভাবে মূল ডেমোতে ফিরিয়ে আনা হয়েছে। সর্বশেষ ডেমোর ডিজাইন ও কনটেন্ট এখন প্রয়োগ করা হয়েছে।",
     resetFailed: "ওয়েবসাইট রিসেট করা যায়নি। আবার চেষ্টা করুন।",
     resetInstitutionFallback: "এই প্রতিষ্ঠান",
     sections: {
@@ -129,7 +130,7 @@ export const websiteText = defineText({
     presidentPhoto: "সভাপতি সাহেবের ছবি",
     presidentMessagePlaceholder: "সভাপতি সাহেবের বাণী লিখুন...",
     socialLinks: "সোশ্যাল মিডিয়া লিংক",
-    socialLinksHint: "খালি রাখলে সেই আইকনটি পাবলিক ওয়েবসাইটের ফুটার ও WhatsApp বাটনে দেখাবে না।",
+    socialLinksHint: "প্ল্যাটফর্ম বেছে লিংক যোগ করুন বা মুছে ফেলুন। পরিবর্তন কার্যকর করতে সংরক্ষণ করুন।",
     facebookUrl: "ফেসবুক পেজ URL",
     youtubeUrl: "ইউটিউব চ্যানেল URL",
     instagramUrl: "ইনস্টাগ্রাম প্রোফাইল URL",
@@ -203,6 +204,7 @@ export const websiteText = defineText({
     resetDescription: "Replace the public website with the latest saved main demo. Custom website edits will be removed. Three confirmations are required before resetting.",
     resetWebsite: "Reset website",
     resetInProgress: "Resetting website…",
+    resetSuccess: "Website successfully restored to the main demo. The latest demo design and content have been applied.",
     resetFailed: "Unable to reset the website. Please try again.",
     resetInstitutionFallback: "This institution",
     sections: {
@@ -325,7 +327,7 @@ export const websiteText = defineText({
     presidentPhoto: "President's photo",
     presidentMessagePlaceholder: "Write the president's message...",
     socialLinks: "Social media links",
-    socialLinksHint: "Leave a field empty to hide that icon in the public website footer and WhatsApp button.",
+    socialLinksHint: "Choose a platform to add a link, or delete an existing link. Save to apply your changes.",
     facebookUrl: "Facebook page URL",
     youtubeUrl: "YouTube channel URL",
     instagramUrl: "Instagram profile URL",

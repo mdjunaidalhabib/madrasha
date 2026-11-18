@@ -1,11 +1,12 @@
 import api, { cachedGet } from "./api";
+import type { WebsiteSocialLink } from "@madrasha/shared-ui/src/website/socialLinks";
 export async function getDonationSettings(): Promise<{ allowed: boolean }> {
   const res = await api.get("/website/admin/donations", { silent: true });
   return res.data.data;
 }
 
-export async function resetOwnWebsite() {
-  const res = await api.post("/website/admin/reset", undefined, { silent: true, timeout: 45_000 });
+export async function resetOwnWebsite(password: string) {
+  const res = await api.post("/website/admin/reset", { password }, { silent: true, timeout: 45_000 });
   return res.data;
 }
 
@@ -47,6 +48,7 @@ export type WebsiteSettingsPayload = {
   youtube_url?: string;
   instagram_url?: string;
   whatsapp_channel_url?: string;
+  social_links?: WebsiteSocialLink[] | null;
   map_url?: string;
 };
 

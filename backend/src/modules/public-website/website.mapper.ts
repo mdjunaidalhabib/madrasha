@@ -25,6 +25,9 @@ export const toMadrasaApiDto = (row: Record<string, any> | null | undefined) => 
     slug: row.slug ?? null,
     phone: row.phone ?? null,
     email: row.email ?? null,
+    phones: row.brandingPhones ?? [],
+    emails: row.brandingEmails ?? [],
+    social_links: toBrandingSocialLinks(row.brandingSocialLinks),
     address: row.address ?? null,
     website_status: row.websiteStatus ?? "active",
     // The public site's logo comes from branding settings (report_logo),
@@ -34,6 +37,19 @@ export const toMadrasaApiDto = (row: Record<string, any> | null | undefined) => 
     institution: buildInstitutionInfo(row),
   };
 };
+
+// Branding stores WhatsApp numbers and Facebook subtypes; the public site's
+// social renderer uses URLs and a single Facebook platform.
+function toBrandingSocialLinks(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((link) => {
+    if (!link || typeof link.value !== "string" || !link.value.trim()) return [];
+    const platform = link.type?.startsWith("facebook_") ? "facebook" : link.type;
+    const digits = link.value.replace(/\D/g, "");
+    const url = platform === "whatsapp" ? (digits ? `https://wa.me/${digits}` : "") : link.value;
+    return url ? [{ platform, label: link.label || undefined, url }] : [];
+  });
+}
 
 export const toWebsiteSettingsApiDto = (row: Record<string, any> | null | undefined) => {
   if (!row) return {};
@@ -70,6 +86,7 @@ export const toWebsiteSettingsApiDto = (row: Record<string, any> | null | undefi
     youtube_url: row.youtubeUrl ?? null,
     instagram_url: row.instagramUrl ?? null,
     whatsapp_channel_url: row.whatsappChannelUrl ?? null,
+    social_links: row.socialLinks ?? null,
     map_url: row.mapUrl ?? null,
   };
 };

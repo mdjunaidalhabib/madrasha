@@ -12,10 +12,15 @@ vi.mock("../website-template.service", () => ({
 }));
 import routes from "../website.routes";
 import { BadRequestError } from "../../../shared/errors";
+import { prisma } from "../../../shared/database/prisma";
+import { hashPassword } from "../../../shared/utils/hash.util";
 
 let server: Server;
 let base: string;
+let passwordHash: string;
+const headers = { Authorization: "Bearer super", "Content-Type": "application/json" };
 beforeAll(async () => {
+  passwordHash = await hashPassword("super-secret");
   const app = express();
   app.use(express.json());
   app.use("/website", routes);
@@ -41,15 +46,32 @@ describe("super admin website reset", () => {
     expect(reset).not.toHaveBeenCalled();
   });
   it("resets the requested institution for a super admin", async () => {
-    vi.spyOn(jwt, "verify").mockReturnValue({ role: "super_admin" } as any);
-    const response = await fetch(`${base}/42/reset`, { method: "POST", headers: { Authorization: "Bearer super" } });
+    vi.spyOn(jwt, "verify").mockReturnValue({ id: 9, role: "super_admin" } as any);
+    const account = vi.spyOn(prisma.superAdmin, "findFirst").mockResolvedValue({ passwordHash } as any);
+    const response = await fetch(`${base}/42/reset`, { method: "POST", headers, body: JSON.stringify({ password: "super-secret" }) });
     expect(response.status).toBe(200);
     expect(reset).toHaveBeenCalledWith(42);
+    expect(account).toHaveBeenCalledWith({ where: { id: 9, isActive: 1 }, select: { passwordHash: true } });
+  });
+  it.each([undefined, "", "wrong-password", 123, {}])("rejects missing or incorrect passwords: %s", async (password) => {
+    vi.spyOn(jwt, "verify").mockReturnValue({ id: 9, role: "super_admin" } as any);
+    vi.spyOn(prisma.superAdmin, "findFirst").mockResolvedValue({ passwordHash } as any);
+    const response = await fetch(`${base}/42/reset`, { method: "POST", headers, body: JSON.stringify({ password }) });
+    expect(response.status).toBe(400);
+    expect(reset).not.toHaveBeenCalled();
+  });
+  it("rejects inactive or missing super admin accounts", async () => {
+    vi.spyOn(jwt, "verify").mockReturnValue({ id: 9, role: "super_admin" } as any);
+    vi.spyOn(prisma.superAdmin, "findFirst").mockResolvedValue(null);
+    const response = await fetch(`${base}/42/reset`, { method: "POST", headers, body: JSON.stringify({ password: "super-secret" }) });
+    expect(response.status).toBe(400);
+    expect(reset).not.toHaveBeenCalled();
   });
   it("returns validation errors from the reset service", async () => {
-    vi.spyOn(jwt, "verify").mockReturnValue({ role: "super_admin" } as any);
+    vi.spyOn(jwt, "verify").mockReturnValue({ id: 9, role: "super_admin" } as any);
+    vi.spyOn(prisma.superAdmin, "findFirst").mockResolvedValue({ passwordHash } as any);
     reset.mockRejectedValue(new BadRequestError("Invalid institution ID"));
-    const response = await fetch(`${base}/invalid/reset`, { method: "POST", headers: { Authorization: "Bearer super" } });
+    const response = await fetch(`${base}/invalid/reset`, { method: "POST", headers, body: JSON.stringify({ password: "super-secret" }) });
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ message: "Invalid institution ID" });
   });

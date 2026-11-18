@@ -35,6 +35,7 @@ export interface UpsertWebsiteSettingsRequestDto {
   youtube_url?: string;
   instagram_url?: string;
   whatsapp_channel_url?: string;
+  social_links?: { platform: string; label?: string; url: string }[];
   map_url?: string;
 }
 

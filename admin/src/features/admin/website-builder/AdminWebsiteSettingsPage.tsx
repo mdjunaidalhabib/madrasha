@@ -1,3 +1,5 @@
+import WebsiteSocialLinksEditor from "./WebsiteSocialLinksEditor";
+import { getWebsiteSocialItems, LEGACY_SOCIAL_FIELDS, type WebsiteSocialLink } from "@madrasha/shared-ui/src/website/socialLinks";
 import ResponsiveSettingsMenu from "../../../components/settings/ResponsiveSettingsMenu";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -326,6 +328,14 @@ export default function AdminWebsiteSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [resetting, setResetting] = useState(false);
   const resettingRef = useRef(false);
+  const resetSuccessKey = `website-reset-success:${user?.madrasa_id}`;
+  useEffect(() => {
+    if (loading || !user?.madrasa_id) return;
+    if (sessionStorage.getItem(resetSuccessKey) === "1") {
+      sessionStorage.removeItem(resetSuccessKey);
+      toast(t.resetSuccess, "success", { duration: 7000 });
+    }
+  }, [loading, user?.madrasa_id, resetSuccessKey, toast, t.resetSuccess]);
   const [savingToggle, setSavingToggle] = useState<string | null>(null);
 
   const [editingPageIndex, setEditingPageIndex] = useState<number | null>(null);
@@ -425,20 +435,23 @@ export default function AdminWebsiteSettingsPage() {
     confirmWebsiteReset({
       institutionName: form.name || t.resetInstitutionFallback,
       lang,
-      onConfirm: async () => {
+      onConfirm: async (password) => {
         if (resettingRef.current) return;
         resettingRef.current = true;
         setResetting(true);
         try {
           // Finish queued field saves before replacing the site's content.
           await settingsSaveQueueRef.current;
-          await resetOwnWebsite();
+          await resetOwnWebsite(password);
+          // Carry the success notification through the full settings reload.
+          sessionStorage.setItem(resetSuccessKey, "1");
           // Reload all settings, lists and drafts from the saved demo.
           window.location.reload();
         } catch (err: any) {
           resettingRef.current = false;
           setResetting(false);
           toast(err?.response?.data?.message || t.resetFailed, "error");
+          throw err;
         }
       },
     });
@@ -1290,32 +1303,19 @@ export default function AdminWebsiteSettingsPage() {
             title={t.socialLinks}
             hint={t.socialLinksHint}
           >
-            <div className="space-y-2">
-              <InlineTextField
-                label={t.facebookUrl}
-                value={form.facebook_url || ""}
-                placeholder="https://facebook.com/yourpage"
-                onSave={(v) => saveSettingsField("facebook_url", v)}
-              />
-              <InlineTextField
-                label={t.youtubeUrl}
-                value={form.youtube_url || ""}
-                placeholder="https://youtube.com/@yourchannel"
-                onSave={(v) => saveSettingsField("youtube_url", v)}
-              />
-              <InlineTextField
-                label={t.instagramUrl}
-                value={form.instagram_url || ""}
-                placeholder="https://instagram.com/yourprofile"
-                onSave={(v) => saveSettingsField("instagram_url", v)}
-              />
-              <InlineTextField
-                label={t.whatsappUrl}
-                value={form.whatsapp_channel_url || ""}
-                placeholder="https://whatsapp.com/channel/..."
-                onSave={(v) => saveSettingsField("whatsapp_channel_url", v)}
-              />
-            </div>
+            <WebsiteSocialLinksEditor
+              values={getWebsiteSocialItems(form)}
+              onSave={async (links: WebsiteSocialLink[]) => {
+                const legacy = Object.fromEntries(Object.entries(LEGACY_SOCIAL_FIELDS).map(([platform, field]) => [field, links.find(link => link.platform === platform)?.url || ""]));
+                try {
+                  await queueSettingsSave({ ...legacy, social_links: links });
+                  toast(t.saved, "success");
+                } catch (error) {
+                  toast(t.saveFailed, "error");
+                  throw error;
+                }
+              }}
+            />
           </SectionCard>
 
           <SectionCard
@@ -1757,7 +1757,7 @@ export default function AdminWebsiteSettingsPage() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-red-200 bg-red-50/50 p-5 dark:border-red-900/50 dark:bg-red-950/10">
+      {tab === "general" && <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-red-200 bg-red-50/50 p-5 dark:border-red-900/50 dark:bg-red-950/10">
         <div className="max-w-xl">
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t.resetTitle}</h2>
           <p className="mt-1 text-xs leading-6 text-slate-600 dark:text-slate-400">{t.resetDescription}</p>
@@ -1765,7 +1765,7 @@ export default function AdminWebsiteSettingsPage() {
         <Button type="button" variant="danger" disabled={loading || resetting || websiteSaving} onClick={resetWebsite}>
           <RotateCcw size={14} />{resetting ? t.resetInProgress : t.resetWebsite}
         </Button>
-      </div>
+      </div>}
         </div>
       </div>
     </fieldset>

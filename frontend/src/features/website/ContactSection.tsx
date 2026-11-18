@@ -5,11 +5,8 @@ import type { ThemeTokens } from "./themes";
 import MapPreview from "./MapPreview";
 import { useText } from "@madrasha/shared-ui/src/i18n";
 import { websiteText } from "./website.text";
+import { getBrandingContact } from "./brandingContact";
 
-function waLink(phone?: string | null) {
-  const digits = (phone || "").replace(/\D/g, "");
-  return digits ? `https://wa.me/${digits}` : "";
-}
 
 
 
@@ -39,21 +36,24 @@ export default function ContactSection({
       ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(madrasa.address)}`
       : "");
 
-  const socials = getWebsiteSocialLinks(settings, t.whatsappChannel);
+  const socials = getWebsiteSocialLinks(madrasa || {}, t.whatsappChannel);
+  const { phones, emails, whatsappUrl } = getBrandingContact(madrasa);
 
   const rows = [
-    {
+    ...(phones.length ? phones : [""]).map((phone) => ({
       icon: <Phone size={20} />,
       label: t.phone,
-      value: madrasa?.phone,
-      href: madrasa?.phone ? `tel:${madrasa.phone}` : undefined,
-    },
-    {
+      value: phone,
+      href: phone ? `tel:${phone}` : undefined,
+      external: false,
+    })),
+    ...(emails.length ? emails : [""]).map((email) => ({
       icon: <Mail size={20} />,
       label: t.email,
-      value: madrasa?.email,
-      href: madrasa?.email ? `mailto:${madrasa.email}` : undefined,
-    },
+      value: email,
+      href: email ? `mailto:${email}` : undefined,
+      external: false,
+    })),
     {
       icon: <MapPin size={20} />,
       label: t.address,
@@ -87,7 +87,7 @@ export default function ContactSection({
           <div className={`space-y-4 ${mapsUrl ? "lg:col-span-2" : "mx-auto w-full max-w-xl"}`}>
             {rows.map((row) => (
               <div
-                key={row.label}
+                key={`${row.label}-${row.value}`}
                 className={`flex items-start gap-4 ${theme.card} border border-slate-200/70 bg-white p-5 shadow-sm`}
               >
                 <span
@@ -109,9 +109,9 @@ export default function ContactSection({
               </div>
             ))}
 
-            {madrasa?.phone && (
+            {whatsappUrl && (
               <a
-                href={waLink(madrasa.phone)}
+                href={whatsappUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90"

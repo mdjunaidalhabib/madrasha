@@ -1,4 +1,4 @@
-import { SiFacebook, SiInstagram, SiWhatsapp, SiYoutube } from "react-icons/si";
+import { getWebsiteSocialItems, normalizeWebsiteSocialUrl, WEBSITE_SOCIAL_PLATFORMS } from "@madrasha/shared-ui/src/website/socialLinks";
 import type { IconType } from "react-icons";
 
 type SocialLink = { href: string; label: string; Icon: IconType; background: string };
@@ -7,22 +7,12 @@ export function getWebsiteSocialLinks(
   settings: Record<string, any>,
   whatsappLabel: string,
 ): SocialLink[] {
-  return [
-    { href: settings.facebook_url, label: "Facebook", Icon: SiFacebook, background: "#1877F2" },
-    { href: settings.youtube_url, label: "YouTube", Icon: SiYoutube, background: "#FF0000" },
-    {
-      href: settings.instagram_url,
-      label: "Instagram",
-      Icon: SiInstagram,
-      background: "linear-gradient(135deg, #833AB4, #E1306C, #FCAF45)",
-    },
-    {
-      href: settings.whatsapp_channel_url,
-      label: whatsappLabel,
-      Icon: SiWhatsapp,
-      background: "#25D366",
-    },
-  ].filter((link) => Boolean(link.href));
+  return getWebsiteSocialItems(settings).flatMap(link => {
+    const href = normalizeWebsiteSocialUrl(link.url);
+    if (!href) return [];
+    const platform = WEBSITE_SOCIAL_PLATFORMS[link.platform];
+    return [{ href, label: link.label || (link.platform === "whatsapp" ? whatsappLabel : platform.label), Icon: platform.Icon, background: platform.background }];
+  });
 }
 
 export default function PlatformSocialLinks({
@@ -36,9 +26,9 @@ export default function PlatformSocialLinks({
 }) {
   return (
     <div className={`flex flex-wrap items-center gap-2.5 ${className}`}>
-      {links.map(({ href, label, Icon, background }) => (
+      {links.map(({ href, label, Icon, background }, index) => (
         <a
-          key={label}
+          key={`${index}-${href}`}
           href={href}
           target="_blank"
           rel="noopener noreferrer"

@@ -21,10 +21,13 @@ vi.mock("../../../shared/middleware/tenant.middleware", () => ({
 import routes from "../website.routes";
 import { prisma } from "../../../shared/database/prisma";
 import { BadRequestError } from "../../../shared/errors";
+import { hashPassword } from "../../../shared/utils/hash.util";
 
 let server: Server;
 let base: string;
+let passwordHash: string;
 beforeAll(async () => {
+  passwordHash = await hashPassword("admin-secret");
   const app = express();
   app.use(express.json());
   app.use("/website", routes);
@@ -40,7 +43,7 @@ afterAll(async () => {
 afterEach(() => { vi.restoreAllMocks(); reset.mockReset(); });
 
 const headers = { Authorization: "Bearer tenant", "Content-Type": "application/json" };
-const adminToken = (overrides = {}) => vi.spyOn(jwt, "verify").mockReturnValue({ role: "admin", role_id: 3, madrasa_id: 42, ...overrides } as any);
+const adminToken = (overrides = {}) => vi.spyOn(jwt, "verify").mockReturnValue({ id: 7, role: "admin", role_id: 3, madrasa_id: 42, ...overrides } as any);
 
 describe("tenant admin website reset", () => {
   it("rejects unauthenticated requests", async () => {
@@ -69,17 +72,28 @@ describe("tenant admin website reset", () => {
 
   it("resets only the authenticated tenant despite spoofed body and query IDs", async () => {
     adminToken();
+    const account = vi.spyOn(prisma.user, "findFirst").mockResolvedValue({ passwordHash } as any);
     vi.spyOn(prisma.rolePermission, "findMany").mockResolvedValue([{ permission: { keyName: "website.manage" } }] as any);
-    const response = await fetch(`${base}?madrasa_id=99`, { method: "POST", headers, body: JSON.stringify({ madrasa_id: 99 }) });
+    const response = await fetch(`${base}?madrasa_id=99`, { method: "POST", headers, body: JSON.stringify({ madrasa_id: 99, password: "admin-secret" }) });
     expect(response.status).toBe(200);
     expect(reset).toHaveBeenCalledTimes(1);
     expect(reset).toHaveBeenCalledWith(42);
+    expect(account).toHaveBeenCalledWith({ where: { id: 7, madrasaId: 42 }, select: { passwordHash: true } });
+  });
+
+  it.each([undefined, "", "wrong-password", 123, {}])("rejects missing or incorrect passwords: %s", async (password) => {
+    adminToken({ role: "MUHTAMIM" });
+    vi.spyOn(prisma.user, "findFirst").mockResolvedValue({ passwordHash } as any);
+    const response = await fetch(base, { method: "POST", headers, body: JSON.stringify({ password }) });
+    expect(response.status).toBe(400);
+    expect(reset).not.toHaveBeenCalled();
   });
 
   it("returns reset errors so the panel can recover", async () => {
     adminToken({ role: "MUHTAMIM" });
+    vi.spyOn(prisma.user, "findFirst").mockResolvedValue({ passwordHash } as any);
     reset.mockRejectedValue(new BadRequestError("Reset unavailable"));
-    const response = await fetch(base, { method: "POST", headers });
+    const response = await fetch(base, { method: "POST", headers, body: JSON.stringify({ password: "admin-secret" }) });
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ message: "Reset unavailable" });
   });

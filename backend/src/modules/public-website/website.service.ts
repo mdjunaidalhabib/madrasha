@@ -1,4 +1,5 @@
 import { Request } from "express";
+import { websiteSocialLinksSchema } from "./website-social-links";
 import { publicDonationConfig } from "./website-donation.service";
 import { publicDemoTeachers } from "./website-demo-teachers";
 import { WebsiteAdmissionStatus, WebsiteStatus } from "@prisma/client";
@@ -192,6 +193,11 @@ export class WebsiteService {
   }
 
   async upsertWebsiteSettings(madrasaId: number, body: UpsertWebsiteSettingsRequestDto) {
+    const socialResult = body.social_links === undefined ? undefined : websiteSocialLinksSchema.safeParse(body.social_links);
+    if (socialResult && !socialResult.success) {
+      throw new BadRequestError(t({ bn: "সোশ্যাল মিডিয়া প্ল্যাটফর্ম বা লিংক সঠিক নয়", en: "Invalid social media platform or link" }));
+    }
+    const socialLinks = socialResult?.success ? socialResult.data : undefined;
     const {
       name,
       phone,
@@ -283,6 +289,7 @@ export class WebsiteService {
       youtubeUrl: youtube_url || null,
       instagramUrl: instagram_url || null,
       whatsappChannelUrl: whatsapp_channel_url || null,
+      ...(socialLinks !== undefined ? { socialLinks } : {}),
       mapUrl: map_url || null,
     };
 

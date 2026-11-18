@@ -36,6 +36,9 @@ export class WebsiteRepository {
         institutionType: true,
         defaultLanguage: true,
         reportLogo: true,
+        brandingPhones: true,
+        brandingEmails: true,
+        brandingSocialLinks: true,
         customDomain: true,
       },
     });

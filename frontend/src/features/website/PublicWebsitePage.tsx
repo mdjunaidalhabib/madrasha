@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProp
 import { Link, useLocation, useParams } from "react-router-dom";
 import {
   ArrowRight,
+  ArrowUpRight,
   Bell,
   ChevronUp,
   ChevronRight,
@@ -32,6 +33,7 @@ import HeroSlider from "./HeroSlider";
 import DonationSection from "./DonationSection";
 import PublicMobileMenu from "./PublicMobileMenu";
 import ContactSection from "./ContactSection";
+import { getBrandingContact } from "./brandingContact";
 import PlatformSocialLinks, { getWebsiteSocialLinks } from "./PlatformSocialLinks";
 import { SiWhatsapp as WhatsAppIcon } from "react-icons/si";
 import MapPreview from "./MapPreview";
@@ -113,10 +115,6 @@ function isRecent(value?: string | null) {
   return days >= 0 && days <= 7;
 }
 
-function waLink(phone?: string | null) {
-  const digits = (phone || "").replace(/\D/g, "");
-  return digits ? `https://wa.me/${digits}` : "";
-}
 
 
 
@@ -553,7 +551,8 @@ export default function PublicWebsitePage({
       ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(madrasa.address)}`
       : "");
 
-  const socials = getWebsiteSocialLinks(settings, t.whatsappChannel);
+  const socials = getWebsiteSocialLinks(madrasa || {}, t.whatsappChannel);
+  const { phones, emails, whatsappUrl } = getBrandingContact(madrasa);
 
   const sectionBase = "py-16 md:py-24 scroll-mt-28";
 
@@ -1199,21 +1198,21 @@ export default function PublicWebsitePage({
               <span className="mt-2 block h-0.5 w-8 rounded-full" style={{ backgroundColor: accentSolid }} />
               <div className="mt-4 flex flex-col gap-3 text-sm text-slate-400">
                 {[
-                  { Icon: Phone, label: t.phone, value: madrasa?.phone, href: madrasa?.phone ? `tel:${madrasa.phone}` : undefined },
-                  { Icon: Mail, label: t.email, value: madrasa?.email, href: madrasa?.email ? `mailto:${madrasa.email}` : undefined },
+                  ...(phones.length ? phones : [""]).map(phone => ({ Icon: Phone, label: t.phone, value: phone, href: phone ? `tel:${phone}` : undefined, external: false })),
+                  ...(emails.length ? emails : [""]).map(email => ({ Icon: Mail, label: t.email, value: email, href: email ? `mailto:${email}` : undefined, external: false })),
                   { Icon: MapPin, label: t.address, value: madrasa?.address, href: madrasa?.address ? mapsUrl || undefined : undefined, external: true },
                 ].map(({ Icon, label, value, href, external }) => (
-                  <div key={label} className="flex items-start gap-2.5">
-                    <Icon size={16} className="mt-1 shrink-0" style={{ color: accentLabelOnDark }} />
+                  <div key={`${label}-${value}`} className="flex items-start gap-2.5">
+                    <Icon aria-hidden="true" size={16} className="mt-1 shrink-0" style={{ color: accentLabelOnDark }} />
                     <div className="min-w-0">
-                      <p className="text-[11px] font-medium text-slate-500">{label}</p>
-                      {value && href ? <a href={href} target={external ? "_blank" : undefined} rel={external ? "noopener noreferrer" : undefined} className="mt-0.5 block break-words leading-6 transition hover:text-white">{value}</a> : <p className="mt-0.5 text-xs leading-6 text-slate-500">{value || t.contactDetailsPending}</p>}
+                      <span className="sr-only">{label}: </span>
+                      {value && href ? <a href={href} target={external ? "_blank" : undefined} rel={external ? "noopener noreferrer" : undefined} className="block break-words leading-6 transition hover:text-white">{value}</a> : <p className="text-xs leading-6 text-slate-500">{value || t.contactDetailsPending}</p>}
                     </div>
                   </div>
                 ))}
-                {madrasa?.phone && (
+                {whatsappUrl && (
                   <a
-                    href={waLink(madrasa.phone)}
+                    href={whatsappUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-start gap-2.5 transition hover:text-white"
@@ -1257,11 +1256,22 @@ export default function PublicWebsitePage({
         </div>
 
         <div className="border-t border-white/10">
-          <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-2 px-4 py-5 text-center sm:flex-row sm:text-start">
-            <p className="text-xs text-slate-500">
-              &copy; {localizeDigits(new Date().getFullYear(), lang)} {madrasa?.name}. {t.allRightsReserved}
-            </p>
-            <p className="text-xs text-slate-500">{t.officialWebsite}</p>
+          <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-2 px-4 py-3 text-center sm:flex-row sm:gap-4 sm:text-start">
+            <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-3 gap-y-1 sm:justify-start">
+              <p className="text-xs leading-5 text-slate-400">
+                &copy; {localizeDigits(new Date().getFullYear(), lang)} {madrasa?.name}. {t.allRightsReserved}
+              </p>
+            </div>
+            <a
+              href="https://hikmahit.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded text-xs leading-5 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-300"
+            >
+              <span className="text-slate-400">{t.poweredBy}</span>
+              <span dir="ltr" className="font-semibold text-emerald-400 transition group-hover:text-emerald-300">Hikmah IT</span>
+              <ArrowUpRight aria-hidden="true" size={13} className="text-slate-400 transition group-hover:text-emerald-300" />
+            </a>
           </div>
         </div>
       </footer>
@@ -1279,9 +1289,9 @@ export default function PublicWebsitePage({
       )}
 
       {/* Floating WhatsApp button */}
-      {madrasa?.phone && (
+      {whatsappUrl && (
         <a
-          href={waLink(madrasa.phone)}
+          href={whatsappUrl}
           target="_blank"
           rel="noreferrer"
           aria-label={t.chatOnWhatsApp}

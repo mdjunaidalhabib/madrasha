@@ -11,8 +11,8 @@ export async function updateMadrasaWebsiteTheme(id: number, theme_key: WebsiteTh
   return res.data;
 }
 
-export async function resetMadrasaWebsite(id: number) {
-  const res = await adminApi.post(`/website/super/madrasas/${id}/reset`);
+export async function resetMadrasaWebsite(id: number, password: string) {
+  const res = await adminApi.post(`/website/super/madrasas/${id}/reset`, { password });
   return res.data;
 }
 

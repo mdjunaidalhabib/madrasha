@@ -8,6 +8,7 @@ import { updateMadrasaWebsiteStatus, resetMadrasaWebsite, getMadrasaWebsiteTheme
 import { WEBSITE_THEMES, type WebsiteThemeKey } from "@madrasha/shared-ui/src/website/themes";
 import WebsiteThemePreview from "@madrasha/shared-ui/src/website/WebsiteThemePreview";
 import { confirmWebsiteReset } from "@madrasha/shared-ui/src/website/confirmWebsiteReset";
+import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import {
   INSTITUTION_TYPE_LABELS,
   getText,
@@ -25,6 +26,7 @@ type WebsiteStatus = "active" | "limited" | "disabled";
 export default function SuperAdminWebsiteControlPage() {
   const t = useText(websiteControlText);
   const lang = useLang();
+  const toast = useToastStore((s) => s.show);
   const [view, setView] = useState<"template" | "status">("template");
   const statusLabel = (s?: string) =>
     t.statuses[s || "active"] || s || "active";
@@ -118,19 +120,21 @@ export default function SuperAdminWebsiteControlPage() {
     confirmWebsiteReset({
       institutionName: institution.name,
       lang,
-      onConfirm: async () => {
+      onConfirm: async (password) => {
         setBusy(true);
         setMessage("");
         setError("");
         try {
-          await resetMadrasaWebsite(institution.id);
+          await resetMadrasaWebsite(institution.id, password);
           setMessage(tx("ওয়েবসাইট মূল ডেমোতে ফিরে এসেছে।", "Website restored to the main demo."));
+          toast(tx("ওয়েবসাইট সফলভাবে মূল ডেমোতে ফিরিয়ে আনা হয়েছে। সর্বশেষ ডেমোর ডিজাইন ও কনটেন্ট এখন প্রয়োগ করা হয়েছে।", "Website successfully restored to the main demo. The latest demo design and content have been applied."), "success", { duration: 7000 });
           setThemeLoading(true);
           try { setTheme(await getMadrasaWebsiteTheme(institution.id)); }
           catch { setTheme(null); }
           finally { setThemeLoading(false); }
         } catch (err: any) {
           setError(err?.response?.data?.message || tx("ওয়েবসাইট রিসেট করা যায়নি।", "Unable to reset website."));
+          throw err;
         } finally { setBusy(false); }
       },
     });
