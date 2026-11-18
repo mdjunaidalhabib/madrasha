@@ -8,7 +8,7 @@ export function getWebsiteSocialLinks(
   whatsappLabel: string,
 ): SocialLink[] {
   return getWebsiteSocialItems(settings).flatMap(link => {
-    const href = normalizeWebsiteSocialUrl(link.url);
+    const href = normalizeWebsiteSocialUrl(link.url, link.platform);
     if (!href) return [];
     const platform = WEBSITE_SOCIAL_PLATFORMS[link.platform];
     return [{ href, label: link.label || (link.platform === "whatsapp" ? whatsappLabel : platform.label), Icon: platform.Icon, background: platform.background }];

@@ -8,6 +8,6 @@ export function getBrandingContact(madrasa: Record<string, any> | null | undefin
   return {
     phones,
     emails,
-    whatsappUrl: (whatsapp && normalizeWebsiteSocialUrl(whatsapp.url)) || (digits ? `https://wa.me/${digits}` : ""),
+    whatsappUrl: (whatsapp && normalizeWebsiteSocialUrl(whatsapp.url, "whatsapp")) || (digits ? `https://wa.me/${digits}` : ""),
   };
 }

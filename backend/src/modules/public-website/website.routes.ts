@@ -1,4 +1,7 @@
 import { Router } from "express";
+import { websiteService } from "./website.service";
+import { normalizeHost } from "../../shared/utils/host.util";
+import { BadRequestError } from "../../shared/errors";
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { superAdminMiddleware } from "../../shared/middleware/superAdmin.middleware";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
@@ -37,6 +40,26 @@ import {
 } from "./website.controller";
 
 const router = Router();
+
+router.get("/share", async (req, res, next) => {
+  try {
+    const host = normalizeHost(req.query.host);
+    if (!host) throw new BadRequestError("Valid host required");
+    const { slug } = await websiteService.resolveDomainToSlug(host);
+    res.json({ data: await websiteService.getPublicShareMetadata(slug) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Small public response used by the frontend server before React runs.
+router.get("/public/:slug/share", async (req, res, next) => {
+  try {
+    res.json({ data: await websiteService.getPublicShareMetadata(req.params.slug) });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Registered before "/public/:slug" would be irrelevant anyway (different
 // prefix), but kept as its own top-level path on purpose so a real madrasa

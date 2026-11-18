@@ -1,6 +1,7 @@
 import { Request } from "express";
 import { websiteSocialLinksSchema } from "./website-social-links";
 import { publicDonationConfig } from "./website-donation.service";
+import { createHash } from "crypto";
 import { publicDemoTeachers } from "./website-demo-teachers";
 import { WebsiteAdmissionStatus, WebsiteStatus } from "@prisma/client";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../shared/errors";
@@ -81,6 +82,22 @@ export const normalizeSlideLink = (value: unknown): string | null => {
 
 export class WebsiteService {
   constructor(private readonly repository: WebsiteRepository = websiteRepository) {}
+
+  async getPublicShareMetadata(slug: string) {
+    const madrasa = await this.repository.findPublicMadrasaBySlug(slug);
+    if (!madrasa) throw new NotFoundError("Institution not found");
+    await this.assertWebsiteAvailable(madrasa);
+    const settings = await this.repository.findSettings(madrasa.id);
+    if (settings?.isPublished === 0) throw new ForbiddenError("This website is not published yet");
+    return {
+      name: madrasa.name,
+      slug: madrasa.slug,
+      description: settings?.heroSubtitle || madrasa.address || madrasa.name,
+      logoVersion: madrasa.reportLogo
+        ? createHash("sha256").update(madrasa.reportLogo).digest("hex").slice(0, 16)
+        : null,
+    };
+  }
 
   /** Public site is down when the madrasa is suspended, its website is disabled,
    * or its subscription has lapsed (auto-suspension). */

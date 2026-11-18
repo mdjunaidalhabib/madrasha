@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Pencil } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { ExternalLink, Pencil } from "lucide-react";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
@@ -22,6 +22,7 @@ export default function InlineTextField({
   rows = 3,
   type = "text",
   required,
+  linkPreview,
   onSave,
 }: {
   label: string;
@@ -32,6 +33,7 @@ export default function InlineTextField({
   rows?: number;
   type?: "text" | "color";
   required?: boolean;
+  linkPreview?: { icon: ReactNode; href: string | null; openLabel: string };
   onSave: (value: string) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -64,6 +66,21 @@ export default function InlineTextField({
   };
 
   if (!editing) {
+    if (linkPreview) {
+      const iconButton = "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-slate-400 dark:hover:bg-slate-800";
+      const displayValue = value || linkPreview.href;
+      return (
+        <div className="group flex min-w-0 items-center gap-3 rounded-xl border border-slate-100 p-3 transition hover:border-blue-200 hover:bg-blue-50/30 dark:border-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-800/40">
+          {linkPreview.icon}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{label}</p>
+            <p dir={displayValue ? "ltr" : undefined} title={displayValue || undefined} className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{displayValue ? displayValue.replace(/^https?:\/\/(www\.)?/, "") : t.notAdded}</p>
+          </div>
+          {linkPreview.href && <a href={linkPreview.href} target="_blank" rel="noopener noreferrer" className={iconButton} aria-label={linkPreview.openLabel} title={linkPreview.openLabel}><ExternalLink size={15} /></a>}
+          <button type="button" onClick={startEdit} className={iconButton} aria-label={`${t.editTitle}: ${label}`} title={t.editTitle}><Pencil size={15} /></button>
+        </div>
+      );
+    }
     return (
       <div className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-4 py-3 transition hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60">
         <div className="min-w-0 flex-1">

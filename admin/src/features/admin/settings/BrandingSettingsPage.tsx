@@ -396,6 +396,7 @@ export default function BrandingSettingsPage({ section = "branding" }: { section
         </div>
       </SectionCard>
 
+      <WebsiteContactSettings>
       <SectionCard title={t.logo}>
         <InlineImageField
           label={t.logo}
@@ -412,7 +413,7 @@ export default function BrandingSettingsPage({ section = "branding" }: { section
           note={getText(brandingText).iconPreviewNote}
         />
       </SectionCard>
-      <WebsiteContactSettings />
+      </WebsiteContactSettings>
         </>
       )}
 

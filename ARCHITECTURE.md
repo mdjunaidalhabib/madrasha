@@ -119,8 +119,8 @@ whitelist, so it's allowed dynamically via a short-TTL cache — see
 
 **Operational note**: none of the above provisions DNS or TLS — an operator
 still has to point each custom domain's DNS at wherever `frontend/`'s
-container is hosted (its nginx `server_name _;` already accepts any
-hostname) and terminate TLS for it (a wildcard cert only covers the
+container is hosted (its frontend server accepts any hostname) and
+terminate TLS for it (a wildcard cert only covers the
 platform's own domain, not tenant-owned domains — use a reverse proxy that
 automates per-domain certs, e.g. Caddy or Traefik + Let's Encrypt, or issue
 certs manually per connected domain).
@@ -139,7 +139,10 @@ Backend `CORS_ORIGINS` must list every origin that will call it (see
 
 ## Deploying
 
-Each app has its own `Dockerfile` + `nginx.conf`. The build context for all
+Each app has its own `Dockerfile`. Admin and super-admin use nginx;
+frontend uses `frontend/server/index.mjs` to serve assets and insert each
+institution's share metadata into HTML before sending it to browsers and
+Facebook/WhatsApp crawlers. The build context for all
 three must be the repo root (not the app subfolder), so the shared package
 and root lockfile are visible:
 
@@ -156,6 +159,27 @@ Point each container at its own subdomain and set the backend's
 public domain (e.g. `ems.hikmahit.com`) so it can tell the platform's own
 domain apart from a tenant's connected custom domain — see "Custom domains"
 above.
+
+Institution link previews require **both backend and frontend to be rebuilt
+and deployed**. Do not serve frontend `dist/` directly with static-only
+hosting or the old nginx config: this bypasses per-request metadata. Outside
+Docker, run `npm run build --workspace=frontend`, then
+`npm run start --workspace=frontend` (port 5183; override with `PORT`).
+The Docker image continues listening on port 80. `npm run dev:frontend` also
+renders institution metadata during development. `vite preview` is for static
+bundle inspection only.
+
+The frontend build retains `VITE_API_URL` and `VITE_PLATFORM_ROOT_HOST` for
+server metadata requests. Runtime `PUBLIC_API_URL` and `PLATFORM_ROOT_HOST`
+can override those server values; client JavaScript still uses build-time
+values. Optional `INTERNAL_API_URL` (including `/api`, e.g.
+`http://backend:5000/api`) sends server metadata requests directly to the
+backend while social image URLs continue using the public API address.
+The API must be reachable by the frontend server and image URLs must be
+publicly reachable. Logos come from each institution's Branding Settings;
+institutions without a logo have no preview image. Metadata responses are
+not cached by the frontend. Social networks may retain previews already
+scraped before deployment and require their preview cache to be refreshed.
 
 ## Document designer
 

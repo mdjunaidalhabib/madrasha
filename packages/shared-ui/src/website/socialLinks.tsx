@@ -1,13 +1,15 @@
 import type { IconType } from "react-icons";
 import { SiDiscord, SiFacebook, SiInstagram, SiTelegram, SiTiktok, SiWhatsapp, SiX, SiYoutube } from "react-icons/si";
-import { FaLinkedinIn } from "react-icons/fa6";
+import { FaFlag, FaLinkedinIn, FaUsers } from "react-icons/fa6";
 import { Globe, Link2 } from "lucide-react";
 
 export const WEBSITE_SOCIAL_PLATFORMS = {
   facebook: { label: "Facebook", Icon: SiFacebook, background: "#1877F2", placeholder: "https://facebook.com/yourpage" },
+  facebook_page: { label: "Facebook Page", Icon: FaFlag, background: "#1877F2", placeholder: "https://facebook.com/yourpage" },
+  facebook_group: { label: "Facebook Group", Icon: FaUsers, background: "#1877F2", placeholder: "https://facebook.com/groups/yourgroup" },
   youtube: { label: "YouTube", Icon: SiYoutube, background: "#FF0000", placeholder: "https://youtube.com/@yourchannel" },
   instagram: { label: "Instagram", Icon: SiInstagram, background: "linear-gradient(135deg, #833AB4, #E1306C, #FCAF45)", placeholder: "https://instagram.com/yourname" },
-  whatsapp: { label: "WhatsApp", Icon: SiWhatsapp, background: "#25D366", placeholder: "https://whatsapp.com/channel/..." },
+  whatsapp: { label: "WhatsApp", Icon: SiWhatsapp, background: "#25D366", placeholder: "01712345678 / https://whatsapp.com/channel/..." },
   telegram: { label: "Telegram", Icon: SiTelegram, background: "#168ACD", placeholder: "https://t.me/yourchannel" },
   tiktok: { label: "TikTok", Icon: SiTiktok, background: "#111111", placeholder: "https://tiktok.com/@yourname" },
   x: { label: "X", Icon: SiX, background: "#111111", placeholder: "https://x.com/yourname" },
@@ -35,8 +37,16 @@ export function getWebsiteSocialItems(settings: Record<string, any>): WebsiteSoc
   );
 }
 
-export function normalizeWebsiteSocialUrl(value: string): string | null {
+export function normalizeWebsiteSocialUrl(value: string, platform?: WebsiteSocialPlatform): string | null {
   const trimmed = value.trim();
+  if (platform === "whatsapp") {
+    const phone = trimmed.replace(/[০-৯]/g, (digit) => String("০১২৩৪৫৬৭৮৯".indexOf(digit)));
+    if (/^\+?[\d\s()-]+$/.test(phone)) {
+      let digits = phone.replace(/\D/g, "");
+      if (/^01[3-9]\d{8}$/.test(digits)) digits = `88${digits}`;
+      return /^[1-9]\d{6,14}$/.test(digits) ? `https://wa.me/${digits}` : null;
+    }
+  }
   if (!trimmed || /\s/.test(trimmed)) return null;
   try {
     const url = new URL(/^[a-z][a-z\d+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`);

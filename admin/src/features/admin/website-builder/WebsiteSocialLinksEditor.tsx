@@ -53,7 +53,7 @@ export default function WebsiteSocialLinksEditor({ values, onSave }: {
     setError("");
   };
   const save = async () => {
-    const normalized = filledDraft.map((link) => ({ ...link, label: link.label?.trim() || "", url: normalizeWebsiteSocialUrl(link.url) }));
+    const normalized = filledDraft.map((link) => ({ ...link, label: link.label?.trim() || "", url: normalizeWebsiteSocialUrl(link.url, link.platform) }));
     if (normalized.some((link) => !link.url)) {
       setError(tx("প্রতিটি লিংকে সঠিক ওয়েব ঠিকানা দিন অথবা খালি সারিটি মুছে ফেলুন।", "Enter a valid web address for each link or delete the empty row."));
       return;
@@ -80,7 +80,7 @@ export default function WebsiteSocialLinksEditor({ values, onSave }: {
         <button type="button" onClick={startEdit} className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 dark:text-blue-400"><Plus size={15} />{tx("লিংক যোগ করুন", "Add a link")}</button>
       </div> : <div className="grid min-w-0 gap-2 sm:grid-cols-2">
         {values.map((link, index) => {
-          const href = normalizeWebsiteSocialUrl(link.url);
+          const href = normalizeWebsiteSocialUrl(link.url, link.platform);
           return <div key={`${index}-${link.url}`} className="group flex min-w-0 items-center gap-3 rounded-xl border border-slate-100 p-3 transition hover:border-blue-200 hover:bg-blue-50/30 dark:border-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-800/40">
             <PlatformIcon platform={link.platform} />
             <div className="min-w-0 flex-1">
@@ -94,13 +94,14 @@ export default function WebsiteSocialLinksEditor({ values, onSave }: {
     </>}
 
     {editing && <fieldset disabled={saving} className="min-w-0 space-y-4">
+      <p className="text-xs text-slate-500 dark:text-slate-400">{tx("WhatsApp-এর নম্বর (01712345678 / +8801712345678), চ্যানেল বা গ্রুপ লিংক দিন। Facebook Page ও Facebook Group আলাদা করে বেছে সংশ্লিষ্ট লিংক দিন।", "Enter a WhatsApp number, channel or group link. Choose Facebook Page or Facebook Group and enter its link.")}</p>
       <div className="space-y-2">
         {draft.map((link, index) => {
           const platform = WEBSITE_SOCIAL_PLATFORMS[link.platform];
-          return <div key={index} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900 lg:grid-cols-[150px_minmax(0,1fr)_auto]">
+          return <div key={index} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900 lg:grid-cols-[180px_minmax(0,1fr)_auto]">
             <div className="flex min-w-0 items-center gap-1.5">
               <PlatformIcon platform={link.platform} small />
-              <select aria-label={tx("প্ল্যাটফর্ম", "Platform")} value={link.platform} onChange={(event) => patch(index, { platform: event.target.value as WebsiteSocialPlatform })} className="h-9 min-w-0 max-w-32 flex-1 rounded-lg border border-gray-200 bg-white px-2 text-xs text-gray-900 outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">{platforms.map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}</select>
+              <select aria-label={tx("প্ল্যাটফর্ম", "Platform")} value={link.platform} onChange={(event) => patch(index, { platform: event.target.value as WebsiteSocialPlatform })} className="h-9 min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-2 text-xs text-gray-900 outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">{platforms.map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}</select>
             </div>
               <div className="flex shrink-0 items-center gap-0.5 lg:col-start-3 lg:row-start-1">
                 <button type="button" disabled={index === 0} onClick={() => move(index, -1)} className={iconButton} aria-label={`${tx("উপরে নিন", "Move up")} ${index + 1}`}><ArrowUp size={15} /></button>
@@ -109,14 +110,10 @@ export default function WebsiteSocialLinksEditor({ values, onSave }: {
               </div>
             <div className="col-span-2 grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:col-span-1 lg:col-start-2 lg:row-start-1">
               <input className={fieldClass} value={link.label || ""} maxLength={80} aria-label={tx("নাম (ঐচ্ছিক)", "Name (optional)")} placeholder={tx("নাম (ঐচ্ছিক)", "Name (optional)")} onChange={(event) => patch(index, { label: event.target.value })} />
-              <input className={fieldClass} dir="ltr" type="url" value={link.url} maxLength={500} aria-label={`${platform.label} ${tx("লিংক", "link")}`} placeholder={platform.placeholder} onChange={(event) => patch(index, { url: event.target.value })} />
+              <input className={fieldClass} dir="ltr" type={link.platform === "whatsapp" ? "text" : "url"} value={link.url} maxLength={500} aria-label={`${platform.label} ${tx("লিংক", "link")}`} placeholder={platform.placeholder} onChange={(event) => patch(index, { url: event.target.value })} />
             </div>
           </div>;
         })}
-      </div>
-
-      <div className="flex flex-wrap gap-1" aria-label={tx("প্ল্যাটফর্ম বেছে যোগ করুন", "Choose a platform to add")}>
-        {platforms.map(([key, item]) => <button key={key} type="button" disabled={filledDraft.length >= MAX_WEBSITE_SOCIAL_LINKS} onClick={() => addPlatform(key)} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"><item.Icon size={11} /><span>{key === "other" ? tx("অন্যান্য", "Other") : item.label}</span><Plus size={10} className="text-slate-400" /></button>)}
       </div>
 
       <button
@@ -125,6 +122,10 @@ export default function WebsiteSocialLinksEditor({ values, onSave }: {
         onClick={() => { setDraft((previous) => [...previous, { platform: "other", url: "" }]); setError(""); }}
         className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm font-medium text-blue-600 transition hover:border-blue-400 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-blue-400 dark:hover:bg-blue-950/30"
       ><Plus size={16} />{draft.length ? tx("আরেকটি লিংক যোগ করুন", "Add another link") : tx("লিংক যোগ করুন", "Add a link")}</button>
+
+      <div className="flex flex-wrap gap-1" aria-label={tx("প্ল্যাটফর্ম বেছে যোগ করুন", "Choose a platform to add")}>
+        {platforms.map(([key, item]) => <button key={key} type="button" disabled={filledDraft.length >= MAX_WEBSITE_SOCIAL_LINKS} onClick={() => addPlatform(key)} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"><item.Icon size={11} /><span>{key === "other" ? tx("অন্যান্য", "Other") : item.label}</span><Plus size={10} className="text-slate-400" /></button>)}
+      </div>
 
       {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">{error}</p>}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">

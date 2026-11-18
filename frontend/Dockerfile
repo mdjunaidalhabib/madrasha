@@ -11,10 +11,13 @@ COPY frontend frontend
 # Vite embeds this URL during compilation. Runtime container variables cannot
 # change the API URL in the generated JavaScript.
 ARG VITE_API_URL
+ARG VITE_PLATFORM_ROOT_HOST
 RUN npm run build --workspace=frontend
 
-FROM nginx:1.27-alpine AS production
-COPY --from=build /app/frontend/dist /usr/share/nginx/html
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+FROM node:20-alpine AS production
+WORKDIR /app/frontend
+ENV NODE_ENV=production PORT=80
+COPY --from=build /app/frontend/dist ./dist
+COPY frontend/server ./server
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["node", "server/index.mjs"]

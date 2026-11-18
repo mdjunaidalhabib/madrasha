@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { SiGooglemaps } from "react-icons/si";
 import { useText } from "@madrasha/shared-ui/src/i18n";
 import { uiText } from "@madrasha/shared-ui/src/components/ui/ui.text";
 import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
-import { getWebsiteSocialItems, LEGACY_SOCIAL_FIELDS, type WebsiteSocialLink } from "@madrasha/shared-ui/src/website/socialLinks";
+import { getWebsiteSocialItems, LEGACY_SOCIAL_FIELDS, normalizeWebsiteSocialUrl, type WebsiteSocialLink } from "@madrasha/shared-ui/src/website/socialLinks";
 import SectionCard from "../../../components/settings/SectionCard";
 import InlineTextField from "../../../components/settings/InlineTextField";
 import { getWebsiteSettings, saveWebsiteSettings, type WebsiteSettingsPayload } from "../../../services/websiteApi";
@@ -15,14 +15,14 @@ import { hasPermission } from "../../../utils/permissions";
 import WebsiteSocialLinksEditor from "../website-builder/WebsiteSocialLinksEditor";
 import { websiteText } from "../website-builder/website.text";
 
-export default function WebsiteContactSettings() {
+export default function WebsiteContactSettings({ children }: { children?: ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const permissions = useAuthStore((s) => s.permissions);
-  if (!hasPermission(user, permissions, "website.manage")) return null;
-  return <WebsiteContactFields key={user?.madrasa_id} madrasaId={user?.madrasa_id} />;
+  if (!hasPermission(user, permissions, "website.manage")) return <>{children}</>;
+  return <WebsiteContactFields key={user?.madrasa_id} madrasaId={user?.madrasa_id}>{children}</WebsiteContactFields>;
 }
 
-function WebsiteContactFields({ madrasaId }: { madrasaId?: number }) {
+function WebsiteContactFields({ madrasaId, children }: { madrasaId?: number; children?: ReactNode }) {
   const t = useText(websiteText);
   const ui = useText(uiText);
   const address = useBrandingStore((s) => s.branding?.address);
@@ -72,12 +72,12 @@ function WebsiteContactFields({ madrasaId }: { madrasaId?: number }) {
     return result;
   };
 
-  if (loading) return <SkeletonCard lines={2} />;
+  if (loading) return <><SkeletonCard lines={2} />{children}</>;
   if (failed || !settings) return (
-    <SectionCard title={t.socialLinks}>
+    <><SectionCard title={t.socialLinks}>
       <p role="alert" className="text-sm text-red-600 dark:text-red-400">{t.loadFailed}</p>
       <Button className="mt-3" onClick={() => setAttempt((value) => value + 1)}>{ui.retry}</Button>
-    </SectionCard>
+    </SectionCard>{children}</>
   );
 
   const mapsUrl = settings.map_url || (address
@@ -94,11 +94,17 @@ function WebsiteContactFields({ madrasaId }: { madrasaId?: number }) {
         }}
       />
     </SectionCard>
+    {children}
     <SectionCard title={t.locationMap} hint={t.locationMapHint}>
       <InlineTextField
         label={t.mapsLink}
         value={settings.map_url || ""}
         placeholder="https://maps.app.goo.gl/..."
+        linkPreview={{
+          icon: <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#34A853] text-white"><SiGooglemaps size={16} aria-hidden="true" /></span>,
+          href: normalizeWebsiteSocialUrl(mapsUrl),
+          openLabel: t.openMap,
+        }}
         onSave={async (value) => {
           if (value) {
             try {
@@ -112,12 +118,6 @@ function WebsiteContactFields({ madrasaId }: { madrasaId?: number }) {
           await save({ map_url: value });
         }}
       />
-      {/^https?:\/\//i.test(mapsUrl) && <a
-        href={mapsUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
-      ><ExternalLink size={16} />{t.openMap}</a>}
     </SectionCard>
   </>;
 }
