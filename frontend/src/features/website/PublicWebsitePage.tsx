@@ -60,11 +60,12 @@ import "./PublicWebsiteThemes.css";
 function NavItem({
   sectionKey,
   contactTo,
+  homePath,
   homeTo,
   ...rest
-}: { sectionKey: string; contactTo: string; homeTo?: string } & Omit<ComponentProps<"a">, "href">) {
+}: { sectionKey: string; contactTo: string; homePath: string; homeTo?: string } & Omit<ComponentProps<"a">, "href">) {
   if (sectionKey === "contact") return <Link to={contactTo} {...rest} />;
-  if (sectionKey === "home") return homeTo ? <Link to={homeTo} {...rest} /> : <a href="#page-top" {...rest} />;
+  if (sectionKey === "home") return <Link to={homePath} {...rest} />;
   if (homeTo) return <Link to={{ pathname: homeTo, hash: `#${sectionKey}` }} {...rest} />;
   return <a href={`#${sectionKey}`} {...rest} />;
 }
@@ -287,7 +288,7 @@ export default function PublicWebsitePage({
   const lang = useLang();
   const isMadrasa = useIsMadrasa();
   const params = useParams();
-  const { pathname, hash } = useLocation();
+  const { pathname, hash, key: navigationKey } = useLocation();
   const slug = slugProp || params.madrasaSlug || params.slug || getResolvedDomainSlugSync();
   const [data, setData] = useState<any>(() => websiteCache.get(slug) ?? null);
   const [loading, setLoading] = useState(() => !websiteCache.has(slug));
@@ -360,7 +361,7 @@ export default function PublicWebsitePage({
   const sitePath = (sub: string) => (homePath === "/" ? `/${sub}` : `${homePath}/${sub}`);
   const admissionUrl = sitePath("admission");
   const contactUrl = sitePath("contact");
-  const navProps = { contactTo: contactUrl, homeTo: view === "home" ? undefined : homePath };
+  const navProps = { contactTo: contactUrl, homePath, homeTo: view === "home" ? undefined : homePath };
 
   const visibleSections = useMemo(() => {
     const s = data?.settings || {};
@@ -429,7 +430,7 @@ export default function PublicWebsitePage({
       else window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
     });
     return () => cancelAnimationFrame(id);
-  }, [hasData, view, pathname, hash]);
+  }, [hasData, view, pathname, hash, navigationKey]);
 
   useEffect(() => {
     if (!lightbox && !videoLightbox) return;
@@ -572,21 +573,16 @@ export default function PublicWebsitePage({
         >
           <Link
             to={homePath}
-            onClick={(e) => {
-              if (view !== "home") return;
-              e.preventDefault();
-              window.scrollTo({ top: 0 });
-            }}
             className="flex min-w-0 flex-1 items-center gap-2.5 lg:max-w-[230px] xl:max-w-[280px] 2xl:max-w-[360px]"
           >
             {madrasa?.logo_url ? (
               <img
                 src={madrasa?.logo_url}
                 alt={t.logo}
-                className={`h-11 w-11 shrink-0 ${theme.round} object-cover shadow ring-2 ring-white`}
+                className="public-website-logo h-11 w-11 shrink-0 object-cover"
               />
             ) : (
-              <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border" style={{ color: accentSolid, backgroundColor: withAlpha(accentSolid, 0.07), borderColor: withAlpha(accentSolid, 0.12) }}>
+              <span aria-hidden="true" className="public-website-logo flex h-11 w-11 shrink-0 items-center justify-center" style={{ color: accentSolid, backgroundColor: withAlpha(accentSolid, 0.07) }}>
                 <GraduationCap size={24} strokeWidth={1.7} />
               </span>
             )}
@@ -658,6 +654,7 @@ export default function PublicWebsitePage({
         name={madrasa?.name || ""}
         logo={madrasa?.logo_url}
         phone={madrasa?.phone}
+        homeUrl={homePath}
         admissionUrl={admissionUrl}
         guardianLoginUrl={guardianLoginUrl}
         accent={accentSolid}
@@ -1152,22 +1149,22 @@ export default function PublicWebsitePage({
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
             {/* Brand */}
             <div className="sm:col-span-2 lg:col-span-1">
-              <div className="flex items-center gap-3">
+              <Link to={homePath} className="flex items-center gap-3">
                 {madrasa?.logo_url ? (
                   <img
                     src={madrasa?.logo_url}
                     alt={t.logo}
-                    className={`h-11 w-11 shrink-0 ${theme.round} object-cover ring-2 ring-white/10`}
+                    className="public-website-logo h-11 w-11 shrink-0 object-cover"
                   />
                 ) : (
-                  <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5" style={{ color: accentLabelOnDark }}>
+                  <span aria-hidden="true" className="public-website-logo flex h-11 w-11 shrink-0 items-center justify-center bg-white/5" style={{ color: accentLabelOnDark }}>
                     <GraduationCap size={24} strokeWidth={1.7} />
                   </span>
                 )}
                 <span className="break-words text-lg font-extrabold leading-tight text-white">
                   {madrasa?.name}
                 </span>
-              </div>
+              </Link>
               <p className="mt-4 text-sm leading-7 text-slate-400">
                 {settings.hero_subtitle || madrasa?.address || (isMadrasa ? t.taglineMadrasa : t.tagline)}
               </p>
@@ -1285,20 +1282,6 @@ export default function PublicWebsitePage({
           aria-label={t.backToTop}
         >
           <ChevronUp size={20} />
-        </a>
-      )}
-
-      {/* Floating WhatsApp button */}
-      {whatsappUrl && (
-        <a
-          href={whatsappUrl}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={t.chatOnWhatsApp}
-          className="fixed bottom-6 start-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg shadow-black/20 transition hover:scale-110"
-        >
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#25D366] opacity-75" />
-          <WhatsAppIcon size={28} />
         </a>
       )}
 

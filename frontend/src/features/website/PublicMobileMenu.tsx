@@ -5,7 +5,7 @@ import { LanguageSwitcher, useText } from "@madrasha/shared-ui/src/i18n";
 import { websiteText } from "./website.text";
 
 export default function PublicMobileMenu({
-  open, onClose, name, logo, phone, admissionUrl, guardianLoginUrl,
+  open, onClose, name, logo, phone, homeUrl, admissionUrl, guardianLoginUrl,
   accent, onAccent, children,
 }: {
   open: boolean;
@@ -13,6 +13,7 @@ export default function PublicMobileMenu({
   name: string;
   logo?: string;
   phone?: string;
+  homeUrl: string;
   admissionUrl: string;
   guardianLoginUrl: string;
   accent: string;
@@ -94,7 +95,7 @@ export default function PublicMobileMenu({
     >
       <div className="public-mobile-menu__content">
         <div className="public-mobile-menu__brand">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
+          <Link to={homeUrl} onClick={onClose} className="flex min-w-0 flex-1 items-center gap-3">
             <span className="public-mobile-menu__logo">
               {logo ? <img src={logo} alt={t.logo} className="h-full w-full object-cover" /> : <GraduationCap size={27} aria-hidden="true" />}
             </span>
@@ -102,7 +103,7 @@ export default function PublicMobileMenu({
               <p id="public-mobile-menu-title" className="break-words text-base font-extrabold leading-snug text-slate-900">{name}</p>
               <p className="mt-1 text-xs text-slate-500">{t.officialWebsite}</p>
             </div>
-          </div>
+          </Link>
           <button type="button" autoFocus onClick={onClose} aria-label={t.closeMenu} className="public-mobile-menu__close">
             <X size={20} aria-hidden="true" />
           </button>

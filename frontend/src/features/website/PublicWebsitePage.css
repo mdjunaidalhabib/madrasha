@@ -1,3 +1,9 @@
+.public-website-logo {
+  border-radius: 50%;
+  outline: 1px solid color-mix(in srgb, var(--website-accent) 35%, transparent);
+  outline-offset: 2px;
+}
+
 .public-mobile-menu-trigger {
   display: inline-flex;
   align-items: center;
@@ -63,8 +69,8 @@
   width: 52px;
   height: 52px;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--menu-accent) 35%, transparent);
+  border-radius: 50%;
   background: white;
   color: var(--menu-accent);
 }
