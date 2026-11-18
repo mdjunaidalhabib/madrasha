@@ -229,7 +229,6 @@ function PersonCard({
   photo,
   accentSolid,
   accentLabel,
-  onAccent,
   theme,
   delay = 0,
 }: {
@@ -238,10 +237,12 @@ function PersonCard({
   photo?: string | null;
   accentSolid: string;
   accentLabel: string;
-  onAccent: string;
   theme: ThemeTokens;
   delay?: number;
 }) {
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
+  const avatarSrc = photo && photo !== failedPhoto ? photo : "/images/teacher-avatar.svg";
+
   return (
     <div
       className={`group overflow-hidden ${theme.card} ${theme.person} text-center`}
@@ -252,22 +253,14 @@ function PersonCard({
         style={{ background: `linear-gradient(135deg, ${withAlpha(accentSolid, 0.18)}, ${withAlpha(accentSolid, 0.05)})` }}
       />
       <div className="-mt-10 px-5 pb-6">
-        {photo ? (
-          <img
-            src={photo}
-            alt={name}
-            loading="lazy"
-            decoding="async"
-            className={`mx-auto h-20 w-20 ${theme.round} object-cover shadow-md ring-4 ring-white transition duration-300 group-hover:scale-105`}
-          />
-        ) : (
-          <div
-            className={`mx-auto flex h-20 w-20 items-center justify-center ${theme.round} text-xl font-bold shadow-md ring-4 ring-white transition duration-300 group-hover:scale-105`}
-            style={{ backgroundColor: accentSolid, color: onAccent }}
-          >
-            {initials(name)}
-          </div>
-        )}
+        <img
+          src={avatarSrc}
+          alt={name}
+          loading="lazy"
+          decoding="async"
+          onError={() => { if (photo) setFailedPhoto(photo); }}
+          className={`mx-auto h-20 w-20 ${theme.round} object-cover shadow-md ring-4 ring-white transition duration-300 group-hover:scale-105`}
+        />
         <div className="mt-4 font-bold leading-snug text-slate-900">{name}</div>
         <div
           className={`mx-auto mt-2 inline-block max-w-full ${theme.round} px-3 py-1 text-xs font-semibold`}
@@ -1051,7 +1044,6 @@ export default function PublicWebsitePage({
                                 role={[teacher.designation, teacher.subject].filter(Boolean).join(" · ") || t.teacherFallback}
                                 accentSolid={accentSolid}
                                 accentLabel={accentLabel}
-                                onAccent={onAccent}
                                 theme={theme}
                                 delay={(idx % 4) * 80}
                               />
