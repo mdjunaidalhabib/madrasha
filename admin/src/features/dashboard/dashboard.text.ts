@@ -2,6 +2,16 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 
 export const dashboardText = defineText({
   bn: {
+    academicOverview: "শিক্ষার্থী ও শিক্ষক",
+    academicOverviewSub: "প্রতিষ্ঠানের শিক্ষার্থী ও শিক্ষকের পরিসংখ্যান",
+    financialOverview: "আর্থিক সারসংক্ষেপ",
+    financialOverviewSub: "মোট আয়, ব্যয় ও বর্তমান স্থিতি",
+    paymentOverview: "আয়ের মাধ্যম",
+    paymentOverviewSub: "অনলাইন ও নগদ আয়ের হিসাব",
+    dailyOverview: "আজকের কার্যক্রম ও করণীয়",
+    dailyOverviewSub: "হাজিরা, ভর্তি, বকেয়া ও আসন্ন পরীক্ষা",
+    reportsOverview: "রিপোর্ট ও বিশ্লেষণ",
+    reportsOverviewSub: "আর্থিক ও একাডেমিক কার্যক্রমের বিস্তারিত চিত্র",
     totalStudents: "মোট শিক্ষার্থী",
     maleStudents: "ছাত্র (ছেলে)",
     femaleStudents: "ছাত্রী (মেয়ে)",
@@ -62,6 +72,16 @@ export const dashboardText = defineText({
     overdueInvoices: (n: string) => `${n} টি বকেয়া ফি`,
   },
   en: {
+    academicOverview: "Students & Teachers",
+    academicOverviewSub: "Student and teacher statistics at a glance",
+    financialOverview: "Financial Overview",
+    financialOverviewSub: "Total income, expenses and current balance",
+    paymentOverview: "Income Channels",
+    paymentOverviewSub: "Online and cash income breakdown",
+    dailyOverview: "Daily Activity & Follow-up",
+    dailyOverviewSub: "Attendance, admissions, dues and upcoming exams",
+    reportsOverview: "Reports & Analytics",
+    reportsOverviewSub: "A closer look at financial and academic activity",
     totalStudents: "Total Students",
     maleStudents: "Students (Boys)",
     femaleStudents: "Students (Girls)",

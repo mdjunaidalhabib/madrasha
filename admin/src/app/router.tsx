@@ -7,6 +7,7 @@ import ModuleGuard from "../components/guards/ModuleGuard";
 import PermissionGuard from "../components/guards/PermissionGuard";
 import PageLoader from "@madrasha/shared-ui/src/components/ui/PageLoader";
 import WebsiteSettingsSkeleton from "../features/admin/website-builder/WebsiteSettingsSkeleton";
+import StudentProfileSkeleton from "../components/studentProfile/StudentProfileSkeleton";
 import LoginPage from "../features/auth/LoginPage";
 const ForgotPasswordPage = lazy(() => import("../features/auth/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("../features/auth/ResetPasswordPage"));
@@ -539,7 +540,7 @@ const madrasaAdminChildren = [
     // Static routes such as students/admissions/pending and students/:id/edit
     // rank higher than ":tab", so they still win.
     path: "students/:id",
-    element: <ModuleGuard module="students">{withSuspense(<StudentProfile360 />)}</ModuleGuard>,
+    element: <ModuleGuard module="students"><Suspense fallback={<StudentProfileSkeleton />}><StudentProfile360 /></Suspense></ModuleGuard>,
     children: [
       { index: true, element: null },
       { path: ":tab", element: null },
@@ -547,7 +548,7 @@ const madrasaAdminChildren = [
   },
   {
     path: "students/:id/edit",
-    element: <ModuleGuard module="students">{withSuspense(<StudentProfilePage />)}</ModuleGuard>,
+    element: <ModuleGuard module="students"><Suspense fallback={<StudentProfileSkeleton edit />}><StudentProfilePage /></Suspense></ModuleGuard>,
   },
 
   {

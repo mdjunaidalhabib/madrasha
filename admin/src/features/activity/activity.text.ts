@@ -251,6 +251,22 @@ const SPECIAL_LABEL_ROWS: SpecialRow[] = [
   { key: "settings/book-label-design|UPDATE", bn: "বই-লেবেলের ডিজাইন হালনাগাদ করা হয়েছে", en: "Book label design updated" },
 
   // Public website
+  ...([
+    ["notices", "নোটিশ", "notice"],
+    ["gallery", "গ্যালারির ছবি", "gallery photo"],
+    ["slides", "স্লাইড", "slide"],
+    ["videos", "ভিডিও", "video"],
+    ["committee", "কমিটি সদস্য", "committee member"],
+  ] as const).map(([section, bn, en]) => ({
+    key: `website/admin/${section}|UPDATE`,
+    bn: `ওয়েবসাইটের ${bn} হালনাগাদ করা হয়েছে`,
+    en: `Website ${en} updated`,
+  })),
+  { key: "website/admin/videos|CREATE", bn: "ওয়েবসাইটে ভিডিও যোগ করা হয়েছে", en: "Website video added" },
+  { key: "website/admin/videos|DELETE", bn: "ওয়েবসাইটের ভিডিও মুছে ফেলা হয়েছে", en: "Website video deleted" },
+  { key: "website/admin/donations|UPDATE", bn: "ওয়েবসাইটের অনুদান সেটিংস হালনাগাদ করা হয়েছে", en: "Website donation settings updated" },
+  { key: "website/admin/reset|UPDATE", bn: "ওয়েবসাইট মূল ডেমোতে রিসেট করা হয়েছে", en: "Website reset to the main demo" },
+  { key: "website/admin/reset|CREATE", bn: "ওয়েবসাইট মূল ডেমোতে রিসেট করা হয়েছে", en: "Website reset to the main demo" },
   { key: "website/admin/settings|UPDATE", bn: "ওয়েবসাইট সেটিংস হালনাগাদ করা হয়েছে", en: "Website settings updated" },
   { key: "website/admin/pages|UPDATE", bn: "ওয়েবসাইট পেজ হালনাগাদ করা হয়েছে", en: "Website page updated" },
   { key: "website/admin/notices|CREATE", bn: "ওয়েবসাইট নোটিশ যোগ করা হয়েছে", en: "Website notice added" },
@@ -425,6 +441,7 @@ export const activityText = defineText({
     categoryLabel: "ধরন",
     categoryAll: "সব কাজ",
     categorySecurity: "শুধু লগইন ও নিরাপত্তা",
+    categoryWebsite: "শুধু ওয়েবসাইট",
     applyLabel: "প্রয়োগ করুন",
     clearLabel: "রিসেট",
     cancelLabel: "বাতিল",
@@ -475,6 +492,7 @@ export const activityText = defineText({
     categoryLabel: "Type",
     categoryAll: "All activity",
     categorySecurity: "Login & security only",
+    categoryWebsite: "Website only",
     applyLabel: "Apply",
     clearLabel: "Reset",
     cancelLabel: "Cancel",

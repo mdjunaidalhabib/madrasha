@@ -1,9 +1,9 @@
-import { normalizeWebsiteSocialUrl } from "@madrasha/shared-ui/src/website/socialLinks";
+import { getWebsiteSocialItems, normalizeWebsiteSocialUrl } from "@madrasha/shared-ui/src/website/socialLinks";
 
-export function getBrandingContact(madrasa: Record<string, any> | null | undefined) {
+export function getBrandingContact(madrasa: Record<string, any> | null | undefined, settings: Record<string, any> = {}) {
   const phones: string[] = madrasa?.phones || [];
   const emails: string[] = madrasa?.emails || [];
-  const whatsapp = madrasa?.social_links?.find((link: any) => link.platform === "whatsapp");
+  const whatsapp = getWebsiteSocialItems(settings).find((link) => link.platform === "whatsapp");
   const digits = (phones[0] || "").replace(/\D/g, "");
   return {
     phones,

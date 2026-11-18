@@ -36,8 +36,8 @@ export default function ContactSection({
       ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(madrasa.address)}`
       : "");
 
-  const socials = getWebsiteSocialLinks(madrasa || {}, t.whatsappChannel);
-  const { phones, emails, whatsappUrl } = getBrandingContact(madrasa);
+  const socials = getWebsiteSocialLinks(settings, t.whatsappChannel);
+  const { phones, emails, whatsappUrl } = getBrandingContact(madrasa, settings);
 
   const rows = [
     ...(phones.length ? phones : [""]).map((phone) => ({

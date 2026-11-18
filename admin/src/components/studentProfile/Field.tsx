@@ -4,6 +4,7 @@ import { filterByScript, ScriptLang } from "@madrasha/shared-ui/src/components/u
 import { filterToDigits } from "@madrasha/shared-ui/src/components/ui/NumericInput";
 import { useText, commonText } from "@madrasha/shared-ui/src/i18n";
 import { studentProfileText } from "./studentProfile.text";
+import { profileValueClass } from "./profileStyles";
 
 const Field = ({
   label,
@@ -41,13 +42,14 @@ const Field = ({
   };
 
   return (
-    <div className="flex flex-col relative">
-      <label className="text-sm mb-1 dark:text-slate-300">{label}</label>
+    <div className="group relative flex min-w-0 flex-col">
+      <label htmlFor={`student-${name}`} className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">{label}</label>
 
       {/* 🔥 SELECT FIELD (DIRECT EDIT MODE) */}
       {type === "select" ? (
         isEditMode ? (
           <select
+            id={`student-${name}`}
             name={name}
             value={value ?? ""}
             onChange={onChange}
@@ -63,35 +65,38 @@ const Field = ({
             ))}
           </select>
         ) : (
-          <p className="border rounded-lg px-3 py-2 bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+          <p className={profileValueClass}>
             {options.find((o: any) => o.value == value)?.label || pt.notAvailable}
           </p>
         )
       ) : (
         <>
           {/* 🔥 INPUT FIELD */}
-          <input
+          {!isEditMode ? <p dir={scriptLang === "ar" ? "rtl" : undefined} className={profileValueClass}>{value === "" || value == null ? pt.notAvailable : value}</p> : <input
+            id={`student-${name}`}
             type={type}
             min={type === "number" ? 1 : undefined}
             inputMode={numeric ? "numeric" : undefined}
             name={name}
             value={value || ""}
             onChange={handleScriptChange}
-            disabled={!isEditMode || !isEditing}
+            readOnly={!isEditing}
             dir={scriptLang === "ar" ? "rtl" : undefined}
-            className={`border rounded-lg px-3 py-2 pe-10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100
+            className={`min-h-[42px] rounded-lg border border-slate-200 bg-white px-3 py-2 pe-10 text-sm text-slate-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/15 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100
               ${error ? "border-red-500" : ""}
-              ${!isEditMode ? "bg-gray-100 dark:bg-slate-800" : ""}
               ${isEditing ? "border-blue-500 bg-white dark:bg-slate-900" : ""}
             `}
-          />
+          />}
 
           {/* ✏️ EDIT ICON (ONLY INPUT FIELD) */}
           {isEditMode && (
-            <FaEdit
-              className="absolute end-3 top-9 cursor-pointer text-gray-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400"
+            <button
+              type="button"
+              aria-label={`${c.edit}: ${label}`}
+              aria-controls={`student-${name}`}
+              className="absolute end-1 top-6 flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition hover:bg-teal-50 hover:text-teal-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 dark:hover:bg-teal-950 dark:hover:text-teal-300"
               onClick={() => setEditableField(name)}
-            />
+            ><FaEdit aria-hidden="true" /></button>
           )}
 
           {scriptLang && isEditing && showScriptHint && (

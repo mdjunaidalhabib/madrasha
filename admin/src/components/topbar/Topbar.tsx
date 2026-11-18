@@ -33,12 +33,15 @@ export default function Topbar({ openSidebar }: TopbarProps) {
       src={branding.report_logo}
       alt=""
       onError={() => setLogoFailed(true)}
-      className="h-11 w-11 shrink-0 rounded-full border border-slate-200 object-cover md:h-12 md:w-12 dark:border-slate-700"
+      className="h-11 w-11 shrink-0 rounded-full border border-teal-200 object-cover transition-colors hover:border-teal-400 md:h-12 md:w-12"
     />
   );
 
   const iconButtonClass =
     "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800";
+
+  const actionBorderClass =
+    "!h-10 !w-10 !rounded-full !border !border-teal-200 hover:!border-teal-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 focus-visible:ring-offset-2";
 
   return (
     <div className="z-20 w-full min-w-0 border-b border-slate-200/80 bg-white shadow-sm shadow-slate-900/[0.02] dark:border-slate-800 dark:bg-slate-900">
@@ -88,9 +91,9 @@ export default function Topbar({ openSidebar }: TopbarProps) {
         <div className="flex shrink-0 items-center gap-2">
           <PlanBadge />
           <LanguageSwitcher />
-          <ThemeToggle />
-          <LockButton />
-          <ProfileMenu />
+          <ThemeToggle className={actionBorderClass} />
+          <LockButton className={actionBorderClass} />
+          <ProfileMenu className={actionBorderClass} />
         </div>
       </div>
     </div>

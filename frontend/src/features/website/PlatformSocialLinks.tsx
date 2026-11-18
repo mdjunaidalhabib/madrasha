@@ -25,7 +25,7 @@ export default function PlatformSocialLinks({
   className?: string;
 }) {
   return (
-    <div className={`flex flex-wrap items-center gap-2.5 ${className}`}>
+    <div className={`flex flex-wrap items-center gap-2 ${className}`}>
       {links.map(({ href, label, Icon, background }, index) => (
         <a
           key={`${index}-${href}`}
@@ -34,10 +34,10 @@ export default function PlatformSocialLinks({
           rel="noopener noreferrer"
           aria-label={label}
           title={label}
-          className={`inline-flex shrink-0 items-center justify-center rounded-xl text-white shadow-sm transition hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500 ${compact ? "h-8 w-8" : "h-10 w-10"}`}
+          className={`inline-flex shrink-0 items-center justify-center rounded-lg text-white shadow-sm transition hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500 ${compact ? "h-7 w-7" : "h-8 w-8"}`}
           style={{ background }}
         >
-          <Icon size={compact ? 16 : 20} aria-hidden="true" />
+          <Icon size={compact ? 14 : 16} aria-hidden="true" />
         </a>
       ))}
     </div>

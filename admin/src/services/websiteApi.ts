@@ -119,10 +119,10 @@ export type WebsiteVideoPayload = {
   sort_order?: number;
 };
 
-export async function getWebsiteSettings(madrasaId?: number) {
+export async function getWebsiteSettings(madrasaId?: number, fresh = false) {
   const res = await cachedGet("/website/admin/settings", {
     params: madrasaId ? { madrasa_id: madrasaId } : undefined,
-  });
+  }, fresh ? 0 : undefined);
   return res.data.data;
 }
 

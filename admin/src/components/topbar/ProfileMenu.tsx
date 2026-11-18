@@ -8,7 +8,7 @@ import { shellText } from "./shell.text";
 
 /** টপবারের প্রোফাইল ছবি - ক্লিক করলে নাম/রোলসহ একটা কার্ড খোলে, ভেতরে
  * "প্রোফাইল" ও "লগআউট" - দুইটা বাটন। */
-export default function ProfileMenu() {
+export default function ProfileMenu({ className = "" }: { className?: string }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
@@ -71,7 +71,7 @@ export default function ProfileMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t.profileMenu}
-        className="flex items-center justify-center rounded-full transition hover:opacity-80"
+        className={`flex items-center justify-center rounded-full transition hover:opacity-80 ${className}`}
       >
         {avatar}
       </button>

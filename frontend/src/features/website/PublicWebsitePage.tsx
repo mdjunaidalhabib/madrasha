@@ -545,8 +545,8 @@ export default function PublicWebsitePage({
       ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(madrasa.address)}`
       : "");
 
-  const socials = getWebsiteSocialLinks(madrasa || {}, t.whatsappChannel);
-  const { phones, emails, whatsappUrl } = getBrandingContact(madrasa);
+  const socials = getWebsiteSocialLinks(settings, t.whatsappChannel);
+  const { phones, emails, whatsappUrl } = getBrandingContact(madrasa, settings);
 
   const sectionBase = "py-16 md:py-24 scroll-mt-28";
 

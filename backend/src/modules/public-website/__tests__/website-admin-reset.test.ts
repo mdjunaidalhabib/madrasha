@@ -4,6 +4,7 @@ import type { Server } from "http";
 import jwt from "jsonwebtoken";
 
 const { reset } = vi.hoisted(() => ({ reset: vi.fn() }));
+vi.mock("../../../shared/utils/activity.util", () => ({ logActivity: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("../website-template.service", () => ({
   resetWebsiteToTemplate: reset,
   getWebsiteTemplate: vi.fn(),

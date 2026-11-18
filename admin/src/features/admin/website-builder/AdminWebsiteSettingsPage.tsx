@@ -1,5 +1,3 @@
-import WebsiteSocialLinksEditor from "./WebsiteSocialLinksEditor";
-import { getWebsiteSocialItems, LEGACY_SOCIAL_FIELDS, type WebsiteSocialLink } from "@madrasha/shared-ui/src/website/socialLinks";
 import ResponsiveSettingsMenu from "../../../components/settings/ResponsiveSettingsMenu";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -26,7 +24,6 @@ import {
   Quote,
   RotateCcw,
   Settings2,
-  Share2,
   Trash2,
   Users,
   Video,
@@ -191,7 +188,6 @@ type TabKey =
   | "muhtamim"
   | "sovapoti"
   | "committee"
-  | "social"
   | "pages";
 
 type WebsiteThemeKey = import("@madrasha/shared-ui/src/website/themes").WebsiteThemeKey;
@@ -375,7 +371,7 @@ export default function AdminWebsiteSettingsPage() {
     getWebsiteSettings(user?.madrasa_id)
       .then((data) => {
         if (data?.madrasa) {
-          setForm((prev) => ({ ...prev, ...data.settings, ...data.madrasa }));
+          setForm((prev) => ({ ...prev, ...data.settings, ...data.madrasa, social_links: data.settings?.social_links }));
         } else if (data) {
           setForm((prev) => ({ ...prev, ...data }));
         }
@@ -970,7 +966,6 @@ export default function AdminWebsiteSettingsPage() {
     { key: "muhtamim", label: t.tabs["muhtamim"], icon: Quote },
     { key: "sovapoti", label: t.tabs["sovapoti"], icon: Award },
     { key: "committee", label: t.tabs["committee"], icon: Users, badge: committee.length },
-    { key: "social", label: t.tabs["social"], icon: Share2 },
     { key: "pages", label: t.pageContent, icon: FileText },
     ...(donationAllowed ? [{ key: "donations" as const, label: lang === "bn" ? "অনুদান" : "Donations", icon: Heart }] : []),
   ];
@@ -1293,41 +1288,6 @@ export default function AdminWebsiteSettingsPage() {
                 onSave={(v) => saveSettingsField("sovapoti_message", v)}
               />
             </div>
-          </SectionCard>
-        </div>
-      )}
-
-      {tab === "social" && (
-        <div className="space-y-6">
-          <SectionCard
-            title={t.socialLinks}
-            hint={t.socialLinksHint}
-          >
-            <WebsiteSocialLinksEditor
-              values={getWebsiteSocialItems(form)}
-              onSave={async (links: WebsiteSocialLink[]) => {
-                const legacy = Object.fromEntries(Object.entries(LEGACY_SOCIAL_FIELDS).map(([platform, field]) => [field, links.find(link => link.platform === platform)?.url || ""]));
-                try {
-                  await queueSettingsSave({ ...legacy, social_links: links });
-                  toast(t.saved, "success");
-                } catch (error) {
-                  toast(t.saveFailed, "error");
-                  throw error;
-                }
-              }}
-            />
-          </SectionCard>
-
-          <SectionCard
-            title={t.locationMap}
-            hint={t.locationMapHint}
-          >
-            <InlineTextField
-              label={t.mapsLink}
-              value={form.map_url || ""}
-              placeholder="https://maps.app.goo.gl/..."
-              onSave={(v) => saveSettingsField("map_url", v)}
-            />
           </SectionCard>
         </div>
       )}

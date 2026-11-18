@@ -1,9 +1,10 @@
+import { profileSectionClass, profileHeadingClass, profileValueClass } from "./profileStyles";
 import { useEffect, useState } from "react";
 import Field from "./Field";
 import api, { cachedGet } from "../../services/api";
 import CustomDatePicker from "@madrasha/shared-ui/src/components/ui/CustomDatePicker";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
-import { useText, commonText, useIsMadrasa } from "@madrasha/shared-ui/src/i18n";
+import { useText, commonText, useIsMadrasa, useLang, formatDate } from "@madrasha/shared-ui/src/i18n";
 import { admissionText } from "../admission/admission.text";
 import { studentProfileText } from "./studentProfile.text";
 
@@ -32,6 +33,7 @@ const StudentInfoProfile = ({
   const pt = useText(studentProfileText);
   const c = useText(commonText);
   const isMadrasa = useIsMadrasa();
+  const lang = useLang();
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
 
@@ -135,10 +137,10 @@ const StudentInfoProfile = ({
   };
 
   return (
-    <div className="bg-white shadow-lg p-6 rounded-xl border mt-6 dark:bg-slate-900 dark:border-slate-700">
-      <h2 className="text-xl mb-4 dark:text-slate-100">{t.studentInfo}</h2>
+    <div className={profileSectionClass}>
+      <h2 className={profileHeadingClass}>{t.studentInfo}</h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-5">
         <Field
           label={pt.nameBn}
           name="name_bn"
@@ -215,11 +217,11 @@ const StudentInfoProfile = ({
               <option value={2}>{t.female}</option>
             </select>
           ) : (
-            <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">{getGenderName(student.gender)}</p>
+            <p className={profileValueClass}>{getGenderName(student.gender)}</p>
           )}
         </div>
 
-        <CustomDatePicker
+        {isEditMode ? <CustomDatePicker
           label={t.dob}
           value={student.dob}
           isEditMode={isEditMode}
@@ -229,7 +231,10 @@ const StudentInfoProfile = ({
               dob: date,
             }))
           }
-        />
+        /> : <div className="min-w-0">
+          <p className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">{t.dob}</p>
+          <p className={profileValueClass}>{student.dob ? formatDate(student.dob, lang) : pt.notAvailable}</p>
+        </div>}
 
         <Field label={t.age} name="age" value={student.age || ""} isEditMode={false} />
 
@@ -252,7 +257,7 @@ const StudentInfoProfile = ({
               ))}
             </select>
           ) : (
-            <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            <p className={profileValueClass}>
               {getDivisionName(student.division_id || student.academicDivision)}
             </p>
           )}
@@ -277,7 +282,7 @@ const StudentInfoProfile = ({
               ))}
             </select>
           ) : (
-            <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            <p className={profileValueClass}>
               {getClassName(student.previous_class_id || student.previousClass)}
             </p>
           )}
@@ -302,7 +307,7 @@ const StudentInfoProfile = ({
               ))}
             </select>
           ) : (
-            <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            <p className={profileValueClass}>
               {getClassName(student.class_id || student.currentClass)}
             </p>
           )}
@@ -347,7 +352,7 @@ const StudentInfoProfile = ({
               ))}
             </select>
           ) : (
-            <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            <p className={profileValueClass}>
               {student.blood_group || pt.notAvailable}
             </p>
           )}
@@ -369,7 +374,7 @@ const StudentInfoProfile = ({
               <option value={2}>{t.nonResidential}</option>
             </select>
           ) : (
-            <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            <p className={profileValueClass}>
               {Number(student.residency_type) === 1
                 ? t.residential
                 : Number(student.residency_type) === 2
@@ -399,7 +404,7 @@ const StudentInfoProfile = ({
               <option value="yes">{c.yes}</option>
             </select>
           ) : (
-            <p className="border p-2 rounded bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            <p className={profileValueClass}>
               {Number(student.is_orphan) === 1 ? c.yes : c.no}
             </p>
           )}

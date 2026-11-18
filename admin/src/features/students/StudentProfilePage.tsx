@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useText, getText, useLang, localizeDigits, commonText } from "@madrasha/shared-ui/src/i18n";
 import { studentProfilePageText } from "./StudentProfilePage.text";
 import { useNavigate } from "react-router-dom";
-import { studentPath, useStudentIdParam } from "./studentRoute";
+import { studentPath, useStudentRoute } from "./studentRoute";
 import api, { cachedGet } from "../../services/api";
 
 import ImageUploadProfile from "../../components/studentProfile/ImageUploadProfile";
@@ -16,7 +16,7 @@ import {
   profileOutlineButtonClass as outlineButtonClass,
 } from "../../components/common/profileActionStyles";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
-import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import StudentProfileSkeleton from "../../components/studentProfile/StudentProfileSkeleton";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import AdmissionFormPrintButton from "../../components/admission/AdmissionFormPrintButton";
@@ -61,7 +61,7 @@ const StudentProfilePage = () => {
   const t = useText(studentProfilePageText);
   const c = useText(commonText);
   const lang = useLang();
-  const id = useStudentIdParam();
+  const { id, resolved } = useStudentRoute();
   const navigate = useNavigate();
 
   const [student, setStudent] = useState<any>(null);
@@ -71,7 +71,9 @@ const StudentProfilePage = () => {
   const isEditMode = true;
   const [editableField, setEditableField] = useState<string | null>(null);
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadedId, setLoadedId] = useState<string>();
+  const fetchSequence = useRef(0);
   const [saving, setSaving] = useState(false);
   const [expelBusy, setExpelBusy] = useState(false);
 
@@ -92,26 +94,38 @@ const StudentProfilePage = () => {
   const [deviceCardPerson, setDeviceCardPerson] = useState<CardPerson | null>(null);
 
   const fetchStudent = useCallback(async () => {
-    if (!id) return;
+    const sequence = ++fetchSequence.current;
+    if (!id) {
+      setLoading(false);
+      setStudent(null);
+      return;
+    }
 
     try {
       setLoading(true);
 
       const res = await cachedGet(`/students/${id}`);
+      if (sequence !== fetchSequence.current) return;
       const data = normalizeStudent(res.data.data);
 
       setStudent(deepCopy(data));
       setOriginal(deepCopy(data));
     } catch (err) {
+      if (sequence !== fetchSequence.current) return;
+      setStudent(null);
       logger.error("FETCH STUDENT ERROR:", err);
       useToastStore.getState().show(getText(studentProfilePageText).loadFailed, "error");
     } finally {
-      setLoading(false);
+      if (sequence === fetchSequence.current) {
+        setLoadedId(id);
+        setLoading(false);
+      }
     }
   }, [id]);
 
   useEffect(() => {
     fetchStudent();
+    return () => { fetchSequence.current++; };
   }, [fetchStudent]);
 
   const handleChange = (e: any) => {
@@ -361,14 +375,7 @@ const StudentProfilePage = () => {
     />
   ) : null;
 
-  if (loading)
-    return (
-      <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6">
-        {quickNav}
-        <SkeletonCard lines={6} />
-        <SkeletonCard lines={4} />
-      </div>
-    );
+  if (!resolved || loading || (id && loadedId !== id)) return <StudentProfileSkeleton edit />;
   if (!student) return <p className="p-6">{t.notFound}</p>;
 
   return (

@@ -3,6 +3,7 @@ import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { superAdminMiddleware } from "../../shared/middleware/superAdmin.middleware";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
+import { websiteActivityMiddleware } from "./website-activity.middleware";
 import {
   getDonationAccess, updateDonationAccess, getOwnDonationSettings, saveOwnDonationSettings, getOwnDonationDemo,
   deleteAdmissionApplication,
@@ -45,7 +46,7 @@ router.get("/public/:slug", getPublicWebsite);
 router.get("/public/:slug/icon/:file", getPublicBrandIcon);
 router.post("/public/:slug/admission", submitAdmissionApplication);
 router.post("/public/:slug/admission-full", submitFullAdmissionApplication);
-const adminGuard = [tenantMiddleware, authMiddleware, rbacMiddleware("website.manage")];
+const adminGuard = [tenantMiddleware, authMiddleware, rbacMiddleware("website.manage"), websiteActivityMiddleware];
 
 router.get("/admin/settings", ...adminGuard, getWebsiteSettings);
 router.get("/admin/donations", ...adminGuard, getOwnDonationSettings);

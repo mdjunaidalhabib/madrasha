@@ -1,6 +1,7 @@
 import ChartCard from "@madrasha/shared-ui/src/components/ui/ChartCard";
 import DeferredContent from "@madrasha/shared-ui/src/components/ui/DeferredContent";
 import { lazy, useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import {
   formatCurrency,
   getLang,
@@ -14,6 +15,7 @@ import { Link } from "react-router-dom";
 import {
   AlertTriangle,
   Banknote,
+  BarChart3,
   CalendarClock,
   CalendarDays,
   CheckCircle2,
@@ -42,6 +44,47 @@ import VendorPromoCard from "../vendor/VendorPromoCard";
 const money = (value: number | string) => formatCurrency(value || 0, getLang());
 
 const DashboardChart = lazy(() => import("./DashboardChart"));
+
+function DashboardSection({
+  id,
+  title,
+  subtitle,
+  icon,
+  children,
+}: {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      aria-labelledby={`${id}-heading`}
+      className={`min-w-0 ${id === "reports-overview" ? "space-y-4" : "space-y-2"}`}
+    >
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 text-slate-400 dark:text-slate-500 [&>svg]:h-3.5 [&>svg]:w-3.5">
+          {icon}
+        </span>
+        <div className="min-w-0 shrink-0">
+          <h2
+            id={`${id}-heading`}
+            className="text-xs font-semibold text-slate-500 dark:text-slate-400"
+          >
+            {title}
+          </h2>
+          <p className="sr-only">{subtitle}</p>
+        </div>
+        <span
+          aria-hidden="true"
+          className="h-px min-w-0 flex-1 bg-slate-200/70 dark:bg-slate-800"
+        />
+      </div>
+      {children}
+    </section>
+  );
+}
 
 type IncomeExpensePoint = {
   period: string;
@@ -79,9 +122,7 @@ export default function DashboardPage() {
     loadDashboard();
     (async () => {
       try {
-        const res = await cachedGet<DashboardTrends>(
-          "/dashboard/trends?groupBy=monthly",
-        );
+        const res = await cachedGet<DashboardTrends>("/dashboard/trends?groupBy=monthly");
         setTrends(res.data);
       } finally {
         setTrendsLoading(false);
@@ -103,16 +144,11 @@ export default function DashboardPage() {
     today.setHours(0, 0, 0, 0);
     return (data?.upcomingExams || [])
       .filter((exam: any) => new Date(exam.examDate) >= today)
-      .sort(
-        (a: any, b: any) =>
-          new Date(a.examDate).getTime() - new Date(b.examDate).getTime(),
-      );
+      .sort((a: any, b: any) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime());
   }, [data?.upcomingExams]);
 
   const getChannelTotal = (method: "online" | "offline") => {
-    const row = (data?.paymentMethodTotals || []).find(
-      (r: any) => r.payment_method === method,
-    );
+    const row = (data?.paymentMethodTotals || []).find((r: any) => r.payment_method === method);
     return {
       income: Number(row?.income || 0),
       expense: Number(row?.expense || 0),
@@ -200,7 +236,34 @@ export default function DashboardPage() {
         },
       ];
 
-  // Rendered twice: right after the stat tiles on mobile, in the sidebar on xl.
+  const cardGroups = [
+    {
+      id: "academic-overview",
+      title: t.academicOverview,
+      subtitle: t.academicOverviewSub,
+      icon: <GraduationCap className="h-5 w-5" strokeWidth={1.75} />,
+      cards: cards.slice(0, 4),
+      count: 4,
+    },
+    {
+      id: "financial-overview",
+      title: t.financialOverview,
+      subtitle: t.financialOverviewSub,
+      icon: <Wallet className="h-5 w-5" strokeWidth={1.75} />,
+      cards: cards.slice(4, 8),
+      count: 4,
+    },
+    {
+      id: "income-channels",
+      title: t.paymentOverview,
+      subtitle: t.paymentOverviewSub,
+      icon: <Banknote className="h-5 w-5" strokeWidth={1.75} />,
+      cards: cards.slice(8),
+      count: 2,
+    },
+  ];
+
+  // Rendered twice: after the summary on mobile, in the sidebar on xl.
   const quickActions = (
     <Card>
       <CardHeader
@@ -248,286 +311,297 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="grid items-start gap-6 xl:grid-cols-4">
-        <div className="min-w-0 space-y-6 xl:col-span-3">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {loading
-              ? Array.from({ length: 10 }).map((_, i) => (
+        <div className="min-w-0 space-y-4 xl:col-span-3">
+          {cardGroups.map((group) => (
+            <DashboardSection key={group.id} {...group}>
+              <div
+                className={`grid grid-cols-2 gap-2.5 ${group.count === 4 ? "lg:grid-cols-4" : ""}`}
+              >
+                {loading
+                  ? Array.from({ length: group.count }).map((_, i) => (
+                      <StatTile key={i} label="" value="" loading size="sm" />
+                    ))
+                  : group.cards.map((card) => <StatTile key={card.label} {...card} size="sm" />)}
+              </div>
+            </DashboardSection>
+          ))}
+
+          <DashboardSection
+            id="daily-overview"
+            title={t.dailyOverview}
+            subtitle={t.dailyOverviewSub}
+            icon={<CalendarClock className="h-5 w-5" strokeWidth={1.75} />}
+          >
+            <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
                   <StatTile key={i} label="" value="" loading size="sm" />
                 ))
-              : cards.map((card) => (
-                  <StatTile key={card.label} {...card} size="sm" />
-                ))}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {loading ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <StatTile key={i} label="" value="" loading size="sm" />
-              ))
-            ) : (
-              <>
-                <StatTile
-                  label={t.todayAttendance}
-                  value={data.attendanceToday.percentage}
-                  variant="percentage"
-                  tone="emerald"
-                  subLabel={t.attendanceTaken(
-                    localizeDigits(data.attendanceToday.total, lang),
-                  )}
-                  to={`/attendance/mark`}
-                  size="sm"
-                  icon={<CheckCircle2 className="h-5 w-5" strokeWidth={1.75} />}
-                />
-                <StatTile
-                  label={t.pendingAdmissions}
-                  value={data.pendingAdmissionsCount}
-                  tone="amber"
-                  to={`/students/admissions/pending`}
-                  size="sm"
-                  icon={<Hourglass className="h-5 w-5" strokeWidth={1.75} />}
-                />
-                <StatTile
-                  label={t.overdueFees}
-                  value={data.overdueFees.totalDue}
-                  variant="currency"
-                  tone="rose"
-                  subLabel={t.overdueStudents(
-                    localizeDigits(data.overdueFees.studentCount, lang),
-                  )}
-                  to={`/fee/overdue-fee`}
-                  size="sm"
-                  icon={
-                    <AlertTriangle className="h-5 w-5" strokeWidth={1.75} />
-                  }
-                />
-                <StatTile
-                  label={t.upcomingExams}
-                  value={data.upcomingExams.length}
-                  tone="indigo"
-                  to={`/routine`}
-                  size="sm"
-                  icon={<CalendarDays className="h-5 w-5" strokeWidth={1.75} />}
-                />
-              </>
-            )}
-          </div>
+              ) : (
+                <>
+                  <StatTile
+                    label={t.todayAttendance}
+                    value={data.attendanceToday.percentage}
+                    variant="percentage"
+                    tone="emerald"
+                    subLabel={t.attendanceTaken(localizeDigits(data.attendanceToday.total, lang))}
+                    to={`/attendance/mark`}
+                    size="sm"
+                    icon={<CheckCircle2 className="h-5 w-5" strokeWidth={1.75} />}
+                  />
+                  <StatTile
+                    label={t.pendingAdmissions}
+                    value={data.pendingAdmissionsCount}
+                    tone="amber"
+                    to={`/students/admissions/pending`}
+                    size="sm"
+                    icon={<Hourglass className="h-5 w-5" strokeWidth={1.75} />}
+                  />
+                  <StatTile
+                    label={t.overdueFees}
+                    value={data.overdueFees.totalDue}
+                    variant="currency"
+                    tone="rose"
+                    subLabel={t.overdueStudents(
+                      localizeDigits(data.overdueFees.studentCount, lang),
+                    )}
+                    to={`/fee/overdue-fee`}
+                    size="sm"
+                    icon={<AlertTriangle className="h-5 w-5" strokeWidth={1.75} />}
+                  />
+                  <StatTile
+                    label={t.upcomingExams}
+                    value={data.upcomingExams.length}
+                    tone="indigo"
+                    to={`/routine`}
+                    size="sm"
+                    icon={<CalendarDays className="h-5 w-5" strokeWidth={1.75} />}
+                  />
+                </>
+              )}
+            </div>
+          </DashboardSection>
 
           <div className="xl:hidden">{quickActions}</div>
 
-          <Card>
-            <CardHeader title={t.upcomingExams} subtitle={t.upcomingExamsSub} />
-            {!loading && upcomingExams.length === 0 && (
-              <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">
-                {t.noUpcomingExams}
-              </p>
-            )}
-            {/* One column, in routine order (date → time → শ্রেণি, see
+          <DashboardSection
+            id="reports-overview"
+            title={t.reportsOverview}
+            subtitle={t.reportsOverviewSub}
+            icon={<BarChart3 className="h-5 w-5" strokeWidth={1.75} />}
+          >
+            <Card>
+              <CardHeader title={t.upcomingExams} subtitle={t.upcomingExamsSub} />
+              {!loading && upcomingExams.length === 0 && (
+                <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">
+                  {t.noUpcomingExams}
+                </p>
+              )}
+              {/* One column, in routine order (date → time → শ্রেণি, see
                 dashboard.repository findUpcomingExams) - a 2-col grid read
                 start-to-right scattered same-day slots. */}
-            <div className="flex flex-col gap-1.5">
-              {upcomingExams.map((exam: any) => (
-                <div
-                  key={exam.id}
-                  className="flex items-center gap-2.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-sm dark:bg-slate-800"
-                >
-                  <span className="w-24 shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-center text-[11px] font-medium tabular-nums text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                    {new Date(exam.examDate).toLocaleDateString("bn-BD", {
-                      day: "numeric",
-                      month: "short",
-                    })}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">
-                    <span className="font-medium text-slate-700 dark:text-slate-200">
-                      {exam.examName}
-                      {exam.className ? ` · ${exam.className}` : ""}
+              <div className="flex flex-col gap-1.5">
+                {upcomingExams.map((exam: any) => (
+                  <div
+                    key={exam.id}
+                    className="flex items-center gap-2.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-sm dark:bg-slate-800"
+                  >
+                    <span className="w-24 shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-center text-[11px] font-medium tabular-nums text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                      {new Date(exam.examDate).toLocaleDateString("bn-BD", {
+                        day: "numeric",
+                        month: "short",
+                      })}
                     </span>
-                    {exam.subject && (
-                      <span className="text-slate-500 dark:text-slate-400">
-                        {" "}
-                        — {exam.subject}
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className="font-medium text-slate-700 dark:text-slate-200">
+                        {exam.examName}
+                        {exam.className ? ` · ${exam.className}` : ""}
+                      </span>
+                      {exam.subject && (
+                        <span className="text-slate-500 dark:text-slate-400">
+                          {" "}
+                          — {exam.subject}
+                        </span>
+                      )}
+                    </span>
+                    {exam.startTime && exam.endTime && (
+                      <span className="shrink-0 text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+                        {exam.startTime}-{exam.endTime}
                       </span>
                     )}
-                  </span>
-                  {exam.startTime && exam.endTime && (
-                    <span className="shrink-0 text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
-                      {exam.startTime}-{exam.endTime}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <div className="grid gap-4 xl:grid-cols-2">
-            <DeferredContent
-              fallback={
-                <ChartCard
-                  title={t.incomeExpenseTrend}
-                  subtitle={t.last12Months}
-                  loading
-                  height="h-48"
-                >
-                  {null}
-                </ChartCard>
-              }
-            >
-              <DashboardChart
-                variant={0}
-                data={data}
-                trends={trends}
-                loading={loading}
-                trendsLoading={trendsLoading}
-              />
-            </DeferredContent>
-
-            <DeferredContent
-              fallback={
-                <ChartCard
-                  title={t.attendanceRate}
-                  subtitle={t.attendanceRateSub}
-                  loading
-                  height="h-48"
-                >
-                  {null}
-                </ChartCard>
-              }
-            >
-              <DashboardChart
-                variant={1}
-                data={data}
-                trends={trends}
-                loading={loading}
-                trendsLoading={trendsLoading}
-              />
-            </DeferredContent>
-          </div>
-
-          <div className="grid gap-4 xl:grid-cols-3">
-            <DeferredContent
-              fallback={
-                <ChartCard
-                  title={t.fundDistribution}
-                  subtitle={t.fundDistributionSub}
-                  loading
-                  height="h-48"
-                >
-                  {null}
-                </ChartCard>
-              }
-            >
-              <DashboardChart
-                variant={2}
-                data={data}
-                trends={trends}
-                loading={loading}
-                trendsLoading={trendsLoading}
-              />
-            </DeferredContent>
-
-            <Card>
-              <CardHeader
-                title={t.fundBalance}
-                actions={
-                  <Link
-                    className="text-sm font-medium text-indigo-600 dark:text-indigo-400"
-                    to={`/accounts/report`}
-                  >
-                    {t.viewReport}
-                  </Link>
-                }
-              />
-              <div className="space-y-3">
-                {(data?.fundBalances || []).map((fund: any) => (
-                  <div
-                    key={fund.fund || "empty"}
-                    className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800"
-                  >
-                    <span className="font-medium text-slate-700 dark:text-slate-300">
-                      {fund.fund || t.unassigned}
-                    </span>
-                    <span className="font-bold text-slate-900 dark:text-slate-100">
-                      {money(fund.balance)}
-                    </span>
                   </div>
                 ))}
               </div>
             </Card>
 
-            <DeferredContent
-              fallback={
-                <ChartCard
-                  title={t.genderRatio}
-                  subtitle={t.genderRatioSub}
-                  loading
-                  height="h-48"
-                >
-                  {null}
-                </ChartCard>
-              }
-            >
-              <DashboardChart
-                variant={3}
-                data={data}
-                trends={trends}
-                loading={loading}
-                trendsLoading={trendsLoading}
-              />
-            </DeferredContent>
-          </div>
+            <div className="grid gap-4 xl:grid-cols-2">
+              <DeferredContent
+                fallback={
+                  <ChartCard
+                    title={t.incomeExpenseTrend}
+                    subtitle={t.last12Months}
+                    loading
+                    height="h-48"
+                  >
+                    {null}
+                  </ChartCard>
+                }
+              >
+                <DashboardChart
+                  variant={0}
+                  data={data}
+                  trends={trends}
+                  loading={loading}
+                  trendsLoading={trendsLoading}
+                />
+              </DeferredContent>
 
-          <div className="grid gap-4 xl:grid-cols-2">
-            <DeferredContent
-              fallback={
-                <ChartCard
-                  title={t.onlineVsOffline}
-                  subtitle={t.onlineVsOfflineSub}
-                  loading
-                  height="h-48"
-                >
-                  {null}
-                </ChartCard>
-              }
-            >
-              <DashboardChart
-                variant={4}
-                data={data}
-                trends={trends}
-                loading={loading}
-                trendsLoading={trendsLoading}
-              />
-            </DeferredContent>
+              <DeferredContent
+                fallback={
+                  <ChartCard
+                    title={t.attendanceRate}
+                    subtitle={t.attendanceRateSub}
+                    loading
+                    height="h-48"
+                  >
+                    {null}
+                  </ChartCard>
+                }
+              >
+                <DashboardChart
+                  variant={1}
+                  data={data}
+                  trends={trends}
+                  loading={loading}
+                  trendsLoading={trendsLoading}
+                />
+              </DeferredContent>
+            </div>
 
-            <DeferredContent
-              fallback={
-                <ChartCard
-                  title={t.paymentMethods}
-                  subtitle={t.paymentMethodsSub}
-                  loading
-                  height="h-48"
-                >
-                  {null}
-                </ChartCard>
-              }
-            >
-              <DashboardChart
-                variant={5}
-                data={data}
-                trends={trends}
-                loading={loading}
-                trendsLoading={trendsLoading}
-              />
-            </DeferredContent>
-          </div>
+            <div className="grid gap-4 xl:grid-cols-3">
+              <DeferredContent
+                fallback={
+                  <ChartCard
+                    title={t.fundDistribution}
+                    subtitle={t.fundDistributionSub}
+                    loading
+                    height="h-48"
+                  >
+                    {null}
+                  </ChartCard>
+                }
+              >
+                <DashboardChart
+                  variant={2}
+                  data={data}
+                  trends={trends}
+                  loading={loading}
+                  trendsLoading={trendsLoading}
+                />
+              </DeferredContent>
+
+              <Card>
+                <CardHeader
+                  title={t.fundBalance}
+                  actions={
+                    <Link
+                      className="text-sm font-medium text-indigo-600 dark:text-indigo-400"
+                      to={`/accounts/report`}
+                    >
+                      {t.viewReport}
+                    </Link>
+                  }
+                />
+                <div className="space-y-3">
+                  {(data?.fundBalances || []).map((fund: any) => (
+                    <div
+                      key={fund.fund || "empty"}
+                      className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-800"
+                    >
+                      <span className="font-medium text-slate-700 dark:text-slate-300">
+                        {fund.fund || t.unassigned}
+                      </span>
+                      <span className="font-bold text-slate-900 dark:text-slate-100">
+                        {money(fund.balance)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              <DeferredContent
+                fallback={
+                  <ChartCard
+                    title={t.genderRatio}
+                    subtitle={t.genderRatioSub}
+                    loading
+                    height="h-48"
+                  >
+                    {null}
+                  </ChartCard>
+                }
+              >
+                <DashboardChart
+                  variant={3}
+                  data={data}
+                  trends={trends}
+                  loading={loading}
+                  trendsLoading={trendsLoading}
+                />
+              </DeferredContent>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-2">
+              <DeferredContent
+                fallback={
+                  <ChartCard
+                    title={t.onlineVsOffline}
+                    subtitle={t.onlineVsOfflineSub}
+                    loading
+                    height="h-48"
+                  >
+                    {null}
+                  </ChartCard>
+                }
+              >
+                <DashboardChart
+                  variant={4}
+                  data={data}
+                  trends={trends}
+                  loading={loading}
+                  trendsLoading={trendsLoading}
+                />
+              </DeferredContent>
+
+              <DeferredContent
+                fallback={
+                  <ChartCard
+                    title={t.paymentMethods}
+                    subtitle={t.paymentMethodsSub}
+                    loading
+                    height="h-48"
+                  >
+                    {null}
+                  </ChartCard>
+                }
+              >
+                <DashboardChart
+                  variant={5}
+                  data={data}
+                  trends={trends}
+                  loading={loading}
+                  trendsLoading={trendsLoading}
+                />
+              </DeferredContent>
+            </div>
+          </DashboardSection>
         </div>
 
         <div className="min-w-0 space-y-6 xl:col-span-1">
           <div className="hidden xl:block">{quickActions}</div>
 
           <Card>
-            <CardHeader
-              title={t.importantLinks}
-              subtitle={t.importantLinksSub}
-            />
+            <CardHeader title={t.importantLinks} subtitle={t.importantLinksSub} />
             <div className="space-y-2">
               {(data?.importantLinks || []).length === 0 && !loading && (
                 <p className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">
@@ -589,10 +663,7 @@ export default function DashboardPage() {
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-300">
-                      {tx.donorName ||
-                        tx.receiverName ||
-                        tx.category ||
-                        tx.fund}
+                      {tx.donorName || tx.receiverName || tx.category || tx.fund}
                     </p>
                     <p className="text-[11px] text-slate-400 dark:text-slate-500">
                       {new Date(tx.entryDate).toLocaleDateString("bn-BD")}
@@ -617,9 +688,7 @@ export default function DashboardPage() {
             <CardHeader
               title={t.overdueList}
               subtitle={
-                !loading
-                  ? t.totalAmount(money(data?.overdueFees?.totalDue || 0))
-                  : undefined
+                !loading ? t.totalAmount(money(data?.overdueFees?.totalDue || 0)) : undefined
               }
               actions={
                 <Link
@@ -647,9 +716,7 @@ export default function DashboardPage() {
                       {item.studentName}
                     </p>
                     <p className="truncate text-[11px] text-slate-400 dark:text-slate-500">
-                      {t.overdueInvoices(
-                        localizeDigits(item.invoiceCount, lang),
-                      )}
+                      {t.overdueInvoices(localizeDigits(item.invoiceCount, lang))}
                     </p>
                   </div>
                   <span className="shrink-0 text-sm font-bold text-rose-600 dark:text-rose-400">

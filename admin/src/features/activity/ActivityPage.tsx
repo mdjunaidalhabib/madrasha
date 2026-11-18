@@ -64,6 +64,9 @@ function ActivityDetails({ text, t }: { text: string; t: ActivityLogText }) {
             const depth = Math.min(2, Math.floor((raw.length - raw.trimStart().length) / 4));
             const line = raw.trim();
             const itemClass = depth === 2 ? "ps-8" : depth === 1 ? "ps-4" : undefined;
+            if (line.startsWith("সতর্কতা:")) {
+              return <li key={i} className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">{line}</li>;
+            }
             const arrow = line.indexOf(" → ");
             if (arrow === -1 || line.indexOf(" → ", arrow + 1) !== -1) {
               return (
@@ -114,7 +117,7 @@ export default function ActivityPage() {
   const [appliedFrom, setAppliedFrom] = useState("");
   const [appliedTo, setAppliedTo] = useState("");
   // "security" = only login/logout/failed-login rows.
-  const [category, setCategory] = useState<"" | "security">("");
+  const [category, setCategory] = useState<"" | "security" | "website">("");
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
@@ -151,7 +154,7 @@ export default function ActivityPage() {
     setPage(1);
   };
 
-  const selectCategory = (value: "" | "security") => {
+  const selectCategory = (value: "" | "security" | "website") => {
     setCategory(value);
     setPage(1);
   };
@@ -176,6 +179,7 @@ export default function ActivityPage() {
             {([
               ["", t.categoryAll],
               ["security", t.categorySecurity],
+              ["website", t.categoryWebsite],
             ] as const).map(([value, label]) => (
               <button
                 key={value || "all"}

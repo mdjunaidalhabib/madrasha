@@ -1,19 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useStudentIdParam } from "./studentRoute";
+import { useStudentRoute } from "./studentRoute";
 import api, { cachedGet } from "../../services/api";
 import { useText, getText, useLang, localizeDigits, formatCurrency, formatDate } from "@madrasha/shared-ui/src/i18n";
 import { profile360Text } from "./StudentProfile360.text";
-import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
+import { BookOpen, CalendarCheck, GraduationCap, Wallet } from "lucide-react";
+import StudentProfileHeader from "../../components/studentProfile/StudentProfileHeader";
+import StudentProfileOverview from "../../components/studentProfile/StudentProfileOverview";
 import StatTile from "@madrasha/shared-ui/src/components/ui/StatTile";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
-import { SkeletonCard, SkeletonTable } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import StudentProfileSkeleton, { StudentReadOnlySkeleton } from "../../components/studentProfile/StudentProfileSkeleton";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
-import { studentStatusLabel } from "../../utils/studentStatus";
-import StudentInfoProfile from "../../components/studentProfile/StudentInfoProfile";
-import ParentInfoProfile from "../../components/studentProfile/ParentInfoProfile";
-import AddressInfoProfile from "../../components/studentProfile/AddressInfoProfile";
 
 // Tab labels come from profile360Text.tabs.
 const TABS = [
@@ -33,7 +31,7 @@ const tabFromSlug = (slug: string | undefined): TabKey =>
 
 export default function StudentProfile360() {
   const { id: ref } = useParams();
-  const id = useStudentIdParam();
+  const { id, resolved } = useStudentRoute();
   const tx = useText(profile360Text);
   const lang = useLang();
   const toBanglaDigits = (v: string | number) => localizeDigits(v, lang);
@@ -42,7 +40,8 @@ export default function StudentProfile360() {
   const navigate = useNavigate();
 
   const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadedId, setLoadedId] = useState<string>();
   // ট্যাব URL-এ থাকে: /students/:id (ওভারভিউ) বা /students/:id/:tab
   const { tab: tabSlug } = useParams();
   const tab = tabFromSlug(tabSlug);
@@ -53,34 +52,54 @@ export default function StudentProfile360() {
 
   // পূর্ণাঙ্গ (বিস্তারিত) তথ্য — ছাত্র/অভিভাবক/ঠিকানার সব ফিল্ড, শুধু দেখার জন্য (রিড-অনলি)
   const [fullStudent, setFullStudent] = useState<any>(null);
-  const noop = () => {};
+  const [detailsLoading, setDetailsLoading] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
+    let current = true;
+    if (!id) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     (async () => {
       try {
         const res = await api.get(`/students/${id}/profile-360`);
-        setData(res.data?.data || null);
+        if (current) setData(res.data?.data || null);
       } catch (error) {
+        if (!current) return;
+        setData(null);
         logger.error("FETCH STUDENT PROFILE 360 ERROR:", error);
         useToastStore.getState().show(getText(profile360Text).loadFailed, "error");
       } finally {
-        setLoading(false);
+        if (current) {
+          setLoadedId(id);
+          setLoading(false);
+        }
       }
     })();
+    return () => { current = false; };
   }, [id]);
 
   useEffect(() => {
-    if (!id) return;
+    let current = true;
+    setFullStudent(null);
+    if (!id) {
+      setDetailsLoading(false);
+      return;
+    }
+    setDetailsLoading(true);
     (async () => {
       try {
         const res = await cachedGet(`/students/${id}`);
-        setFullStudent(res.data?.data || null);
+        if (current) setFullStudent(res.data?.data || null);
       } catch (error) {
         logger.error("FETCH STUDENT FULL DETAILS ERROR:", error);
+      } finally {
+        if (current) setDetailsLoading(false);
       }
     })();
+    return () => { current = false; };
   }, [id]);
 
   const student = data?.student;
@@ -89,11 +108,6 @@ export default function StudentProfile360() {
   const feeSummary = data?.feeSummary;
   const libraryRecords = data?.libraryRecords || [];
   const promotionHistory = data?.promotionHistory || [];
-
-  const className = useMemo(
-    () => student?.classRef?.nameBn || student?.classRef?.name || "-",
-    [student],
-  );
 
   // ডকুমেন্ট রিপোর্ট পাতায় এই শিক্ষার্থীকেই আগে থেকে বেছে খোলে (বিভাগ/শ্রেণি + student_id)
   const documentsLink = (reportKey: string, examId?: number | null) => {
@@ -108,14 +122,7 @@ export default function StudentProfile360() {
   const latestPublishedExamId =
     results.find((row: any) => row.resultMaster?.status === "PUBLISHED")?.resultMaster?.examId ?? null;
 
-  if (loading) {
-    return (
-      <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6">
-        <SkeletonCard lines={4} />
-        <SkeletonTable rows={5} columns={4} />
-      </div>
-    );
-  }
+  if (!resolved || loading || (id && loadedId !== id)) return <StudentProfileSkeleton />;
 
   if (!student) {
     return (
@@ -127,48 +134,16 @@ export default function StudentProfile360() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
-      <PageHeader
-        title={student.nameBn || tx.profileTitle}
-        subtitle={tx.subtitle(
-          className,
-          student.roll ? toBanglaDigits(student.roll) : tx.none,
-          student.registrationNo ? toBanglaDigits(student.registrationNo) : tx.none,
-        )}
-        actions={
-          <>
-            <button
-              type="button"
-              onClick={() => navigate(`/students/${ref}/edit`, { state: { autoEdit: true } })}
-              className="h-9 rounded-md border border-gray-300 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              {tx.edit}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(documentsLink("student-id-cards"))}
-              className="h-9 rounded-md bg-teal-600 px-3 text-sm font-medium text-white hover:bg-teal-700"
-            >
-              {tx.printIdCard}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(documentsLink("student-marksheets", latestPublishedExamId))}
-              className="h-9 rounded-md bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700"
-            >
-              {tx.downloadMarksheet}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(`/fee-collection?student_id=${student.id}`)}
-              className="h-9 rounded-md bg-green-600 px-3 text-sm font-medium text-white hover:bg-green-700"
-            >
-              {tx.collectFee}
-            </button>
-          </>
-        }
+      <StudentProfileHeader
+        student={student}
+        details={fullStudent}
+        onEdit={() => navigate(`/students/${ref}/edit`, { state: { autoEdit: true } })}
+        onPrint={() => navigate(documentsLink("student-id-cards"))}
+        onMarksheet={() => navigate(documentsLink("student-marksheets", latestPublishedExamId))}
+        onCollectFee={() => navigate(`/fee-collection?student_id=${student.id}`)}
       />
 
-      <div className="flex gap-1 overflow-x-auto border-b border-gray-200 dark:border-slate-700">
+      <div className="flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -176,7 +151,7 @@ export default function StudentProfile360() {
             onClick={() => setTab(t.key)}
             className={`whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition ${
               tab === t.key
-                ? "border-blue-600 text-blue-600"
+                ? "border-teal-600 text-teal-700 dark:border-teal-400 dark:text-teal-400"
                 : "border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
             }`}
           >
@@ -186,88 +161,21 @@ export default function StudentProfile360() {
       </div>
 
       {tab === "overview" && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatTile label={tx.attendanceRate} value={attendanceSummary?.percentage ?? 0} variant="percentage" tone="blue" />
-          <StatTile label={tx.publishedResults} value={results.length} tone="indigo" />
-          <StatTile label={tx.dueFee} value={feeSummary?.totalDue ?? 0} variant="currency" tone="rose" />
-          <StatTile label={tx.libraryRecords} value={libraryRecords.length} tone="amber" />
-
-          <div className="sm:col-span-2 lg:col-span-4 overflow-hidden rounded-2xl border bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-            <div className="border-b px-5 py-4 dark:border-slate-700">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{tx.basicInfo}</h2>
-            </div>
-            <dl className="grid gap-4 p-5 sm:grid-cols-3">
-              <div>
-                <dt className="text-xs text-gray-400 dark:text-slate-500">{tx.fatherName}</dt>
-                <dd className="text-gray-700 dark:text-slate-300">{student.fatherName || tx.none}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-400 dark:text-slate-500">{tx.guardianPhone}</dt>
-                <dd className="text-gray-700 dark:text-slate-300">{student.guardianPhone || tx.none}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-400 dark:text-slate-500">{tx.session}</dt>
-                <dd className="text-gray-700 dark:text-slate-300">{student.academicYear || tx.none}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-400 dark:text-slate-500">{tx.admissionDate}</dt>
-                <dd className="text-gray-700 dark:text-slate-300">{dateBn(student.admissionDate)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-400 dark:text-slate-500">{tx.state}</dt>
-                <dd className="text-gray-700 dark:text-slate-300">
-                  {studentStatusLabel(student.isActive)}
-                </dd>
-              </div>
-            </dl>
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {[
+              { label: tx.attendanceRate, value: `${toBanglaDigits(attendanceSummary?.percentage ?? 0)}%`, icon: CalendarCheck, color: "text-teal-600 dark:text-teal-400" },
+              { label: tx.publishedResults, value: toBanglaDigits(results.length), icon: GraduationCap, color: "text-indigo-500 dark:text-indigo-400" },
+              { label: tx.dueFee, value: money(feeSummary?.totalDue), icon: Wallet, color: "text-rose-500 dark:text-rose-400" },
+              { label: tx.libraryRecords, value: toBanglaDigits(libraryRecords.length), icon: BookOpen, color: "text-amber-600 dark:text-amber-400" },
+            ].map(({ label, value, icon: Icon, color }) => <div key={label} className="flex items-start justify-between gap-2 rounded-xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+              <div className="min-w-0"><p className="text-[11px] font-medium leading-5 text-slate-500 dark:text-slate-400">{label}</p><p className="mt-1 break-words text-xl font-semibold tabular-nums tracking-tight text-slate-900 dark:text-slate-100">{value}</p></div>
+              <Icon size={18} strokeWidth={1.6} className={`mt-0.5 shrink-0 ${color}`} aria-hidden="true" />
+            </div>)}
           </div>
-
-          {fullStudent && (
-            <div className="sm:col-span-2 lg:col-span-4 space-y-4">
-              <div className="overflow-hidden rounded-2xl border bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                <div className="border-b px-5 py-4 dark:border-slate-700">
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{tx.photo}</h2>
-                </div>
-                <div className="flex justify-center p-5">
-                  <div
-                    className="h-40 w-40 overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 bg-cover bg-center dark:border-slate-600 dark:bg-slate-800"
-                    style={{ backgroundImage: fullStudent.image ? `url(${fullStudent.image})` : undefined }}
-                  >
-                    {!fullStudent.image && (
-                      <div className="flex h-full items-center justify-center text-center text-sm text-gray-400 dark:text-slate-500">
-                        {tx.noPhoto}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <StudentInfoProfile
-                student={fullStudent}
-                handleChange={noop}
-                setStudent={setFullStudent}
-                editableField={null}
-                setEditableField={noop}
-                isEditMode={false}
-              />
-
-              <ParentInfoProfile
-                student={fullStudent}
-                handleChange={noop}
-                editableField={null}
-                setEditableField={noop}
-                isEditMode={false}
-              />
-
-              <AddressInfoProfile
-                student={fullStudent}
-                handleChange={noop}
-                editableField={null}
-                setEditableField={noop}
-                isEditMode={false}
-              />
-            </div>
-          )}
+          {detailsLoading && <div role="status" aria-busy="true" aria-label={lang === "bn" ? "বিস্তারিত তথ্য লোড হচ্ছে" : "Loading student details"} className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]"><div className="space-y-5"><StudentReadOnlySkeleton /><StudentReadOnlySkeleton fields={10} /></div><StudentReadOnlySkeleton fields={4} singleColumn /></div>}
+          {fullStudent && <StudentProfileOverview student={fullStudent} summary={student} />}
+          {!detailsLoading && !fullStudent && <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"><EmptyState title={tx.detailsUnavailable} /></div>}
         </div>
       )}
 

@@ -20,7 +20,9 @@ export class ActivityRepository {
   }): Promise<{ rows: ActivityLogRow[]; total: number }> {
     const { madrasaId, from, to, page, limit, entity } = params;
     const offset = (page - 1) * limit;
-    const entityFilter = entity ? Prisma.sql`AND a.entity = ${entity}` : Prisma.empty;
+    const entityFilter = entity === "website"
+      ? Prisma.sql`AND (a.entity = 'website' OR a.entity LIKE 'website/%')`
+      : entity ? Prisma.sql`AND a.entity = ${entity}` : Prisma.empty;
 
     const [rows, totalRows] = await Promise.all([
       prisma.$queryRaw<ActivityLogRow[]>`

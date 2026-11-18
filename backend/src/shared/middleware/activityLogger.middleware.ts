@@ -229,6 +229,7 @@ export const activityLoggerMiddleware = (req: Request, res: Response, next: Next
   }
 
   res.on("finish", () => {
+    if (res.locals.websiteActivityHandled) return;
     if (res.statusCode < 200 || res.statusCode >= 300) return;
 
     const madrasaId = req.tenant?.madrasa_id;

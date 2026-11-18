@@ -1,3 +1,4 @@
+import { profileSectionClass, profileHeadingClass, profileValueClass } from "./profileStyles";
 import Field from "./Field";
 import { useText } from "@madrasha/shared-ui/src/i18n";
 import { admissionText } from "../admission/admission.text";
@@ -21,10 +22,10 @@ const AddressInfoProfile = ({
   };
 
   return (
-    <div className="bg-white shadow-lg p-6 rounded-xl border mt-6 dark:bg-slate-900 dark:border-slate-700">
-      <h2 className="text-xl mb-4 dark:text-slate-100">{t.addressInfo}</h2>
+    <div className={profileSectionClass}>
+      <h2 className={profileHeadingClass}>{t.addressInfo}</h2>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-5">
         {isEditMode ? (
           <AddressCascadeFields
             values={{
@@ -40,19 +41,19 @@ const AddressInfoProfile = ({
           <>
             <div className="flex flex-col">
               <label className="text-sm mb-1 dark:text-slate-300">{pt.addrDivision}</label>
-              <p className="border rounded-lg px-3 py-2 bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              <p className={profileValueClass}>
                 {student.division || pt.notAvailable}
               </p>
             </div>
             <div className="flex flex-col">
               <label className="text-sm mb-1 dark:text-slate-300">{pt.district}</label>
-              <p className="border rounded-lg px-3 py-2 bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              <p className={profileValueClass}>
                 {student.district || pt.notAvailable}
               </p>
             </div>
             <div className="flex flex-col">
               <label className="text-sm mb-1 dark:text-slate-300">{pt.thana}</label>
-              <p className="border rounded-lg px-3 py-2 bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              <p className={profileValueClass}>
                 {student.thana || pt.notAvailable}
               </p>
             </div>

@@ -31,32 +31,40 @@ export const studentPath = (
 ) => `/students/${studentRef(s)}${suffix}`;
 
 /** URL-এর `:id` প্যারাম (রেজি. নং বা `a-<id>`) থেকে আসল student id বের করে। */
-export const useStudentIdParam = (): string | undefined => {
+export const useStudentRoute = () => {
   const { id: ref } = useParams();
-  const [id, setId] = useState<string | undefined>(undefined);
+  const [result, setResult] = useState<{ ref?: string; id?: string; resolved: boolean }>({ resolved: false });
 
   useEffect(() => {
-    setId(undefined);
-    if (!ref) return;
+    setResult({ ref, resolved: false });
+    if (!ref) {
+      setResult({ ref, resolved: true });
+      return;
+    }
 
     const applicant = /^a-(\d+)$/.exec(ref);
     if (applicant) {
-      setId(applicant[1]);
+      setResult({ ref, id: applicant[1], resolved: true });
       return;
     }
 
     let cancelled = false;
     cachedGet(`/students/by-registration/${encodeURIComponent(ref)}`)
       .then((res) => {
-        if (!cancelled && res.data?.data?.id) setId(String(res.data.data.id));
+        if (!cancelled) setResult({ ref, id: res.data?.data?.id ? String(res.data.data.id) : undefined, resolved: true });
       })
       .catch(() => {
-        if (!cancelled) useToastStore.getState().show(getText(studentsText).regNotFound, "error");
+        if (!cancelled) {
+          setResult({ ref, resolved: true });
+          useToastStore.getState().show(getText(studentsText).regNotFound, "error");
+        }
       });
     return () => {
       cancelled = true;
     };
   }, [ref]);
 
-  return id;
+  return result.ref === ref ? result : { ref, id: undefined, resolved: false };
 };
+
+export const useStudentIdParam = (): string | undefined => useStudentRoute().id;

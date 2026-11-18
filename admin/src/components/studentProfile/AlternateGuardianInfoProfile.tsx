@@ -1,3 +1,4 @@
+import { profileSectionClass, profileHeadingClass } from "./profileStyles";
 import Field from "./Field";
 import { useText, commonText, useIsMadrasa } from "@madrasha/shared-ui/src/i18n";
 import { admissionText } from "../admission/admission.text";
@@ -15,10 +16,10 @@ const AlternateGuardianInfoProfile = ({
   const c = useText(commonText);
   const isMadrasa = useIsMadrasa();
   return (
-    <div className="bg-white shadow-lg p-6 rounded-xl border mt-6 dark:bg-slate-900 dark:border-slate-700">
-      <h2 className="text-xl mb-4 dark:text-slate-100">{pt.altGuardianInfo}</h2>
+    <div className={profileSectionClass}>
+      <h2 className={profileHeadingClass}>{pt.altGuardianInfo}</h2>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-5">
         <Field
           label={t.guardianNameBn}
           name="alt_guardian_name"

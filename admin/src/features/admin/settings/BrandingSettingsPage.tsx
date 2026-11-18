@@ -20,7 +20,6 @@ import SectionCard from "../../../components/settings/SectionCard";
 import InlineTextField from "../../../components/settings/InlineTextField";
 import InlineListField from "../../../components/settings/InlineListField";
 import InlineImageField from "../../../components/settings/InlineImageField";
-import InlineSocialLinksField from "../../../components/settings/InlineSocialLinksField";
 import { ToggleSwitch } from "../../../components/settings/ToggleSwitch";
 import {
   deleteBrandingImage,
@@ -39,6 +38,7 @@ import BrandIconPreview, { type BrandIconPreviewItem } from "@madrasha/shared-ui
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { getText, useText } from "@madrasha/shared-ui/src/i18n";
 import { brandingText } from "./branding.text";
+import WebsiteContactSettings from "./WebsiteContactSettings";
 
 // Small shared row: label + live value chip + range slider. Used for every
 // font-size/logo-size/height knob below - only fires onCommit (a save) on
@@ -396,13 +396,6 @@ export default function BrandingSettingsPage({ section = "branding" }: { section
         </div>
       </SectionCard>
 
-      <SectionCard
-        title={t.socialLinks}
-        hint={t.socialLinksHint}
-      >
-        <InlineSocialLinksField values={socialLinks} onSave={(v) => patchBranding({ social_links: v })} />
-      </SectionCard>
-
       <SectionCard title={t.logo}>
         <InlineImageField
           label={t.logo}
@@ -419,6 +412,7 @@ export default function BrandingSettingsPage({ section = "branding" }: { section
           note={getText(brandingText).iconPreviewNote}
         />
       </SectionCard>
+      <WebsiteContactSettings />
         </>
       )}
 
