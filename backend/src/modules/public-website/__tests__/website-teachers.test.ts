@@ -25,7 +25,7 @@ describe("public website teachers", () => {
     expect(findMany).toHaveBeenCalledWith({
       where: { madrasaId: 16, deletedAt: null },
       select: { id: true, nameBn: true, designation: true },
-      orderBy: { id: "desc" },
+      orderBy: [{ registrationNo: "asc" }, { id: "asc" }],
       take: PUBLIC_TEACHERS_LIMIT,
     });
   });

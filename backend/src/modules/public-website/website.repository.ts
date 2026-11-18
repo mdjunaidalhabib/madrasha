@@ -81,7 +81,7 @@ export class WebsiteRepository {
       const rows = await prisma.teacher.findMany({
         where: { madrasaId, deletedAt: null },
         select: { id: true, nameBn: true, designation: true },
-        orderBy: { id: "desc" },
+        orderBy: [{ registrationNo: "asc" }, { id: "asc" }],
         take: PUBLIC_TEACHERS_LIMIT,
       });
       return rows.map((row) => ({
