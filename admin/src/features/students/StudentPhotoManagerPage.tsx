@@ -7,6 +7,7 @@ import { photoManagerPageText } from "./StudentPhotoManagerPage.text";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
+import PeoplePagination, { usePeoplePagination } from "./photo-manager/PeoplePagination";
 import PhotoCard from "./photo-manager/PhotoCard";
 import SeriesCaptureModal from "./photo-manager/SeriesCaptureModal";
 import BulkPhotoUploadModal from "./photo-manager/BulkPhotoUploadModal";
@@ -27,8 +28,6 @@ import {
 } from "./photo-manager/photoManager";
 
 type PhotoFilter = "" | "missing" | "has";
-
-const PAGE_CHUNK = 60;
 
 /**
  * ছবি আপলোড - a page whose only job is setting photos. Filter by বিভাগ/শ্রেণি,
@@ -51,7 +50,6 @@ export default function StudentPhotoManagerPage() {
   }, [initialPhoto]);
 
   const [statuses, setStatuses] = useState<Record<string, CardStatus>>({});
-  const [visibleCount, setVisibleCount] = useState(PAGE_CHUNK);
   const [cameraFor, setCameraFor] = useState<PhotoPerson | null>(null);
   const [seriesQueue, setSeriesQueue] = useState<PhotoPerson[] | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -70,7 +68,10 @@ export default function StudentPhotoManagerPage() {
   const withPhoto = scoped.filter(hasPhoto).length;
   const missingList = useMemo(() => filtered.filter((p) => !hasPhoto(p)), [filtered]);
 
-  useEffect(() => setVisibleCount(PAGE_CHUNK), [tab, dir.division, dir.classId, dir.search, photoFilter]);
+  const pagination = usePeoplePagination(
+    filtered.length,
+    JSON.stringify([tab, dir.division, dir.classId, dir.search, photoFilter]),
+  );
 
   useEffect(() => {
     const timers = savedTimers.current;
@@ -223,7 +224,7 @@ export default function StudentPhotoManagerPage() {
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-              {filtered.slice(0, visibleCount).map((p) => (
+              {filtered.slice(pagination.start, pagination.end).map((p) => (
                 <PhotoCard
                   key={p.id}
                   person={p}
@@ -235,22 +236,10 @@ export default function StudentPhotoManagerPage() {
                 />
               ))}
             </div>
-            {filtered.length > visibleCount && (
-              <div className="flex flex-col items-center gap-1 py-2">
-                <button
-                  type="button"
-                  onClick={() => setVisibleCount((c) => c + PAGE_CHUNK)}
-                  className="h-10 rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                >
-                  {tx.showMore}
-                </button>
-                <span className="text-xs text-slate-400">
-                  {tx.showingOf(toBanglaDigits(visibleCount), toBanglaDigits(filtered.length))}
-                </span>
-              </div>
-            )}
+
           </>
         )}
+        {!loading && <PeoplePagination pagination={pagination} />}
       </div>
 
       <CameraCaptureModal

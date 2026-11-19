@@ -8,6 +8,7 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { filterByScript } from "@madrasha/shared-ui/src/components/ui/ScriptInput";
+import PeoplePagination, { usePeoplePagination } from "./photo-manager/PeoplePagination";
 import { usePeopleDirectory } from "./photo-manager/usePeopleDirectory";
 import { downloadNamesTemplate, langOfField, parseNamesFile } from "./photo-manager/namesExcel";
 import {
@@ -34,7 +35,6 @@ import {
 type Completeness = "" | "incomplete" | "complete";
 type Drafts = Record<string, Record<string, string>>;
 
-const CHUNK = 100;
 const rowKey = (tab: PeopleTab, id: number) => `${tab}:${id}`;
 
 function useIsNarrow() {
@@ -283,7 +283,6 @@ export default function StudentNamesManagerPage() {
   // Opens read-only; the pencil button switches the whole grid to inputs.
   const [editing, setEditing] = useState(false);
   const editable = tabCanEdit && editing;
-  const [visibleCount, setVisibleCount] = useState(CHUNK);
   const inputRefs = useRef(new Map<string, HTMLInputElement>());
   const savedTimers = useRef<Record<string, number>>({});
 
@@ -314,7 +313,11 @@ export default function StudentNamesManagerPage() {
   const total = scoped.length;
   const completeCount = useMemo(() => scoped.filter(isComplete).length, [scoped, isComplete]);
 
-  useEffect(() => setVisibleCount(CHUNK), [tab, dir.division, dir.classId, dir.search, completeness, owner]);
+  const pagination = usePeoplePagination(
+    filtered.length,
+    JSON.stringify([tab, dir.division, dir.classId, dir.search, completeness, owner]),
+  );
+  const { currentPage, pageSize, setPage } = pagination;
 
   /* ---------------- drafts ---------------- */
 
@@ -424,18 +427,19 @@ export default function StudentNamesManagerPage() {
           el.select();
         }
       };
-      if (rowIdx >= visibleCount) {
-        setVisibleCount((c) => Math.max(c, rowIdx + CHUNK));
+      const targetPage = Math.floor(rowIdx / pageSize) + 1;
+      if (targetPage !== currentPage) {
+        setPage(targetPage);
         window.setTimeout(go, 0);
       } else go();
     },
-    [filtered.length, visibleCount],
+    [filtered.length, currentPage, pageSize, setPage],
   );
 
   // Handlers read the latest state through a ref so they stay referentially
   // stable - otherwise every keystroke would re-render every memoized row.
-  const live = useRef({ filtered, tab, owner, visibleCount, applyEdits, focusCell, shownLangs });
-  live.current = { filtered, tab, owner, visibleCount, applyEdits, focusCell, shownLangs };
+  const live = useRef({ filtered, tab, owner, applyEdits, focusCell, shownLangs });
+  live.current = { filtered, tab, owner, applyEdits, focusCell, shownLangs };
 
   const handlers: CellHandlers = useMemo(
     () => ({
@@ -473,7 +477,7 @@ export default function StudentNamesManagerPage() {
         const text = e.clipboardData.getData("text");
         if (!/[\n\t]/.test(text)) return; // single value: normal paste
         e.preventDefault();
-        const { filtered, tab, owner, applyEdits, visibleCount, shownLangs } = live.current;
+        const { filtered, tab, owner, applyEdits, shownLangs } = live.current;
         const startCol = shownLangs.indexOf(NAME_LANGS[col]);
         const lines = text.replace(/\r/g, "").split("\n");
         if (lines[lines.length - 1] === "") lines.pop();
@@ -491,8 +495,6 @@ export default function StudentNamesManagerPage() {
           });
         });
         applyEdits(edits);
-        const last = Math.min(rowIdx + lines.length, filtered.length) - 1;
-        if (last >= visibleCount) setVisibleCount(last + 1);
         useToastStore
           .getState()
           .show(getText(namesManagerText).pastedRows(localizeDigits(Math.min(lines.length, filtered.length - rowIdx), getLang())), "success");
@@ -655,7 +657,7 @@ export default function StudentNamesManagerPage() {
 
   /* ---------------- render ---------------- */
 
-  const visible = filtered.slice(0, visibleCount);
+  const visible = filtered.slice(pagination.start, pagination.end);
   const layout = narrow ? "card" : "table";
   const idLabelOf = (p: DirectoryPerson) =>
     tab === "students"
@@ -668,7 +670,8 @@ export default function StudentNamesManagerPage() {
         ? t.reg(toBanglaDigits(p.regNo))
         : "—";
 
-  const rows = visible.map((p, rowIdx) => {
+  const rows = visible.map((p, index) => {
+    const rowIdx = pagination.start + index;
     const key = rowKey(tab, p.id);
     const draft = drafts[key];
     const values = fields.map((f) => valueOf(p, f)) as [string, string, string];
@@ -841,20 +844,7 @@ export default function StudentNamesManagerPage() {
           </div>
         )}
 
-        {filtered.length > visibleCount && (
-          <div className="flex flex-col items-center gap-1 py-1">
-            <button
-              type="button"
-              onClick={() => setVisibleCount((c) => c + CHUNK)}
-              className="h-10 rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-            >
-              {t.showMore}
-            </button>
-            <span className="text-xs text-slate-400">
-              {t.showingOf(toBanglaDigits(visibleCount), toBanglaDigits(filtered.length))}
-            </span>
-          </div>
-        )}
+        {!loading && <PeoplePagination pagination={pagination} />}
 
         {/* Sticky save bar */}
         {(dirtyCount > 0 || saving) && (
