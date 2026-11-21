@@ -72,10 +72,10 @@ export default function LanguageSwitcher({
         aria-controls={open ? menuId : undefined}
         aria-label={`${label}: ${LANGUAGE_LABELS[lang]}`}
         title="বাংলা / English"
-        className={`inline-flex h-10 items-center gap-2 rounded-full border border-teal-200 bg-white py-1 pe-3 ps-1 text-sm font-medium text-teal-800 motion-safe:transition-colors hover:border-teal-400 hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 focus-visible:ring-offset-2 ${open ? "ring-2 ring-teal-500/10" : ""}`}
+        className={`inline-flex h-8 items-center gap-1.5 rounded-full border border-teal-200 bg-white py-1 pe-2.5 ps-1 text-xs font-medium text-teal-800 motion-safe:transition-colors hover:border-teal-400 hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 focus-visible:ring-offset-2 ${open ? "ring-2 ring-teal-500/10" : ""}`}
       >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-700">
-          <Globe size={17} strokeWidth={1.6} aria-hidden="true" />
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-700">
+          <Globe size={14} strokeWidth={1.6} aria-hidden="true" />
         </span>
         <span lang={lang}>{LANGUAGE_LABELS[lang]}</span>
         <ChevronDown size={12} aria-hidden="true" className={`text-teal-600 motion-safe:transition-transform ${open ? "rotate-180" : ""}`} />

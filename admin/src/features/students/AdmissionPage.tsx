@@ -787,11 +787,11 @@ const AdmissionPage = () => {
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         <fieldset disabled={loading} className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
           <legend className="px-2 font-semibold">{t.studentType}</legend>
-          <div className="flex flex-wrap gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:flex">
             {(["new", "existing"] as const).map((mode) => (
-              <label key={mode} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-3 text-sm font-normal ${admissionMode === mode ? "border-blue-600 bg-blue-50 text-blue-800 dark:bg-blue-950 dark:text-blue-200" : "border-gray-300 dark:border-slate-600"}`}>
-                <input type="radio" name="studentType" value={mode} checked={admissionMode === mode} onChange={() => changeAdmissionMode(mode)} />
-                {mode === "new" ? t.newStudent : t.existingStudent}
+              <label key={mode} className={`flex min-w-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-sm font-normal sm:gap-2 sm:px-3 ${admissionMode === mode ? "border-blue-600 bg-blue-50 text-blue-800 dark:bg-blue-950 dark:text-blue-200" : "border-gray-300 dark:border-slate-600"}`}>
+                <input className="shrink-0" type="radio" name="studentType" value={mode} checked={admissionMode === mode} onChange={() => changeAdmissionMode(mode)} />
+                <span className="min-w-0 leading-snug">{mode === "new" ? t.newStudent : t.existingStudent}</span>
               </label>
             ))}
           </div>
