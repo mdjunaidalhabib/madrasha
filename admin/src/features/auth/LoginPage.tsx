@@ -1,3 +1,5 @@
+import { useAdminDomainStore } from "../../store/adminDomainStore";
+import AdminDomainBrand from "../../components/AdminDomainBrand";
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
@@ -23,6 +25,7 @@ function readTenantBlockFromResponse(err: any): TenantBlockInfo | null {
 
 export default function LoginPage() {
   useForceLightTheme();
+  const institution = useAdminDomainStore((s) => s.institution);
 
   const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
   // Which saved account is picked for the password-only quick login -
@@ -55,7 +58,7 @@ export default function LoginPage() {
   const t = useText(authText);
 
   useEffect(() => {
-    setSavedAccounts(getSavedAccounts());
+    setSavedAccounts(getSavedAccounts().filter((account) => !institution || account.madrasaSlug === institution.slug));
 
     try {
       const stashed = window.sessionStorage.getItem(TENANT_BLOCK_STORAGE_KEY);
@@ -71,7 +74,7 @@ export default function LoginPage() {
   const hasSavedAccounts = savedAccounts.length > 0;
   const showingList = hasSavedAccounts && !showManualForm && !activeAccount;
 
-  const isFilled = !!madrasaCode.trim() && !!email.trim() && !!password;
+  const isFilled = !!(institution?.slug || madrasaCode.trim()) && !!email.trim() && !!password;
 
   const doLogin = async (
     slug: string,
@@ -111,7 +114,7 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      const trimmedCode = madrasaCode.trim();
+      const trimmedCode = institution?.slug || madrasaCode.trim();
       await doLogin(trimmedCode.toLowerCase(), email.trim(), password, trimmedCode);
     } catch (err) {
       const block = readTenantBlockFromResponse(err);
@@ -179,6 +182,7 @@ export default function LoginPage() {
         <LanguageSwitcher />
       </div>
       <div className="w-full max-w-sm rounded bg-white p-6 shadow space-y-4">
+        <AdminDomainBrand />
         {!tenantBlock && <h2 className="text-xl font-bold">{t.loginTitle}</h2>}
 
         {tenantBlock && (
@@ -195,7 +199,7 @@ export default function LoginPage() {
 
             <SavedAccountsList
               accounts={savedAccounts}
-              onAccountsChange={setSavedAccounts}
+              onAccountsChange={(accounts) => setSavedAccounts(accounts.filter((account) => !institution || account.madrasaSlug === institution.slug))}
               onSelect={pickAccount}
             />
 
@@ -279,14 +283,14 @@ export default function LoginPage() {
               </button>
             )}
 
-            <Input
+            {!institution && <Input
               type="text"
               autoComplete="organization"
               placeholder={t.institutionCode}
               value={madrasaCode}
               onChange={(e) => setMadrasaCode(e.target.value)}
               invalid={attempted && !madrasaCode.trim()}
-            />
+            />}
 
             <Input
               type="email"

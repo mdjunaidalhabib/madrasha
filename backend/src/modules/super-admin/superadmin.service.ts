@@ -128,6 +128,7 @@ export class SuperAdminService {
         institution_type: m.institutionType,
         default_language: resolveDefaultLanguage(m.institutionType, m.defaultLanguage),
         custom_domain: m.customDomain,
+        admin_domain: m.adminDomain,
         plan_id: sub?.planId ?? null,
         plan_name: sub?.plan.name ?? null,
         start_date: sub?.startDate ?? null,
@@ -549,6 +550,20 @@ export class SuperAdminService {
       }
     }
 
+    let normalizedAdminDomain: string | null | undefined;
+    if (dto.admin_domain !== undefined) {
+      if (dto.admin_domain !== null && typeof dto.admin_domain !== "string") throw new InvalidCustomDomainError();
+      normalizedAdminDomain = dto.admin_domain?.trim() ? normalizeHost(dto.admin_domain) : null;
+      if (dto.admin_domain?.trim() && !normalizedAdminDomain) throw new InvalidCustomDomainError();
+      if (normalizedAdminDomain && (normalizedAdminDomain.length > 190 || normalizedAdminDomain.split(".").some((label) => !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label)))) throw new InvalidCustomDomainError();
+      if (normalizedAdminDomain && normalizedAdminDomain === normalizedCustomDomain) {
+        throw new BadRequestError(t({ bn: "ওয়েবসাইট ও অ্যাডমিন প্যানেলের জন্য আলাদা ডোমেইন দিন।", en: "Use separate domains for the website and admin panel." }));
+      }
+      if (normalizedAdminDomain && await this.repository.findAdminDomainConflict(normalizedAdminDomain, id)) {
+        throw new CustomDomainConflictError();
+      }
+    }
+
     // Only touch divisions/modules/classes/books when the client actually
     // sent them (edit form) — undefined means "not part of this update".
     const divisionIds = dto.divisions !== undefined ? cleanNumberArray(dto.divisions) : null;
@@ -573,6 +588,7 @@ export class SuperAdminService {
         ...(dto.is_active === undefined ? {} : { isActive: Number(dto.is_active) }),
         ...(dto.website_status ? { websiteStatus: dto.website_status as WebsiteStatus } : {}),
         ...(normalizedCustomDomain === undefined ? {} : { customDomain: normalizedCustomDomain }),
+        ...(normalizedAdminDomain === undefined ? {} : { adminDomain: normalizedAdminDomain }),
         ...(parseInstitutionType(dto.institution_type)
           ? { institutionType: parseInstitutionType(dto.institution_type) }
           : {}),
@@ -661,6 +677,7 @@ export class SuperAdminService {
       institution_type: madrasa.institutionType,
       default_language: madrasa.defaultLanguage ?? null,
       custom_domain: madrasa.customDomain,
+      admin_domain: madrasa.adminDomain,
       subscription: await settingsService.getMyPlan(id),
       plan_id: madrasa.subscriptions[0]?.planId ?? null,
       start_date: madrasa.subscriptions[0]?.startDate ?? null,

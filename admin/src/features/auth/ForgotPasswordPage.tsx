@@ -1,3 +1,5 @@
+import { useAdminDomainStore } from "../../store/adminDomainStore";
+import AdminDomainBrand from "../../components/AdminDomainBrand";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
@@ -8,6 +10,7 @@ import { LanguageSwitcher, useText } from "@madrasha/shared-ui/src/i18n";
 import { authText } from "./auth.text";
 
 export default function ForgotPasswordPage() {
+  const institution = useAdminDomainStore((s) => s.institution);
   const [madrasaCode, setMadrasaCode] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,7 +24,7 @@ export default function ForgotPasswordPage() {
   const t = useText(authText);
 
   const handleSubmit = async () => {
-    if (!madrasaCode.trim()) {
+    if (!institution && !madrasaCode.trim()) {
       useToastStore.getState().show(t.enterInstitutionCode, "error");
       return;
     }
@@ -32,7 +35,7 @@ export default function ForgotPasswordPage() {
 
     try {
       setLoading(true);
-      const slug = madrasaCode.trim().toLowerCase();
+      const slug = institution?.slug || madrasaCode.trim().toLowerCase();
       const res = await api.post(
         "/auth/forgot-password",
         { email: email.trim() },
@@ -54,6 +57,7 @@ export default function ForgotPasswordPage() {
         <LanguageSwitcher />
       </div>
       <div className="w-full max-w-sm space-y-4 rounded bg-white p-6 shadow dark:bg-slate-900">
+        <AdminDomainBrand />
         <h2 className="text-xl font-bold dark:text-slate-100">{t.forgotPassword}</h2>
         <p className="text-xs text-gray-500 dark:text-slate-400">
           {t.forgotHint}
@@ -74,7 +78,7 @@ export default function ForgotPasswordPage() {
                   type="button"
                   onClick={() =>
                     nav(
-                      `/reset-password?token=${devResetToken}&slug=${madrasaCode.trim().toLowerCase()}`,
+                      `/reset-password?token=${devResetToken}&slug=${institution?.slug || madrasaCode.trim().toLowerCase()}`,
                     )
                   }
                   className="break-all text-start text-blue-600 underline dark:text-blue-400"
@@ -94,11 +98,11 @@ export default function ForgotPasswordPage() {
           </div>
         ) : (
           <>
-            <Input
+            {!institution && <Input
               placeholder={t.institutionCode}
               value={madrasaCode}
               onChange={(e) => setMadrasaCode(e.target.value)}
-            />
+            />}
             <Input
               placeholder={t.email}
               value={email}

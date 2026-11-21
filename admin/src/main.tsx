@@ -11,25 +11,26 @@ import { setupChunkReloadOnPreloadError } from "@madrasha/shared-ui/src/utils/ch
 import { installReportFontFace } from "@madrasha/shared-ui/src/utils/reportFontFace";
 import InstallPrompt from "@madrasha/shared-ui/src/pwa/InstallPrompt";
 import { setupPwa } from "@madrasha/shared-ui/src/pwa/pwa";
-import { setupBrandIcons } from "./utils/brandIcons";
+import AdminDomainGate from "./app/AdminDomainGate";
 
 setupChunkReloadOnPreloadError();
 installReportFontFace();
 setupPwa();
-setupBrandIcons();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
-      <NetworkStatus />
-      <Toaster />
-      <ConfirmDialog />
-      <InstallPrompt
-        appName="EMS Admin"
-        storageKey="ems-admin:pwa-dismissed-at"
-        hideOnPaths={/\/print\//}
-      />
+      <AdminDomainGate>
+        <App />
+        <NetworkStatus />
+        <Toaster />
+        <ConfirmDialog />
+        <InstallPrompt
+          appName="EMS Admin"
+          storageKey="ems-admin:pwa-dismissed-at"
+          hideOnPaths={/\/print\//}
+        />
+      </AdminDomainGate>
     </ErrorBoundary>
   </React.StrictMode>,
 );

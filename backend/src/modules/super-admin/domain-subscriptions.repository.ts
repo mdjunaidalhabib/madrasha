@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
+import { BadRequestError } from "../../shared/errors";
+import { t } from "../../shared/i18n";
 
 export class DomainSubscriptionsRepository {
   transaction<T>(fn: (tx: TransactionClient) => Promise<T>) {
@@ -28,7 +30,10 @@ export class DomainSubscriptionsRepository {
   ) {
     return tx.madrasaDomainSubscription.update({ where: { id }, data });
   }
-  connect(tx: TransactionClient, madrasaId: number, domain: string) {
+  async connect(tx: TransactionClient, madrasaId: number, domain: string) {
+    if (await tx.madrasa.findFirst({ where: { adminDomain: domain }, select: { id: true } })) {
+      throw new BadRequestError(t({ bn: "এই ডোমেইনটি অ্যাডমিন প্যানেলের জন্য ব্যবহৃত হচ্ছে।", en: "This domain is already used by an admin panel." }));
+    }
     return tx.madrasa.update({ where: { id: madrasaId }, data: { customDomain: domain } });
   }
   disconnect(tx: TransactionClient, madrasaId: number, domain: string) {

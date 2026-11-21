@@ -18,6 +18,9 @@ export default defineConfig(({ mode }) => {
       panelPerformance("admin"),
       {
         name: "ems-social-preview",
+        generateBundle() {
+          this.emitFile({ type: "asset", fileName: "admin-config.json", source: JSON.stringify({ apiBase }) });
+        },
         transformIndexHtml(html) {
           // Link-preview crawlers read HTML without running the application.
           const escaped = socialImageUrl
@@ -30,6 +33,7 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       port,
+      proxy: { "/api": { target: apiBase.replace(/\/api$/, ""), changeOrigin: true } },
       strictPort: false, // পোর্ট বিজি থাকলে ভাইট অটোমেটিক পরের ফ্রি পোর্ট ব্যবহার করবে
     },
     preview: {

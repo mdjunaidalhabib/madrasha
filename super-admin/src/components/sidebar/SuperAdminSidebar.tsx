@@ -1,13 +1,13 @@
-﻿import { prefetchSuperAdminRoute } from "../../app/routePrefetch";
+import { prefetchSuperAdminRoute } from "../../app/routePrefetch";
+import "./super-admin-sidebar.css";
 import { ReactElement, useEffect, useId, useMemo, useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import AdminSidebarShell from "@madrasha/shared-ui/src/components/shell/AdminSidebarShell";
-import { useAdminAuthStore } from "../../store/adminAuthStore";
-import { commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { useText } from "@madrasha/shared-ui/src/i18n";
 import { shellText, type NavGroupKey, type NavLabelKey } from "./shell.text";
 import {
   LayoutDashboard, School, Trash2, CreditCard, Globe2, FileStack,
-  Settings, Layers, Wallet, LogOut, PanelLeftClose, PanelLeftOpen,
+  Settings, Layers, Wallet, PanelLeftClose, PanelLeftOpen,
   Send, Mail, ClipboardList, Tags, BarChart3, Link2, Megaphone,
   ChevronDown, ShieldCheck, X,
 } from "lucide-react";
@@ -67,7 +67,7 @@ const GROUP_ICONS: Partial<Record<NavGroupKey, ReactElement>> = {
 const focusClass = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900";
 
 function navItemClass(isActive: boolean, collapsed: boolean, child = false) {
-  return `group flex min-h-11 items-center rounded-xl text-sm transition-colors ${focusClass} ${
+  return `sa-menu-link ${isActive ? "sa-menu-link-active" : ""} group flex min-h-11 items-center rounded-xl text-sm transition-colors ${focusClass} ${
     collapsed ? "justify-center px-2" : "gap-3 px-3"
   } ${child ? "min-h-10" : "font-medium"} ${
     isActive
@@ -78,10 +78,6 @@ function navItemClass(isActive: boolean, collapsed: boolean, child = false) {
 
 export default function SuperAdminSidebar({ collapsed, onToggleCollapse, closeSidebar }: SuperAdminSidebarProps) {
   const t = useText(shellText);
-  const c = useText(commonText);
-  const admin = useAdminAuthStore((s) => s.admin);
-  const logout = useAdminAuthStore((s) => s.logout);
-  const navigate = useNavigate();
   const location = useLocation();
   const submenuId = useId();
   const groups = useMemo(() => groupNavItems(SUPER_ADMIN_NAV_ITEMS), []);
@@ -97,11 +93,6 @@ export default function SuperAdminSidebar({ collapsed, onToggleCollapse, closeSi
     setOpenGroup(activeGroup);
   }, [activeGroup, location.pathname]);
 
-  const handleLogout = () => {
-    closeSidebar?.();
-    logout();
-    navigate("/login", { replace: true });
-  };
 
   const renderLink = (item: NavItem, child = false) => (
     <NavLink
@@ -115,20 +106,20 @@ export default function SuperAdminSidebar({ collapsed, onToggleCollapse, closeSi
       aria-label={collapsed ? t.nav[item.label] : undefined}
       className={({ isActive }) => navItemClass(isActive, collapsed, child)}
     >
-      <span aria-hidden="true" className="shrink-0">{item.icon}</span>
-      {!collapsed && <span className="min-w-0 flex-1 leading-5">{t.nav[item.label]}</span>}
+      <span aria-hidden="true" className="sa-menu-icon shrink-0">{item.icon}</span>
+      {!collapsed && <span className="min-w-0 flex-1 leading-6">{t.nav[item.label]}</span>}
     </NavLink>
   );
 
   const header = (
-    <div className={`flex min-h-20 shrink-0 items-center border-b border-slate-100 dark:border-slate-800 ${collapsed ? "flex-col gap-2 px-2 py-3" : "gap-3 px-4 py-5"}`}>
-      <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm">
+    <div className={`sa-menu-header flex min-h-20 shrink-0 items-center border-b border-slate-100 dark:border-slate-800 ${collapsed ? "flex-col gap-2 px-2 py-3" : "gap-3 px-4 py-5"}`}>
+      <div aria-hidden="true" className="sa-menu-brand flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm">
         <ShieldCheck size={22} />
       </div>
       {!collapsed && (
         <div className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-slate-900 dark:text-slate-100">{t.superAdmin}</span>
-          <span className="mt-1 block text-[11px] leading-4 text-slate-500 dark:text-slate-400">{t.controlPanel}</span>
+          <span className="block text-base font-semibold text-white">{t.superAdmin}</span>
+          <span className="mt-1 block text-xs leading-5 text-slate-300">{t.controlPanel}</span>
         </div>
       )}
       {closeSidebar && (
@@ -148,40 +139,15 @@ export default function SuperAdminSidebar({ collapsed, onToggleCollapse, closeSi
     </div>
   );
 
-  const footer = (
-    <div className="space-y-2 border-t border-slate-100 p-3 dark:border-slate-800">
-      {!collapsed && admin && (
-        <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60">
-          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
-            {admin.name.trim().charAt(0).toLocaleUpperCase()}
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100" title={admin.name}>{admin.name}</p>
-            <p className="truncate text-xs text-slate-500 dark:text-slate-400" title={admin.email}>{admin.email}</p>
-          </div>
-        </div>
-      )}
-      <button
-        type="button"
-        onClick={handleLogout}
-        title={c.logout}
-        aria-label={c.logout}
-        className={`flex min-h-10 w-full items-center rounded-xl text-sm font-medium text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 ${collapsed ? "justify-center" : "gap-3 px-3"} ${focusClass}`}
-      >
-        <LogOut size={18} aria-hidden="true" />
-        {!collapsed && <span>{c.logout}</span>}
-      </button>
-    </div>
-  );
 
   return (
-    <AdminSidebarShell collapsed={collapsed} expandedWidth="w-64" header={header} footer={footer}>
-      {!collapsed && <p className="px-3 pb-1 pt-3 text-[11px] font-semibold tracking-wide text-slate-400 dark:text-slate-500">{t.navigation}</p>}
+    <AdminSidebarShell className={`sa-sidebar ${collapsed ? "sa-sidebar-collapsed" : ""}`} collapsed={collapsed} expandedWidth="w-64" header={header}>
+      {!collapsed && <p className="px-3 pb-1 pt-3 text-xs font-semibold tracking-wide text-slate-400 dark:text-slate-500">{t.navigation}</p>}
       {groups.map(([group, items], index) => {
         const isOpen = !collapsed && openGroup === group;
         const isActive = activeGroup === group;
         return (
-          <div key={group} className={index > 0 ? "border-t border-slate-100 pt-2 dark:border-slate-800" : ""}>
+          <div key={group} data-menu-group={group} className={index > 0 ? "border-t border-slate-100 pt-2 dark:border-slate-800" : ""}>
             {collapsed || items.length === 1 ? (
               <div className="space-y-1">{items.map((item) => renderLink(item))}</div>
             ) : (
@@ -191,10 +157,10 @@ export default function SuperAdminSidebar({ collapsed, onToggleCollapse, closeSi
                   aria-expanded={isOpen}
                   aria-controls={`${submenuId}-${group}`}
                   onClick={() => setOpenGroup((prev) => prev === group ? null : group)}
-                  className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors ${focusClass} ${isActive ? "text-indigo-700 dark:text-indigo-300" : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}
+                  className={`sa-menu-group flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors ${focusClass} ${isActive ? "text-indigo-700 dark:text-indigo-300" : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}
                 >
-                  <span aria-hidden="true" className="shrink-0">{GROUP_ICONS[group]}</span>
-                  <span className="flex-1 text-start leading-5">{t.groups[group]}</span>
+                  <span aria-hidden="true" className="sa-menu-icon shrink-0">{GROUP_ICONS[group]}</span>
+                  <span className="flex-1 text-start leading-6">{t.groups[group]}</span>
                   <ChevronDown size={14} aria-hidden="true" className={`shrink-0 text-slate-400 transition-transform motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`} />
                 </button>
                 <div id={`${submenuId}-${group}`} hidden={!isOpen}>

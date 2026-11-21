@@ -1,3 +1,5 @@
+import { useAdminDomainStore } from "../../store/adminDomainStore";
+import AdminDomainBrand from "../../components/AdminDomainBrand";
 import { useEffect, useState, type ReactNode } from "react";
 import { CheckCircle2, ExternalLink, Mail, MapPin, Phone } from "lucide-react";
 import { FaWhatsapp, FaFacebook } from "react-icons/fa";
@@ -18,6 +20,11 @@ const rowIconClass =
 const displayHost = (url: string) => url.replace(/^https?:\/\//, "").replace(/\/$/, "");
 
 export default function HikmahItPage() {
+  const institution = useAdminDomainStore((s) => s.institution);
+  return institution ? <AdminDomainBrand /> : <VendorDetails />;
+}
+
+function VendorDetails() {
   const [promo, setPromo] = useState<VendorPromoPayload | null>(null);
   const t = useText(vendorText);
   const c = useText(commonText);

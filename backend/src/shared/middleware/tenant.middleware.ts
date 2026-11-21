@@ -4,6 +4,7 @@ import { logger } from "../logger/logger";
 import { t } from "../i18n";
 import { env } from "../config/env";
 import { getSubscriptionState, subscriptionSuspendedBody } from "../subscription/subscription-state";
+import { adminRequestHost } from "../utils/admin-domain.util";
 
 function normalizeSlug(value: unknown) {
   return String(value || "")
@@ -13,6 +14,15 @@ function normalizeSlug(value: unknown) {
 }
 
 async function getSlugFromRequest(req: Request) {
+  // A connected admin domain pins ALL tenant requests, including login,
+  // refresh and password recovery. Explicit headers cannot select another tenant.
+  const adminHost = adminRequestHost(req);
+  if (adminHost) {
+    const institution = await prisma.madrasa.findFirst({
+      where: { adminDomain: adminHost, deletedAt: null }, select: { slug: true },
+    });
+    if (institution) return institution.slug;
+  }
   // Path-based tenant mode: frontend sends this header from /:madrasaSlug/admin/*
   const headerSlug = normalizeSlug(req.headers["x-madrasa-slug"]);
   if (headerSlug) return headerSlug;

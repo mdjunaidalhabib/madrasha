@@ -1,3 +1,4 @@
+import { useAdminDomainStore } from "../store/adminDomainStore";
 import axios, { type AxiosRequestConfig, type AxiosResponse } from "axios";
 import { attachLanguageHeader, getLang, getText, localizeDigits } from "@madrasha/shared-ui/src/i18n";
 import { servicesText } from "./services.text";
@@ -113,6 +114,11 @@ api.interceptors.request.use((config) => {
     }
   }
 
+  const domainInstitution = useAdminDomainStore.getState().institution;
+  if (domainInstitution) {
+    config.baseURL = "/api";
+    config.headers["X-Madrasa-Slug"] = domainInstitution.slug;
+  }
   return config;
 });
 
@@ -183,7 +189,7 @@ api.interceptors.response.use(
       try {
         const tenantSlug = useAuthStore.getState().madrasaSlug;
         const refreshRes = await axios.post(
-          `${baseURL}/auth/refresh`,
+          `${useAdminDomainStore.getState().institution ? "/api" : baseURL}/auth/refresh`,
           {},
           { withCredentials: true, headers: tenantSlug ? { "X-Madrasa-Slug": tenantSlug } : {} },
         );

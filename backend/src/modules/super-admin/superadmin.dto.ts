@@ -34,6 +34,7 @@ export interface UpdateMadrasaRequestDto extends SubscriptionPurchaseDto {
   website_status?: string;
   /** Hostname only (no protocol/path), e.g. "www.example.com" - null/"" clears it. */
   custom_domain?: string | null;
+  admin_domain?: string | null;
   institution_type?: string;
   default_language?: string | null;
   plan_id?: number | string;

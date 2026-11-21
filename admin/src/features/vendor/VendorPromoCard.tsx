@@ -1,3 +1,4 @@
+import { useAdminDomainStore } from "../../store/adminDomainStore";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { BadgeCheck, ChevronRight, ExternalLink, GraduationCap, Sparkles, UserRound } from "lucide-react";
@@ -21,14 +22,16 @@ const rowTrailIconClass = "h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600";
 export default function VendorPromoCard() {
   const [promo, setPromo] = useState<VendorPromoPayload | null>(null);
   const t = useText(vendorText);
+  const institution = useAdminDomainStore((s) => s.institution);
 
   useEffect(() => {
+    if (institution) return;
     getVendorPromo()
       .then(setPromo)
       .catch(() => setPromo({ enabled: false }));
   }, []);
 
-  if (!promo?.enabled) return null;
+  if (institution || !promo?.enabled) return null;
 
   return (
     <Card className="overflow-hidden" padding="none">

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { resolveAdminDomain } from "./admin-domain";
 import { websiteService } from "./website.service";
 import { normalizeHost } from "../../shared/utils/host.util";
 import { BadRequestError } from "../../shared/errors";
@@ -65,6 +66,7 @@ router.get("/public/:slug/share", async (req, res, next) => {
 // prefix), but kept as its own top-level path on purpose so a real madrasa
 // slug can never collide with this literal route.
 router.get("/resolve-domain", resolveDomain);
+router.get("/resolve-admin-domain", resolveAdminDomain);
 router.get("/public/:slug", getPublicWebsite);
 router.get("/public/:slug/icon/:file", getPublicBrandIcon);
 router.post("/public/:slug/admission", submitAdmissionApplication);

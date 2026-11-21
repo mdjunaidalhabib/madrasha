@@ -1,3 +1,4 @@
+import { useAdminDomainStore } from "../../../store/adminDomainStore";
 import ResponsiveSettingsMenu from "../../../components/settings/ResponsiveSettingsMenu";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
@@ -44,12 +45,14 @@ const SETTINGS_NAV_ITEMS: {
 
 export default function SettingsLayout() {
   const { pathname } = useLocation();
+  const institution = useAdminDomainStore((s) => s.institution);
   const user = useAuthStore((s) => s.user);
   const permissions = useAuthStore((s) => s.permissions);
   const modules = useAuthStore((s) => s.modules);
   const t = useText(sidebarText);
 
   const visibleItems = SETTINGS_NAV_ITEMS.filter((item) => {
+    if (institution && item.key === "about") return false;
     if (item.module && !modules.includes(item.module)) return false;
     if (item.permission && !hasPermission(user, permissions, item.permission)) return false;
     return true;

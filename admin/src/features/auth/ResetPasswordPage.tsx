@@ -1,3 +1,5 @@
+import { useAdminDomainStore } from "../../store/adminDomainStore";
+import AdminDomainBrand from "../../components/AdminDomainBrand";
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
@@ -11,7 +13,8 @@ import { authText } from "./auth.text";
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") || "";
-  const slug = searchParams.get("slug") || "";
+  const institution = useAdminDomainStore((s) => s.institution);
+  const slug = institution?.slug || searchParams.get("slug") || "";
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -60,6 +63,7 @@ export default function ResetPasswordPage() {
         <LanguageSwitcher />
       </div>
       <div className="w-full max-w-sm space-y-4 rounded bg-white p-6 shadow dark:bg-slate-900">
+        <AdminDomainBrand />
         <h2 className="text-xl font-bold dark:text-slate-100">{t.setNewPassword}</h2>
 
         {!token ? (

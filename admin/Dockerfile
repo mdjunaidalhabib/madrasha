@@ -8,10 +8,13 @@ COPY admin/package.json admin/package.json
 RUN npm ci
 COPY packages/shared-ui packages/shared-ui
 COPY admin admin
+ARG VITE_API_URL
 RUN npm run build --workspace=admin
 
-FROM nginx:1.27-alpine AS production
-COPY --from=build /app/admin/dist /usr/share/nginx/html
-COPY admin/nginx.conf /etc/nginx/conf.d/default.conf
+FROM node:20-alpine AS production
+WORKDIR /app/admin
+ENV NODE_ENV=production PORT=80
+COPY --from=build /app/admin/dist ./dist
+COPY admin/server ./server
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["node", "server/index.mjs"]

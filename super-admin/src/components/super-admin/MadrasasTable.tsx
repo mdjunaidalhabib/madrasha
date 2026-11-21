@@ -41,6 +41,19 @@ export default function MadrasasTable({
   const t = useText(superAdminText);
   const c = useText(commonText);
   const lang = useLang();
+  const renderIdentity = (m: Madrasa) => (
+    <div className="flex min-w-0 items-start gap-3">
+      <span className="inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded-lg border border-teal-100 bg-teal-50 px-2 py-1 text-sm font-semibold tabular-nums text-teal-700 dark:border-teal-900 dark:bg-teal-950/50 dark:text-teal-300">
+        {formatNumber(m.madrasa_no ?? m.id, lang)}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="break-words text-base font-semibold leading-6 text-slate-900 dark:text-slate-100">{m.name}</p>
+        <div className="mt-1 flex min-w-0 items-center">
+          <span dir="ltr" className="min-w-0 max-w-full truncate text-xs leading-5 text-slate-500 dark:text-slate-400" title={`/${m.slug}`}>/{m.slug}</span>
+        </div>
+      </div>
+    </div>
+  );
   // The public site is served only while the institution itself is active
   // (website.service rejects suspended tenants), so the badge shows the
   // effective state rather than the raw website_status setting.
@@ -69,6 +82,7 @@ export default function MadrasasTable({
   const renderPlanControl = (m: Madrasa) =>
     plans.length ? (
       <select
+        aria-label={`${t.colPlan}: ${m.name}`}
         className="w-full rounded border bg-white px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:w-auto"
         value={String(m.plan_id ?? "")}
         disabled={busyId === m.id || selectionMode}
@@ -130,7 +144,7 @@ export default function MadrasasTable({
   };
 
   return (
-    <div className="bg-white rounded shadow dark:bg-slate-900">
+    <div className="institutions-table bg-white dark:bg-slate-900" aria-busy={loading}>
       {/* Mobile / tablet / small laptop: card grid (hidden on xl+) */}
       <div className="xl:hidden">
         {loading ? (
@@ -142,7 +156,7 @@ export default function MadrasasTable({
             {items.map((m) => (
             <div
               key={m.id}
-              className={`flex flex-col gap-3 rounded-lg border p-4 dark:border-slate-800 ${
+              className={`institution-card flex flex-col gap-4 rounded-lg border p-4 dark:border-slate-800 ${
                 selectedIds.has(m.id)
                   ? "border-indigo-300 bg-indigo-50/40 dark:border-indigo-800 dark:bg-indigo-950/20"
                   : ""
@@ -158,10 +172,7 @@ export default function MadrasasTable({
                     aria-label={t.selectRow(m.name)}
                   />
                   <div className="min-w-0">
-                    <div className="break-words font-semibold text-gray-900 dark:text-slate-100">#{formatNumber(m.madrasa_no ?? m.id, lang)} · {m.name}</div>
-                    <div className="truncate font-mono text-xs text-gray-500 dark:text-slate-400" title={m.slug}>
-                      /{m.slug}
-                    </div>
+                    {renderIdentity(m)}
                     <div className="mt-1 flex flex-wrap items-center gap-1">
                       <InstitutionTypeBadge type={m.institution_type} />
                       <LanguageChip lang={m.default_language} />
@@ -249,10 +260,7 @@ export default function MadrasasTable({
                       its own column, which got squeezed and broke mid-word. */}
                   <td className="p-3 text-start">
                     <div className="min-w-[180px] max-w-[280px]">
-                      <div className="break-words font-medium dark:text-slate-100">#{formatNumber(m.madrasa_no ?? m.id, lang)} · {m.name}</div>
-                      <div className="truncate font-mono text-xs text-gray-500 dark:text-slate-400" title={m.slug}>
-                        /{m.slug}
-                      </div>
+                      {renderIdentity(m)}
                     </div>
                   </td>
                   <td className="p-3 text-center">

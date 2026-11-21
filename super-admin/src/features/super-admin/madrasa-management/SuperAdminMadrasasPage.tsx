@@ -51,6 +51,8 @@ import { madrasasText } from "./madrasas.text";
 import { madrasasProgressText } from "./madrasas.progress.text";
 import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
 import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
+import { Building2, CheckCircle2, CirclePause, Layers, Hash, Trash2, X, Globe2, Settings2, CreditCard, Save } from "lucide-react";
+import "./institutions.css";
 
 export type Madrasa = {
   id: number;
@@ -64,6 +66,7 @@ export type Madrasa = {
   user_limit: number;
   website_status?: string;
   custom_domain?: string | null;
+  admin_domain?: string | null;
   address?: string | null;
   phone?: string | null;
   start_date?: string | null;
@@ -96,6 +99,7 @@ export default function SuperAdminMadrasasPage() {
   const lang = useLang();
   const [items, setItems] = useState<Madrasa[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const progressTask = useProgressTask();
 
@@ -133,6 +137,7 @@ export default function SuperAdminMadrasasPage() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
 
     try {
       const data = await listMadrasas({
@@ -153,6 +158,7 @@ export default function SuperAdminMadrasasPage() {
         setTotal(0);
       }
     } catch (err) {
+      setLoadError(true);
       logger.error("Failed to fetch madrasas:", err);
     } finally {
       setLoading(false);
@@ -407,18 +413,19 @@ export default function SuperAdminMadrasasPage() {
   ============================== */
 
   return (
-    <div className="space-y-4">
-      <ExpiredMadrasaList />
+    <div className="institutions-page space-y-5">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="institutions-header flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
         <div className="min-w-0">
+          <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-teal-700 dark:text-teal-300"><Building2 size={18} aria-hidden="true" />{t.directory}</p>
           <h1 className="text-xl font-bold dark:text-slate-100 sm:text-2xl">{t.title}</h1>
-          <p className="text-sm text-gray-600 dark:text-slate-400">{t.subtitle}</p>
+          <p className="mt-2 text-sm text-gray-600 dark:text-slate-400">{t.subtitle}</p>
         </div>
 
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-          <Link to="/admin/madrasas/trash" className="flex-1 sm:flex-none">
-            <Button variant="secondary" className="w-full sm:w-auto">
+          <Link to="/madrasas/trash" className="flex-1 sm:flex-none">
+            <Button variant="secondary" className="flex w-full items-center justify-center gap-2 sm:w-auto">
+              <Trash2 size={16} aria-hidden="true" />
               {t.trash}
             </Button>
           </Link>
@@ -429,10 +436,26 @@ export default function SuperAdminMadrasasPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {[
+          { label: t.resultsTotal, value: total || items.length, icon: Building2, tone: "teal" },
+          { label: t.pageActive, value: items.filter((m) => m.is_active).length, icon: CheckCircle2, tone: "green" },
+          { label: t.pageInactive, value: items.filter((m) => !m.is_active).length, icon: CirclePause, tone: "amber" },
+          { label: t.availablePlans, value: plans.length, icon: Layers, tone: "violet" },
+        ].map(({ label, value, icon: Icon, tone }) => (
+          <div key={label} className="institutions-stat flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900" data-tone={tone}>
+            <span className="institutions-stat-icon hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl sm:flex"><Icon size={21} aria-hidden="true" /></span>
+            <div className="min-w-0"><p className="text-sm text-slate-500 dark:text-slate-400">{label}</p><p className="mt-1 text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100">{loading ? "—" : formatNumber(value, lang)}</p></div>
+          </div>
+        ))}
+      </div>
+      <ExpiredMadrasaList />
+
+      <section aria-label={t.filterByType} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
       {/* Institution type filter */}
       <div
         className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
-        role="tablist"
+        role="group"
         aria-label={t.filterByType}
       >
         {([""] as (InstitutionType | "")[]).concat(INSTITUTION_TYPES).map((type) => {
@@ -441,13 +464,12 @@ export default function SuperAdminMadrasasPage() {
             <button
               key={type || "all"}
               type="button"
-              role="tab"
-              aria-selected={active}
+              aria-pressed={active}
               onClick={() => {
                 setTypeFilter(type);
                 setPage(1);
               }}
-              className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-sm font-medium transition ${
+              className={`min-h-10 shrink-0 whitespace-nowrap rounded-xl border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 ${
                 active
                   ? "border-emerald-600 bg-emerald-600 text-white"
                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -478,6 +500,9 @@ export default function SuperAdminMadrasasPage() {
         prev={() => setPage((p) => Math.max(1, p - 1))}
         next={() => setPage((p) => p + 1)}
       />
+      </section>
+
+      <p className="flex items-start gap-2 px-1 text-sm leading-6 text-slate-500 dark:text-slate-400"><Hash size={17} className="mt-1 shrink-0 text-teal-600 dark:text-teal-400" aria-hidden="true" />{t.numberHint}</p>
 
       {/* Bulk actions */}
       {selectedIds.size > 0 && (
@@ -509,7 +534,11 @@ export default function SuperAdminMadrasasPage() {
       )}
 
       {/* Table */}
-      <MadrasasTable
+      {loadError ? (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">
+          <span>{t.loadFailed}</span><Button variant="secondary" onClick={fetchAll}>{t.retry}</Button>
+        </div>
+      ) : <MadrasasTable
         loading={loading}
         items={items}
         plans={plans}
@@ -522,7 +551,7 @@ export default function SuperAdminMadrasasPage() {
         selectedIds={selectedIds}
         onToggleOne={toggleOne}
         onToggleAll={toggleAll}
-      />
+      />}
 
       {editing && (
         <EditMadrasaModal
@@ -605,6 +634,7 @@ function EditMadrasaModal({
     is_active: Number(madrasa.is_active || 0),
     website_status: madrasa.website_status || "active",
     custom_domain: madrasa.custom_domain || "",
+    admin_domain: madrasa.admin_domain || "",
     plan_id: madrasa.plan_id ? String(madrasa.plan_id) : "",
     start_date: toDateInputValue(madrasa.start_date),
   });
@@ -648,6 +678,7 @@ function EditMadrasaModal({
   const [books, setBooks] = useState<string[]>([]);
 
   const [loadingSetup, setLoadingSetup] = useState(true);
+  const [setupError, setSetupError] = useState(false);
 
   // Load master data + this madrasa's currently active divisions/modules
   useEffect(() => {
@@ -655,6 +686,7 @@ function EditMadrasaModal({
 
     const load = async () => {
       setLoadingSetup(true);
+      setSetupError(false);
       try {
         const [divRes, modRes, classRes, bookRes, detailRes] = await Promise.all([
           cachedGet("/super/divisions"),
@@ -689,6 +721,7 @@ function EditMadrasaModal({
         setDivisions((detail.divisions || []).map((id: number) => String(id)));
         setModules((detail.modules || []).map((id: number) => String(id)));
       } catch (err) {
+        if (!cancelled) setSetupError(true);
         logger.error("Failed to load madrasa setup data:", err);
       } finally {
         if (!cancelled) setLoadingSetup(false);
@@ -742,15 +775,22 @@ function EditMadrasaModal({
   }, [classes, allBooks]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-2 sm:p-4">
-      <div className="max-h-[95vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl dark:bg-slate-900 sm:max-h-[90vh] sm:p-6">
-        <div className="mb-5">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{t.editTitle}</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {t.editSubtitle}
-          </p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-2 backdrop-blur-sm sm:p-5">
+      <div role="dialog" aria-modal="true" aria-labelledby="institution-edit-title" className="institution-edit-dialog flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
+        <div className="institution-edit-header flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 p-5 dark:border-slate-800 sm:px-7">
+          <div className="flex min-w-0 items-start gap-3">
+            <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300"><Building2 size={24} /></span>
+            <div className="min-w-0">
+              <h2 id="institution-edit-title" className="text-xl font-bold text-slate-900 dark:text-slate-100">{t.editTitle}</h2>
+              <p className="mt-1 break-words text-sm text-slate-500 dark:text-slate-400">#{madrasa.madrasa_no ?? madrasa.id} · {madrasa.name}</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} disabled={busy || domainBusy || refundBusy} aria-label={c.cancel} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"><X size={21} /></button>
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="institution-edit-body min-h-0 flex-1 overflow-y-auto bg-slate-50 p-4 dark:bg-slate-950/40 sm:p-6">
+        {setupError && <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">{t.setupFailed}</p>}
+        <div className="institution-edit-section grid gap-5 md:grid-cols-2">
+          <EditSectionHeading icon={<Building2 size={19} />} title={t.basicSection} hint={t.basicHint} />
           <div>
             <label className="mb-1 block text-sm font-semibold dark:text-slate-200">{t.name}</label>
             <input
@@ -793,6 +833,7 @@ function EditMadrasaModal({
               selectClassName="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
+          <EditSectionHeading icon={<CreditCard size={19} />} title={t.planSection} hint={t.planHint} divider />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:col-span-2">
             <div>
               <label className="mb-1 block text-sm font-semibold dark:text-slate-200">{t.plan}</label>
@@ -847,6 +888,7 @@ function EditMadrasaModal({
               <option value={0}>{c.inactive}</option>
             </select>
           </div>
+          <EditSectionHeading icon={<Globe2 size={19} />} title={t.webSection} hint={t.webHint} divider />
           <div>
             <label className="mb-1 block text-sm font-semibold dark:text-slate-200">{t.websiteStatus}</label>
             <select
@@ -873,13 +915,21 @@ function EditMadrasaModal({
               {t.customDomainHint}
             </p>
           </div>
+        <div className="md:col-span-2">
+          <label className="mb-1 block text-sm font-semibold dark:text-slate-200">{t.adminDomain}</label>
+          <input className="w-full rounded border px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            placeholder="admin.example.com" value={form.admin_domain}
+            onChange={(e) => update("admin_domain", e.target.value)} />
+          <p className="mt-1 text-xs text-slate-500">{t.adminDomainHint}</p>
+        </div>
         </div>
 
-        <DomainAddOnFields madrasaId={madrasa.id} connectedDomain={form.custom_domain} prices={snapshot?.custom_domain_prices} onBusyChange={setDomainBusy} onConnectedChange={(domain) => { update("custom_domain", domain); setSubscriptionVersion((value) => value + 1); }} />
-        <div className="mt-5"><MadrasaSubscriptionCard key={subscriptionVersion} madrasaId={madrasa.id} onBusyChange={setRefundBusy} /></div>
+        <div className="institution-edit-section mt-5"><DomainAddOnFields madrasaId={madrasa.id} connectedDomain={form.custom_domain} prices={snapshot?.custom_domain_prices} onBusyChange={setDomainBusy} onConnectedChange={(domain) => { update("custom_domain", domain); setSubscriptionVersion((value) => value + 1); }} /></div>
+        <div className="institution-edit-section mt-5"><MadrasaSubscriptionCard key={subscriptionVersion} madrasaId={madrasa.id} onBusyChange={setRefundBusy} /></div>
 
         {/* System Setup — same as Create Madrasa (Classes/Books stay hidden and auto-derive) */}
-        <div className="mt-6 space-y-4">
+        <div className="institution-edit-section mt-5 space-y-4">
+          <EditSectionHeading icon={<Settings2 size={19} />} title={t.setupSection} hint={t.setupHint} />
           {loadingSetup ? (
             <p className="text-sm text-gray-500 dark:text-slate-400">{t.loadingSetup}</p>
           ) : (
@@ -900,8 +950,9 @@ function EditMadrasaModal({
             </>
           )}
         </div>
+        </div>
 
-        <div className="mt-6 flex gap-2 sm:justify-end">
+        <div className="flex shrink-0 gap-3 border-t border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-900 sm:justify-end sm:px-6">
           <Button variant="secondary" className="flex-1 sm:flex-none" onClick={onClose} disabled={busy || domainBusy || refundBusy}>
             {c.cancel}
           </Button>
@@ -920,12 +971,22 @@ function EditMadrasaModal({
                 books: books.map(Number),
               } as any)
             }
-            disabled={busy || loadingSetup || domainBusy || refundBusy}
+            disabled={busy || loadingSetup || setupError || domainBusy || refundBusy}
           >
+            <Save size={17} aria-hidden="true" />
             {busy ? c.saving : t.saveChanges}
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function EditSectionHeading({ icon, title, hint, divider = false }: { icon: React.ReactNode; title: string; hint: string; divider?: boolean }) {
+  return (
+    <div className={`flex items-start gap-3 md:col-span-2 ${divider ? "mt-2 border-t border-slate-200 pt-6 dark:border-slate-800" : ""}`}>
+      <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300">{icon}</span>
+      <div><h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h3><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{hint}</p></div>
     </div>
   );
 }

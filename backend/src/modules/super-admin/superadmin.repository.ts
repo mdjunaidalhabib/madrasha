@@ -44,6 +44,7 @@ export class SuperAdminRepository {
         isActive: true,
         websiteStatus: true,
         customDomain: true,
+        adminDomain: true,
         subscriptions: {
           where: { isActive: 1 },
           take: 1,
@@ -198,8 +199,20 @@ export class SuperAdminRepository {
 
   findActiveCustomDomainConflict(customDomain: string, excludeId: number) {
     return prisma.madrasa.findFirst({
-      where: { customDomain, deletedAt: null, id: { not: excludeId } },
+      where: { OR: [
+        { customDomain, deletedAt: null, id: { not: excludeId } },
+        { adminDomain: customDomain },
+      ] },
       select: { id: true },
+    });
+  }
+
+  findAdminDomainConflict(adminDomain: string, excludeId: number) {
+    return prisma.madrasa.findFirst({
+      where: { OR: [
+        { adminDomain, id: { not: excludeId } },
+        { customDomain: adminDomain },
+      ] }, select: { id: true },
     });
   }
 
@@ -618,6 +631,7 @@ export class SuperAdminRepository {
         isActive: true,
         websiteStatus: true,
         customDomain: true,
+        adminDomain: true,
         subscriptions: {
           where: { isActive: 1 },
           take: 1,

@@ -79,6 +79,54 @@ the same slug from their own URL segment (`/:madrasaSlug/print/reports/*`).
 
 ## Custom domains
 
+### Institution admin domains
+
+`Madrasa.adminDomain` is an optional, unique hostname for the **admin** app,
+separate from the public website's `customDomain`. Set or clear it in Super
+Admin → Institutions → Edit → Custom admin panel domain. For example, route
+`school.example.com` to `frontend` and `admin.school.example.com` to `admin`.
+The shared admin URL continues to accept institution-code login even when a
+custom admin domain is connected. Clearing the field removes that domain's
+institution mapping; it does not remove the institution or its accounts.
+
+Before rollout, run `npm exec prisma migrate deploy` and `npm exec prisma generate`
+from `backend/`, then rebuild/deploy the backend, admin and super-admin apps.
+The migration adds nullable `madrasas.admin_domain`, so existing institutions
+continue using the shared login without configuration.
+
+Point the custom hostname's DNS at the admin deployment, configure its reverse
+proxy to preserve `Host`, and issue an HTTPS certificate for that hostname.
+Serve the admin with its Docker image or `npm start --workspace=admin` after
+building; the legacy static Nginx configuration omits domain-specific link
+preview metadata. Build with an absolute public `VITE_API_URL` reachable from
+every institution domain. The admin server uses the emitted API configuration;
+set `INTERNAL_API_URL` to an internal absolute API base ending in `/api` when
+needed. `PUBLIC_API_URL` can override the server's public icon URL base.
+Allow the shared admin origin in the API's normal CORS settings; connected
+institution origins are accepted automatically (CORS cache TTL: 60 seconds).
+On connected admin domains, authenticated API calls use the admin server's
+same-origin `/api` proxy. It streams requests and responses, preserves refresh
+cookies, and derives the upstream origin from the incoming hostname. Keep
+`/api/*` routed to this server, or configure an equivalent reverse proxy that
+preserves the institution origin. This avoids relying on third-party cookies.
+
+`GET /api/website/resolve-admin-domain` resolves the browser's `Origin`, falling
+back to `Host` for non-browser requests, and exposes only name, slug and logo.
+It does not depend on public website availability. The admin waits for this
+lookup before displaying login or the dashboard, filters saved accounts to the
+institution, and omits the institution-code field on connected domains.
+Tenant middleware also binds requests to that domain before considering slug
+headers; authenticated token ownership and subscription restrictions still
+apply. Sessions saved for another institution are cleared before rendering.
+
+Connected admin domains use Branding Settings' institution name/logo for login,
+browser title, favicon, PWA name/icons and server-rendered link previews. No
+platform logo is substituted if the institution has no logo. Platform promotion
+cards and the vendor About entry are hidden there. Shared-domain branding and
+login retain their existing behavior. Public website domains remain independent.
+
+### Public website domains
+
 A madrasa can optionally connect its own domain (`Madrasa.customDomain`,
 set by the super admin via the madrasa edit form — see
 `super-admin/src/features/super-admin/madrasa-management/SuperAdminMadrasasPage.tsx`).
