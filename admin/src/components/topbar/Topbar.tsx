@@ -81,7 +81,7 @@ export default function Topbar({ openSidebar }: TopbarProps) {
             </span>
           )}
           {branding?.address && (
-            <span className="ms-2 text-sm text-slate-500 dark:text-slate-400">
+            <span className="ms-2 text-xl font-bold text-slate-800 dark:text-slate-100">
               {branding?.name && "• "}
               {branding.address}
             </span>
