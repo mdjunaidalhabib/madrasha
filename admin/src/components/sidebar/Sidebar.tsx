@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useSidebarStore } from "../../store/sidebarStore";
 import { useUIStore } from "../../store/uiStore";
 import { useAuthStore } from "../../store/authStore";
+import { useBrandingStore } from "../../store/brandingStore";
 import { logoutSession } from "../../services/profileApi";
 import { prefetchAdminRoute } from "../../app/routePrefetch";
 import AdminSidebarShell from "@madrasha/shared-ui/src/components/shell/AdminSidebarShell";
@@ -25,14 +26,13 @@ import {
   ChevronDown,
   PanelLeftClose,
   PanelLeftOpen,
-  UserCog,
   LogOut,
   MessageSquare,
   Library,
   CalendarCheck,
   GraduationCap,
   Receipt,
-  UserRound,
+  X,
 } from "lucide-react";
 
 type SidebarProps = { closeSidebar?: () => void };
@@ -57,21 +57,20 @@ const ICONS: Record<string, any> = {
   library: Library,
 };
 
-// Kalpurush-এর একটাই ওজন (400) - font-semibold দিলে ব্রাউজার পুরো সিনথেটিক বোল্ড
-// বানায়। তাই হালকা স্ট্রোক দিয়ে আসল "সেমি-বোল্ড" ভাব আনা হয়, সব মেনুতে একই।
+// Kalpurush has one weight; a light stroke gives menu labels a semibold appearance.
 const SEMIBOLD = "font-normal [-webkit-text-stroke:0.35px_currentColor]";
 function navItemClass(isActive: boolean) {
-  return `flex items-center gap-2 rounded-lg border-s-2 px-3 py-2 text-base ${SEMIBOLD} transition ${isActive ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-950/40 dark:text-indigo-300" : "border-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"}`;
+  return `admin-nav-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-base ${SEMIBOLD} transition-colors ${isActive ? "admin-nav-active" : "text-slate-600 hover:bg-teal-50 hover:text-teal-800 dark:text-slate-300 dark:hover:bg-teal-950/50 dark:hover:text-teal-200"}`;
 }
 function childItemClass(isActive: boolean) {
-  return `flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[15px] transition ${
+  return `admin-nav-child flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-base transition-colors ${
     isActive
-      ? `bg-indigo-100 ${SEMIBOLD} text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300`
-      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+      ? `admin-nav-child-active ${SEMIBOLD}`
+      : "text-slate-600 hover:bg-teal-50 hover:text-teal-800 dark:text-slate-400 dark:hover:bg-teal-950/50 dark:hover:text-teal-200"
   }`;
 }
 function moduleHeaderClass(isActive: boolean) {
-  return `flex w-full items-center gap-2 rounded-lg px-3 py-2 text-base ${SEMIBOLD} transition ${isActive ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300" : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`;
+  return `admin-nav-item flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-base ${SEMIBOLD} transition-colors ${isActive ? "admin-nav-active" : "text-slate-700 hover:bg-teal-50 hover:text-teal-800 dark:text-slate-300 dark:hover:bg-teal-950/50 dark:hover:text-teal-200"}`;
 }
 export default function Sidebar({ closeSidebar }: SidebarProps) {
   // এই ইউজারের রোলে যে মডিউল/আইটেমের অনুমতি নেই, সেগুলো ধূসর করে দেখানোর
@@ -85,7 +84,9 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
   // accordion you just opened by hand back to the current route's module.
   const sidebar = useMemo(() => sidebarItems.filter((m) => !m.disabled), [sidebarItems]);
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
-  const user = useAuthStore((s) => s.user);
+  const branding = useBrandingStore((s) => s.branding);
+  const [logoFailed, setLogoFailed] = useState(false);
+  useEffect(() => setLogoFailed(false), [branding?.report_logo]);
   const logout = useAuthStore((s) => s.logout);
   const location = useLocation();
   const t = useText(sidebarText);
@@ -121,22 +122,6 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
     setOpenModuleKey((prev) => (prev === key ? null : key));
   };
 
-  // Account dropdown - click the avatar card to reveal প্রোফাইল সেটিংস/লগআউট
-  // instead of the card itself being a direct link (a single, unlabeled
-  // click straight into a settings page reads as accidental, not a
-  // deliberate action).
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const accountMenuRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
-        setAccountMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const handleLogout = async () => {
     // সার্ভার-সাইড রিভোক শেষ না হতেই রিডাইরেক্ট হলে রিকোয়েস্টটা রেসে হারিয়ে
     // যায় - প্রোফাইলের সেশন লিস্টে পুরনো "active" ডিভাইস রয়ে যায়।
@@ -145,80 +130,43 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
   };
 
   const header = (
-    <div className="border-b border-slate-100 dark:border-slate-800">
-      <div className={`flex items-center gap-1 p-2 ${collapsed ? "justify-center" : ""}`}>
-        {!collapsed && (
-          <div ref={accountMenuRef} className="relative min-w-0 flex-1">
-            <button
-              type="button"
-              onClick={() => setAccountMenuOpen((v) => !v)}
-              title={t.accountMenu}
-              className={`flex w-full items-center gap-2 rounded-lg p-1 transition hover:bg-slate-100 dark:hover:bg-slate-800 ${accountMenuOpen ? "bg-slate-100 dark:bg-slate-800" : ""}`}
-            >
-              {user?.photo_url ? (
-                <img
-                  src={user.photo_url}
-                  alt={user.name}
-                  className="h-9 w-9 shrink-0 rounded-full border border-slate-200 object-cover dark:border-slate-700"
-                />
-              ) : (
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white">
-                  <UserRound size={20} />
-                </span>
-              )}
-              <span className="min-w-0 flex-1 text-start leading-tight">
-                <span className="block break-words text-base font-semibold text-slate-800 dark:text-slate-100">
-                  {user?.name || "Madrasa"}
-                </span>
-                <span className="block break-words text-xs text-slate-800 dark:text-slate-100">
-                  {user?.role_label || user?.role || ""}
-                </span>
-              </span>
-            </button>
-
-            {accountMenuOpen && (
-              <div className="absolute start-0 top-full z-10 mt-1 w-56 rounded-xl border border-slate-200 bg-white py-1.5 shadow-lg dark:border-slate-700 dark:bg-slate-800">
-                <NavLink
-                  to={`/settings/profile`}
-                  onClick={() => {
-                    setAccountMenuOpen(false);
-                    handleClick();
-                  }}
-                  className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
-                >
-                  <UserCog size={16} className="text-slate-400 dark:text-slate-500" />
-                  {t.profileSettings}
-                </NavLink>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setAccountMenuOpen(false);
-                    await handleLogout();
-                  }}
-                  className="flex w-full items-center gap-2.5 px-3.5 py-2 text-start text-sm text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                >
-                  <LogOut size={16} />
-                  {c.logout}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
+    <div className="admin-shell-header shrink-0 border-b border-t-2 border-teal-200 border-t-teal-600 bg-white dark:border-teal-900 dark:border-t-teal-400 dark:bg-slate-900">
+      <div className={`flex h-full items-center ${collapsed ? "flex-col justify-center gap-1 p-2" : "gap-2 p-3"}`}>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {branding?.report_logo && !logoFailed ? (
+            <img
+              src={branding.report_logo}
+              alt=""
+              onError={() => setLogoFailed(true)}
+              className={`${collapsed ? "h-10 w-10" : "h-12 w-12"} shrink-0 rounded-full border border-teal-200 bg-white object-cover p-0.5 dark:border-teal-900`}
+            />
+          ) : (
+            <span className={`flex ${collapsed ? "h-10 w-10" : "h-12 w-12"} shrink-0 items-center justify-center rounded-full border border-teal-200 text-teal-700 dark:border-teal-900 dark:text-teal-300`}>
+              <GraduationCap size={collapsed ? 22 : 28} aria-hidden="true" />
+            </span>
+          )}
+          {!collapsed && (
+            <span className="whitespace-nowrap text-2xl font-bold leading-snug text-teal-700 dark:text-teal-300">
+              Admin Panel
+            </span>
+          )}
+        </div>
         <div className="flex shrink-0 items-center gap-1">
           {closeSidebar && (
             <button
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300 md:hidden"
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-red-200 bg-white text-red-600 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:border-red-900 dark:bg-slate-900 dark:text-red-400 dark:hover:border-red-800 dark:hover:bg-red-950/40 dark:hover:text-red-300 md:hidden"
               onClick={closeSidebar}
               aria-label={t.closeMenu}
             >
-              ✕
+              <X size={17} strokeWidth={1.75} aria-hidden="true" />
             </button>
           )}
           <button
             type="button"
             onClick={toggleSidebar}
             title={collapsed ? t.expandMenu : t.collapseMenu}
+            aria-label={collapsed ? t.expandMenu : t.collapseMenu}
             className="hidden h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200 md:flex"
           >
             {collapsed ? <PanelLeftOpen size={16} className="rtl:-scale-x-100" /> : <PanelLeftClose size={16} className="rtl:-scale-x-100" />}
@@ -254,7 +202,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
 
   if (!sidebarLoaded) {
     return (
-      <AdminSidebarShell collapsed={collapsed} expandedWidth="w-64" header={header} footer={footer}>
+      <AdminSidebarShell className="admin-sidebar" collapsed={collapsed} expandedWidth="w-64" header={header} footer={footer}>
         <div className="space-y-2">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="flex items-center gap-2 px-3 py-2">
@@ -268,7 +216,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
   }
 
   return (
-    <AdminSidebarShell collapsed={collapsed} expandedWidth="w-64" header={header} footer={footer}>
+    <AdminSidebarShell className="admin-sidebar" collapsed={collapsed} expandedWidth="w-64" header={header} footer={footer}>
       {sidebar.map((module) => {
           const Icon = ICONS[module.key] || Folder;
           const visibleChildren = module.children?.filter((c) => !c.disabled) || [];
@@ -299,6 +247,8 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
               <button
                 type="button"
                 onClick={() => toggleModule(module.key)}
+                aria-expanded={isOpen}
+                title={collapsed ? sidebarModuleLabel(t, module.key, module.label) : undefined}
                 className={moduleHeaderClass(isActiveModule)}
               >
                 <Icon size={18} />
@@ -306,19 +256,20 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                 {!collapsed && (
                   <ChevronDown
                     size={16}
-                    className={`transition-transform duration-200 ${isActiveModule ? "text-indigo-400 dark:text-indigo-400" : "text-slate-400 dark:text-slate-500"} ${isOpen ? "rotate-180" : ""}`}
+                    className={`transition-transform duration-200 ${isActiveModule ? "text-teal-600 dark:text-teal-300" : "text-slate-400 dark:text-slate-500"} ${isOpen ? "rotate-180" : ""}`}
                   />
                 )}
               </button>
               <div
                 className={`grid transition-all duration-200 ease-in-out ${
-                  isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                  isOpen ? "mt-2 mb-1 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
                 }`}
               >
-                <div className="ms-4 space-y-1 overflow-hidden border-s border-slate-200 ps-2 dark:border-slate-700">
+                <div className="ms-5 space-y-1 overflow-hidden border-s border-teal-100 ps-3 dark:border-teal-900">
                   {visibleChildren.map((child) => (
                     <NavLink
                       key={child.key}
+                      aria-current={isActiveModule && activeChildKey === child.key ? "page" : undefined}
                       to={`/${childPath(module.key, child.key)}`}
                       onClick={handleClick}
                       onMouseEnter={() => prefetchAdminRoute(childPath(module.key, child.key))}

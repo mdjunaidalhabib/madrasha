@@ -1,19 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BadgeCheck, ChevronRight, ExternalLink, GraduationCap, Sparkles } from "lucide-react";
+import { BadgeCheck, ChevronRight, ExternalLink, GraduationCap, Sparkles, UserRound } from "lucide-react";
 import Card from "@madrasha/shared-ui/src/components/ui/Card";
 import { getVendorPromo, VendorPromoPayload } from "../../services/vendorPromoApi";
 import { useText } from "@madrasha/shared-ui/src/i18n";
 import { vendorText } from "./vendor.text";
-
-const initials = (name: string) =>
-  name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase();
 
 const rowClass =
   "flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5 transition hover:bg-slate-100 hover:shadow-sm dark:bg-slate-800 dark:hover:bg-slate-700";
@@ -84,17 +75,21 @@ export function FounderRow({
   promo: Extract<VendorPromoPayload, { enabled: true }>;
   fallbackTo?: string | null;
 }) {
+  const [photoFailed, setPhotoFailed] = useState(false);
+  useEffect(() => setPhotoFailed(false), [promo.founder.photo_url]);
+
   const content = (
     <>
-      {promo.founder.photo_url ? (
+      {promo.founder.photo_url && !photoFailed ? (
         <img
           src={promo.founder.photo_url}
-          alt={promo.founder.name}
+          alt=""
+          onError={() => setPhotoFailed(true)}
           className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-emerald-50 dark:ring-emerald-950/40"
         />
       ) : (
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-xs font-bold text-white ring-2 ring-emerald-50 dark:ring-emerald-950/40">
-          {initials(promo.founder.name)}
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-700 ring-2 ring-emerald-50 dark:bg-teal-950/40 dark:text-teal-300 dark:ring-emerald-950/40">
+          <UserRound size={22} aria-hidden="true" />
         </span>
       )}
       <span className="min-w-0 flex-1">

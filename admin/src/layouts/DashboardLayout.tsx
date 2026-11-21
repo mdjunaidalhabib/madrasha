@@ -98,7 +98,7 @@ function DashboardShell() {
   const refreshKey = useRefreshStore((s) => s.refreshKey);
 
   return (
-    <div className="flex h-screen supports-[height:100dvh]:h-dvh bg-slate-50 overflow-hidden dark:bg-slate-950">
+    <div className="admin-panel flex h-screen supports-[height:100dvh]:h-dvh bg-slate-50 overflow-hidden dark:bg-slate-950">
       {/* Desktop Sidebar */}
       <div className="hidden md:flex">
         <Sidebar />

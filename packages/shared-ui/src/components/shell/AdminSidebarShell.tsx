@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 
 type AdminSidebarShellProps = {
   collapsed: boolean;
+  className?: string;
   expandedWidth?: "w-56" | "w-64";
   header: ReactNode;
   footer?: ReactNode;
@@ -10,6 +11,7 @@ type AdminSidebarShellProps = {
 
 export default function AdminSidebarShell({
   collapsed,
+  className = "",
   expandedWidth = "w-56",
   header,
   footer,
@@ -21,7 +23,7 @@ export default function AdminSidebarShell({
     <div
       className={`flex h-screen supports-[height:100dvh]:h-dvh max-w-full flex-col border-e border-slate-200 bg-white transition-all duration-300 dark:border-slate-800 dark:bg-slate-900 ${
         collapsed ? "w-16" : expandedWidth
-      }`}
+      } ${className}`}
     >
       {header}
       <nav className="app-sidebar-nav min-h-0 flex-1 space-y-2 overflow-y-auto p-2">{children}</nav>

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Eye, EyeOff, UserRound } from "lucide-react";
 import { useUIStore } from "../../store/uiStore";
 import { useAuthStore } from "../../store/authStore";
 import api from "../../services/api";
@@ -17,6 +17,9 @@ export default function LockScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [photoFailed, setPhotoFailed] = useState(false);
+
+  useEffect(() => setPhotoFailed(false), [user?.photo_url]);
 
   if (!isLocked) return null;
 
@@ -31,7 +34,7 @@ export default function LockScreen() {
     }
   };
 
-  const avatarLetter = (user?.name || "?").trim().charAt(0).toUpperCase();
+  const userName = user?.name?.trim() || "";
 
   return (
     // A soft, desaturated tint (not flat black) over a heavily blurred
@@ -40,21 +43,22 @@ export default function LockScreen() {
     <div className="fixed inset-0 z-[9997] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-2xl">
       <div className="w-full max-w-sm rounded-2xl border border-white/40 bg-white/95 p-8 shadow-2xl dark:border-slate-700/60 dark:bg-slate-900/95">
         <div className="mb-5 flex flex-col items-center text-center">
-          {user?.photo_url ? (
+          {user?.photo_url && !photoFailed ? (
             <img
               src={user.photo_url}
-              alt={user.name}
+              alt=""
+              onError={() => setPhotoFailed(true)}
               className="mb-3 h-16 w-16 rounded-full border-2 border-indigo-100 object-cover dark:border-indigo-900"
             />
           ) : (
             <span className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-2xl font-bold text-white">
-              {avatarLetter}
+              <UserRound size={28} aria-hidden="true" />
             </span>
           )}
           <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">{t.screenLocked}</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-            {user?.name
-              ? t.enterPasswordToContinueNamed(user.name)
+            {userName
+              ? t.enterPasswordToContinueNamed(userName)
               : t.enterPasswordToContinue}
           </p>
         </div>

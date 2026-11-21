@@ -18,49 +18,50 @@ export default function Topbar({ openSidebar }: TopbarProps) {
   const fetchBranding = useBrandingStore((s) => s.fetchBranding);
   const { date: today, time: nowTime } = useNowLabels();
   const t = useText(shellText);
+  const [logoFailed, setLogoFailed] = useState(false);
+
+  useEffect(() => setLogoFailed(false), [branding?.report_logo]);
 
   useEffect(() => {
     fetchBranding();
   }, [fetchBranding]);
 
-  // লোগো ফাইল ভাঙা হলে alt-এ মাদরাসার নাম আবার লেখা হয়ে দুবার নাম দেখাত -
-  // তাই লোড ব্যর্থ হলে লোগোটাই লুকিয়ে ফেলি।
-  const [logoFailed, setLogoFailed] = useState(false);
-  useEffect(() => setLogoFailed(false), [branding?.report_logo]);
-
-  const logo = branding?.report_logo && !logoFailed && (
-    <img
-      src={branding.report_logo}
-      alt=""
-      onError={() => setLogoFailed(true)}
-      className="h-11 w-11 shrink-0 rounded-full border border-teal-200 object-cover transition-colors hover:border-teal-400 md:h-12 md:w-12"
-    />
-  );
-
   const iconButtonClass =
-    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800";
+    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-teal-200 bg-white text-teal-500 transition hover:bg-teal-50 hover:text-teal-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 dark:border-teal-800 dark:bg-slate-900 dark:text-teal-400 dark:hover:bg-teal-950";
 
   const actionBorderClass =
-    "!h-10 !w-10 !rounded-full !border !border-teal-200 hover:!border-teal-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 focus-visible:ring-offset-2";
+    "!h-10 !w-10 !rounded-xl !border !border-teal-200 !text-teal-700 hover:!border-teal-400 hover:!bg-teal-50 dark:!border-teal-800 dark:!text-teal-300 dark:hover:!bg-teal-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 focus-visible:ring-offset-2";
 
   return (
-    <div className="z-20 w-full min-w-0 border-b border-slate-200/80 bg-white shadow-sm shadow-slate-900/[0.02] dark:border-slate-800 dark:bg-slate-900">
-      {/* মোবাইল/ট্যাবলেট: উপরে লোগো-নাম-মেনু এক সারিতে, নিচে স্লিম অ্যাকশন বার */}
+    <header className="admin-shell-header z-20 w-full min-w-0 shrink-0 border-b-0 border-t-0 border-teal-200 border-t-teal-600 bg-white dark:border-teal-900 dark:border-t-teal-400 dark:bg-slate-900 md:border-b md:border-t-2">
+      {/* Mobile institution name and menu, with the date and time below. */}
       <div className="md:hidden">
-        <div className="flex items-center gap-2 px-3 py-2.5">
-          {logo}
-          <div className="min-w-0 flex-1 break-words text-center text-lg font-bold leading-tight text-slate-800 dark:text-slate-100">
+        <div className="flex min-h-14 items-center gap-2 border-b border-teal-200 px-3 pt-2.5 pb-1 dark:border-teal-900">
+          {branding?.report_logo && !logoFailed && (
+            <img
+              src={branding.report_logo}
+              alt=""
+              onError={() => setLogoFailed(true)}
+              className="h-11 w-11 shrink-0 rounded-full border border-teal-200 bg-white object-cover dark:border-teal-800"
+            />
+          )}
+          <div className="min-w-0 flex-1 whitespace-normal break-words px-1 pt-1 text-center text-lg font-bold leading-snug text-slate-800 dark:text-slate-100">
             {branding?.name}
+            {branding?.address && (
+              <span className="mt-0.5 block text-xs font-normal leading-normal text-slate-500 dark:text-slate-400">
+                {branding.address}
+              </span>
+            )}
           </div>
           <button onClick={openSidebar} className={iconButtonClass} aria-label={t.openMenu}>
-            <Menu size={17} />
+            <Menu size={17} strokeWidth={1.5} />
           </button>
         </div>
 
         {/* প্ল্যান/থিম/লক আইকন এখন মোবাইল ড্রয়ারে (Sidebar.tsx) - এখানে শুধু
             তারিখ-সময় */}
-        <div className="flex h-10 items-center justify-center border-t border-slate-100 bg-slate-50 px-3 dark:border-slate-800 dark:bg-slate-800/40">
-          <div className="flex min-w-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400">
+        <div className="flex min-h-10 items-center justify-center bg-slate-50 px-3 py-1.5 dark:bg-slate-800/40">
+          <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[0.75rem] font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400">
             <Calendar size={12} className="shrink-0" />
             <span className="truncate">{today}</span>
             <span className="h-3 w-px shrink-0 bg-emerald-300 dark:bg-emerald-800" />
@@ -70,25 +71,23 @@ export default function Topbar({ openSidebar }: TopbarProps) {
         </div>
       </div>
 
-      {/* ডেস্কটপ: বাম পাশে লোগো+নাম (ঠিকানাসহ একই লাইনে), ডান পাশে অ্যাকশন -
-          কোনো সেন্টারিং নেই, বাম থেকে সহজভাবে শুরু */}
-      <div className="hidden md:flex md:h-20 md:items-center md:gap-3 md:px-6">
-        {logo}
-        <div className="min-w-0 flex-1 truncate">
+      {/* Keep tablet actions on their own row so long institution names remain readable. */}
+      <div className="hidden md:flex md:h-full md:flex-wrap md:content-center md:items-center md:gap-x-4 md:gap-y-2 md:ps-24 md:pe-6 md:py-3 xl:flex-nowrap">
+        <div className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap px-1 py-1 text-2xl font-bold leading-normal text-teal-700 dark:text-teal-300" tabIndex={0}>
           {branding?.name && (
-            <span className="text-xl font-bold text-slate-800 dark:text-slate-100">
+            <span>
               {branding.name}
             </span>
           )}
           {branding?.address && (
-            <span className="ms-2 text-xl font-bold text-slate-800 dark:text-slate-100">
-              {branding?.name && "• "}
+            <span className="ms-2">
+              {branding?.name && <span aria-hidden="true">· </span>}
               {branding.address}
             </span>
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex w-full shrink-0 items-center justify-end gap-2 xl:w-auto">
           <PlanBadge />
           <LanguageSwitcher />
           <ThemeToggle className={actionBorderClass} />
@@ -96,6 +95,6 @@ export default function Topbar({ openSidebar }: TopbarProps) {
           <ProfileMenu className={actionBorderClass} />
         </div>
       </div>
-    </div>
+    </header>
   );
 }
