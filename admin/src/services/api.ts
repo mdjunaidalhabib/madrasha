@@ -151,6 +151,10 @@ api.interceptors.response.use(
     return res;
   },
   async (err) => {
+    // Switching admission modes or search terms cancels outdated requests.
+    // Keep the rejection for callers without showing an error toast.
+    if (axios.isCancel(err)) return Promise.reject(err);
+
     const status = err?.response?.status;
     const originalRequest = err?.config;
     const requestUrl = String(originalRequest?.url || "");

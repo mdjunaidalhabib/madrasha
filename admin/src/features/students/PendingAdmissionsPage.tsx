@@ -19,13 +19,6 @@ import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgre
 
 type FeeStatus = "NONE" | "DUE" | "WAIVED" | "PAID";
 
-const FEE_BADGE: Partial<Record<FeeStatus, { label: (due: number) => string; className: string }>> = {
-  DUE: { label: (due) => getText(admissionReviewText).feeDue(String(due)), className: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" },
-  WAIVED: { label: () => getText(admissionReviewText).feeWaived, className: "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400" },
-  PAID: { label: () => getText(admissionReviewText).feePaid, className: "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" },
-};
-
-
 const normalizeFeePreviewArray = (payload: any): FeePreviewRow[] => {
   const data = payload?.data?.data || payload?.data || [];
   const list = Array.isArray(data) ? data : [];
@@ -490,7 +483,7 @@ const PendingAdmissionsPage = () => {
         {/* Content */}
         <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           {loading ? (
-            <SkeletonTable rows={6} columns={6} />
+            <SkeletonTable rows={6} columns={7} />
           ) : error ? (
             <div className="py-10 text-center text-sm text-red-600 dark:text-red-400">{error}</div>
           ) : rows.length === 0 ? (
@@ -504,9 +497,9 @@ const PendingAdmissionsPage = () => {
                 {rows.map((student) => (
                   <div
                     key={student.id}
-                    className="rounded-lg border border-gray-200 p-3 shadow-sm dark:border-slate-700"
+                    className="rounded-lg border border-gray-200 p-3 text-center shadow-sm dark:border-slate-700"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-center">
                       <label className="flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -518,9 +511,6 @@ const PendingAdmissionsPage = () => {
                           {student.name_bn || t.noName}
                         </span>
                       </label>
-                      <span className="text-xs text-gray-500 dark:text-slate-400">
-                        {t.rollLabel} {student.roll ?? t.none}
-                      </span>
                     </div>
                     <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                       {t.fatherLabel} {student.father_name || t.none} | {t.phoneLabel}{" "}
@@ -529,32 +519,15 @@ const PendingAdmissionsPage = () => {
                     <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                       {t.classLabel} {student.current_class || t.none}
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
+                    <div className="mt-2 flex flex-wrap justify-center gap-1.5">
                       <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
                         {admissionTypeLabel(student.admission_type)}
                       </span>
-                      {student.is_orphan === 1 && (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
-                          {t.orphan}
-                        </span>
-                      )}
                       {student.residency_type ? (
                         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-700 dark:bg-slate-800 dark:text-slate-300">
                           {residencyLabel(student.residency_type)}
                         </span>
                       ) : null}
-                      {student.blood_group && (
-                        <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
-                          {student.blood_group}
-                        </span>
-                      )}
-                      {student.fee_status && FEE_BADGE[student.fee_status] && (
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${FEE_BADGE[student.fee_status]!.className}`}
-                        >
-                          {FEE_BADGE[student.fee_status]!.label(student.fee_due ?? 0)}
-                        </span>
-                      )}
                     </div>
                     <div className="mt-3 flex gap-2">
                       <button
@@ -587,7 +560,7 @@ const PendingAdmissionsPage = () => {
 
               {/* Desktop table */}
               <div className="hidden overflow-x-auto sm:block">
-                <table className="min-w-full text-start text-sm">
+                <table className="min-w-full text-center text-sm [&_th]:text-center">
                   <thead>
                     <tr className="border-b border-gray-200 text-xs uppercase text-gray-500 dark:border-slate-700 dark:text-slate-400">
                       <th className="px-3 py-2 w-8">
@@ -599,13 +572,11 @@ const PendingAdmissionsPage = () => {
                         />
                       </th>
                       <th className="px-3 py-2">{t.colName}</th>
-                      <th className="px-3 py-2">{t.colRoll}</th>
                       <th className="px-3 py-2">{t.colFatherName}</th>
                       <th className="px-3 py-2">{t.colPhone}</th>
                       <th className="px-3 py-2">{t.colClass}</th>
                       <th className="px-3 py-2">{t.colAdmissionType}</th>
-                      <th className="px-3 py-2">{t.colSpecial}</th>
-                      <th className="px-3 py-2 text-end">{t.colActions}</th>
+                      <th className="px-3 py-2">{t.colActions}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -622,34 +593,12 @@ const PendingAdmissionsPage = () => {
                         <td className="px-3 py-2 font-medium text-gray-800 dark:text-slate-200">
                           {student.name_bn || t.noName}
                         </td>
-                        <td className="px-3 py-2">{student.roll ?? t.none}</td>
                         <td className="px-3 py-2">{student.father_name || t.none}</td>
                         <td className="px-3 py-2">{student.guardian_phone || t.none}</td>
                         <td className="px-3 py-2">{student.current_class || t.none}</td>
                         <td className="px-3 py-2">{admissionTypeLabel(student.admission_type)}</td>
                         <td className="px-3 py-2">
-                          <div className="flex flex-wrap gap-1">
-                            {student.is_orphan === 1 && (
-                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-400">
-                                {t.orphan}
-                              </span>
-                            )}
-                            {student.blood_group && (
-                              <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
-                                {student.blood_group}
-                              </span>
-                            )}
-                            {student.fee_status && FEE_BADGE[student.fee_status] && (
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${FEE_BADGE[student.fee_status]!.className}`}
-                              >
-                                {FEE_BADGE[student.fee_status]!.label(student.fee_due ?? 0)}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-center gap-2">
                             <button
                               type="button"
                               onClick={() => openDetail(student)}

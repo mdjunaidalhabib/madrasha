@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Eraser } from "lucide-react";
+import { Check, Eraser, Pencil, X } from "lucide-react";
 import api from "../../../services/api";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
@@ -43,6 +43,7 @@ export default function RegistrationBlockSettingsPage() {
   const bn = (n: number) => fmtNo(n, lang);
   const [divisions, setDivisions] = useState<BlockDivision[]>([]);
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
+  const [editingClassIds, setEditingClassIds] = useState<Set<number>>(new Set());
   const [savingClassId, setSavingClassId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -81,6 +82,11 @@ export default function RegistrationBlockSettingsPage() {
       });
       useToastStore.getState().push("success", res.data?.message || getText(commonText).saved);
       await load();
+      setEditingClassIds((prev) => {
+        const next = new Set(prev);
+        next.delete(c.class_id);
+        return next;
+      });
     } catch (err: any) {
       useToastStore.getState().push("error", err?.response?.data?.message || getText(commonText).saveFailed);
     } finally {
@@ -113,11 +119,12 @@ export default function RegistrationBlockSettingsPage() {
                 const dirty = draft.start.trim() !== original.start || draft.end.trim() !== original.end;
                 const hasBlock = c.reg_no_start != null && c.reg_no_end != null;
                 const saving = savingClassId === c.class_id;
+                const editing = editingClassIds.has(c.class_id);
 
                 return (
                   <div
                     key={c.class_id}
-                    className="flex flex-col gap-2 rounded-lg border border-gray-200 px-3 py-2.5 dark:border-slate-700 sm:flex-row sm:items-center"
+                    className={`group flex flex-col gap-2 rounded-xl border px-4 py-3 transition sm:flex-row sm:items-center ${editing ? "border-blue-200 bg-blue-50/40 dark:border-blue-900/50 dark:bg-blue-950/20" : "border-gray-100 hover:border-gray-200 hover:bg-gray-50/60 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"}`}
                   >
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium text-gray-800 dark:text-slate-200">{c.class_name_bn}</div>
@@ -138,48 +145,100 @@ export default function RegistrationBlockSettingsPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min={1}
-                        value={draft.start}
-                        onChange={(e) => setDraft(c.class_id, { start: e.target.value })}
-                        placeholder={hasBlock ? t.start : String(suggestedStart)}
-                        aria-label={t.startNoOf(c.class_name_bn)}
-                        className="h-9 w-24 min-w-0"
-                      />
-                      <span className="text-gray-400">–</span>
-                      <Input
-                        type="number"
-                        inputMode="numeric"
-                        min={1}
-                        value={draft.end}
-                        onChange={(e) => setDraft(c.class_id, { end: e.target.value })}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && dirty && !saving) save(c, draft);
-                        }}
-                        placeholder={t.end}
-                        aria-label={t.endNoOf(c.class_name_bn)}
-                        className="h-9 w-24 min-w-0"
-                      />
-                      <button
-                        onClick={() => save(c, draft)}
-                        disabled={!dirty || saving}
-                        aria-label={cm.save}
-                        className="shrink-0 touch-manipulation rounded-md bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-600"
-                      >
-                        <Check size={15} />
-                      </button>
-                      {hasBlock && (
+                      {editing ? (
+                        <>
+                          <Input
+                            autoFocus
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            value={draft.start}
+                            readOnly={!editing}
+                            disabled={saving}
+                            onChange={(e) => setDraft(c.class_id, { start: e.target.value })}
+                            placeholder={hasBlock ? t.start : String(suggestedStart)}
+                            aria-label={t.startNoOf(c.class_name_bn)}
+                            className="h-9 w-24 min-w-0"
+                          />
+                          <span className="text-gray-400">–</span>
+                          <Input
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            value={draft.end}
+                            readOnly={!editing}
+                            disabled={saving}
+                            onChange={(e) => setDraft(c.class_id, { end: e.target.value })}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && editing && dirty && !saving) save(c, draft);
+                            }}
+                            placeholder={t.end}
+                            aria-label={t.endNoOf(c.class_name_bn)}
+                            className="h-9 w-24 min-w-0"
+                          />
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-3 text-sm text-gray-900 dark:text-slate-100">
+                          <span aria-label={t.startNoOf(c.class_name_bn)}>
+                            <span className="mr-1 text-xs text-gray-500 dark:text-slate-400">{t.start}</span>
+                            {c.reg_no_start != null ? bn(c.reg_no_start) : "—"}
+                          </span>
+                          <span className="text-gray-400">–</span>
+                          <span aria-label={t.endNoOf(c.class_name_bn)}>
+                            <span className="mr-1 text-xs text-gray-500 dark:text-slate-400">{t.end}</span>
+                            {c.reg_no_end != null ? bn(c.reg_no_end) : "—"}
+                          </span>
+                        </div>
+                      )}
+                      {!editing ? (
                         <button
-                          onClick={() => save(c, { start: "", end: "" })}
-                          disabled={saving}
-                          aria-label={t.clearBlock}
-                          title={t.clearBlock}
-                          className="shrink-0 touch-manipulation rounded-md p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                          type="button"
+                          onClick={() => setEditingClassIds((prev) => new Set(prev).add(c.class_id))}
+                          aria-label={cm.edit}
+                          title={cm.edit}
+                          className="shrink-0 touch-manipulation rounded-lg p-1.5 text-gray-400 opacity-100 transition hover:bg-blue-50 hover:text-blue-600 focus-visible:opacity-100 dark:text-slate-500 dark:hover:bg-blue-950/40 dark:hover:text-blue-400 sm:opacity-0 sm:group-hover:opacity-100"
                         >
-                          <Eraser size={15} />
+                          <Pencil size={14} />
                         </button>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => save(c, draft)}
+                            disabled={!dirty || saving}
+                            aria-label={cm.save}
+                            className="shrink-0 touch-manipulation rounded-md bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-600"
+                          >
+                            <Check size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDrafts((prev) => ({ ...prev, [c.class_id]: toDraft(c) }));
+                              setEditingClassIds((prev) => {
+                                const next = new Set(prev);
+                                next.delete(c.class_id);
+                                return next;
+                              });
+                            }}
+                            disabled={saving}
+                            aria-label={cm.cancel}
+                            title={cm.cancel}
+                            className="shrink-0 touch-manipulation rounded-md p-2 text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 dark:text-slate-400 dark:hover:bg-slate-800"
+                          >
+                            <X size={15} />
+                          </button>
+                          {hasBlock && (
+                            <button
+                              onClick={() => save(c, { start: "", end: "" })}
+                              disabled={saving}
+                              aria-label={t.clearBlock}
+                              title={t.clearBlock}
+                              className="shrink-0 touch-manipulation rounded-md p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                            >
+                              <Eraser size={15} />
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

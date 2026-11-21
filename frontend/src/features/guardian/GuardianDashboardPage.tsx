@@ -1,95 +1,377 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  BookOpen,
+  CalendarCheck,
+  CalendarDays,
+  ClipboardList,
+  GraduationCap,
+  Megaphone,
+  RefreshCw,
+  UserRound,
+  Wallet,
+} from "lucide-react";
 import guardianApi from "../../services/guardianApi";
 import { useGuardianAuthStore } from "../../store/guardianAuthStore";
 import { getTenantGuardianBase } from "../../utils/tenantSlug";
 import { useTenantSlug } from "../../utils/useTenantSlug";
-import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
-import StatTile from "@madrasha/shared-ui/src/components/ui/StatTile";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
-import { localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import {
+  formatCurrency,
+  formatDate,
+  localizeDigits,
+  useLang,
+  useText,
+} from "@madrasha/shared-ui/src/i18n";
 import { guardianText } from "./guardian.text";
+
+type Attendance = {
+  summary?: {
+    percentage?: number;
+    PRESENT?: number;
+    ABSENT?: number;
+    LATE?: number;
+    LEAVE?: number;
+  };
+};
+type Fees = { summary?: { totalDue?: number; totalPaid?: number; totalBilled?: number } };
+type Exam = {
+  id: number;
+  examName: string;
+  subject: string;
+  examDate: string;
+  startTime?: string;
+  endTime?: string;
+};
+type Notice = { id: number; title: string; content?: string; publishedAt?: string };
+type Overview = {
+  attendance?: Attendance;
+  results?: unknown[];
+  fees?: Fees;
+  exams?: Exam[];
+  notices?: Notice[];
+};
 
 export default function GuardianDashboardPage() {
   const t = useText(guardianText);
   const lang = useLang();
   const selectedStudentId = useGuardianAuthStore((s) => s.selectedStudentId);
   const children = useGuardianAuthStore((s) => s.children);
-  const madrasaSlug = useTenantSlug();
-  const base = getTenantGuardianBase(madrasaSlug);
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-
+  const guardian = useGuardianAuthStore((s) => s.guardian);
+  const base = getTenantGuardianBase(useTenantSlug());
+  const [data, setData] = useState<Overview>({});
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
   const child = children.find((c) => c.id === selectedStudentId);
+  const n = (value: number | string) => localizeDigits(value, lang);
 
   useEffect(() => {
     if (!selectedStudentId) return;
+    let active = true;
     setLoading(true);
-    setData(null);
-    (async () => {
-      const [attendanceRes, resultsRes, feesRes, examRoutineRes] = await Promise.all([
-        guardianApi.get(`/guardian/students/${selectedStudentId}/attendance`),
-        guardianApi.get(`/guardian/students/${selectedStudentId}/results`),
-        guardianApi.get(`/guardian/students/${selectedStudentId}/fees`),
-        guardianApi.get(`/guardian/students/${selectedStudentId}/exam-routine`),
-      ]);
+    setFailed(false);
+    setData({});
+    const root = `/guardian/students/${selectedStudentId}`;
+    void Promise.allSettled([
+      guardianApi.get(`${root}/attendance`),
+      guardianApi.get(`${root}/results`),
+      guardianApi.get(`${root}/fees`),
+      guardianApi.get(`${root}/exam-routine`),
+      guardianApi.get("/guardian/notices"),
+    ]).then(([attendance, results, fees, exams, notices]) => {
+      if (!active) return;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const upcomingExams = (examRoutineRes.data?.data || []).filter((row: any) => {
-        const examDate = new Date(row.examDate);
-        return !Number.isNaN(examDate.getTime()) && examDate >= today;
-      });
       setData({
-        attendance: attendanceRes.data?.data,
-        results: resultsRes.data?.data || [],
-        fees: feesRes.data?.data,
-        upcomingExamsCount: upcomingExams.length,
+        attendance: attendance.status === "fulfilled" ? attendance.value.data?.data : undefined,
+        results: results.status === "fulfilled" ? results.value.data?.data || [] : undefined,
+        fees: fees.status === "fulfilled" ? fees.value.data?.data : undefined,
+        exams:
+          exams.status === "fulfilled"
+            ? ((exams.value.data?.data || []) as Exam[])
+                .filter((row) => new Date(row.examDate) >= today)
+                .sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime())
+            : undefined,
+        notices:
+          notices.status === "fulfilled"
+            ? ((notices.value.data?.data || []) as Notice[]).sort(
+                (a, b) =>
+                  new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime(),
+              )
+            : undefined,
       });
+      setFailed(
+        [attendance, results, fees, exams, notices].some((item) => item.status === "rejected"),
+      );
       setLoading(false);
-    })();
-  }, [selectedStudentId]);
+    });
+    return () => {
+      active = false;
+    };
+  }, [selectedStudentId, retry]);
 
-  if (!selectedStudentId) {
-    return <EmptyState title={t.noChild} hint={t.noChildHint} />;
-  }
-
+  if (!selectedStudentId) return <EmptyState title={t.noChild} hint={t.noChildHint} />;
+  const summary = data.attendance?.summary;
+  const percentage = Math.min(100, Math.max(0, Number(summary?.percentage) || 0));
+  const recorded =
+    (summary?.PRESENT || 0) + (summary?.ABSENT || 0) + (summary?.LATE || 0) + (summary?.LEAVE || 0);
+  const stats = [
+    {
+      label: t.attendanceRate,
+      value: data.attendance ? `${n(percentage)}%` : "—",
+      icon: CalendarCheck,
+      tone: "green",
+      to: "attendance",
+      hint: t.attendanceOverview,
+    },
+    {
+      label: t.publishedResults,
+      value: data.results ? n(data.results.length) : "—",
+      icon: GraduationCap,
+      tone: "purple",
+      to: "results",
+      hint: t.resultsSubtitle,
+    },
+    {
+      label: t.upcomingExams,
+      value: data.exams ? n(data.exams.length) : "—",
+      icon: CalendarDays,
+      tone: "orange",
+      to: "exam-routine",
+      hint: t.examRoutine,
+    },
+    {
+      label: t.dueFees,
+      value: data.fees ? formatCurrency(data.fees.summary?.totalDue || 0, lang) : "—",
+      icon: Wallet,
+      tone: "rose",
+      to: "fees",
+      hint: t.feesSubtitle,
+    },
+  ];
+  const shortcuts = [
+    { to: "leave", icon: ClipboardList, title: t.leave, description: t.applyLeave },
+    { to: "results", icon: GraduationCap, title: t.results, description: t.viewMarksheet },
+    { to: "exam-routine", icon: CalendarDays, title: t.examRoutine, description: t.upcomingExams },
+    { to: "profile", icon: UserRound, title: t.childProfile, description: t.viewProfile },
+  ];
+  const unavailable = <p className="guardian-empty">{t.overviewError}</p>;
+  const placeholder = (
+    <div className="guardian-loading" role="status">
+      <span />
+      {t.loadingOverview}
+    </div>
+  );
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={child ? child.nameBn : t.dashboard}
-        subtitle={child ? `${child.className || ""} · ${t.roll} ${localizeDigits(child.roll ?? "-", lang)}` : undefined}
-      />
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile
-          label={t.monthAttendancePct}
-          value={loading ? "" : data?.attendance?.summary?.percentage ?? 0}
-          variant="percentage"
-          tone="emerald"
-          loading={loading}
-          to={`${base}/attendance`}
-        />
-        <StatTile
-          label={t.publishedResults}
-          value={loading ? "" : (data?.results?.length ?? 0)}
-          tone="indigo"
-          loading={loading}
-          to={`${base}/results`}
-        />
-        <StatTile
-          label={t.upcomingExams}
-          value={loading ? "" : (data?.upcomingExamsCount ?? 0)}
-          tone="amber"
-          loading={loading}
-          to={`${base}/exam-routine`}
-        />
-        <StatTile
-          label={t.dueFees}
-          value={loading ? "" : (data?.fees?.summary?.totalDue ?? 0)}
-          variant="currency"
-          tone="rose"
-          loading={loading}
-          to={`${base}/fees`}
-        />
+    <div className="guardian-dashboard" aria-busy={loading}>
+      <div className="guardian-page-heading">
+        <div>
+          <p className="guardian-eyebrow">
+            {t.welcome}
+            {guardian?.name ? `, ${guardian.name}` : ""}
+          </p>
+          <h1>{t.dashboard}</h1>
+          <p>{t.overviewHint}</p>
+        </div>
+        <span className="guardian-date">
+          <CalendarDays size={17} />
+          {formatDate(new Date(), lang, { day: "numeric", month: "long", year: "numeric" })}
+        </span>
+      </div>
+      <section className="guardian-welcome">
+        <div className="guardian-welcome-copy">
+          <span className="guardian-welcome-label">
+            <BookOpen size={16} />
+            {t.studentOverview}
+          </span>
+          <h2>{child?.nameBn || t.childProfile}</h2>
+          <div className="guardian-student-meta">
+            <span>{child?.className || t.class}</span>
+            <span>
+              {t.roll}: {n(child?.roll ?? "—")}
+            </span>
+            <span>
+              {t.regShort} {n(child?.registrationNo ?? "—")}
+            </span>
+          </div>
+          <Link className="guardian-light-button" to={`${base}/profile`}>
+            <UserRound size={16} />
+            {t.viewProfile}
+          </Link>
+        </div>
+        <div className="guardian-welcome-art" aria-hidden="true">
+          <div className="guardian-art-orbit" />
+          <div className="guardian-art-book">
+            <GraduationCap size={62} strokeWidth={1.1} />
+            <BookOpen size={46} strokeWidth={1.2} />
+          </div>
+          <span className="guardian-art-star">✦</span>
+        </div>
+      </section>
+      {failed && (
+        <div className="guardian-error" role="alert">
+          <span>{t.overviewError}</span>
+          <button onClick={() => setRetry((value) => value + 1)}>
+            <RefreshCw size={15} />
+            {t.tryAgain}
+          </button>
+        </div>
+      )}
+      <div className="guardian-stats">
+        {stats.map(({ label, value, icon: Icon, tone, to, hint }) => (
+          <Link to={`${base}/${to}`} className={`guardian-stat guardian-tone-${tone}`} key={to}>
+            <div className="guardian-stat-top">
+              <span>{label}</span>
+              <span className="guardian-stat-icon">
+                <Icon size={22} strokeWidth={1.7} />
+              </span>
+            </div>
+            {loading ? <div className="guardian-stat-skeleton" /> : <strong>{value}</strong>}
+            <p>{hint}</p>
+          </Link>
+        ))}
+      </div>
+      <div className="guardian-overview-grid">
+        <section className="guardian-card">
+          <div className="guardian-card-heading">
+            <h2>{t.attendanceOverview}</h2>
+            <Link to={`${base}/attendance`}>{t.viewAll}</Link>
+          </div>
+          {loading ? (
+            placeholder
+          ) : !data.attendance ? (
+            unavailable
+          ) : recorded === 0 ? (
+            <p className="guardian-empty">
+              <CalendarCheck size={28} />
+              {t.noAttendance}
+            </p>
+          ) : (
+            <div className="guardian-attendance-body">
+              <div
+                className="guardian-attendance-ring"
+                style={{ background: `conic-gradient(#16866a ${percentage}%, #edf2ef 0)` }}
+              >
+                <div>
+                  <strong>
+                    {n(percentage)}
+                    <small>%</small>
+                  </strong>
+                  <span>{t.attendanceRate}</span>
+                </div>
+              </div>
+              <div className="guardian-attendance-legend">
+                {(["PRESENT", "ABSENT", "LATE", "LEAVE"] as const).map((key) => (
+                  <div key={key}>
+                    <span>
+                      <i className={`guardian-dot-${key.toLowerCase()}`} />
+                      {t.attendanceStatus[key]}
+                    </span>
+                    <strong>{n(summary?.[key] || 0)}</strong>
+                  </div>
+                ))}
+                <p>
+                  {t.recordedDays}: {n(recorded)}
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
+        <section className="guardian-card">
+          <div className="guardian-card-heading">
+            <h2>{t.academicCalendar}</h2>
+            <Link to={`${base}/exam-routine`}>{t.viewAll}</Link>
+          </div>
+          {loading ? (
+            placeholder
+          ) : !data.exams ? (
+            unavailable
+          ) : data.exams.length === 0 ? (
+            <p className="guardian-empty">
+              <CalendarDays size={28} />
+              {t.noRoutine}
+              <span>{t.noRoutineHint}</span>
+            </p>
+          ) : (
+            <div className="guardian-exams">
+              {data.exams.slice(0, 3).map((exam) => (
+                <div className="guardian-exam" key={exam.id}>
+                  <div className="guardian-exam-date">
+                    <strong>{formatDate(exam.examDate, lang, { day: "2-digit" })}</strong>
+                    <span>{formatDate(exam.examDate, lang, { month: "short" })}</span>
+                  </div>
+                  <div>
+                    <h3>{exam.subject}</h3>
+                    <p>{exam.examName}</p>
+                    {exam.startTime && (
+                      <span>
+                        {n(exam.startTime)}
+                        {exam.endTime ? ` – ${n(exam.endTime)}` : ""}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+        <section className="guardian-card guardian-quick-access">
+          <div className="guardian-card-heading">
+            <div>
+              <h2>{t.quickAccess}</h2>
+              <p>{t.quickAccessHint}</p>
+            </div>
+          </div>
+          <div className="guardian-shortcuts">
+            {shortcuts.map(({ to, icon: Icon, title, description }) => (
+              <Link to={`${base}/${to}`} key={to}>
+                <span>
+                  <Icon size={22} strokeWidth={1.6} />
+                </span>
+                <div>
+                  <strong>{title}</strong>
+                  <p>{description}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+        <section className="guardian-card">
+          <div className="guardian-card-heading">
+            <h2>{t.latestNotices}</h2>
+            <Link to={`${base}/notices`}>{t.viewAll}</Link>
+          </div>
+          {loading ? (
+            placeholder
+          ) : !data.notices ? (
+            unavailable
+          ) : data.notices.length === 0 ? (
+            <p className="guardian-empty">
+              <Megaphone size={28} />
+              {t.noNotices}
+            </p>
+          ) : (
+            <div className="guardian-notice-list">
+              {data.notices.slice(0, 3).map((notice) => (
+                <Link to={`${base}/notices`} key={notice.id}>
+                  <span className="guardian-notice-icon">
+                    <Megaphone size={17} />
+                  </span>
+                  <div>
+                    <h3>{notice.title}</h3>
+                    {notice.content && <p>{notice.content}</p>}
+                    {notice.publishedAt && (
+                      <time dateTime={notice.publishedAt}>
+                        {formatDate(notice.publishedAt, lang)}
+                      </time>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

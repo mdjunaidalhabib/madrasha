@@ -9,6 +9,8 @@ import { getTenantGuardianBase } from "../../utils/tenantSlug";
 import { useTenantSlug } from "../../utils/useTenantSlug";
 import { useText } from "@madrasha/shared-ui/src/i18n";
 import { guardianText } from "./guardian.text";
+import { ShieldCheck } from "lucide-react";
+import "./guardian.css";
 
 export default function GuardianChangePasswordPage() {
   const t = useText(guardianText);
@@ -39,28 +41,49 @@ export default function GuardianChangePasswordPage() {
       toast.push("success", t.passwordChanged);
       nav(`${base}/dashboard`);
     } catch {
-      // handled by guardianApi interceptor 
+      // handled by guardianApi interceptor
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-100 p-4">
-      <div className="w-full max-w-sm space-y-4 rounded bg-white p-6 shadow">
-        <h2 className="text-xl font-bold">{t.setNewPassword}</h2>
-        <p className="text-xs text-gray-500">
-          {t.mustChangeHint}
-        </p>
+    <div className="guardian-password-screen">
+      <form
+        className="guardian-login-card guardian-login-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void handleSubmit();
+        }}
+      >
+        <span className="guardian-password-icon">
+          <ShieldCheck size={30} strokeWidth={1.5} />
+        </span>
+        <div className="guardian-login-heading">
+          <h2>{t.setNewPassword}</h2>
+        </div>
+        <p className="guardian-login-help">{t.mustChangeHint}</p>
 
+        <label className="guardian-login-label" htmlFor="guardian-new-password">
+          {t.newPassword}
+        </label>
         <Input
+          id="guardian-new-password"
+          required
+          minLength={4}
           type="password"
           autoComplete="new-password"
           placeholder={t.newPassword}
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
         />
+        <label className="guardian-login-label" htmlFor="guardian-confirm-password">
+          {t.retypePassword}
+        </label>
         <Input
+          id="guardian-confirm-password"
+          required
+          minLength={4}
           type="password"
           autoComplete="new-password"
           placeholder={t.retypePassword}
@@ -68,10 +91,10 @@ export default function GuardianChangePasswordPage() {
           onChange={(e) => setConfirmPassword(e.target.value)}
         />
 
-        <Button onClick={handleSubmit} disabled={loading} className="w-full">
+        <Button type="submit" disabled={loading} className="guardian-login-submit mt-6 w-full">
           {loading ? t.saving : t.savePassword}
         </Button>
-      </div>
+      </form>
     </div>
   );
 }

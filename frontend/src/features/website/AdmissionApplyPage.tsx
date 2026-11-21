@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, ChevronLeft, GraduationCap, Loader2 } from "lucide-react";
 import { getPublicWebsite, submitFullAdmissionApplication } from "../../services/publicWebsiteApi";
@@ -6,81 +6,78 @@ import { useCustomDomainRedirect } from "../../utils/useCustomDomainRedirect";
 import { useTenantSlug } from "../../utils/useTenantSlug";
 import { accentStrong, accentText, initials, pickTextOn } from "./colorUtils";
 import { resolveTheme } from "./themes";
-import CustomDatePicker from "@madrasha/shared-ui/src/components/ui/CustomDatePicker";
-import ScriptInput from "@madrasha/shared-ui/src/components/ui/ScriptInput";
-import NumericInput from "@madrasha/shared-ui/src/components/ui/NumericInput";
-import AddressCascadeFields from "@madrasha/shared-ui/src/components/ui/AddressCascadeFields";
-import { formatCurrency, getText, useIsMadrasa, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { formatCurrency, getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { admissionApplyText } from "./admissionApply.text";
 
-type DivisionItem = { division_id: number; division_name_bn: string };
-type ClassItem = { class_id: number; class_name_bn: string; division_id: number };
+import StudentInfo from "@madrasha/shared-ui/src/components/admission/StudentInfo";
+import ParentInfo from "@madrasha/shared-ui/src/components/admission/ParentInfo";
+import AlternateGuardianInfo from "@madrasha/shared-ui/src/components/admission/AlternateGuardianInfo";
+import OtherInfo from "@madrasha/shared-ui/src/components/admission/OtherInfo";
+import AddressInfo from "@madrasha/shared-ui/src/components/admission/AddressInfo";
+import SubmitButton from "@madrasha/shared-ui/src/components/admission/SubmitButton";
+import PhotoPicker from "@madrasha/shared-ui/src/components/photo/PhotoPicker";
+import { admissionText } from "@madrasha/shared-ui/src/components/admission/admission.text";
+import type { AdmissionFormData, AdmissionFormErrors } from "@madrasha/shared-ui/src/components/admission/types";
 
-const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"];
-
-const emptyForm = {
-  name_bn: "",
-  arabic_name: "",
-  name_en: "",
+const emptyForm: AdmissionFormData = {
+  age: null,
+  roll: "",
+  admissionDate: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dhaka" }),
+  academicYear: "",
+  name: "",
+  arabicName: "",
+  nameEn: "",
   nid: "",
-  gender: "" as number | "",
+  gender: null,
   dob: "",
-  blood_group: "",
-  residency_type: "" as number | "",
-  is_orphan: false,
-  division_id: "",
-  class_id: "",
-  previous_class_id: "",
-  previous_institution: "",
-  previous_result: "",
-  father_name: "",
-  father_arabic_name: "",
-  father_name_en: "",
-  father_nid: "",
-  father_occupation: "",
-  mother_name: "",
-  mother_arabic_name: "",
-  mother_name_en: "",
-  mother_nid: "",
-  mother_occupation: "",
-  guardian_phone: "",
-  guardian_phone_2: "",
-  has_alt_guardian: false,
-  alt_guardian_name: "",
-  alt_guardian_arabic_name: "",
-  alt_guardian_name_en: "",
-  alt_guardian_relation: "",
-  alt_guardian_address: "",
-  alt_guardian_phone: "",
+  bloodGroup: "",
+  residencyType: null,
+  isOrphan: false,
+  academicDivision: "",
+  currentClass: "",
+  previousClass: "",
+  previousInstitution: "",
+  previousResult: "",
+  fatherName: "",
+  fatherArabicName: "",
+  fatherNameEn: "",
+  fatherNid: "",
+  fatherOccupation: "",
+  motherName: "",
+  motherArabicName: "",
+  motherNameEn: "",
+  motherNid: "",
+  motherOccupation: "",
+  parentPhone: "",
+  parentPhone2: "",
+  hasAltGuardian: false,
+  altGuardianName: "",
+  altGuardianArabicName: "",
+  altGuardianNameEn: "",
+  altGuardianRelation: "",
+  altGuardianAddress: "",
+  altGuardianPhone: "",
   division: "",
   district: "",
   thana: "",
   village: "",
   image: "",
-  note: "",
 };
 
 const cleanPhone = (phone: string) => phone.replace(/[^0-9]/g, "");
 
-const labelClass = "text-sm font-semibold text-slate-700";
-const requiredMark = <span className="text-red-500">*</span>;
-
 export default function AdmissionApplyPage() {
   const t = useText(admissionApplyText);
   const lang = useLang();
-  // Arabic-name inputs are madrasa-only UI; the payload keeps its fields
-  // either way (they just stay empty -> null for other institution types).
-  const isMadrasa = useIsMadrasa();
+  const at = useText(admissionText);
   const slug = useTenantSlug();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyForm);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
+  const [fieldErrors, setFieldErrors] = useState<AdmissionFormErrors>({});
   // The class's default fees, billed immediately on submit (see admitStudent
   // on the backend) - shown as info only, since there's no online payment
   // gateway here; the applicant pays in person at the madrasa office.
@@ -97,9 +94,6 @@ export default function AdmissionApplyPage() {
   const madrasa = data?.madrasa;
   useCustomDomainRedirect(madrasa?.custom_domain);
   const settings = data?.settings || {};
-  const divisions: DivisionItem[] = data?.divisions || [];
-  const allClasses: ClassItem[] = data?.classes || [];
-
   const themeColor = settings.theme_color || "#2563eb";
   const accentSolid = useMemo(() => accentStrong(themeColor), [themeColor]);
   const accentLabel = useMemo(() => accentText(themeColor), [themeColor]);
@@ -107,101 +101,71 @@ export default function AdmissionApplyPage() {
 
   // Theme tokens (radius / shadow style) shared with the public website.
   const theme = resolveTheme(settings.theme_key);
-  const cardClass = `${theme.panel} border ${
-    theme.key === "editorial" ? "border-slate-300" : "border-slate-100"
-  } bg-white ${theme.shadowSm} p-6 md:p-8`;
-  const baseInputClass = `mt-1 w-full ${theme.button} border px-3 py-2.5 text-sm outline-none focus:ring-2`;
-  const inputClass = `${baseInputClass} border-slate-200`;
-
-  const classesInDivision = useMemo(
-    () => allClasses.filter((c) => String(c.division_id) === String(form.division_id)),
-    [allClasses, form.division_id],
-  );
-
-  const update = (key: keyof typeof emptyForm, value: string | boolean | number) => {
-    setForm((prev) => ({ ...prev, [key]: value } as typeof emptyForm));
-    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: false } : prev));
-  };
-
-  const handleDivisionChange = (value: string) => {
-    setForm((prev) => ({ ...prev, division_id: value, class_id: "", previous_class_id: "" }));
-    setFieldErrors((prev) => (prev.division_id ? { ...prev, division_id: false } : prev));
-  };
-
-  const fieldClass = (key: string) =>
-    `${baseInputClass} ${fieldErrors[key] ? "border-red-500 focus:ring-red-500" : "border-slate-200"}`;
-
-  const handleImage = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = reader.result as string;
-      // Public visitors aren't authenticated, so the cloud-upload endpoint
-      // (auth-protected) can't be called here - the base64 value is stored
-      // directly, same as the admin form's fallback when cloud storage isn't
-      // configured.
-      setImagePreview(base64);
-      update("image", base64);
-    };
-    reader.readAsDataURL(file);
-  };
+  // Public form options come from the anonymous website response.
+  const loadAdmissionData = useCallback(async (path: string) => {
+    if (path === "/madrasa-divisions") return { data: data?.divisions || [] };
+    if (path.startsWith("/sessions")) return { data: data?.sessions || [] };
+    const divisionId = new URLSearchParams(path.split("?")[1]).get("division_id");
+    return { data: (data?.classes || []).filter((item: { division_id: number }) => String(item.division_id) === divisionId) };
+  }, [data]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    const nextFieldErrors: Record<string, boolean> = {
-      name_bn: !form.name_bn.trim(),
-      division_id: !form.division_id,
-      class_id: !form.class_id,
-      guardian_phone: !form.guardian_phone.trim(),
-    };
+    const nextFieldErrors: AdmissionFormErrors = {};
+    if (!form.name.trim()) nextFieldErrors.name = t.requiredError;
+    if (!form.academicDivision) nextFieldErrors.academicDivision = t.requiredError;
+    if (!form.currentClass) nextFieldErrors.currentClass = t.requiredError;
+    if (!form.academicYear) nextFieldErrors.academicYear = t.requiredError;
+    if (!(form.hasAltGuardian ? form.altGuardianPhone : form.parentPhone).trim()) {
+      if (form.hasAltGuardian) setError(t.requiredError);
+      else nextFieldErrors.parentPhone = t.requiredError;
+    }
     setFieldErrors(nextFieldErrors);
-
-    if (Object.values(nextFieldErrors).some(Boolean)) {
-      setError(getText(admissionApplyText).requiredError);
+    if (Object.keys(nextFieldErrors).length || (form.hasAltGuardian && !form.altGuardianPhone.trim())) {
+      setError(t.requiredError);
       return;
     }
 
     setSubmitting(true);
     try {
       const res = await submitFullAdmissionApplication(slug, {
-        name_bn: form.name_bn.trim(),
-        arabic_name: form.arabic_name || null,
-        name_en: form.name_en || null,
+        name_bn: form.name.trim(),
+        arabic_name: form.arabicName || null,
+        name_en: form.nameEn || null,
         nid: form.nid || null,
-        gender: form.gender === "" ? null : Number(form.gender),
+        gender: form.gender === null ? null : Number(form.gender),
         dob: form.dob || null,
-        blood_group: form.blood_group || null,
-        residency_type: form.residency_type === "" ? null : Number(form.residency_type),
-        is_orphan: form.is_orphan ? 1 : 0,
-        division_id: Number(form.division_id),
-        class_id: Number(form.class_id),
-        academic_year: String(new Date().getFullYear()),
-        previous_class_id: form.previous_class_id ? Number(form.previous_class_id) : null,
-        previous_institution: form.previous_institution || null,
-        previous_result: form.previous_result || null,
-        father_name: form.father_name || null,
-        father_arabic_name: form.father_arabic_name || null,
-        father_name_en: form.father_name_en || null,
-        father_nid: form.father_nid || null,
-        father_occupation: form.father_occupation || null,
-        mother_name: form.mother_name || null,
-        mother_arabic_name: form.mother_arabic_name || null,
-        mother_name_en: form.mother_name_en || null,
-        mother_nid: form.mother_nid || null,
-        mother_occupation: form.mother_occupation || null,
-        guardian_phone: cleanPhone(form.guardian_phone),
-        guardian_phone_2: form.guardian_phone_2 ? cleanPhone(form.guardian_phone_2) : null,
-        alt_guardian_name: form.has_alt_guardian ? form.alt_guardian_name || null : null,
-        alt_guardian_arabic_name: form.has_alt_guardian ? form.alt_guardian_arabic_name || null : null,
-        alt_guardian_name_en: form.has_alt_guardian ? form.alt_guardian_name_en || null : null,
-        alt_guardian_relation: form.has_alt_guardian ? form.alt_guardian_relation || null : null,
-        alt_guardian_address: form.has_alt_guardian ? form.alt_guardian_address || null : null,
-        alt_guardian_phone: form.has_alt_guardian
-          ? cleanPhone(form.alt_guardian_phone) || null
+        blood_group: form.bloodGroup || null,
+        residency_type: form.residencyType === null ? null : Number(form.residencyType),
+        is_orphan: form.isOrphan ? 1 : 0,
+        division_id: Number(form.academicDivision),
+        class_id: Number(form.currentClass),
+        academic_year: form.academicYear,
+        admission_date: form.admissionDate,
+        previous_class_id: form.previousClass ? Number(form.previousClass) : null,
+        previous_institution: form.previousInstitution || null,
+        previous_result: form.previousResult || null,
+        father_name: form.fatherName || null,
+        father_arabic_name: form.fatherArabicName || null,
+        father_name_en: form.fatherNameEn || null,
+        father_nid: form.fatherNid || null,
+        father_occupation: form.fatherOccupation || null,
+        mother_name: form.motherName || null,
+        mother_arabic_name: form.motherArabicName || null,
+        mother_name_en: form.motherNameEn || null,
+        mother_nid: form.motherNid || null,
+        mother_occupation: form.motherOccupation || null,
+        guardian_phone: cleanPhone(form.hasAltGuardian ? form.altGuardianPhone : form.parentPhone),
+        guardian_phone_2: form.parentPhone2 ? cleanPhone(form.parentPhone2) : null,
+        alt_guardian_name: form.hasAltGuardian ? form.altGuardianName || null : null,
+        alt_guardian_arabic_name: form.hasAltGuardian ? form.altGuardianArabicName || null : null,
+        alt_guardian_name_en: form.hasAltGuardian ? form.altGuardianNameEn || null : null,
+        alt_guardian_relation: form.hasAltGuardian ? form.altGuardianRelation || null : null,
+        alt_guardian_address: form.hasAltGuardian ? form.altGuardianAddress || null : null,
+        alt_guardian_phone: form.hasAltGuardian
+          ? cleanPhone(form.altGuardianPhone) || null
           : null,
         division: form.division || null,
         district: form.district || null,
@@ -230,7 +194,7 @@ export default function AdmissionApplyPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="border-b border-slate-100 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-4">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-4">
           <Link to=".." relative="path" className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-800">
             <ChevronLeft size={16} className="rtl:rotate-180" />
             {t.goBack}
@@ -251,7 +215,7 @@ export default function AdmissionApplyPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-10">
+      <main className="mx-auto max-w-6xl px-4 py-10">
         <div className="mb-8 text-center">
           <div
             className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl shadow-md"
@@ -304,441 +268,20 @@ export default function AdmissionApplyPage() {
             </Link>
           </div>
         ) : (
-          <form onSubmit={submit} noValidate className="space-y-5">
-            {error && (
-              <div className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>
-            )}
-
-            {/* ছবি */}
-            <div className={cardClass}>
-              <div className="flex justify-center">
-                <div
-                  className="w-32 h-32 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer bg-slate-50 hover:bg-slate-100 transition overflow-hidden"
-                  onClick={() => fileRef.current?.click()}
-                  style={{
-                    backgroundImage: imagePreview ? `url(${imagePreview})` : "none",
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }}
-                >
-                  {!imagePreview && <span className="text-slate-400 text-xs">{t.uploadPhoto}</span>}
-                </div>
-                <input
-                  type="file"
-                  ref={fileRef}
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleImage}
-                />
+          <form onSubmit={submit} noValidate className="space-y-4 sm:space-y-6">
+            {error && <div role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
+            <fieldset disabled={submitting} className="min-w-0 space-y-4 sm:space-y-6">
+              <div className="bg-white shadow-lg px-6 py-4 rounded-xl border border-gray-200 dark:bg-slate-900 dark:border-slate-700">
+                <PhotoPicker label={at.studentPhoto} value={form.image} onChange={(image) => setForm((prev) => ({ ...prev, image }))} layout="row" />
               </div>
-            </div>
-
-            {/* শিক্ষার্থীর তথ্য */}
-            <div className={cardClass}>
-              <h2 className="mb-4 text-base font-bold text-slate-800">{t.studentInfo}</h2>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="md:col-span-2">
-                  <label className={labelClass}>{t.fullNameBn} {requiredMark}</label>
-                  <ScriptInput
-                    scriptLang="bn"
-                    className={fieldClass("name_bn")}
-                    value={form.name_bn}
-                    onChange={(e) => update("name_bn", e.target.value)}
-                    placeholder={t.fullNamePlaceholder}
-                    required
-                  />
-                </div>
-                {isMadrasa && (
-                  <div>
-                    <label className={labelClass}>{t.nameAr}</label>
-                    <ScriptInput
-                      scriptLang="ar"
-                      className={inputClass}
-                      value={form.arabic_name}
-                      onChange={(e) => update("arabic_name", e.target.value)}
-                      placeholder="اسم الطالب"
-                    />
-                  </div>
-                )}
-                <div>
-                  <label className={labelClass}>{t.nameEn}</label>
-                  <ScriptInput
-                    scriptLang="en"
-                    className={inputClass}
-                    value={form.name_en}
-                    onChange={(e) => update("name_en", e.target.value)}
-                    placeholder="Student's Name"
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>{t.nid}</label>
-                  <NumericInput
-                    className={inputClass}
-                    value={form.nid}
-                    onChange={(e) => update("nid", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>{t.gender}</label>
-                  <select
-                    className={inputClass}
-                    value={form.gender}
-                    onChange={(e) => update("gender", e.target.value ? Number(e.target.value) : "")}
-                  >
-                    <option value="">{t.select}</option>
-                    <option value={1}>{t.male}</option>
-                    <option value={2}>{t.female}</option>
-                  </select>
-                </div>
-                <div>
-                  <CustomDatePicker
-                    label={t.dob}
-                    value={form.dob}
-                    onChange={(date) => update("dob", date)}
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>{t.bloodGroup}</label>
-                  <select
-                    className={inputClass}
-                    value={form.blood_group}
-                    onChange={(e) => update("blood_group", e.target.value)}
-                  >
-                    <option value="">{t.select}</option>
-                    {BLOOD_GROUPS.map((bg) => (
-                      <option key={bg} value={bg}>
-                        {bg}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelClass}>{t.residency}</label>
-                  <select
-                    className={inputClass}
-                    value={form.residency_type}
-                    onChange={(e) =>
-                      update("residency_type", e.target.value ? Number(e.target.value) : "")
-                    }
-                  >
-                    <option value="">{t.select}</option>
-                    <option value={1}>{t.residential}</option>
-                    <option value={2}>{t.nonResidential}</option>
-                  </select>
-                </div>
-                <div>
-                  <label className={labelClass}>{t.orphan}</label>
-                  <select
-                    className={inputClass}
-                    value={form.is_orphan ? "yes" : "no"}
-                    onChange={(e) => update("is_orphan", e.target.value === "yes")}
-                  >
-                    <option value="no">{t.no}</option>
-                    <option value="yes">{t.yes}</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* ভর্তি তথ্য */}
-            <div className={cardClass}>
-              <h2 className="mb-4 text-base font-bold text-slate-800">{t.admissionInfo}</h2>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className={labelClass}>{t.division} {requiredMark}</label>
-                  <select
-                    className={fieldClass("division_id")}
-                    value={form.division_id}
-                    onChange={(e) => handleDivisionChange(e.target.value)}
-                    required
-                  >
-                    <option value="">{t.select}</option>
-                    {divisions.map((d) => (
-                      <option key={d.division_id} value={d.division_id}>
-                        {d.division_name_bn}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelClass}>{t.desiredClass} {requiredMark}</label>
-                  <select
-                    className={fieldClass("class_id")}
-                    value={form.class_id}
-                    onChange={(e) => update("class_id", e.target.value)}
-                    disabled={!classesInDivision.length}
-                    required
-                  >
-                    <option value="">{t.select}</option>
-                    {classesInDivision.map((c) => (
-                      <option key={c.class_id} value={c.class_id}>
-                        {c.class_name_bn}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelClass}>{t.previousClass}</label>
-                  <select
-                    className={inputClass}
-                    value={form.previous_class_id}
-                    onChange={(e) => update("previous_class_id", e.target.value)}
-                    disabled={!classesInDivision.length}
-                  >
-                    <option value="">{t.select}</option>
-                    {classesInDivision.map((c) => (
-                      <option key={c.class_id} value={c.class_id}>
-                        {c.class_name_bn}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelClass}>{t.previousInstitution}</label>
-                  <input
-                    className={inputClass}
-                    value={form.previous_institution}
-                    onChange={(e) => update("previous_institution", e.target.value)}
-                    placeholder={t.previousInstitutionPlaceholder}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className={labelClass}>{t.previousResult}</label>
-                  <input
-                    className={inputClass}
-                    value={form.previous_result}
-                    onChange={(e) => update("previous_result", e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* অভিভাবকের তথ্য */}
-            <div className={cardClass}>
-              <h2 className="mb-4 text-base font-bold text-slate-800">{t.guardianInfo}</h2>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className={labelClass}>{t.fatherNameBn}</label>
-                  <ScriptInput
-                    scriptLang="bn"
-                    className={inputClass}
-                    value={form.father_name}
-                    onChange={(e) => update("father_name", e.target.value)}
-                  />
-                </div>
-                {isMadrasa && (
-                  <div>
-                    <label className={labelClass}>{t.fatherNameAr}</label>
-                    <ScriptInput
-                      scriptLang="ar"
-                      className={inputClass}
-                      value={form.father_arabic_name}
-                      onChange={(e) => update("father_arabic_name", e.target.value)}
-                      placeholder="الأب اسم"
-                    />
-                  </div>
-                )}
-                <div>
-                  <label className={labelClass}>{t.fatherNameEn}</label>
-                  <ScriptInput
-                    scriptLang="en"
-                    className={inputClass}
-                    value={form.father_name_en}
-                    onChange={(e) => update("father_name_en", e.target.value)}
-                    placeholder="Father's Name"
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>{t.fatherNid}</label>
-                  <NumericInput
-                    className={inputClass}
-                    value={form.father_nid}
-                    onChange={(e) => update("father_nid", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>{t.fatherOccupation}</label>
-                  <input
-                    className={inputClass}
-                    value={form.father_occupation}
-                    onChange={(e) => update("father_occupation", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>{t.motherNameBn}</label>
-                  <ScriptInput
-                    scriptLang="bn"
-                    className={inputClass}
-                    value={form.mother_name}
-                    onChange={(e) => update("mother_name", e.target.value)}
-                  />
-                </div>
-                {isMadrasa && (
-                  <div>
-                    <label className={labelClass}>{t.motherNameAr}</label>
-                    <ScriptInput
-                      scriptLang="ar"
-                      className={inputClass}
-                      value={form.mother_arabic_name}
-                      onChange={(e) => update("mother_arabic_name", e.target.value)}
-                      placeholder="الأم اسم"
-                    />
-                  </div>
-                )}
-                <div>
-                  <label className={labelClass}>{t.motherNameEn}</label>
-                  <ScriptInput
-                    scriptLang="en"
-                    className={inputClass}
-                    value={form.mother_name_en}
-                    onChange={(e) => update("mother_name_en", e.target.value)}
-                    placeholder="Mother's Name"
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>{t.motherNid}</label>
-                  <NumericInput
-                    className={inputClass}
-                    value={form.mother_nid}
-                    onChange={(e) => update("mother_nid", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>{t.motherOccupation}</label>
-                  <input
-                    className={inputClass}
-                    value={form.mother_occupation}
-                    onChange={(e) => update("mother_occupation", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>{t.guardianPhone} {requiredMark}</label>
-                  <NumericInput
-                    className={fieldClass("guardian_phone")}
-                    value={form.guardian_phone}
-                    onChange={(e) => update("guardian_phone", e.target.value)}
-                    placeholder="01XXXXXXXXX"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>{t.guardianPhone2}</label>
-                  <NumericInput
-                    className={inputClass}
-                    value={form.guardian_phone_2}
-                    onChange={(e) => update("guardian_phone_2", e.target.value)}
-                    placeholder="01XXXXXXXXX"
-                  />
-                </div>
-              </div>
-
-              <label className="mt-4 flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.has_alt_guardian}
-                  onChange={(e) => update("has_alt_guardian", e.target.checked)}
-                  className="w-4 h-4 accent-blue-600"
-                />
-                <span className="text-sm font-semibold text-slate-700">
-                  {t.hasAltGuardian}
-                </span>
-              </label>
-
-              {form.has_alt_guardian && (
-                <div className="mt-3 grid gap-4 rounded-xl bg-slate-50 p-4 md:grid-cols-2">
-                  <div>
-                    <label className={labelClass}>{t.altGuardianNameBn}</label>
-                    <ScriptInput
-                      scriptLang="bn"
-                      className={inputClass}
-                      value={form.alt_guardian_name}
-                      onChange={(e) => update("alt_guardian_name", e.target.value)}
-                    />
-                  </div>
-                  {isMadrasa && (
-                    <div>
-                      <label className={labelClass}>{t.altGuardianNameAr}</label>
-                      <ScriptInput
-                        scriptLang="ar"
-                        className={inputClass}
-                        value={form.alt_guardian_arabic_name}
-                        onChange={(e) => update("alt_guardian_arabic_name", e.target.value)}
-                        placeholder="اسم ولي الأمر"
-                      />
-                    </div>
-                  )}
-                  <div>
-                    <label className={labelClass}>{t.altGuardianNameEn}</label>
-                    <ScriptInput
-                      scriptLang="en"
-                      className={inputClass}
-                      value={form.alt_guardian_name_en}
-                      onChange={(e) => update("alt_guardian_name_en", e.target.value)}
-                      placeholder="Guardian's Name"
-                    />
-                  </div>
-                  <div>
-                    <label className={labelClass}>{t.relation}</label>
-                    <input
-                      className={inputClass}
-                      value={form.alt_guardian_relation}
-                      onChange={(e) => update("alt_guardian_relation", e.target.value)}
-                      placeholder={t.relationPlaceholder}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelClass}>{t.mobile}</label>
-                    <NumericInput
-                      className={inputClass}
-                      value={form.alt_guardian_phone}
-                      onChange={(e) => update("alt_guardian_phone", e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelClass}>{t.address}</label>
-                    <input
-                      className={inputClass}
-                      value={form.alt_guardian_address}
-                      onChange={(e) => update("alt_guardian_address", e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* ঠিকানা */}
-            <div className={cardClass}>
-              <h2 className="mb-4 text-base font-bold text-slate-800">{t.address}</h2>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <AddressCascadeFields
-                  values={{ division: form.division || "", district: form.district || "", thana: form.thana || "" }}
-                  onChange={update}
-                  selectClassName={inputClass}
-                  labelClassName={labelClass}
-                  wrapperClassName=""
-                />
-                <div>
-                  <label className={labelClass}>{t.village}</label>
-                  <input
-                    className={inputClass}
-                    value={form.village}
-                    onChange={(e) => update("village", e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className={`w-full ${theme.button} px-5 py-3 text-sm font-bold ${theme.shadowSm} transition hover:opacity-90 disabled:opacity-60`}
-              style={{ backgroundColor: accentSolid, color: onAccent }}
-            >
-              {submitting ? t.submitting : t.submit}
-            </button>
-            <p className="text-center text-xs text-slate-400" style={{ color: accentLabel }}>
-              {t.requiredNote}
-            </p>
+              <StudentInfo formData={form} setFormData={setForm} errors={fieldErrors} setErrors={setFieldErrors} loadData={loadAdmissionData} />
+              <ParentInfo formData={form} setFormData={setForm} errors={fieldErrors} setErrors={setFieldErrors} />
+              <AlternateGuardianInfo formData={form} setFormData={setForm} />
+              <OtherInfo formData={form} setFormData={setForm} />
+              <AddressInfo formData={form} setFormData={setForm} />
+              <SubmitButton loading={submitting} />
+            </fieldset>
+            <p className="text-center text-xs text-slate-400" style={{ color: accentLabel }}>{t.requiredNote}</p>
           </form>
         )}
       </main>

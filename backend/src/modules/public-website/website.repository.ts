@@ -16,6 +16,14 @@ import {
 } from "./website.constants";
 
 export class WebsiteRepository {
+  findPublicAdmissionSessions(madrasaId: number) {
+    return prisma.session.findMany({
+      where: { madrasaId, isActive: true },
+      select: { id: true, name: true, divisionId: true, isActive: true },
+      orderBy: [{ startDate: "desc" }, { id: "desc" }],
+    });
+  }
+
   findWebsiteInstitution(id: number) {
     return prisma.madrasa.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
   }

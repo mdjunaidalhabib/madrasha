@@ -129,6 +129,7 @@ export class WebsiteService {
       committee,
       videos,
       divisionsWithClasses,
+      sessions,
     ] = await Promise.all([
       this.repository.findSettings(madrasa.id),
       this.repository.findPublishedPages(madrasa.id),
@@ -150,6 +151,7 @@ export class WebsiteService {
           )
         ).flat(),
       })),
+      this.repository.findPublicAdmissionSessions(madrasa.id),
     ]);
 
     if (settings?.isPublished === 0) {
@@ -170,6 +172,7 @@ export class WebsiteService {
       videos: videos.map(toWebsiteVideoApiDto),
       divisions,
       classes,
+      sessions,
     };
   }
 

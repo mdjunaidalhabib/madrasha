@@ -15,6 +15,7 @@ const makeRepository = (teachers: any[], demoTeachers: unknown) => ({
   findPublishedSlides: vi.fn(async () => []),
   findPublishedCommittee: vi.fn(async () => []),
   findPublishedVideos: vi.fn(async () => []),
+  findPublicAdmissionSessions: vi.fn(async () => []),
 });
 
 describe("website sample teacher profiles", () => {
