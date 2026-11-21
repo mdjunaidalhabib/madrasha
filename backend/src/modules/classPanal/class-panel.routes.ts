@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  getAcademicReferences,
   getDivisions,
   addDivision,
   duplicateDivision,
@@ -32,6 +33,7 @@ import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
 const router = Router();
 
 router.use(tenantMiddleware, authMiddleware);
+router.get("/academic-references", getAcademicReferences);
 
 // GET routes are deliberately left ungated - they're consumed as dropdown/
 // reference data by many unrelated pages (admission, attendance, fee,

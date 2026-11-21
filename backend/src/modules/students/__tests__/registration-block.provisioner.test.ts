@@ -8,7 +8,11 @@ const KITAB = 3;
 const makeTx = (opts: {
   planId?: number | null;
   sizes: { divisionId: number; blockSize: number }[];
-  divisionOrder: { divisionId: number; sortOrder: number }[];
+  divisionOrder: {
+    divisionId: number;
+    sortOrder: number;
+    division?: { sourceTemplateId: number | null; institutionType: string };
+  }[];
   missing: { id: number; sortOrder: number; divisionId: number }[];
   maxBlockEnd?: number | null;
   maxRegNo?: number | null;
@@ -23,12 +27,18 @@ const makeTx = (opts: {
     madrasaDivision: { findMany: vi.fn(async () => opts.divisionOrder) },
     madrasaClass: {
       findMany: vi.fn(async () =>
-        opts.missing.map((m) => ({ id: m.id, sortOrder: m.sortOrder, class: { divisionId: m.divisionId } })),
+        opts.missing.map((m) => ({
+          id: m.id,
+          sortOrder: m.sortOrder,
+          class: { divisionId: m.divisionId },
+        })),
       ),
       aggregate: vi.fn(async () => ({ _max: { regNoEnd: opts.maxBlockEnd ?? null } })),
       update,
     },
-    student: { aggregate: vi.fn(async () => ({ _max: { registrationNo: opts.maxRegNo ?? null } })) },
+    student: {
+      aggregate: vi.fn(async () => ({ _max: { registrationNo: opts.maxRegNo ?? null } })),
+    },
   };
   const blocks = () =>
     update.mock.calls.map(([arg]: any) => [arg.where.id, arg.data.regNoStart, arg.data.regNoEnd]);
@@ -36,6 +46,43 @@ const makeTx = (opts: {
 };
 
 describe("assignMissingRegistrationBlocksOnTx", () => {
+  it("uses source-template plan sizes for private divisions", async () => {
+    const { tx, blocks } = makeTx({
+      sizes: [{ divisionId: NURANI, blockSize: 50 }],
+      divisionOrder: [
+        {
+          divisionId: 101,
+          sortOrder: 0,
+          division: { sourceTemplateId: NURANI, institutionType: "MADRASA" },
+        },
+      ],
+      missing: [
+        { id: 110, sortOrder: 0, divisionId: 101 },
+        { id: 111, sortOrder: 1, divisionId: 101 },
+      ],
+    });
+    await assignMissingRegistrationBlocksOnTx(tx, 7, 99);
+    expect(blocks()).toEqual([
+      [110, 1, 50],
+      [111, 51, 100],
+    ]);
+  });
+
+  it("gives custom madrasa divisions a 50-number default", async () => {
+    const { tx, blocks } = makeTx({
+      sizes: [],
+      divisionOrder: [
+        {
+          divisionId: 201,
+          sortOrder: 0,
+          division: { sourceTemplateId: null, institutionType: "MADRASA" },
+        },
+      ],
+      missing: [{ id: 210, sortOrder: 0, divisionId: 201 }],
+    });
+    await assignMissingRegistrationBlocksOnTx(tx, 7, 99);
+    expect(blocks()).toEqual([[210, 1, 50]]);
+  });
   it("lays out Basic-plan blocks back to back in বিভাগ → শ্রেণি order", async () => {
     const { tx, blocks } = makeTx({
       sizes: [

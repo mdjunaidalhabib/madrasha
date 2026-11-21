@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Copy, GripVertical, Pencil, Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
+import {
+  Check,
+  Copy,
+  GripVertical,
+  Loader2,
+  Pencil,
+  Plus,
+  SlidersHorizontal,
+  Trash2,
+  X,
+} from "lucide-react";
 import MarkComponentsModal from "../../../components/ResultPanel/MarkComponentsModal";
 import api, { cachedGet } from "../../../services/api";
 import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
@@ -9,7 +19,15 @@ import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import SectionCard from "../../../components/settings/SectionCard";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
-import { commonText, formatNumber, getText, toAsciiDigits, useLang, useText, useInstitutionType } from "@madrasha/shared-ui/src/i18n";
+import {
+  commonText,
+  formatNumber,
+  getText,
+  toAsciiDigits,
+  useLang,
+  useText,
+  useInstitutionType,
+} from "@madrasha/shared-ui/src/i18n";
 import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
 import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { talimatSettingsText } from "./talimatSettings.text";
@@ -18,13 +36,11 @@ import BulkSelection, { selectionCheckboxClass } from "./BulkSelection";
 
 type BulkKind = "division" | "class" | "book";
 
-/** ক্রমিক নম্বর: position within this madrasa's own list (lists arrive
- * already sorted by sortOrder and are re-spliced locally on drag), so it
- * always matches what reports/dropdowns elsewhere show. */
-const SerialBadge = ({ index }: { index: number }) => {
+/** Stable institution-local number, independent of drag/reorder position. */
+const SerialBadge = ({ index, localNo }: { index: number; localNo?: number | null }) => {
   const t = useText(talimatSettingsText);
   const lang = useLang();
-  const n = formatNumber(index + 1, lang);
+  const n = formatNumber(localNo ?? index + 1, lang);
   return (
     <span
       aria-label={t.serialN(n)}
@@ -74,7 +90,17 @@ const MarkField = ({
 );
 
 /** Round "+" in a card header; turns into "×" while its add field is open. */
-const PlusToggle = ({ open, onClick, label, disabled }: { open: boolean; onClick: () => void; label: string; disabled?: boolean }) => (
+const PlusToggle = ({
+  open,
+  onClick,
+  label,
+  disabled,
+}: {
+  open: boolean;
+  onClick: () => void;
+  label: string;
+  disabled?: boolean;
+}) => (
   <button
     type="button"
     onClick={onClick}
@@ -99,8 +125,50 @@ const AddPanel = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
-const iconBtn =
-  "touch-manipulation rounded-md p-1.5 text-gray-400 dark:text-slate-500";
+const ListFeedback = ({
+  loading,
+  error,
+  onRetry,
+}: {
+  loading: boolean;
+  error: boolean;
+  onRetry: () => void;
+}) => {
+  const t = useText(talimatSettingsText);
+  if (loading)
+    return (
+      <div role="status" className="space-y-2 py-2">
+        <span className="sr-only">{t.loadingList}</span>
+        {[0, 1, 2].map((row) => (
+          <div
+            key={row}
+            aria-hidden="true"
+            className="flex items-center gap-3 rounded-lg border border-gray-100 p-3 dark:border-slate-800 motion-safe:animate-pulse"
+          >
+            <div className="h-5 w-5 rounded-full bg-gray-100 dark:bg-slate-800" />
+            <div
+              className={`h-3 rounded bg-gray-100 dark:bg-slate-800 ${row === 1 ? "w-1/2" : "w-2/3"}`}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  if (error)
+    return (
+      <div
+        role="alert"
+        className="space-y-3 rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300"
+      >
+        <p>{t.loadErrorTitle}</p>
+        <Button variant="secondary" onClick={onRetry}>
+          {t.retry}
+        </Button>
+      </div>
+    );
+  return null;
+};
+
+const iconBtn = "touch-manipulation rounded-md p-1.5 text-gray-400 dark:text-slate-500";
 const editBtnCls = `${iconBtn} hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/40 dark:hover:text-blue-400`;
 const copyBtnCls = `${iconBtn} hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400`;
 const delBtnCls = `${iconBtn} hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400`;
@@ -117,9 +185,17 @@ export default function ClassBookSettingsPage() {
   const [selectedClasses, setSelectedClasses] = useState<number[]>([]);
   const [selectedBooks, setSelectedBooks] = useState<number[]>([]);
   const bulkRunning = useRef(false);
+  // A ref blocks repeated Enter/click events before React renders disabled controls.
+  const addRunning = useRef(false);
+  const [adding, setAdding] = useState<BulkKind | null>(null);
+  const [loading, setLoading] = useState({ division: true, class: false, book: false });
+  const [loadErrors, setLoadErrors] = useState({ division: false, class: false, book: false });
+  const loadGeneration = useRef({ division: 0, class: 0, book: 0 });
 
   const [divisionId, setDivisionId] = useState<string>("");
   const [classId, setClassId] = useState<string>("");
+  const selection = useRef({ divisionId, classId });
+  selection.current = { divisionId, classId };
   const [miyariBookIds, setMiyariBookIds] = useState<number[]>([]);
   const [savingMiyari, setSavingMiyari] = useState(false);
   const [optionalBookIds, setOptionalBookIds] = useState<number[]>([]);
@@ -132,6 +208,42 @@ export default function ClassBookSettingsPage() {
   const toast = useToastStore.getState().push;
   // Percentage overlay for copy / delete (same component as institution create/delete).
   const progressTask = useProgressTask();
+  const runAdd = async (
+    kind: BulkKind,
+    save: () => Promise<unknown>,
+    onCreated: () => void,
+    reload: () => Promise<void>,
+  ) => {
+    if (addRunning.current || progressTask.isRunning || loading[kind] || loadErrors[kind]) return;
+    addRunning.current = true;
+    setAdding(kind);
+    let saved = false;
+    try {
+      const titles = { division: t.addingDivision, class: t.addingClass, book: t.addingBook };
+      const p = getText(talimatSettingsProgressText);
+      await progressTask.run(
+        { title: titles[kind], steps: [t.savingItem, p.stepReload] },
+        async ({ advance }) => {
+          await save();
+          saved = true;
+          onCreated();
+          advance();
+          await reload();
+          advance();
+        },
+      );
+      toast("success", t.addedSuccessfully);
+    } catch (err: any) {
+      // A completed POST must not be resubmitted just because its GET refresh failed.
+      toast(
+        saved ? "info" : "error",
+        saved ? t.addedRefreshFailed : err?.response?.data?.message || t.addFailed,
+      );
+    } finally {
+      addRunning.current = false;
+      setAdding(null);
+    }
+  };
   // Selection to apply after the next reload (a freshly added/duplicated row).
   const pendingClassSelect = useRef<string | null>(null);
 
@@ -167,9 +279,10 @@ export default function ClassBookSettingsPage() {
   const [newBookPassMark, setNewBookPassMark] = useState("");
   const [dragBookId, setDragBookId] = useState<number | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
-  const [componentsModalBook, setComponentsModalBook] = useState<{ id: number; name: string } | null>(
-    null,
-  );
+  const [componentsModalBook, setComponentsModalBook] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   /* ================= LOAD ================= */
 
@@ -177,34 +290,50 @@ export default function ClassBookSettingsPage() {
   // jumping back to the first row; `select` forces a specific row ("last" = the
   // newly appended one).
   const loadDivisions = useCallback(async (select?: string) => {
-    const res = await cachedGet("/madrasa-divisions");
-    const data = res.data || [];
+    const generation = ++loadGeneration.current.division;
+    setLoading((v) => ({ ...v, division: true }));
+    setLoadErrors((v) => ({ ...v, division: false }));
+    try {
+      const res = await cachedGet("/madrasa-divisions");
+      if (generation !== loadGeneration.current.division) return;
+      const data = res.data || [];
 
-    setDivisions(data);
-    setSelectedDivisions((prev) => prev.filter((id) => data.some((d: any) => Number(d.division_id) === id)));
-    setDivisionId((prev) => {
-      if (select === "last") return data.length ? String(data[data.length - 1].division_id) : "";
-      if (select) return select;
-      if (prev && data.some((d: any) => String(d.division_id) === prev)) return prev;
-      return data.length ? String(data[0].division_id) : "";
-    });
+      setDivisions(data);
+      setSelectedDivisions((prev) =>
+        prev.filter((id) => data.some((d: any) => Number(d.division_id) === id)),
+      );
+      setDivisionId((prev) => {
+        if (select === "last") return data.length ? String(data[data.length - 1].division_id) : "";
+        if (select) return select;
+        if (prev && data.some((d: any) => String(d.division_id) === prev)) return prev;
+        return data.length ? String(data[0].division_id) : "";
+      });
+    } catch (err) {
+      if (generation === loadGeneration.current.division)
+        setLoadErrors((v) => ({ ...v, division: true }));
+      throw err;
+    } finally {
+      if (generation === loadGeneration.current.division)
+        setLoading((v) => ({ ...v, division: false }));
+    }
   }, []);
 
   useEffect(() => {
-    loadDivisions();
+    void loadDivisions().catch(() => {});
   }, [loadDivisions]);
 
   const addDivision = async () => {
     const trimmed = divisionName.trim();
     if (!trimmed) return;
-    try {
-      await api.post("/madrasa-divisions", { name_bn: trimmed });
-      setDivisionName("");
-      setShowDivisionInput(false);
-      await loadDivisions("last");
-    } catch (err: any) {
-      toast("error", err?.response?.data?.message || t.addFailed);
-    }
+    await runAdd(
+      "division",
+      () => api.post("/madrasa-divisions", { name_bn: trimmed }),
+      () => {
+        setDivisionName("");
+        setShowDivisionInput(false);
+      },
+      () => loadDivisions("last"),
+    );
   };
 
   const duplicateDivision = (division: any) => {
@@ -282,7 +411,7 @@ export default function ClassBookSettingsPage() {
     } catch (err: any) {
       toast("error", err?.response?.data?.message || t.editFailed);
     }
-    loadDivisions();
+    void loadDivisions().catch(() => {});
   };
 
   /* ================= DIVISION ORDER (drag & drop) ================= */
@@ -309,18 +438,24 @@ export default function ClassBookSettingsPage() {
         division_ids: orderedDivisions.map((d) => d.division_id),
       });
     } catch (err: any) {
-      useToastStore.getState().push("error", err?.response?.data?.message || getText(talimatSettingsText).orderSaveFailed);
-      loadDivisions();
+      useToastStore
+        .getState()
+        .push(
+          "error",
+          err?.response?.data?.message || getText(talimatSettingsText).orderSaveFailed,
+        );
+      void loadDivisions().catch(() => {});
     } finally {
       setSavingDivisionOrder(false);
     }
   };
 
-  const handleDivisionHandlePointerDown = (targetDivisionId: number) => (event: React.PointerEvent) => {
-    if (savingDivisionOrder) return;
-    (event.target as HTMLElement).setPointerCapture(event.pointerId);
-    setDragDivisionId(targetDivisionId);
-  };
+  const handleDivisionHandlePointerDown =
+    (targetDivisionId: number) => (event: React.PointerEvent) => {
+      if (savingDivisionOrder) return;
+      (event.target as HTMLElement).setPointerCapture(event.pointerId);
+      setDragDivisionId(targetDivisionId);
+    };
 
   const handleDivisionHandlePointerMove = (event: React.PointerEvent) => {
     if (dragDivisionId === null) return;
@@ -338,24 +473,49 @@ export default function ClassBookSettingsPage() {
   };
 
   const loadClasses = useCallback(async () => {
-    const res = await cachedGet(`/madrasa-classes?division_id=${divisionId}`);
-    const data = res.data || [];
+    const generation = ++loadGeneration.current.class;
+    setLoading((v) => ({ ...v, class: true }));
+    setLoadErrors((v) => ({ ...v, class: false }));
+    try {
+      const res = await cachedGet(`/madrasa-classes?division_id=${divisionId}`);
+      if (
+        generation !== loadGeneration.current.class ||
+        selection.current.divisionId !== divisionId
+      )
+        return;
+      const data = res.data || [];
 
-    setClasses(data);
-    setSelectedClasses((prev) => prev.filter((id) => data.some((c: any) => Number(c.class_id) === id)));
+      setClasses(data);
+      setSelectedClasses((prev) =>
+        prev.filter((id) => data.some((c: any) => Number(c.class_id) === id)),
+      );
 
-    const pending = pendingClassSelect.current;
-    pendingClassSelect.current = null;
-    setClassId((prev) => {
-      if (pending === "last") return data.length ? String(data[data.length - 1].class_id) : "";
-      if (pending) return pending;
-      if (prev && data.some((c: any) => String(c.class_id) === prev)) return prev;
-      return data.length ? String(data[0].class_id) : "";
-    });
-    if (!data.length) {
-      setBooks([]);
-      setMiyariBookIds([]);
-      setOptionalBookIds([]);
+      const pending = pendingClassSelect.current;
+      pendingClassSelect.current = null;
+      setClassId((prev) => {
+        if (pending === "last") return data.length ? String(data[data.length - 1].class_id) : "";
+        if (pending) return pending;
+        if (prev && data.some((c: any) => String(c.class_id) === prev)) return prev;
+        return data.length ? String(data[0].class_id) : "";
+      });
+      if (!data.length) {
+        setBooks([]);
+        setMiyariBookIds([]);
+        setOptionalBookIds([]);
+      }
+    } catch (err) {
+      if (
+        generation === loadGeneration.current.class &&
+        selection.current.divisionId === divisionId
+      )
+        setLoadErrors((v) => ({ ...v, class: true }));
+      throw err;
+    } finally {
+      if (
+        generation === loadGeneration.current.class &&
+        selection.current.divisionId === divisionId
+      )
+        setLoading((v) => ({ ...v, class: false }));
     }
   }, [divisionId]);
 
@@ -365,28 +525,56 @@ export default function ClassBookSettingsPage() {
     setClasses([]);
     setClassId("");
     setBooks([]);
-    if (!divisionId) return;
-    loadClasses();
+    if (!divisionId) {
+      setLoading((v) => ({ ...v, class: false }));
+      setLoadErrors((v) => ({ ...v, class: false }));
+      return;
+    }
+    void loadClasses().catch(() => {});
   }, [divisionId, loadClasses]);
 
   const loadBooks = useCallback(async () => {
-    const res = await cachedGet(`/madrasa-books?class_id=${classId}`);
-    const data = res.data || [];
-    setBooks(data);
-    setSelectedBooks((prev) => prev.filter((id) => data.some((b: any) => Number(b.book_id) === id)));
-    setMiyariBookIds(
-      data.filter((book: any) => Boolean(book.is_miyari)).map((book: any) => Number(book.book_id)),
-    );
-    setOptionalBookIds(
-      data.filter((book: any) => Boolean(book.is_optional)).map((book: any) => Number(book.book_id)),
-    );
+    const generation = ++loadGeneration.current.book;
+    setLoading((v) => ({ ...v, book: true }));
+    setLoadErrors((v) => ({ ...v, book: false }));
+    try {
+      const res = await cachedGet(`/madrasa-books?class_id=${classId}`);
+      if (generation !== loadGeneration.current.book || selection.current.classId !== classId)
+        return;
+      const data = res.data || [];
+      setBooks(data);
+      setSelectedBooks((prev) =>
+        prev.filter((id) => data.some((b: any) => Number(b.book_id) === id)),
+      );
+      setMiyariBookIds(
+        data
+          .filter((book: any) => Boolean(book.is_miyari))
+          .map((book: any) => Number(book.book_id)),
+      );
+      setOptionalBookIds(
+        data
+          .filter((book: any) => Boolean(book.is_optional))
+          .map((book: any) => Number(book.book_id)),
+      );
+    } catch (err) {
+      if (generation === loadGeneration.current.book && selection.current.classId === classId)
+        setLoadErrors((v) => ({ ...v, book: true }));
+      throw err;
+    } finally {
+      if (generation === loadGeneration.current.book && selection.current.classId === classId)
+        setLoading((v) => ({ ...v, book: false }));
+    }
   }, [classId]);
 
   useEffect(() => {
     setSelectedBooks([]);
     setBooks([]);
-    if (!classId) return;
-    loadBooks();
+    if (!classId) {
+      setLoading((v) => ({ ...v, book: false }));
+      setLoadErrors((v) => ({ ...v, book: false }));
+      return;
+    }
+    void loadBooks().catch(() => {});
   }, [classId, loadBooks]);
 
   /* ================= CLASS ================= */
@@ -398,19 +586,20 @@ export default function ClassBookSettingsPage() {
       return;
     }
 
-    try {
-      await api.post("/madrasa-classes", {
-        division_id: divisionId,
-        name_bn: className.trim(),
-      });
-      setClassName("");
-      setShowClassInput(false);
-      pendingClassSelect.current = "last";
-      await loadClasses();
-    } catch (err: any) {
-      pendingClassSelect.current = null;
-      toast("error", err?.response?.data?.message || t.addFailed);
-    }
+    await runAdd(
+      "class",
+      () =>
+        api.post("/madrasa-classes", {
+          division_id: divisionId,
+          name_bn: className.trim(),
+        }),
+      () => {
+        setClassName("");
+        setShowClassInput(false);
+        pendingClassSelect.current = "last";
+      },
+      loadClasses,
+    );
   };
 
   const duplicateClass = (classItem: any) => {
@@ -489,7 +678,7 @@ export default function ClassBookSettingsPage() {
     } catch (err: any) {
       toast("error", err?.response?.data?.message || t.editFailed);
     }
-    loadClasses();
+    void loadClasses().catch(() => {});
   };
 
   /* ================= CLASS ORDER (drag & drop) ================= */
@@ -517,8 +706,13 @@ export default function ClassBookSettingsPage() {
         class_ids: orderedClasses.map((c) => c.class_id),
       });
     } catch (err: any) {
-      useToastStore.getState().push("error", err?.response?.data?.message || getText(talimatSettingsText).orderSaveFailed);
-      loadClasses();
+      useToastStore
+        .getState()
+        .push(
+          "error",
+          err?.response?.data?.message || getText(talimatSettingsText).orderSaveFailed,
+        );
+      void loadClasses().catch(() => {});
     } finally {
       setSavingClassOrder(false);
     }
@@ -573,16 +767,17 @@ export default function ClassBookSettingsPage() {
       payload.pass_mark = pm;
     }
 
-    try {
-      await api.post("/madrasa-books", payload);
-      setName("");
-      setNewBookFullMarks("");
-      setNewBookPassMark("");
-      setShowBookInput(false);
-      await loadBooks();
-    } catch (err: any) {
-      toast("error", err?.response?.data?.message || t.addFailed);
-    }
+    await runAdd(
+      "book",
+      () => api.post("/madrasa-books", payload),
+      () => {
+        setName("");
+        setNewBookFullMarks("");
+        setNewBookPassMark("");
+        setShowBookInput(false);
+      },
+      loadBooks,
+    );
   };
 
   const duplicateBook = (book: any) => {
@@ -626,7 +821,12 @@ export default function ClassBookSettingsPage() {
             {
               title: p.deleteBookTitle,
               estimate: { msPerStep: 800 },
-              steps: [p.deleteBookStepCheck, p.deleteBookStepMove, p.deleteBookStepResults, p.stepReload],
+              steps: [
+                p.deleteBookStepCheck,
+                p.deleteBookStepMove,
+                p.deleteBookStepResults,
+                p.stepReload,
+              ],
             },
             async () => {
               await api.delete(`/madrasa-books/${book.book_id}`);
@@ -692,7 +892,7 @@ export default function ClassBookSettingsPage() {
     } catch (err: any) {
       toast("error", err?.response?.data?.message || t.editFailed);
     }
-    loadBooks();
+    void loadBooks().catch(() => {});
   };
 
   const startEdit = (book: any) => {
@@ -731,8 +931,13 @@ export default function ClassBookSettingsPage() {
         book_ids: orderedBooks.map((b) => b.book_id),
       });
     } catch (err: any) {
-      useToastStore.getState().push("error", err?.response?.data?.message || getText(talimatSettingsText).orderSaveFailed);
-      loadBooks();
+      useToastStore
+        .getState()
+        .push(
+          "error",
+          err?.response?.data?.message || getText(talimatSettingsText).orderSaveFailed,
+        );
+      void loadBooks().catch(() => {});
     } finally {
       setSavingOrder(false);
     }
@@ -767,15 +972,24 @@ export default function ClassBookSettingsPage() {
   // and zero miyari books is a valid state (a class doesn't have to have one).
   const toggleOptional = async (bookId: number) => {
     const previous = optionalBookIds;
-    const next = previous.includes(bookId) ? previous.filter((id) => id !== bookId) : [...previous, bookId];
+    const next = previous.includes(bookId)
+      ? previous.filter((id) => id !== bookId)
+      : [...previous, bookId];
     setOptionalBookIds(next);
     setSavingOptional(true);
     try {
-      const res = await api.put("/madrasa-books/optional", { class_id: Number(classId), book_ids: next });
-      useToastStore.getState().push("success", res.data?.message || getText(talimatSettingsText).optionalSaved);
+      const res = await api.put("/madrasa-books/optional", {
+        class_id: Number(classId),
+        book_ids: next,
+      });
+      useToastStore
+        .getState()
+        .push("success", res.data?.message || getText(talimatSettingsText).optionalSaved);
     } catch (err: any) {
       setOptionalBookIds(previous);
-      useToastStore.getState().push("error", err?.response?.data?.message || getText(commonText).saveFailed);
+      useToastStore
+        .getState()
+        .push("error", err?.response?.data?.message || getText(commonText).saveFailed);
     } finally {
       setSavingOptional(false);
     }
@@ -794,10 +1008,14 @@ export default function ClassBookSettingsPage() {
         class_id: Number(classId),
         book_ids: next,
       });
-      useToastStore.getState().push("success", res.data?.message || getText(talimatSettingsText).miyariSaved);
+      useToastStore
+        .getState()
+        .push("success", res.data?.message || getText(talimatSettingsText).miyariSaved);
     } catch (err: any) {
       setMiyariBookIds(previous);
-      useToastStore.getState().push("error", err?.response?.data?.message || getText(commonText).saveFailed);
+      useToastStore
+        .getState()
+        .push("error", err?.response?.data?.message || getText(commonText).saveFailed);
     } finally {
       setSavingMiyari(false);
     }
@@ -806,21 +1024,37 @@ export default function ClassBookSettingsPage() {
   /* ================= UI ================= */
 
   const toggleSelected = (kind: BulkKind, id: number) => {
-    const setter = kind === "division" ? setSelectedDivisions : kind === "class" ? setSelectedClasses : setSelectedBooks;
-    setter((prev) => prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]);
+    const setter =
+      kind === "division"
+        ? setSelectedDivisions
+        : kind === "class"
+          ? setSelectedClasses
+          : setSelectedBooks;
+    setter((prev) => (prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]));
   };
 
   const bulkAction = (kind: BulkKind, action: "duplicate" | "delete") => {
     if (bulkRunning.current || progressTask.isRunning) return;
     const rows = kind === "division" ? divisions : kind === "class" ? classes : books;
-    const selected = kind === "division" ? selectedDivisions : kind === "class" ? selectedClasses : selectedBooks;
-    const setter = kind === "division" ? setSelectedDivisions : kind === "class" ? setSelectedClasses : setSelectedBooks;
+    const selected =
+      kind === "division" ? selectedDivisions : kind === "class" ? selectedClasses : selectedBooks;
+    const setter =
+      kind === "division"
+        ? setSelectedDivisions
+        : kind === "class"
+          ? setSelectedClasses
+          : setSelectedBooks;
     const idKey = `${kind}_id`;
     const nameKey = `${kind}_name_bn`;
     const items = rows.filter((row) => selected.includes(Number(row[idKey])));
     if (!items.length) return;
     const title = action === "delete" ? t.deleteSelected : t.duplicateSelected;
-    const endpoint = kind === "division" ? "/madrasa-divisions" : kind === "class" ? "/madrasa-classes" : "/madrasa-books";
+    const endpoint =
+      kind === "division"
+        ? "/madrasa-divisions"
+        : kind === "class"
+          ? "/madrasa-classes"
+          : "/madrasa-books";
     useConfirmStore.getState().show({
       title,
       message: `${t.bulkConfirm(num(items.length), kind === "division" ? t.divisions : kind === "class" ? t.classes : t.books)} ${action === "delete" ? t.bulkDeleteHint : t.bulkDuplicateHint}`,
@@ -831,26 +1065,32 @@ export default function ClassBookSettingsPage() {
         bulkRunning.current = true;
         const failed: number[] = [];
         try {
-          await progressTask.run({
-            title,
-            steps: [...items.map((item) => item[nameKey]), getText(talimatSettingsProgressText).stepReload],
-            failedWhen: () => failed.length > 0,
-          }, async ({ advance }) => {
-            for (const item of items) {
-              try {
-                if (action === "delete") await api.delete(`${endpoint}/${item[idKey]}`);
-                else await api.post(`${endpoint}/${item[idKey]}/duplicate`);
-              } catch {
-                failed.push(Number(item[idKey]));
+          await progressTask.run(
+            {
+              title,
+              steps: [
+                ...items.map((item) => item[nameKey]),
+                getText(talimatSettingsProgressText).stepReload,
+              ],
+              failedWhen: () => failed.length > 0,
+            },
+            async ({ advance }) => {
+              for (const item of items) {
+                try {
+                  if (action === "delete") await api.delete(`${endpoint}/${item[idKey]}`);
+                  else await api.post(`${endpoint}/${item[idKey]}/duplicate`);
+                } catch {
+                  failed.push(Number(item[idKey]));
+                }
+                advance();
               }
+              setter(failed);
+              if (kind === "division") await loadDivisions();
+              else if (kind === "class") await loadClasses();
+              else await loadBooks();
               advance();
-            }
-            setter(failed);
-            if (kind === "division") await loadDivisions();
-            else if (kind === "class") await loadClasses();
-            else await loadBooks();
-            advance();
-          });
+            },
+          );
           const completed = items.length - failed.length;
           if (completed) toast("success", t.bulkCompleted(num(completed)));
           if (failed.length) toast("error", t.bulkFailed(num(failed.length)));
@@ -865,571 +1105,695 @@ export default function ClassBookSettingsPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <PageHeader
-        title={t.classBookTitle}
-        subtitle={t.classBookSubtitle}
-      />
+      <PageHeader title={t.classBookTitle} subtitle={t.classBookSubtitle} />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-      <SectionCard
-        title={t.divisions}
-        badge={t.countN(num(divisions.length))}
-        actions={
-          <PlusToggle
-            open={showDivisionInput}
-            label={t.addDivision}
-            onClick={() => {
-              setShowDivisionInput((v) => !v);
-              setDivisionName("");
-            }}
-          />
-        }
+      <fieldset
+        disabled={adding !== null || progressTask.isRunning}
+        aria-busy={adding !== null}
+        className="grid min-w-0 gap-4 lg:grid-cols-3"
       >
-        <BulkSelection ids={divisions.map((d) => Number(d.division_id))} selected={selectedDivisions}
-          onChange={setSelectedDivisions} onAction={(action) => bulkAction("division", action)}
-          disabled={progressTask.isRunning} formatCount={num} />
-        <div className="flex flex-col gap-1.5">
-          {showDivisionInput && (
-            <AddPanel>
-              <div className="flex w-full gap-2">
-                <Input
-                  value={divisionName}
-                  onChange={(event) => setDivisionName(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") addDivision();
-                    if (event.key === "Escape") setShowDivisionInput(false);
-                  }}
-                  className="h-9 w-full min-w-0"
-                  placeholder={t.divisionName}
-                  autoFocus
-                />
-                <Button onClick={addDivision} className="shrink-0 px-3" aria-label={t.addDivision}>
-                  <Check size={16} />
-                </Button>
-              </div>
-            </AddPanel>
-          )}
-          {divisions.map((division, index) => {
-            const isActiveDivision = divisionId === String(division.division_id);
-            const isEditingThis = editingDivisionId === division.division_id;
-            return (
-              <div
-                key={division.division_id}
-                data-division-id={division.division_id}
-                className={`group flex items-center gap-1 rounded-lg border px-1.5 py-1.5 transition ${
-                  isEditingThis
-                    ? "border-blue-300 bg-blue-50/40 dark:border-blue-800 dark:bg-blue-950/20"
-                    : isActiveDivision
-                      ? "border-blue-400 bg-blue-50 dark:border-blue-700 dark:bg-blue-950/30"
-                      : "border-gray-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"
-                } ${dragDivisionId === division.division_id ? "opacity-40" : ""}`}
-              >
-                <input type="checkbox" className={selectionCheckboxClass}
-                  aria-label={t.selectItem(division.division_name_bn)}
-                  checked={selectedDivisions.includes(Number(division.division_id))}
-                  disabled={progressTask.isRunning}
-                  onChange={() => toggleSelected("division", Number(division.division_id))} />
-                {isEditingThis ? (
-                  <>
-                    <Input
-                      value={editingDivisionName}
-                      onChange={(event) => setEditingDivisionName(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") saveDivisionEdit();
-                        if (event.key === "Escape") setEditingDivisionId(null);
-                      }}
-                      className="h-8 w-full min-w-0"
-                      autoFocus
-                    />
-                    <button
-                      onClick={saveDivisionEdit}
-                      aria-label={cm.save}
-                      className="shrink-0 touch-manipulation rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700"
-                    >
-                      <Check size={14} />
-                    </button>
-                    <button
-                      onClick={() => setEditingDivisionId(null)}
-                      aria-label={cm.cancel}
-                      className="shrink-0 touch-manipulation rounded-md p-1.5 text-gray-500 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-700"
-                    >
-                      <X size={14} />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span
-                      onPointerDown={handleDivisionHandlePointerDown(division.division_id)}
-                      onPointerMove={handleDivisionHandlePointerMove}
-                      onPointerUp={handleDivisionHandlePointerEnd}
-                      onPointerCancel={handleDivisionHandlePointerEnd}
-                      className="shrink-0 cursor-grab select-none rounded p-1 text-gray-300 active:cursor-grabbing active:bg-gray-100 dark:text-slate-600 dark:active:bg-slate-800"
-                      style={{ touchAction: "none" }}
-                      aria-label={t.moveDivision}
-                    >
-                      <GripVertical size={14} />
-                    </span>
-                    <SerialBadge index={index} />
-                    <button
-                      onClick={() => setDivisionId(String(division.division_id))}
-                      className={`min-w-0 flex-1 touch-manipulation truncate rounded-md px-1.5 py-1.5 text-start text-sm font-medium transition ${
-                        isActiveDivision ? "text-blue-800 dark:text-blue-400" : "text-gray-700 hover:bg-gray-50 dark:text-slate-300 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      {division.division_name_bn}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditingDivisionId(division.division_id);
-                        setEditingDivisionName(division.division_name_bn);
-                        setEditingDivisionOriginalName(division.division_name_bn);
-                      }}
-                      aria-label={t.editDivision}
-                      title={t.editDivision}
-                      className={editBtnCls}
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      onClick={() => duplicateDivision(division)}
-                      aria-label={t.duplicateDivision}
-                      title={t.duplicateDivision}
-                      className={copyBtnCls}
-                    >
-                      <Copy size={14} />
-                    </button>
-                    <button
-                      onClick={() => removeDivision(division.division_id)}
-                      aria-label={t.deleteDivisionTitle}
-                      title={t.deleteDivisionTitle}
-                      className={delBtnCls}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        title={t.classes}
-        badge={t.countN(num(classes.length))}
-        actions={
-          <PlusToggle
-            open={showClassInput}
-            label={t.addClass}
-            disabled={!divisionId}
-            onClick={() => {
-              setShowClassInput((v) => !v);
-              setClassName("");
-            }}
+        <SectionCard
+          title={t.divisions}
+          badge={t.countN(num(divisions.length))}
+          actions={
+            <PlusToggle
+              open={showDivisionInput}
+              label={t.addDivision}
+              disabled={loading.division || loadErrors.division}
+              onClick={() => {
+                setShowDivisionInput((v) => !v);
+                setDivisionName("");
+              }}
+            />
+          }
+        >
+          <BulkSelection
+            ids={divisions.map((d) => Number(d.division_id))}
+            selected={selectedDivisions}
+            onChange={setSelectedDivisions}
+            onAction={(action) => bulkAction("division", action)}
+            disabled={progressTask.isRunning}
+            formatCount={num}
           />
-        }
-      >
-        <BulkSelection ids={classes.map((c) => Number(c.class_id))} selected={selectedClasses}
-          onChange={setSelectedClasses} onAction={(action) => bulkAction("class", action)}
-          disabled={progressTask.isRunning} formatCount={num} />
-        <div className="flex flex-col gap-1.5">
-          {showClassInput && (
-            <AddPanel>
-              <div className="flex w-full gap-2">
-                <Input
-                  value={className}
-                  onChange={(event) => setClassName(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") addClass();
-                    if (event.key === "Escape") setShowClassInput(false);
-                  }}
-                  className="h-9 w-full min-w-0"
-                  placeholder={t.className}
-                  autoFocus
-                />
-                <Button onClick={addClass} className="shrink-0 px-3" aria-label={t.addClass}>
-                  <Check size={16} />
-                </Button>
-              </div>
-            </AddPanel>
-          )}
-
-          {classes.map((classItem, index) => {
-            const isEditingThis = editingClassId === classItem.class_id;
-            return (
-              <div
-                key={classItem.class_id}
-                data-class-id={classItem.class_id}
-                className={`group flex items-center gap-1 rounded-lg border px-1.5 py-1.5 transition ${
-                  isEditingThis
-                    ? "border-blue-300 bg-blue-50/40 dark:border-blue-800 dark:bg-blue-950/20"
-                    : classId === String(classItem.class_id)
-                      ? "border-emerald-400 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/30"
-                      : "border-gray-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"
-                } ${dragClassId === classItem.class_id ? "opacity-40" : ""}`}
-              >
-                <input type="checkbox" className={selectionCheckboxClass}
-                  aria-label={t.selectItem(classItem.class_name_bn)}
-                  checked={selectedClasses.includes(Number(classItem.class_id))}
-                  disabled={progressTask.isRunning}
-                  onChange={() => toggleSelected("class", Number(classItem.class_id))} />
-                {isEditingThis ? (
-                  <>
-                    <Input
-                      value={editingClassName}
-                      onChange={(event) => setEditingClassName(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") saveClassEdit();
-                        if (event.key === "Escape") setEditingClassId(null);
-                      }}
-                      className="h-8 w-full min-w-0"
-                      autoFocus
-                    />
-                    <button
-                      onClick={saveClassEdit}
-                      aria-label={cm.save}
-                      className="shrink-0 touch-manipulation rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700"
-                    >
-                      <Check size={14} />
-                    </button>
-                    <button
-                      onClick={() => setEditingClassId(null)}
-                      aria-label={cm.cancel}
-                      className="shrink-0 touch-manipulation rounded-md p-1.5 text-gray-500 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-700"
-                    >
-                      <X size={14} />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span
-                      onPointerDown={handleClassHandlePointerDown(classItem.class_id)}
-                      onPointerMove={handleClassHandlePointerMove}
-                      onPointerUp={handleClassHandlePointerEnd}
-                      onPointerCancel={handleClassHandlePointerEnd}
-                      className="shrink-0 cursor-grab select-none rounded p-1 text-gray-300 active:cursor-grabbing active:bg-gray-100 dark:text-slate-600 dark:active:bg-slate-800"
-                      style={{ touchAction: "none" }}
-                      aria-label={t.moveClass}
-                    >
-                      <GripVertical size={14} />
-                    </span>
-                    <SerialBadge index={index} />
-                    <button
-                      onClick={() => setClassId(String(classItem.class_id))}
-                      className={`min-w-0 flex-1 touch-manipulation truncate rounded-md px-1.5 py-1.5 text-start text-sm font-medium transition ${
-                        classId === String(classItem.class_id) ? "text-emerald-800 dark:text-emerald-400" : "text-gray-700 hover:bg-gray-50 dark:text-slate-300 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      {classItem.class_name_bn}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditingClassId(classItem.class_id);
-                        setEditingClassName(classItem.class_name_bn);
-                        setEditingClassOriginalName(classItem.class_name_bn);
-                      }}
-                      aria-label={t.editClass}
-                      title={t.editClass}
-                      className={editBtnCls}
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      onClick={() => duplicateClass(classItem)}
-                      aria-label={t.duplicateClass}
-                      title={t.duplicateClass}
-                      className={copyBtnCls}
-                    >
-                      <Copy size={14} />
-                    </button>
-                    <button
-                      onClick={() => removeClass(classItem.class_id)}
-                      aria-label={t.deleteClassTitle}
-                      title={t.deleteClassTitle}
-                      className={delBtnCls}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        title={t.books}
-        badge={t.countN(num(books.length))}
-        actions={
-          <PlusToggle
-            open={showBookInput}
-            label={t.addBook}
-            disabled={!classId}
-            onClick={() => {
-              setShowBookInput((v) => !v);
-              setName("");
-              setNewBookFullMarks("");
-              setNewBookPassMark("");
-            }}
-          />
-        }
-      >
-        <BulkSelection ids={books.map((b) => Number(b.book_id))} selected={selectedBooks}
-          onChange={setSelectedBooks} onAction={(action) => bulkAction("book", action)}
-          disabled={progressTask.isRunning} formatCount={num} />
-        <div className="flex flex-col gap-1.5">
-          {showBookInput && (
-            <AddPanel>
-              <div className="flex flex-col gap-2">
-                <Input
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") addBook();
-                    if (event.key === "Escape") setShowBookInput(false);
-                  }}
-                  className="h-9 w-full min-w-0"
-                  placeholder={t.bookName}
-                  autoFocus
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <MarkField
-                    label={t.fullMarks}
-                    value={newBookFullMarks}
-                    placeholder={num(100)}
-                    onChange={setNewBookFullMarks}
-                    onEnter={addBook}
-                    onEscape={() => setShowBookInput(false)}
+          <div className="flex flex-col gap-1.5">
+            {showDivisionInput && (
+              <AddPanel>
+                <div className="flex w-full gap-2">
+                  <Input
+                    value={divisionName}
+                    onChange={(event) => setDivisionName(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") addDivision();
+                      if (event.key === "Escape") setShowDivisionInput(false);
+                    }}
+                    className="h-9 w-full min-w-0"
+                    placeholder={t.divisionName}
+                    autoFocus
                   />
-                  <MarkField
-                    label={t.passMark}
-                    value={newBookPassMark}
-                    placeholder={t.global}
-                    onChange={setNewBookPassMark}
-                    onEnter={addBook}
-                    onEscape={() => setShowBookInput(false)}
-                  />
-                </div>
-                <p className="text-[11px] leading-tight text-gray-400 dark:text-slate-500">{t.markSetupHint}</p>
-                <div className="flex justify-end gap-2">
-                  <Button variant="secondary" onClick={() => setShowBookInput(false)} className="px-3 py-1.5">
-                    {cm.cancel}
-                  </Button>
-                  <Button onClick={addBook} className="px-3 py-1.5">
-                    <Check size={15} className="me-1" />
-                    {cm.save}
+                  <Button
+                    onClick={addDivision}
+                    disabled={adding !== null || !divisionName.trim()}
+                    aria-busy={adding === "division"}
+                    className="shrink-0 px-3"
+                    aria-label={t.addDivision}
+                  >
+                    {adding === "division" ? (
+                      <Loader2 size={16} className="motion-safe:animate-spin" />
+                    ) : (
+                      <Check size={16} />
+                    )}
                   </Button>
                 </div>
-              </div>
-            </AddPanel>
-          )}
-
-          {books.length > 0 && (
-            <p className="px-1 text-[11px] leading-snug text-gray-400 dark:text-slate-500">
-              {t.miyariSummary(num(miyariBookIds.length))}
-            </p>
-          )}
-
-          {books.length === 0 ? (
-            <EmptyState title={t.noBooks} />
-          ) : (
-            books.map((book, index) => {
-              const isMiyari = miyariBookIds.includes(Number(book.book_id));
-              const isEditingThis = editingId === book.book_id;
-              return (
-                <div
-                  key={book.book_id}
-                  data-book-id={book.book_id}
-                  className={`rounded-lg border transition ${
-                    isEditingThis
-                      ? "border-blue-300 bg-blue-50/40 dark:border-blue-800 dark:bg-blue-950/20"
-                      : isMiyari
-                        ? "border-amber-300 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/20"
-                        : "border-gray-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"
-                  } ${dragBookId === book.book_id ? "opacity-40" : ""}`}
-                >
-                  {isEditingThis ? (
-                    <div className="flex flex-col gap-2.5 p-2">
-                      <div className="flex items-center gap-1">
-                        <input type="checkbox" className={selectionCheckboxClass}
-                          aria-label={t.selectItem(book.book_name_bn)}
-                          checked={selectedBooks.includes(Number(book.book_id))}
-                          disabled={progressTask.isRunning}
-                          onChange={() => toggleSelected("book", Number(book.book_id))} />
+              </AddPanel>
+            )}
+            <ListFeedback
+              loading={loading.division}
+              error={loadErrors.division}
+              onRetry={() => {
+                void loadDivisions().catch(() => {});
+              }}
+            />
+            {!loading.division &&
+              !loadErrors.division &&
+              divisions.map((division, index) => {
+                const isActiveDivision = divisionId === String(division.division_id);
+                const isEditingThis = editingDivisionId === division.division_id;
+                return (
+                  <div
+                    key={division.division_id}
+                    data-division-id={division.division_id}
+                    className={`group flex items-center gap-1 rounded-lg border px-1.5 py-1.5 transition ${
+                      isEditingThis
+                        ? "border-blue-300 bg-blue-50/40 dark:border-blue-800 dark:bg-blue-950/20"
+                        : isActiveDivision
+                          ? "border-blue-400 bg-blue-50 dark:border-blue-700 dark:bg-blue-950/30"
+                          : "border-gray-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"
+                    } ${dragDivisionId === division.division_id ? "opacity-40" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      className={selectionCheckboxClass}
+                      aria-label={t.selectItem(division.division_name_bn)}
+                      checked={selectedDivisions.includes(Number(division.division_id))}
+                      disabled={progressTask.isRunning}
+                      onChange={() => toggleSelected("division", Number(division.division_id))}
+                    />
+                    {isEditingThis ? (
+                      <>
                         <Input
-                          value={editingName}
-                          onChange={(event) => setEditingName(event.target.value)}
+                          value={editingDivisionName}
+                          onChange={(event) => setEditingDivisionName(event.target.value)}
                           onKeyDown={(event) => {
-                            if (event.key === "Enter") saveEdit();
-                            if (event.key === "Escape") setEditingId(null);
+                            if (event.key === "Enter") saveDivisionEdit();
+                            if (event.key === "Escape") setEditingDivisionId(null);
                           }}
                           className="h-8 w-full min-w-0"
-                          placeholder={t.bookName}
                           autoFocus
                         />
                         <button
-                          onClick={saveEdit}
+                          onClick={saveDivisionEdit}
                           aria-label={cm.save}
                           className="shrink-0 touch-manipulation rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700"
                         >
                           <Check size={14} />
                         </button>
                         <button
-                          onClick={() => setEditingId(null)}
+                          onClick={() => setEditingDivisionId(null)}
                           aria-label={cm.cancel}
                           className="shrink-0 touch-manipulation rounded-md p-1.5 text-gray-500 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-700"
                         >
                           <X size={14} />
                         </button>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <MarkField
-                          label={t.fullMarks}
-                          value={editingFullMarks}
-                          onChange={setEditingFullMarks}
-                          onEnter={saveEdit}
-                          onEscape={() => setEditingId(null)}
-                        />
-                        <MarkField
-                          label={t.passMark}
-                          value={editingPassMark}
-                          placeholder={t.global}
-                          onChange={setEditingPassMark}
-                          onEnter={saveEdit}
-                          onEscape={() => setEditingId(null)}
-                        />
-                      </div>
-                      <p className="-mt-1 text-[11px] leading-tight text-gray-400 dark:text-slate-500">
-                        {t.passMarkHint}
-                      </p>
-
-                      {gpaMode ? (
-                        <label
-                          className={`flex cursor-pointer touch-manipulation items-start gap-2 rounded-md border px-2 py-2 text-xs transition ${
-                            optionalBookIds.includes(Number(book.book_id))
-                              ? "border-sky-300 bg-sky-50 dark:border-sky-800 dark:bg-sky-950/30"
-                              : "border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+                      </>
+                    ) : (
+                      <>
+                        <span
+                          onPointerDown={handleDivisionHandlePointerDown(division.division_id)}
+                          onPointerMove={handleDivisionHandlePointerMove}
+                          onPointerUp={handleDivisionHandlePointerEnd}
+                          onPointerCancel={handleDivisionHandlePointerEnd}
+                          className="shrink-0 cursor-grab select-none rounded p-1 text-gray-300 active:cursor-grabbing active:bg-gray-100 dark:text-slate-600 dark:active:bg-slate-800"
+                          style={{ touchAction: "none" }}
+                          aria-label={t.moveDivision}
+                        >
+                          <GripVertical size={14} />
+                        </span>
+                        <SerialBadge index={index} localNo={division.local_no} />
+                        <button
+                          onClick={() => setDivisionId(String(division.division_id))}
+                          className={`min-w-0 flex-1 touch-manipulation truncate rounded-md px-1.5 py-1.5 text-start text-sm font-medium transition ${
+                            isActiveDivision
+                              ? "text-blue-800 dark:text-blue-400"
+                              : "text-gray-700 hover:bg-gray-50 dark:text-slate-300 dark:hover:bg-slate-800"
                           }`}
                         >
+                          {division.division_name_bn}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingDivisionId(division.division_id);
+                            setEditingDivisionName(division.division_name_bn);
+                            setEditingDivisionOriginalName(division.division_name_bn);
+                          }}
+                          aria-label={t.editDivision}
+                          title={t.editDivision}
+                          className={editBtnCls}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => duplicateDivision(division)}
+                          aria-label={t.duplicateDivision}
+                          title={t.duplicateDivision}
+                          className={copyBtnCls}
+                        >
+                          <Copy size={14} />
+                        </button>
+                        <button
+                          onClick={() => removeDivision(division.division_id)}
+                          aria-label={t.deleteDivisionTitle}
+                          title={t.deleteDivisionTitle}
+                          className={delBtnCls}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title={t.classes}
+          badge={t.countN(num(classes.length))}
+          actions={
+            <PlusToggle
+              open={showClassInput}
+              label={t.addClass}
+              disabled={
+                !divisionId ||
+                loading.class ||
+                loading.division ||
+                loadErrors.class ||
+                loadErrors.division
+              }
+              onClick={() => {
+                setShowClassInput((v) => !v);
+                setClassName("");
+              }}
+            />
+          }
+        >
+          <BulkSelection
+            ids={classes.map((c) => Number(c.class_id))}
+            selected={selectedClasses}
+            onChange={setSelectedClasses}
+            onAction={(action) => bulkAction("class", action)}
+            disabled={progressTask.isRunning}
+            formatCount={num}
+          />
+          <div className="flex flex-col gap-1.5">
+            {showClassInput && (
+              <AddPanel>
+                <div className="flex w-full gap-2">
+                  <Input
+                    value={className}
+                    onChange={(event) => setClassName(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") addClass();
+                      if (event.key === "Escape") setShowClassInput(false);
+                    }}
+                    className="h-9 w-full min-w-0"
+                    placeholder={t.className}
+                    autoFocus
+                  />
+                  <Button
+                    onClick={addClass}
+                    disabled={adding !== null || !className.trim()}
+                    aria-busy={adding === "class"}
+                    className="shrink-0 px-3"
+                    aria-label={t.addClass}
+                  >
+                    {adding === "class" ? (
+                      <Loader2 size={16} className="motion-safe:animate-spin" />
+                    ) : (
+                      <Check size={16} />
+                    )}
+                  </Button>
+                </div>
+              </AddPanel>
+            )}
+
+            <ListFeedback
+              loading={loading.class || loading.division}
+              error={loadErrors.class}
+              onRetry={() => {
+                void loadClasses().catch(() => {});
+              }}
+            />
+            {!loading.class &&
+              !loading.division &&
+              !loadErrors.class &&
+              classes.map((classItem, index) => {
+                const isEditingThis = editingClassId === classItem.class_id;
+                return (
+                  <div
+                    key={classItem.class_id}
+                    data-class-id={classItem.class_id}
+                    className={`group flex items-center gap-1 rounded-lg border px-1.5 py-1.5 transition ${
+                      isEditingThis
+                        ? "border-blue-300 bg-blue-50/40 dark:border-blue-800 dark:bg-blue-950/20"
+                        : classId === String(classItem.class_id)
+                          ? "border-emerald-400 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/30"
+                          : "border-gray-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"
+                    } ${dragClassId === classItem.class_id ? "opacity-40" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      className={selectionCheckboxClass}
+                      aria-label={t.selectItem(classItem.class_name_bn)}
+                      checked={selectedClasses.includes(Number(classItem.class_id))}
+                      disabled={progressTask.isRunning}
+                      onChange={() => toggleSelected("class", Number(classItem.class_id))}
+                    />
+                    {isEditingThis ? (
+                      <>
+                        <Input
+                          value={editingClassName}
+                          onChange={(event) => setEditingClassName(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") saveClassEdit();
+                            if (event.key === "Escape") setEditingClassId(null);
+                          }}
+                          className="h-8 w-full min-w-0"
+                          autoFocus
+                        />
+                        <button
+                          onClick={saveClassEdit}
+                          aria-label={cm.save}
+                          className="shrink-0 touch-manipulation rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700"
+                        >
+                          <Check size={14} />
+                        </button>
+                        <button
+                          onClick={() => setEditingClassId(null)}
+                          aria-label={cm.cancel}
+                          className="shrink-0 touch-manipulation rounded-md p-1.5 text-gray-500 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-700"
+                        >
+                          <X size={14} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span
+                          onPointerDown={handleClassHandlePointerDown(classItem.class_id)}
+                          onPointerMove={handleClassHandlePointerMove}
+                          onPointerUp={handleClassHandlePointerEnd}
+                          onPointerCancel={handleClassHandlePointerEnd}
+                          className="shrink-0 cursor-grab select-none rounded p-1 text-gray-300 active:cursor-grabbing active:bg-gray-100 dark:text-slate-600 dark:active:bg-slate-800"
+                          style={{ touchAction: "none" }}
+                          aria-label={t.moveClass}
+                        >
+                          <GripVertical size={14} />
+                        </span>
+                        <SerialBadge index={index} localNo={classItem.local_no} />
+                        <button
+                          onClick={() => setClassId(String(classItem.class_id))}
+                          className={`min-w-0 flex-1 touch-manipulation truncate rounded-md px-1.5 py-1.5 text-start text-sm font-medium transition ${
+                            classId === String(classItem.class_id)
+                              ? "text-emerald-800 dark:text-emerald-400"
+                              : "text-gray-700 hover:bg-gray-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                          }`}
+                        >
+                          {classItem.class_name_bn}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingClassId(classItem.class_id);
+                            setEditingClassName(classItem.class_name_bn);
+                            setEditingClassOriginalName(classItem.class_name_bn);
+                          }}
+                          aria-label={t.editClass}
+                          title={t.editClass}
+                          className={editBtnCls}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => duplicateClass(classItem)}
+                          aria-label={t.duplicateClass}
+                          title={t.duplicateClass}
+                          className={copyBtnCls}
+                        >
+                          <Copy size={14} />
+                        </button>
+                        <button
+                          onClick={() => removeClass(classItem.class_id)}
+                          aria-label={t.deleteClassTitle}
+                          title={t.deleteClassTitle}
+                          className={delBtnCls}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title={t.books}
+          badge={t.countN(num(books.length))}
+          actions={
+            <PlusToggle
+              open={showBookInput}
+              label={t.addBook}
+              disabled={
+                !classId ||
+                loading.book ||
+                loading.class ||
+                loading.division ||
+                loadErrors.book ||
+                loadErrors.class ||
+                loadErrors.division
+              }
+              onClick={() => {
+                setShowBookInput((v) => !v);
+                setName("");
+                setNewBookFullMarks("");
+                setNewBookPassMark("");
+              }}
+            />
+          }
+        >
+          <BulkSelection
+            ids={books.map((b) => Number(b.book_id))}
+            selected={selectedBooks}
+            onChange={setSelectedBooks}
+            onAction={(action) => bulkAction("book", action)}
+            disabled={progressTask.isRunning}
+            formatCount={num}
+          />
+          <div className="flex flex-col gap-1.5">
+            {showBookInput && (
+              <AddPanel>
+                <div className="flex flex-col gap-2">
+                  <Input
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") addBook();
+                      if (event.key === "Escape") setShowBookInput(false);
+                    }}
+                    className="h-9 w-full min-w-0"
+                    placeholder={t.bookName}
+                    autoFocus
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <MarkField
+                      label={t.fullMarks}
+                      value={newBookFullMarks}
+                      placeholder={num(100)}
+                      onChange={setNewBookFullMarks}
+                      onEnter={addBook}
+                      onEscape={() => setShowBookInput(false)}
+                    />
+                    <MarkField
+                      label={t.passMark}
+                      value={newBookPassMark}
+                      placeholder={t.global}
+                      onChange={setNewBookPassMark}
+                      onEnter={addBook}
+                      onEscape={() => setShowBookInput(false)}
+                    />
+                  </div>
+                  <p className="text-[11px] leading-tight text-gray-400 dark:text-slate-500">
+                    {t.markSetupHint}
+                  </p>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() => setShowBookInput(false)}
+                      className="px-3 py-1.5"
+                    >
+                      {cm.cancel}
+                    </Button>
+                    <Button
+                      onClick={addBook}
+                      disabled={adding !== null || !name.trim()}
+                      aria-busy={adding === "book"}
+                      className="px-3 py-1.5"
+                    >
+                      {adding === "book" ? (
+                        <Loader2 size={15} className="me-1 motion-safe:animate-spin" />
+                      ) : (
+                        <Check size={15} className="me-1" />
+                      )}
+                      {cm.save}
+                    </Button>
+                  </div>
+                </div>
+              </AddPanel>
+            )}
+
+            {books.length > 0 && (
+              <p className="px-1 text-[11px] leading-snug text-gray-400 dark:text-slate-500">
+                {t.miyariSummary(num(miyariBookIds.length))}
+              </p>
+            )}
+
+            {loading.book || loading.class || loading.division || loadErrors.book ? (
+              <ListFeedback
+                loading={loading.book || loading.class || loading.division}
+                error={loadErrors.book}
+                onRetry={() => {
+                  void loadBooks().catch(() => {});
+                }}
+              />
+            ) : books.length === 0 ? (
+              <EmptyState
+                title={
+                  !divisionId ? t.selectDivisionFirst : !classId ? t.selectClassFirst : t.noBooks
+                }
+              />
+            ) : (
+              books.map((book, index) => {
+                const isMiyari = miyariBookIds.includes(Number(book.book_id));
+                const isEditingThis = editingId === book.book_id;
+                return (
+                  <div
+                    key={book.book_id}
+                    data-book-id={book.book_id}
+                    className={`rounded-lg border transition ${
+                      isEditingThis
+                        ? "border-blue-300 bg-blue-50/40 dark:border-blue-800 dark:bg-blue-950/20"
+                        : isMiyari
+                          ? "border-amber-300 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/20"
+                          : "border-gray-200 bg-white hover:border-blue-200 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-800"
+                    } ${dragBookId === book.book_id ? "opacity-40" : ""}`}
+                  >
+                    {isEditingThis ? (
+                      <div className="flex flex-col gap-2.5 p-2">
+                        <div className="flex items-center gap-1">
                           <input
                             type="checkbox"
-                            checked={optionalBookIds.includes(Number(book.book_id))}
-                            disabled={savingOptional}
-                            onChange={() => toggleOptional(Number(book.book_id))}
-                            className="mt-0.5 h-4 w-4 shrink-0 disabled:cursor-not-allowed dark:border-slate-600"
+                            className={selectionCheckboxClass}
+                            aria-label={t.selectItem(book.book_name_bn)}
+                            checked={selectedBooks.includes(Number(book.book_id))}
+                            disabled={progressTask.isRunning}
+                            onChange={() => toggleSelected("book", Number(book.book_id))}
                           />
-                          <span className="flex flex-col gap-0.5">
-                            <span className="font-semibold text-gray-700 dark:text-slate-200">{t.optionalBook}</span>
-                            <span className="leading-snug text-gray-500 dark:text-slate-400">{t.optionalHint}</span>
-                          </span>
-                        </label>
-                      ) : (
-                      <label
-                        className={`flex cursor-pointer touch-manipulation items-start gap-2 rounded-md border px-2 py-2 text-xs transition ${
-                          isMiyari
-                            ? "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
-                            : "border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900"
-                        }`}
-                      >
+                          <Input
+                            value={editingName}
+                            onChange={(event) => setEditingName(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") saveEdit();
+                              if (event.key === "Escape") setEditingId(null);
+                            }}
+                            className="h-8 w-full min-w-0"
+                            placeholder={t.bookName}
+                            autoFocus
+                          />
+                          <button
+                            onClick={saveEdit}
+                            aria-label={cm.save}
+                            className="shrink-0 touch-manipulation rounded-md bg-blue-600 p-1.5 text-white hover:bg-blue-700"
+                          >
+                            <Check size={14} />
+                          </button>
+                          <button
+                            onClick={() => setEditingId(null)}
+                            aria-label={cm.cancel}
+                            className="shrink-0 touch-manipulation rounded-md p-1.5 text-gray-500 hover:bg-gray-200 dark:text-slate-400 dark:hover:bg-slate-700"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <MarkField
+                            label={t.fullMarks}
+                            value={editingFullMarks}
+                            onChange={setEditingFullMarks}
+                            onEnter={saveEdit}
+                            onEscape={() => setEditingId(null)}
+                          />
+                          <MarkField
+                            label={t.passMark}
+                            value={editingPassMark}
+                            placeholder={t.global}
+                            onChange={setEditingPassMark}
+                            onEnter={saveEdit}
+                            onEscape={() => setEditingId(null)}
+                          />
+                        </div>
+                        <p className="-mt-1 text-[11px] leading-tight text-gray-400 dark:text-slate-500">
+                          {t.passMarkHint}
+                        </p>
+
+                        {gpaMode ? (
+                          <label
+                            className={`flex cursor-pointer touch-manipulation items-start gap-2 rounded-md border px-2 py-2 text-xs transition ${
+                              optionalBookIds.includes(Number(book.book_id))
+                                ? "border-sky-300 bg-sky-50 dark:border-sky-800 dark:bg-sky-950/30"
+                                : "border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={optionalBookIds.includes(Number(book.book_id))}
+                              disabled={savingOptional}
+                              onChange={() => toggleOptional(Number(book.book_id))}
+                              className="mt-0.5 h-4 w-4 shrink-0 disabled:cursor-not-allowed dark:border-slate-600"
+                            />
+                            <span className="flex flex-col gap-0.5">
+                              <span className="font-semibold text-gray-700 dark:text-slate-200">
+                                {t.optionalBook}
+                              </span>
+                              <span className="leading-snug text-gray-500 dark:text-slate-400">
+                                {t.optionalHint}
+                              </span>
+                            </span>
+                          </label>
+                        ) : (
+                          <label
+                            className={`flex cursor-pointer touch-manipulation items-start gap-2 rounded-md border px-2 py-2 text-xs transition ${
+                              isMiyari
+                                ? "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
+                                : "border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isMiyari}
+                              disabled={savingMiyari}
+                              onChange={() => toggleMiyari(Number(book.book_id))}
+                              className="mt-0.5 h-4 w-4 shrink-0 disabled:cursor-not-allowed dark:border-slate-600"
+                            />
+                            <span className="flex flex-col gap-0.5">
+                              <span className="font-semibold text-gray-700 dark:text-slate-200">
+                                {t.miyariBook}
+                              </span>
+                              <span className="leading-snug text-gray-500 dark:text-slate-400">
+                                {t.miyariHint}
+                              </span>
+                            </span>
+                          </label>
+                        )}
+
+                        <button
+                          onClick={() =>
+                            setComponentsModalBook({ id: book.book_id, name: book.book_name_bn })
+                          }
+                          className="flex touch-manipulation items-center justify-center gap-1.5 rounded-md border border-indigo-200 px-2 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 dark:border-indigo-900 dark:text-indigo-400 dark:hover:bg-indigo-950/40"
+                        >
+                          <SlidersHorizontal size={13} />
+                          {t.markComponents}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 px-1.5 py-1.5">
                         <input
                           type="checkbox"
-                          checked={isMiyari}
-                          disabled={savingMiyari}
-                          onChange={() => toggleMiyari(Number(book.book_id))}
-                          className="mt-0.5 h-4 w-4 shrink-0 disabled:cursor-not-allowed dark:border-slate-600"
+                          className={selectionCheckboxClass}
+                          aria-label={t.selectItem(book.book_name_bn)}
+                          checked={selectedBooks.includes(Number(book.book_id))}
+                          disabled={progressTask.isRunning}
+                          onChange={() => toggleSelected("book", Number(book.book_id))}
                         />
-                        <span className="flex flex-col gap-0.5">
-                          <span className="font-semibold text-gray-700 dark:text-slate-200">{t.miyariBook}</span>
-                          <span className="leading-snug text-gray-500 dark:text-slate-400">
-                            {t.miyariHint}
-                          </span>
-                        </span>
-                      </label>
-                      )}
-
-                      <button
-                        onClick={() => setComponentsModalBook({ id: book.book_id, name: book.book_name_bn })}
-                        className="flex touch-manipulation items-center justify-center gap-1.5 rounded-md border border-indigo-200 px-2 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 dark:border-indigo-900 dark:text-indigo-400 dark:hover:bg-indigo-950/40"
-                      >
-                        <SlidersHorizontal size={13} />
-                        {t.markComponents}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 px-1.5 py-1.5">
-                      <input type="checkbox" className={selectionCheckboxClass}
-                        aria-label={t.selectItem(book.book_name_bn)}
-                        checked={selectedBooks.includes(Number(book.book_id))}
-                        disabled={progressTask.isRunning}
-                        onChange={() => toggleSelected("book", Number(book.book_id))} />
-                      <span
-                        onPointerDown={handleHandlePointerDown(book.book_id)}
-                        onPointerMove={handleHandlePointerMove}
-                        onPointerUp={handleHandlePointerEnd}
-                        onPointerCancel={handleHandlePointerEnd}
-                        className="shrink-0 cursor-grab select-none rounded p-1 text-gray-300 active:cursor-grabbing active:bg-gray-100 dark:text-slate-600 dark:active:bg-slate-800"
-                        style={{ touchAction: "none" }}
-                        aria-label={t.moveBook}
-                      >
-                        <GripVertical size={14} />
-                      </span>
-                      <SerialBadge index={index} />
-                      <div className="flex min-w-0 flex-1 flex-col px-1.5 py-0.5">
                         <span
-                          className="truncate text-sm font-medium text-gray-800 dark:text-slate-100"
-                          title={book.book_name_bn}
+                          onPointerDown={handleHandlePointerDown(book.book_id)}
+                          onPointerMove={handleHandlePointerMove}
+                          onPointerUp={handleHandlePointerEnd}
+                          onPointerCancel={handleHandlePointerEnd}
+                          className="shrink-0 cursor-grab select-none rounded p-1 text-gray-300 active:cursor-grabbing active:bg-gray-100 dark:text-slate-600 dark:active:bg-slate-800"
+                          style={{ touchAction: "none" }}
+                          aria-label={t.moveBook}
                         >
-                          {book.book_name_bn}
+                          <GripVertical size={14} />
                         </span>
-                        <span className="flex flex-wrap items-center gap-1 text-[11px] leading-tight text-gray-400 dark:text-slate-500">
-                          <span>{t.fullMarksN(num(book.full_marks ?? 100))}</span>
-                          {book.pass_mark != null && (
-                            <span className="text-sky-600 dark:text-sky-400" title={t.ownPassMark}>
-                              {t.passN(num(book.pass_mark))}
-                            </span>
-                          )}
-                          {isMiyari && (
-                            <span className="rounded bg-amber-100 px-1 font-semibold text-amber-800 dark:bg-amber-950/60 dark:text-amber-400">
-                              {t.miyari}
-                            </span>
-                          )}
-                        </span>
+                        <SerialBadge index={index} localNo={book.local_no} />
+                        <div className="flex min-w-0 flex-1 flex-col px-1.5 py-0.5">
+                          <span
+                            className="truncate text-sm font-medium text-gray-800 dark:text-slate-100"
+                            title={book.book_name_bn}
+                          >
+                            {book.book_name_bn}
+                          </span>
+                          <span className="flex flex-wrap items-center gap-1 text-[11px] leading-tight text-gray-400 dark:text-slate-500">
+                            <span>{t.fullMarksN(num(book.full_marks ?? 100))}</span>
+                            {book.pass_mark != null && (
+                              <span
+                                className="text-sky-600 dark:text-sky-400"
+                                title={t.ownPassMark}
+                              >
+                                {t.passN(num(book.pass_mark))}
+                              </span>
+                            )}
+                            {isMiyari && (
+                              <span className="rounded bg-amber-100 px-1 font-semibold text-amber-800 dark:bg-amber-950/60 dark:text-amber-400">
+                                {t.miyari}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => startEdit(book)}
+                          aria-label={t.editBook}
+                          title={t.editBook}
+                          className={editBtnCls}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => duplicateBook(book)}
+                          aria-label={t.duplicateBook}
+                          title={t.duplicateBook}
+                          className={copyBtnCls}
+                        >
+                          <Copy size={14} />
+                        </button>
+                        <button
+                          onClick={() => removeBook(book)}
+                          aria-label={t.deleteBook}
+                          title={t.deleteBook}
+                          className={delBtnCls}
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => startEdit(book)}
-                        aria-label={t.editBook}
-                        title={t.editBook}
-                        className={editBtnCls}
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        onClick={() => duplicateBook(book)}
-                        aria-label={t.duplicateBook}
-                        title={t.duplicateBook}
-                        className={copyBtnCls}
-                      >
-                        <Copy size={14} />
-                      </button>
-                      <button
-                        onClick={() => removeBook(book)}
-                        aria-label={t.deleteBook}
-                        title={t.deleteBook}
-                        className={delBtnCls}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-      </SectionCard>
-      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </SectionCard>
+      </fieldset>
 
       <ProgressOverlay {...progressTask.overlayProps} />
 

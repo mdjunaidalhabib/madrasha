@@ -19,6 +19,7 @@ import { superAdminService, SuperAdminService } from "./superadmin.service";
 import { isMuhtamimRole } from "../../shared/permissions";
 import { assignMissingRegistrationBlocksOnTx } from "../students/registration-block.provisioner";
 import { parseInstitutionType } from "../../shared/utils/institution.util";
+import { remapFeeTemplates } from "./tenant-academic.service";
 
 export class MadrasaCleanService {
   constructor(
@@ -147,10 +148,11 @@ export class MadrasaCleanService {
       (await repo.createDefaultSessionOnTx(tx, madrasaId, currentYear, institutionType === "COLLEGE" ? 6 : 0));
     const activeClasses = await tx.madrasaClass.findMany({
       where: { madrasaId, isActive: 1, deletedAt: null },
-      select: { classId: true },
+      select: { classId: true, class: { select: { sourceTemplateId: true } } },
     });
     const classIds = activeClasses.map((c) => c.classId);
-    const templates = await repo.findDefaultFeeStructuresOnTx(tx);
+    const classMap = new Map(activeClasses.map((c) => [c.class.sourceTemplateId ?? c.classId, c.classId]));
+    const templates = remapFeeTemplates(await repo.findDefaultFeeStructuresOnTx(tx), classMap);
     const exams = await repo.findExamsByNamesOnTx(tx, madrasaId, examNames);
     const examTemplates = templates.filter((s) => s.feeType === EXAM_FEE_CATEGORY_NAME);
     const examRows = exams.flatMap((exam) =>

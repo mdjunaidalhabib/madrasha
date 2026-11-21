@@ -5,7 +5,12 @@ import {
   RegistrationBlockFullError,
 } from "../registration-no.allocator";
 
-type Block = { id: number; regNoStart: number | null; regNoEnd: number | null; regNoLastIssued: number | null };
+type Block = {
+  id: number;
+  regNoStart: number | null;
+  regNoEnd: number | null;
+  regNoLastIssued: number | null;
+};
 
 /** Minimal fake of the Prisma tx calls the allocator makes. */
 const makeTx = (opts: { block: Block | null; regNos: number[]; maxBlockEnd?: number | null }) => {
@@ -17,11 +22,7 @@ const makeTx = (opts: { block: Block | null; regNos: number[]; maxBlockEnd?: num
       aggregate: vi.fn(async () => ({ _max: { regNoEnd: opts.maxBlockEnd ?? null } })),
     },
     student: {
-      aggregate: vi.fn(async ({ where }: any) => {
-        const range = where.registrationNo;
-        const inRange = opts.regNos.filter((n) => !range || (n >= range.gte && n <= range.lte));
-        return { _max: { registrationNo: inRange.length ? Math.max(...inRange) : null } };
-      }),
+      findMany: vi.fn(async () => opts.regNos.map((registrationNo) => ({ registrationNo }))),
     },
   };
   return { tx: tx as any, update };
@@ -37,21 +38,21 @@ describe("allocateStudentRegistrationNoOnTx", () => {
     expect(update).toHaveBeenCalledWith({ where: { id: 7 }, data: { regNoLastIssued: 51 } });
   });
 
-  it("continues after the highest number used inside the block", async () => {
+  it("fills the smallest available number inside the class block", async () => {
     const { tx } = makeTx({
       block: { id: 7, regNoStart: 1, regNoEnd: 50, regNoLastIssued: 10 },
       regNos: [3, 12, 51, 70],
     });
-    await expect(allocateStudentRegistrationNoOnTx(tx, 1, 5)).resolves.toBe(13);
+    await expect(allocateStudentRegistrationNoOnTx(tx, 1, 5)).resolves.toBe(1);
   });
 
-  it("never reuses a number freed by a promoted student", async () => {
+  it("reuses available numbers even when the old high-water mark is higher", async () => {
     // 20 was issued, its holder was promoted out of the block.
     const { tx } = makeTx({
       block: { id: 7, regNoStart: 1, regNoEnd: 50, regNoLastIssued: 20 },
       regNos: [1, 2, 19],
     });
-    await expect(allocateStudentRegistrationNoOnTx(tx, 1, 5)).resolves.toBe(21);
+    await expect(allocateStudentRegistrationNoOnTx(tx, 1, 5)).resolves.toBe(3);
   });
 
   it("ignores a last-issued value outside a since-changed block", async () => {
@@ -67,20 +68,37 @@ describe("allocateStudentRegistrationNoOnTx", () => {
       block: { id: 7, regNoStart: 1, regNoEnd: 3, regNoLastIssued: 3 },
       regNos: [1, 2, 3],
     });
-    await expect(allocateStudentRegistrationNoOnTx(tx, 1, 5)).rejects.toBeInstanceOf(RegistrationBlockFullError);
+    await expect(allocateStudentRegistrationNoOnTx(tx, 1, 5)).rejects.toBeInstanceOf(
+      RegistrationBlockFullError,
+    );
     expect(update).not.toHaveBeenCalled();
   });
 
-  it("without a block, goes past every student number and every block", async () => {
+  it("without a block, fills gaps beyond every reserved class block", async () => {
     const { tx } = makeTx({ block: null, regNos: [5, 40], maxBlockEnd: 100 });
     await expect(allocateStudentRegistrationNoOnTx(tx, 1, 5)).resolves.toBe(101);
 
     const noBlocks = makeTx({ block: null, regNos: [5, 40] });
-    await expect(allocateStudentRegistrationNoOnTx(noBlocks.tx, 1, 5)).resolves.toBe(41);
+    await expect(allocateStudentRegistrationNoOnTx(noBlocks.tx, 1, 5)).resolves.toBe(1);
   });
 });
 
 describe("createRegistrationNoBatchOnTx", () => {
+  it("reuses holes once each and keeps trashed students reserved", async () => {
+    const { tx } = makeTx({
+      block: { id: 9, regNoStart: 1, regNoEnd: 5, regNoLastIssued: 5 },
+      regNos: [1, 3, 5],
+    });
+    const batch = createRegistrationNoBatchOnTx(tx, 1);
+    expect(await batch.next(5)).toBe(2);
+    expect(await batch.next(5)).toBe(4);
+    await expect(batch.next(5)).rejects.toBeInstanceOf(RegistrationBlockFullError);
+    expect(tx.student.findMany).toHaveBeenCalledWith({
+      where: { madrasaId: 1, registrationNo: { not: null } },
+      select: { registrationNo: true },
+    });
+    expect(tx.student.findMany).toHaveBeenCalledTimes(1);
+  });
   it("counts up in memory and writes the block once on flush", async () => {
     const { tx, update } = makeTx({
       block: { id: 9, regNoStart: 51, regNoEnd: 53, regNoLastIssued: null },

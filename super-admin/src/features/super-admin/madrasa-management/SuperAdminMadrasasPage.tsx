@@ -54,6 +54,7 @@ import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgre
 
 export type Madrasa = {
   id: number;
+  madrasa_no?: number | null;
   name: string;
   slug: string;
   is_active: number;

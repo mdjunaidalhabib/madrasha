@@ -12,6 +12,7 @@ export const trashText = defineText({
     tabs: {
       students: "{{student}}",
       teachers: "{{teacher}}",
+      staff: "স্টাফ",
       exams: "পরীক্ষা",
       divisions: "{{division}}",
       classes: "{{class}}",
@@ -43,7 +44,7 @@ export const trashText = defineText({
     bulkDeletePartial: (ok: string, fail: string) => `${ok}টি মুছে ফেলা হয়েছে, ${fail}টি ব্যর্থ হয়েছে`,
     title: "ট্র্যাশ",
     subtitle:
-      "মুছে ফেলা {{student}}, {{teacher}}, পরীক্ষা, {{division}}, {{class}}, {{subject}} ও রেজাল্ট এখানে ৭ দিন থাকে — এর মধ্যে ফিরিয়ে আনতে না পারলে স্বয়ংক্রিয়ভাবে স্থায়ীভাবে মুছে যাবে।",
+      "মুছে ফেলা {{student}}, {{teacher}}, স্টাফ, পরীক্ষা, {{division}}, {{class}}, {{subject}} ও রেজাল্ট এখানে ৭ দিন থাকে — এর মধ্যে ফিরিয়ে আনতে না পারলে স্বয়ংক্রিয়ভাবে স্থায়ীভাবে মুছে যাবে।",
     selectedCount: (n: string) => `${n}টি নির্বাচিত`,
     restoreSelected: "নির্বাচিতগুলো ফিরিয়ে আনুন",
     deleteSelected: "নির্বাচিতগুলো স্থায়ী মুছুন",
@@ -71,6 +72,7 @@ export const trashText = defineText({
     tabs: {
       students: "{{student}}s",
       teachers: "{{teacher}}s",
+      staff: "Staff",
       exams: "Exams",
       divisions: "{{division}}s",
       classes: "{{class}}es",
@@ -102,7 +104,7 @@ export const trashText = defineText({
     bulkDeletePartial: (ok, fail) => `${ok} deleted, ${fail} failed`,
     title: "Trash",
     subtitle:
-      "Deleted {{student}}s, {{teacher}}s, exams, {{division}}s, {{class}}es, {{subject}}s and results stay here for 7 days — if not restored by then, they are permanently deleted automatically.",
+      "Deleted {{student}}s, {{teacher}}s, staff, exams, {{division}}s, {{class}}es, {{subject}}s and results stay here for 7 days — if not restored by then, they are permanently deleted automatically.",
     selectedCount: (n) => `${n} selected`,
     restoreSelected: "Restore selected",
     deleteSelected: "Delete selected permanently",

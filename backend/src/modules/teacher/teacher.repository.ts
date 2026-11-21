@@ -102,6 +102,11 @@ export class TeacherRepository {
     return result._max.registrationNo ?? 0;
   }
 
+  async getRegistrationNumbersOnTx(tx: TransactionClient, madrasaId: number) {
+    const rows = await tx.teacher.findMany({ where: { madrasaId }, select: { registrationNo: true } });
+    return rows.map((r) => r.registrationNo);
+  }
+
   updateOnTx(tx: TransactionClient, id: number, data: Record<string, unknown>) {
     return tx.teacher.update({ where: { id }, data });
   }

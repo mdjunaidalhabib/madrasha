@@ -21,6 +21,14 @@ function buildService(linked: boolean) {
 }
 
 describe("per-madrasa class/division rename", () => {
+  it("loads Excel reference numbers only for the authenticated institution", async () => {
+    const repository = { findAcademicReferences: vi.fn(async () => ({ divisions: [], classes: [], subjects: [] })) };
+    const service = new ClassPanelService(repository as unknown as ClassPanelRepository, {} as never);
+    await expect(service.listAcademicReferences(5)).resolves.toEqual({ divisions: [], classes: [], subjects: [] });
+    expect(repository.findAcademicReferences).toHaveBeenCalledWith(5);
+    await expect(service.listAcademicReferences(undefined)).rejects.toThrow();
+    expect(repository.findAcademicReferences).toHaveBeenCalledTimes(1);
+  });
   it("renames a class on this madrasa's link row only", async () => {
     const { service, repository } = buildService(true);
     await service.updateClass(5, 12, { name_bn: "মিযান জামাত" });

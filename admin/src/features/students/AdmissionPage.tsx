@@ -21,6 +21,7 @@ import { useText, getText } from "@madrasha/shared-ui/src/i18n";
 import { admissionPageText } from "./AdmissionPage.text";
 import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
 import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
+import { academicExcelId, appendAcademicExcelIds } from "../../utils/academicExcelIds";
 
 export interface AdmissionFormData {
   name: string;
@@ -116,11 +117,13 @@ interface PreviousStudentData {
 
 type DivisionItem = {
   division_id: number;
+  local_no?: number | null;
   division_name_bn: string;
 };
 
 type ClassItem = {
   class_id: number;
+  local_no?: number | null;
   class_name_bn: string;
   division_id?: number;
 };
@@ -486,30 +489,16 @@ const AdmissionPage = () => {
 
     const headerRow = columns.map((col) => (col.required ? `${col.key} *` : col.key));
 
-    const sampleRow = [
-      "মোঃ আব্দুল্লাহ",
-      "عبدالله",
-      "1234567890",
-      "1",
-      "2015-01-20",
-      String(new Date().getFullYear()),
-      divisions[0]?.division_id || "1",
-      "",
-      classes[0]?.class_id || "1",
-      "01700000000",
-      "মোঃ করিম",
-      "كريم",
-      "",
-      "Business",
-      "মোছাঃ আমিনা",
-      "",
-      "Housewife",
-      "Dhaka",
-      "Dhaka",
-      "Mirpur",
-      "Kazipara",
-      "",
-    ];
+    const sample: Record<string, string | number> = {
+      name_bn: "মোঃ আব্দুল্লাহ", arabic_name: "", name_en: "Abdullah", nid: "1234567890",
+      gender: "1", dob: "2015-01-20", academic_year: String(new Date().getFullYear()),
+      academic_division: academicExcelId(divisions[0]), previous_class: "",
+      current_class: academicExcelId(classes[0]), guardian_phone: "01700000000",
+      father_name: "Abdul Karim", father_name_en: "Abdul Karim", father_occupation: "Business",
+      mother_name: "Amina", mother_name_en: "Amina", mother_occupation: "Home maker",
+      division: "Dhaka", district: "Dhaka", thana: "Mirpur", village: "Kazipara",
+    };
+    const sampleRow = columns.map((column) => sample[column.key] ?? "");
 
     const ws = XLSX.utils.aoa_to_sheet([
       [t.templateNote],
@@ -560,19 +549,32 @@ const AdmissionPage = () => {
       [],
       [t.divisionGuide],
       ["ID", t.divisionName],
-      ...divisions.map((d) => [d.division_id, d.division_name_bn]),
+      ...divisions.map((d) => [academicExcelId(d), d.division_name_bn]),
       [],
       [t.classGuide],
-      ["ID", t.className, t.divisionId],
-      ...classes.map((c) => [c.class_id, c.class_name_bn, c.division_id || ""]),
+      ["ID", t.className, t.divisionId, "Excel Code (previous_class)"],
+      ...classes.map((c) => {
+        const divisionNo = academicExcelId(divisions.find((d) => d.division_id === c.division_id));
+        return [academicExcelId(c), c.class_name_bn, divisionNo, `${divisionNo}/${academicExcelId(c)}`];
+      }),
     ];
 
     const guideWs = XLSX.utils.aoa_to_sheet(guideRows);
-    guideWs["!cols"] = [{ wch: 15 }, { wch: 35 }, { wch: 18 }];
+    guideWs["!cols"] = [{ wch: 15 }, { wch: 35 }, { wch: 18 }, { wch: 30 }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Admission Template");
     XLSX.utils.book_append_sheet(wb, guideWs, "Guide");
+    const divisionRefs = divisions.map((d) => ({ id: d.division_id, local_no: d.local_no }));
+    const classRefs = classes.map((c) => ({
+      id: c.class_id, local_no: c.local_no, scope_id: c.division_id ?? 0,
+      scope_key: String(academicExcelId(divisions.find((d) => d.division_id === c.division_id))),
+    }));
+    const currentClassRefs = classRefs.map((c) => ({ ...c, parent_fields: ["academic_division", "division_id"] }));
+    appendAcademicExcelIds(XLSX, wb, {
+      academic_division: divisionRefs, division_id: divisionRefs,
+      current_class: currentClassRefs, class_id: currentClassRefs, previous_class: classRefs, previous_class_id: classRefs,
+    });
     XLSX.writeFile(wb, "admission-template.xlsx");
   };
 

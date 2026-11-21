@@ -1,7 +1,7 @@
 // ============================================================
 // ACADEMIC STRUCTURE
-// Global catalog (Division/Class/Book/Grade) plus the join tables that
-// let each tenant (Madrasa) activate a subset of that catalog.
+// Global templates plus private, tenant-owned snapshots of Division/Class/Book.
+// Module/plan/default catalogues remain shared platform configuration.
 // ============================================================
 
 model Division {
@@ -17,6 +17,8 @@ model Division {
   /// madrasa created itself (তালিমাত সেটিংস > বিভাগ যোগ / ডুপ্লিকেট); never shown in
   /// the catalogue or linked into any other madrasa.
   ownerMadrasaId Int? @map("owner_madrasa_id")
+  /// Original catalogue row; tenant snapshots keep their own names and IDs.
+  sourceTemplateId Int? @map("source_template_id")
   /// Global catalog order (Super Admin catalog UI drag-reorder). Distinct
   /// from MadrasaDivision.sortOrder, which is each tenant's own re-ordering
   /// of their activated subset.
@@ -37,11 +39,13 @@ model Division {
   planRegBlocks    PlanDivisionRegBlock[]
 
   @@index([ownerMadrasaId], map: "idx_divisions_owner")
+  @@unique([ownerMadrasaId, sourceTemplateId], map: "uniq_division_owner_template")
   @@map("divisions")
 }
 
 model MadrasaDivision {
   id         Int       @id @default(autoincrement())
+  localNo    Int?      @map("local_no")
   madrasaId  Int       @map("madrasa_id")
   divisionId Int       @map("division_id")
   isActive   Int?      @default(1) @map("is_active")
@@ -63,8 +67,19 @@ model MadrasaDivision {
   division Division @relation(fields: [divisionId], references: [id], onDelete: Cascade)
 
   @@unique([madrasaId, divisionId], map: "uniq_madrasa_division")
+  @@unique([madrasaId, localNo], map: "uniq_madrasa_division_local_no")
   @@index([madrasaId, deletedAt], map: "idx_madrasa_divisions_deleted")
   @@map("madrasa_divisions")
+}
+
+/// Atomic, persistent institution-local counters used by database insert triggers.
+model AcademicSequence {
+  madrasaId   Int     @map("madrasa_id")
+  kind        String
+  lastValue   Int     @default(0) @map("last_value")
+  madrasa     Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+  @@id([madrasaId, kind])
+  @@map("academic_sequences")
 }
 
 model Class {
@@ -77,6 +92,7 @@ model Class {
   /// madrasa created itself (তালিমাত সেটিংস > শ্রেণি যোগ); it is never shown in the catalogue or
   /// linked into any other madrasa.
   ownerMadrasaId Int?  @map("owner_madrasa_id")
+  sourceTemplateId Int? @map("source_template_id")
 
   sortOrder  Int      @default(0) @map("sort_order")
   createdAt  DateTime @default(now()) @map("created_at")
@@ -99,6 +115,7 @@ model Class {
 
   @@unique([divisionId, name], map: "uniq_division_class")
   @@index([ownerMadrasaId], map: "idx_classes_owner")
+  @@unique([ownerMadrasaId, sourceTemplateId], map: "uniq_class_owner_template")
   @@map("classes")
 }
 
@@ -111,6 +128,7 @@ model Book {
   /// madrasa created itself (added, or a copy-on-write rename of a catalogue book); it is never shown in the catalogue or
   /// linked into any other madrasa.
   ownerMadrasaId Int?  @map("owner_madrasa_id")
+  sourceTemplateId Int? @map("source_template_id")
   /// Global catalog order (Super Admin catalog UI drag-reorder). Distinct
   /// from MadrasaBook.sortOrder, which is each tenant's own re-ordering.
   sortOrder Int      @default(0) @map("sort_order")
@@ -126,11 +144,15 @@ model Book {
 
   @@unique([classId, name], map: "uniq_class_book")
   @@index([ownerMadrasaId], map: "idx_books_owner")
+  @@unique([ownerMadrasaId, sourceTemplateId], map: "uniq_book_owner_template")
   @@map("books")
 }
 
 model MadrasaClass {
   id        Int       @id @default(autoincrement())
+  localNo   Int?      @map("local_no")
+  /// Division ID used by DB numbering triggers; 0 is the unassigned division.
+  localScopeId Int    @default(0) @map("local_scope_id")
   madrasaId Int       @map("madrasa_id")
   classId   Int       @map("class_id")
   isActive  Int?      @default(1) @map("is_active")
@@ -147,8 +169,8 @@ model MadrasaClass {
   /// block, falls back to the madrasa's next number after every block.
   regNoStart      Int? @map("reg_no_start")
   regNoEnd        Int? @map("reg_no_end")
-  /// Highest number ever handed out from this block, so a number freed by a
-  /// promoted student (who moves to the next class's block) is never reused.
+  /// Historical high-water mark; allocation now fills available numbers in
+  /// the block while retaining every currently assigned/trash number.
   regNoLastIssued Int? @map("reg_no_last_issued")
 
   deletedAt DateTime? @map("deleted_at")
@@ -159,12 +181,16 @@ model MadrasaClass {
   class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   @@unique([madrasaId, classId], map: "uniq_madrasa_class")
+  @@unique([madrasaId, localScopeId, localNo], map: "uniq_madrasa_class_local_no")
   @@index([madrasaId, deletedAt], map: "idx_madrasa_classes_deleted")
   @@map("madrasa_classes")
 }
 
 model MadrasaBook {
   id        Int       @id @default(autoincrement())
+  localNo   Int?      @map("local_no")
+  /// Class ID used by DB numbering triggers; each class starts at subject 1.
+  localScopeId Int    @default(0) @map("local_scope_id")
   madrasaId Int       @map("madrasa_id")
   bookId    Int       @map("book_id")
   isActive  Int?      @default(1) @map("is_active")
@@ -188,6 +214,7 @@ model MadrasaBook {
   book    Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
 
   @@unique([madrasaId, bookId], map: "uniq_madrasa_book")
+  @@unique([madrasaId, localScopeId, localNo], map: "uniq_madrasa_book_local_no")
   @@index([madrasaId, isMiyari], map: "idx_madrasa_books_miyari")
   @@index([madrasaId, deletedAt], map: "idx_madrasa_books_deleted")
   @@map("madrasa_books")

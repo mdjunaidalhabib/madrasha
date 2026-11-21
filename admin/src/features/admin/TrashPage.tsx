@@ -11,7 +11,7 @@ import { trashText } from "./trash.text";
 
 type TrashText = typeof trashText.bn;
 
-type TabKey = "students" | "teachers" | "exams" | "divisions" | "classes" | "books" | "results";
+type TabKey = "students" | "teachers" | "staff" | "exams" | "divisions" | "classes" | "books" | "results";
 
 interface TrashStudentRow {
   id: number | string;
@@ -86,7 +86,7 @@ type TrashRow =
   | TrashBookRow
   | TrashResultRow;
 
-const TABS: TabKey[] = ["students", "teachers", "exams", "divisions", "classes", "books", "results"];
+const TABS: TabKey[] = ["students", "teachers", "staff", "exams", "divisions", "classes", "books", "results"];
 
 // Different tabs key their display name under different fields (results
 // don't have a single "name" at all — they're identified by exam + class).
@@ -144,6 +144,7 @@ export default function TrashPage() {
   const [rowsByTab, setRowsByTab] = useState<Record<TabKey, TrashRow[]>>({
     students: [],
     teachers: [],
+    staff: [],
     exams: [],
     divisions: [],
     classes: [],
@@ -156,6 +157,7 @@ export default function TrashPage() {
   const [selectedByTab, setSelectedByTab] = useState<Record<TabKey, Set<string | number>>>({
     students: new Set(),
     teachers: new Set(),
+    staff: new Set(),
     exams: new Set(),
     divisions: new Set(),
     classes: new Set(),
@@ -169,9 +171,10 @@ export default function TrashPage() {
   const loadAll = useCallback(async () => {
     try {
       setLoading(true);
-      const [students, teachers, exams, divisions, classes, books, results] = await Promise.all([
+      const [students, teachers, staff, exams, divisions, classes, books, results] = await Promise.all([
         api.get("/trash/students"),
         api.get("/trash/teachers"),
+        api.get("/trash/staff"),
         api.get("/trash/exams"),
         api.get("/trash/divisions"),
         api.get("/trash/classes"),
@@ -181,6 +184,7 @@ export default function TrashPage() {
       setRowsByTab({
         students: extractArray(students),
         teachers: extractArray(teachers),
+        staff: extractArray(staff),
         exams: extractArray(exams),
         divisions: extractArray(divisions),
         classes: extractArray(classes),
@@ -534,7 +538,7 @@ export default function TrashPage() {
                           {(row as TrashStudentRow).current_class || t.none}
                         </>
                       )}
-                      {activeTab === "teachers" && (
+                      {(activeTab === "teachers" || activeTab === "staff") && (
                         <>
                           {t.regNo}: {(row as TrashTeacherRow).registration_no ?? t.none} | {t.phone}:{" "}
                           {(row as TrashTeacherRow).phone || t.none}
@@ -596,7 +600,7 @@ export default function TrashPage() {
                           <th className="px-3 py-2">{t.class}</th>
                         </>
                       )}
-                      {activeTab === "teachers" && (
+                      {(activeTab === "teachers" || activeTab === "staff") && (
                         <>
                           <th className="px-3 py-2">{t.regNo}</th>
                           <th className="px-3 py-2">{t.phone}</th>
@@ -637,7 +641,7 @@ export default function TrashPage() {
                             </td>
                           </>
                         )}
-                        {activeTab === "teachers" && (
+                        {(activeTab === "teachers" || activeTab === "staff") && (
                           <>
                             <td className="px-3 py-2">
                               {(row as TrashTeacherRow).registration_no ?? t.none}

@@ -28,7 +28,7 @@ import {
 import { DEFAULT_ROLE_PERMISSION_KEYS } from "../../shared/permissions/baseline-role-permissions";
 import { isMuhtamimRole } from "../../shared/permissions";
 import { EXAM_FEE_CATEGORY_NAME } from "../fee/fee.constants";
-import { appendSerials } from "../../shared/utils/serial.util";
+import { snapshotTenantAcademicOnTx, remapFeeTemplates } from "./tenant-academic.service";
 import { assignMissingRegistrationBlocksOnTx } from "../students/registration-block.provisioner";
 import {
   CustomDomainConflictError,
@@ -54,17 +54,6 @@ import {
 /** The role that always represents a madrasa's default/owner account (created on madrasa setup). */
 const DEFAULT_PROTECTED_ROLE_KEY = "MUHTAMIM";
 
-/** In the নাযেরা/হিফজ division, only a class's own primary subject (Nazera in
- * the Nazera class, Hifz in the Hifz class) is a 100-mark exam — every other
- * subject there (Tajweed, Masael, ...) is a 50-mark exam. Every other
- * division's subjects stay at the usual 100. */
-const getDefaultFullMark = (book: {
-  name: string | null;
-  class: { name: string | null; division: { keyName: string | null } | null } | null;
-}) => {
-  if (book.class?.division?.keyName !== "nazera_hifz") return 100;
-  return book.name === book.class.name ? 100 : 50;
-};
 import {
   AssignPlanRequestDto,
   CreateMadrasaRequestDto,
@@ -127,6 +116,7 @@ export class SuperAdminService {
       const sub = m.subscriptions[0];
       return {
         id: m.id,
+        madrasa_no: m.madrasaNo,
         name: m.name,
         slug: m.slug,
         address: m.address,
@@ -210,7 +200,7 @@ export class SuperAdminService {
         await subscriptionsService.purchaseOnTx(tx, madrasaId, dto);
 
         // Every activated class gets its registration-number block from the
-        // plan (e.g. নূরানী 30 / হিফজ 40 / কিতাব 20 per class), one after
+        // plan (default: 50 numbers per madrasa class), one after
         // another - the madrasa admin can change them later.
         await assignMissingRegistrationBlocksOnTx(tx, madrasaId, plan.id);
       }
@@ -260,7 +250,8 @@ export class SuperAdminService {
       }[];
     },
   ) {
-    const { institutionType, divisionIds, moduleIds, classIds, bookIds } = input;
+    const { institutionType, divisionIds, moduleIds, bookIds } = input;
+    let { classIds } = input;
     const default_users = input.users;
 
     /* ========================= ROLES ========================= */
@@ -315,7 +306,10 @@ export class SuperAdminService {
       });
     }
 
-    await this.seedAndActivate(tx, madrasaId, divisionIds, moduleIds, classIds, bookIds);
+    const { classMap } = await this.seedAndActivate(tx, madrasaId, divisionIds, moduleIds, classIds, bookIds);
+    classIds = (await tx.madrasaClass.findMany({
+      where: { madrasaId, isActive: 1, deletedAt: null }, select: { classId: true },
+    })).map((row) => row.classId);
 
     /* ================= SEEDED PROVISIONING TEMPLATES =================
        prisma seed stores reusable defaults only; it never creates a
@@ -394,7 +388,9 @@ export class SuperAdminService {
        exam's first routine switches the exam on, never its fee.
        Default exams cover সকল বিভাগ, so every
        activated class gets a row. */
-    const defaultFeeStructures = await this.repository.findDefaultFeeStructuresOnTx(tx);
+    const defaultFeeStructures = remapFeeTemplates(
+      await this.repository.findDefaultFeeStructuresOnTx(tx), classMap,
+    );
     const examFeeTemplates = defaultFeeStructures.filter(
       (s) => s.feeType === EXAM_FEE_CATEGORY_NAME,
     );
@@ -504,40 +500,10 @@ export class SuperAdminService {
     bookIds: number[],
     options: { resetFirst?: boolean } = {},
   ) {
-    if (options.resetFirst) {
-      // Editing an existing madrasa: clear previous selections first so
-      // deselected divisions/modules/classes/books actually turn off.
-      await this.repository.deactivateAllMadrasaDivisionsOnTx(tx, madrasaId);
-      await this.repository.deactivateAllMadrasaModulesOnTx(tx, madrasaId);
-      await this.repository.deactivateAllMadrasaClassesOnTx(tx, madrasaId);
-      await this.repository.deactivateAllMadrasaBooksOnTx(tx, madrasaId);
-    }
-
-    /* ========================= DIVISIONS ========================= */
-    // Link rows get a per-madrasa serial: a fresh madrasa follows the
-    // catalogue order, and a catalogue item added later (editing an existing
-    // madrasa) goes after that madrasa's current last one in the same parent -
-    // never into the middle of a list the tenant has already arranged.
-    const allDivisions = await this.repository.findAllDivisionIdsOnTx(tx);
-    const divisionLinks = await this.repository.findMadrasaDivisionSerialsOnTx(tx, madrasaId);
-    const linkedDivisionIds = new Set(divisionLinks.map((l) => l.divisionId));
-    const newDivisions = appendSerials(
-      allDivisions.filter((d) => !linkedDivisionIds.has(d.id)),
-      () => null,
-      divisionLinks.map((l) => ({ parentId: null, sortOrder: l.sortOrder })),
-    );
-    if (newDivisions.length) {
-      await this.repository.seedMadrasaDivisionsOnTx(
-        tx,
-        newDivisions.map(({ item, sortOrder }) => ({
-          madrasaId,
-          divisionId: item.id,
-          isActive: 0,
-          sortOrder,
-        })),
-      );
-    }
-    await this.repository.activateMadrasaDivisionsOnTx(tx, madrasaId, divisionIds);
+    const academic = await snapshotTenantAcademicOnTx(tx, madrasaId, {
+      divisionIds, classIds, bookIds,
+    }, { replace: options.resetFirst });
+    if (options.resetFirst) await this.repository.deactivateAllMadrasaModulesOnTx(tx, madrasaId);
 
     /* ========================= MODULES ========================= */
     const allModules = await this.repository.findAllModuleIdsOnTx(tx);
@@ -553,50 +519,7 @@ export class SuperAdminService {
     }
     await this.repository.activateMadrasaModulesOnTx(tx, madrasaId, moduleIds);
 
-    /* ========================= CLASSES ========================= */
-    const allClasses = await this.repository.findAllClassIdsOnTx(tx);
-    const classLinks = await this.repository.findMadrasaClassSerialsOnTx(tx, madrasaId);
-    const linkedClassIds = new Set(classLinks.map((l) => l.classId));
-    const newClasses = appendSerials(
-      allClasses.filter((c) => !linkedClassIds.has(c.id)),
-      (c) => c.divisionId,
-      classLinks.map((l) => ({ parentId: l.class.divisionId, sortOrder: l.sortOrder })),
-    );
-    if (newClasses.length) {
-      await this.repository.seedMadrasaClassesOnTx(
-        tx,
-        newClasses.map(({ item, sortOrder }) => ({
-          madrasaId,
-          classId: item.id,
-          isActive: 0,
-          sortOrder,
-        })),
-      );
-    }
-    await this.repository.activateMadrasaClassesOnTx(tx, madrasaId, classIds);
-
-    /* ========================= BOOKS ========================= */
-    const allBooks = await this.repository.findAllBookIdsOnTx(tx);
-    const bookLinks = await this.repository.findMadrasaBookSerialsOnTx(tx, madrasaId);
-    const linkedBookIds = new Set(bookLinks.map((l) => l.bookId));
-    const newBooks = appendSerials(
-      allBooks.filter((b) => !linkedBookIds.has(b.id)),
-      (b) => b.classId,
-      bookLinks.map((l) => ({ parentId: l.book.classId, sortOrder: l.sortOrder })),
-    );
-    if (newBooks.length) {
-      await this.repository.seedMadrasaBooksOnTx(
-        tx,
-        newBooks.map(({ item, sortOrder }) => ({
-          madrasaId,
-          bookId: item.id,
-          isActive: 0,
-          fullMark: getDefaultFullMark(item),
-          sortOrder,
-        })),
-      );
-    }
-    await this.repository.activateMadrasaBooksOnTx(tx, madrasaId, bookIds);
+    return academic;
   }
 
   async updateMadrasa(id: number, dto: UpdateMadrasaRequestDto) {
@@ -676,13 +599,19 @@ export class SuperAdminService {
       }
 
       if (divisionIds !== null || moduleIds !== null || classIds !== null || bookIds !== null) {
+        const [currentDivisions, currentClasses, currentBooks, currentModules] = await Promise.all([
+          tx.madrasaDivision.findMany({ where: { madrasaId: id, isActive: 1, deletedAt: null }, select: { divisionId: true, division: { select: { sourceTemplateId: true } } } }),
+          tx.madrasaClass.findMany({ where: { madrasaId: id, isActive: 1, deletedAt: null }, select: { classId: true, class: { select: { sourceTemplateId: true } } } }),
+          tx.madrasaBook.findMany({ where: { madrasaId: id, isActive: 1, deletedAt: null }, select: { bookId: true, book: { select: { sourceTemplateId: true } } } }),
+          tx.madrasaModule.findMany({ where: { madrasaId: id, isActive: 1 }, select: { moduleId: true } }),
+        ]);
         await this.seedAndActivate(
           tx,
           id,
-          divisionIds ?? [],
-          moduleIds ?? [],
-          classIds ?? [],
-          bookIds ?? [],
+          divisionIds ?? currentDivisions.map((r) => r.division.sourceTemplateId ?? r.divisionId),
+          moduleIds ?? currentModules.map((r) => r.moduleId),
+          classIds ?? currentClasses.map((r) => r.class.sourceTemplateId ?? r.classId),
+          bookIds ?? currentBooks.map((r) => r.book.sourceTemplateId ?? r.bookId),
           { resetFirst: true },
         );
       }
@@ -720,6 +649,7 @@ export class SuperAdminService {
 
     return {
       id: madrasa.id,
+      madrasa_no: madrasa.madrasaNo,
       name: madrasa.name,
       slug: madrasa.slug,
       address: madrasa.address,
@@ -735,7 +665,10 @@ export class SuperAdminService {
       plan_id: madrasa.subscriptions[0]?.planId ?? null,
       start_date: madrasa.subscriptions[0]?.startDate ?? null,
       end_date: madrasa.subscriptions[0]?.endDate ?? null,
-      divisions: madrasa.madrasaDivisions.map((d) => d.divisionId),
+      divisions: madrasa.madrasaDivisions.flatMap((d) => {
+        const templateId = d.division.sourceTemplateId ?? (d.division.ownerMadrasaId === null ? d.divisionId : null);
+        return templateId === null ? [] : [templateId];
+      }),
       modules: madrasa.madrasaModules.map((m) => m.moduleId),
     };
   }

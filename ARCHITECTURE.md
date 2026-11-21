@@ -257,3 +257,63 @@ read or changed by it). No logo => no icon at all, never a default.
   visible, when back online, and every 5 minutes).
 - `frontend/` (a madrasa's public website) is unchanged: it still uses that
   madrasa's own logo via `/website/public/:slug/icon/:file`.
+
+## Runtime academic ownership and local numbers
+
+Super Admin `Division`, `Class`, and `Book` rows (`ownerMadrasaId = null`)
+are templates. New institutions snapshot selected templates into private
+rows (`ownerMadrasaId = tenant.id`, `sourceTemplateId = original.id`).
+Classes reference the private division, and books reference the private class.
+Common modules, permissions, plans, and default templates remain platform data.
+
+Operational APIs and foreign keys continue to use globally unique IDs.
+`madrasa_divisions`, `madrasa_classes`, `madrasa_books`, and `exams` also have `local_no`,
+starting at 1. Division and exam numbers are unique within the institution;
+class numbers are unique within an institution and division, and subject numbers
+within an institution and class. These are public numbers, separate from
+`sort_order` and database IDs. PostgreSQL insert
+triggers use `academic_sequences` to serialize allocation. After the
+`20261121000000_reuse_deleted_academic_local_numbers` migration, each new record
+gets the smallest available positive number. Hard deletion frees that local
+number; inactive/trash rows reserve theirs until permanently removed. Surviving
+records keep their numbers, and database IDs are never recycled. Settings screens
+display `local_no`.
+
+`20261121020000_parent_scoped_academic_numbers` renumbers existing class and subject
+display numbers by parent, preserving primary IDs and every academic reference.
+`local_scope_id` is maintained by database triggers from `Class.divisionId` or
+`Book.classId`; applications do not supply it. Classes with no division use scope
+0. Moving a class/subject to another parent allocates a free number there. The
+composite unique indexes enforce the institution, parent, and number combination.
+
+Existing installations must apply both November 20, 2026 migrations before
+running the updated backend (`cd backend; npx.cmd prisma migrate deploy`, then
+`npx.cmd prisma generate`). Stop the backend and take a database backup first.
+The `20261120010000_private_integer_academic_snapshots` migration copies existing shared
+academic records, remaps tenant foreign keys and historical scalar references,
+and preserves names, marks, registration blocks, inactive/trash rows, and exams.
+
+Academic Excel guides and editable reference cells use `local_no`. New workbooks
+carry a hidden, versioned `__AcademicIds` sheet; `ExcelUpload` resolves those local
+numbers to the original API IDs before preview and submission. Unmarked legacy
+workbooks retain their original ID format. `/api/academic-references` supplies
+tenant-scoped references, including inactive/trash entries, for bulk-update
+exports so historical values can round-trip without changing their meaning.
+Version 2 maps include parent scopes: a current class number is resolved with the
+row's academic division, and subject numbers with the resolved class. Previous
+class cells use the guide's `division/class` Excel code to distinguish identical
+numbers in different divisions. Version 1 embedded maps remain supported, even
+after display numbers change. Ambiguous values are rejected before submission.
+
+Student, teacher and staff registration numbers also fill the smallest available
+hole, counting trash rows as occupied. Student numbers stay within each class's
+registration block; classes without a block allocate above all reserved blocks.
+The historical `regNoLastIssued` does not prevent reuse of an available number.
+Staff have the same restore/permanent-delete/retention workflow in Trash.
+
+The `20261121010000_reusable_institution_numbers` migration adds `Madrasa.madrasaNo`.
+Existing institutions keep their previous ID as their displayed number; new ones
+take the smallest free platform-wide number. Hard deletion frees the displayed
+number, while trash reserves it. API routes, authentication and foreign keys
+continue to use the immutable tenant primary key, preventing old tenant sessions
+from referring to a newly created institution with a recycled displayed number.

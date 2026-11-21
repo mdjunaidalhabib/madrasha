@@ -32,6 +32,7 @@ export class SuperAdminRepository {
       where,
       select: {
         id: true,
+        madrasaNo: true,
         name: true,
         slug: true,
         institutionType: true,
@@ -75,7 +76,7 @@ export class SuperAdminRepository {
   findTrash() {
     return prisma.madrasa.findMany({
       where: { deletedAt: { not: null } },
-      select: { id: true, name: true, slug: true, deletedAt: true, createdAt: true, isActive: true },
+      select: { id: true, madrasaNo: true, name: true, slug: true, deletedAt: true, createdAt: true, isActive: true },
       orderBy: { deletedAt: "desc" },
     });
   }
@@ -423,7 +424,7 @@ export class SuperAdminRepository {
   findBooksForRoutineSeedOnTx(tx: TransactionClient, madrasaId: number) {
     return tx.book.findMany({
       where: {
-        ownerMadrasaId: null,
+        OR: [{ ownerMadrasaId: null }, { ownerMadrasaId: madrasaId }],
         madrasaBooks: { some: { madrasaId, isActive: 1, deletedAt: null } },
         class: { madrasaClasses: { some: { madrasaId, isActive: 1, deletedAt: null } } },
       },
@@ -605,6 +606,7 @@ export class SuperAdminRepository {
       where: { id, deletedAt: null },
       select: {
         id: true,
+        madrasaNo: true,
         name: true,
         slug: true,
         institutionType: true,
@@ -623,7 +625,7 @@ export class SuperAdminRepository {
         },
         madrasaDivisions: {
           where: { isActive: 1 },
-          select: { divisionId: true },
+          select: { divisionId: true, division: { select: { sourceTemplateId: true, ownerMadrasaId: true } } },
         },
         madrasaModules: {
           where: { isActive: 1 },
@@ -754,6 +756,9 @@ export class SuperAdminRepository {
       await tx.payment.deleteMany({ where: { madrasaId: id } });
 
       await tx.madrasa.delete({ where: { id } });
+      await tx.book.deleteMany({ where: { ownerMadrasaId: id } });
+      await tx.class.deleteMany({ where: { ownerMadrasaId: id } });
+      await tx.division.deleteMany({ where: { ownerMadrasaId: id } });
     })();
   }
 

@@ -10,6 +10,7 @@ import { feeService } from "../modules/fee/fee.service";
 import { smsQueueService } from "../modules/attendance-device/sms-queue.service";
 import { attendanceDeviceJobsService } from "../modules/attendance-device/attendance-device-jobs.service";
 import { attendanceAlertsService } from "../modules/attendance-leave/attendance-alerts.service";
+import { createDatabaseMaintenanceJob } from "../shared/database/maintenance-job";
 
 /**
  * Verifies the database is reachable at boot and logs the outcome.
@@ -30,15 +31,17 @@ export const verifyDatabaseConnection = async (): Promise<void> => {
 const TRASH_PURGE_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
 const TRASH_PURGE_INITIAL_DELAY_MS = 30 * 1000;
 
-const runTrashPurge = async (): Promise<void> => {
-  try {
+const trashPurgeJob = createDatabaseMaintenanceJob({
+  name: "Trash auto-purge",
+  checkConnection: () => prisma.$queryRaw`SELECT 1`,
+  run: async () => {
     const result = await trashService.purgeExpired();
     const total = Object.values(result).reduce((sum, count) => sum + count, 0);
     if (total) logger.info("Trash auto-purge complete", result);
-  } catch (error) {
-    logger.error("Trash auto-purge failed", error);
-  }
-};
+  },
+});
+
+const runTrashPurge = (): Promise<void> => trashPurgeJob.run();
 
 /**
  * Permanently removes anything left in Trash past the 7-day retention
@@ -203,6 +206,7 @@ export const registerProcessSafetyNets = (): void => {
 export const registerGracefulShutdown = (server: Server): void => {
   const shutdown = (signal: string) => {
     logger.info(`${signal} received, shutting down gracefully`);
+    trashPurgeJob.stop();
     smsQueueService.stop();
     attendanceDeviceJobsService.stop();
     attendanceAlertsService.stop();

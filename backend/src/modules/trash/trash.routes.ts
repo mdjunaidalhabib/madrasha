@@ -3,6 +3,9 @@ import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
 import {
+  getTrashedStaff,
+  restoreStaff,
+  permanentDeleteStaff,
   getTrashedStudents,
   getTrashedTeachers,
   getTrashedExams,
@@ -30,6 +33,9 @@ import {
 const router = Router();
 
 router.use(tenantMiddleware, authMiddleware);
+router.get("/staff", rbacMiddleware("staff.delete"), getTrashedStaff);
+router.post("/staff/:id/restore", rbacMiddleware("staff.delete"), restoreStaff);
+router.delete("/staff/:id", rbacMiddleware("staff.delete"), permanentDeleteStaff);
 
 // Trash actions for each entity are gated by that entity's own existing
 // delete/manage permission — no separate "trash" permission to seed.

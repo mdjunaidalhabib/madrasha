@@ -3,6 +3,13 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 /** UI text for the {{academic}} settings pages. */
 export const talimatSettingsText = defineText({
   bn: {
+    loadingList: "তালিকা লোড হচ্ছে…",
+    addingDivision: "{{division}} যোগ করা হচ্ছে",
+    addingClass: "{{class}} যোগ করা হচ্ছে",
+    addingBook: "{{subject}} যোগ করা হচ্ছে",
+    savingItem: "তথ্য সংরক্ষণ করা হচ্ছে",
+    addedSuccessfully: "সফলভাবে যোগ করা হয়েছে",
+    addedRefreshFailed: "যোগ হয়েছে। তালিকা দেখতে আবার লোড করুন।",
     selectAll: "সব নির্বাচন",
     clearSelection: "নির্বাচন বাতিল",
     selectedCount: (n: string) => `${n}টি নির্বাচিত`,
@@ -10,8 +17,10 @@ export const talimatSettingsText = defineText({
     duplicateSelected: "নির্বাচিতগুলো ডুপ্লিকেট করুন",
     deleteSelected: "নির্বাচিতগুলো ডিলিট করুন",
     bulkConfirm: (n: string, label: string) => `${n}টি নির্বাচিত ${label}। চালিয়ে যাবেন?`,
-    bulkDuplicateHint: "{{division}} বা {{class}} ডুপ্লিকেট করলে এর অধীনের {{class}} ও {{subject}}ও কপি হবে।",
-    bulkDeleteHint: "{{division}} বা {{class}} ডিলিট করলে এর অধীনের তথ্যেও প্রভাব পড়বে। বিদ্যমান ডিলিটের নিয়ম প্রযোজ্য হবে।",
+    bulkDuplicateHint:
+      "{{division}} বা {{class}} ডুপ্লিকেট করলে এর অধীনের {{class}} ও {{subject}}ও কপি হবে।",
+    bulkDeleteHint:
+      "{{division}} বা {{class}} ডিলিট করলে এর অধীনের তথ্যেও প্রভাব পড়বে। বিদ্যমান ডিলিটের নিয়ম প্রযোজ্য হবে।",
     bulkCompleted: (n: string) => `${n}টি আইটেমের কাজ সম্পন্ন হয়েছে`,
     bulkFailed: (n: string) => `${n}টি আইটেমের কাজ সম্পন্ন হয়নি। সেগুলো নির্বাচিত রাখা হয়েছে।`,
     // layout
@@ -48,7 +57,7 @@ export const talimatSettingsText = defineText({
     regLoadFailed: "ব্লকের তথ্য লোড করা যায়নি",
     noClasses: "কোনো {{class}} যোগ করা হয়নি",
     classCount: (n: string) => `${n}টি {{class}}`,
-    noBlock: "ব্লক নেই — {{institution}}র সর্বশেষ নম্বরের পরেরটা পাবে",
+    noBlock: "ব্লক নেই — সংরক্ষিত ব্লকগুলোর পরের খালি নম্বর পাবে",
     blockFull: (n: string) => `ব্লক পূর্ণ (${n}টি নম্বর ব্যবহৃত) — শেষ নম্বর বাড়ান`,
     usedNext: (n: string) => `ব্যবহৃত ${n}টি · পরের নম্বর `,
     start: "শুরু",
@@ -85,7 +94,8 @@ export const talimatSettingsText = defineText({
     books: "{{subject}}সমূহ",
     addBook: "{{subject}} যোগ করুন",
     bookName: "{{subject}}ের নাম",
-    miyariSummary: (n: string) => `মিয়ারি ${n}টি · পূর্ণমান, পাস মার্ক, মিয়ারি ও নম্বর বিভাজন বদলাতে ✎ চাপুন`,
+    miyariSummary: (n: string) =>
+      `মিয়ারি ${n}টি · পূর্ণমান, পাস মার্ক, মিয়ারি ও নম্বর বিভাজন বদলাতে ✎ চাপুন`,
     noBooks: "কোনো {{subject}} যোগ করা হয়নি",
     fullMarks: "পূর্ণমান",
     passMark: "পাস মার্ক",
@@ -94,7 +104,8 @@ export const talimatSettingsText = defineText({
     miyariBook: "মিয়ারি {{subject}}",
     miyariHint: "এতে ফেল করলে গড়ে পাস হলেও ফলাফল FAIL হবে। চাপলেই সাথে সাথে সংরক্ষণ হয়।",
     optionalBook: "৪র্থ (ঐচ্ছিক) {{subject}}",
-    optionalHint: "GPA-তে এই {{subject}}ের শুধু ২-এর বেশি পয়েন্ট যোগ হয়, আর এতে ফেল করলেও ফলাফল FAIL হয় না। চাপলেই সংরক্ষণ হয়।",
+    optionalHint:
+      "GPA-তে এই {{subject}}ের শুধু ২-এর বেশি পয়েন্ট যোগ হয়, আর এতে ফেল করলেও ফলাফল FAIL হয় না। চাপলেই সংরক্ষণ হয়।",
     optionalSaved: "৪র্থ {{subject}} সংরক্ষণ হয়েছে",
     markComponents: "নম্বর বিভাজন (লিখিত/এমসিকিউ/...)",
     moveBook: "{{subject}} সরান",
@@ -108,7 +119,8 @@ export const talimatSettingsText = defineText({
     divisionName: "{{division}} — নাম লিখুন",
     duplicate: "ডুপ্লিকেট",
     duplicateDivision: "{{division}} ডুপ্লিকেট করুন",
-    duplicateDivisionMessage: "{{division}}টির সব {{class}} ও {{subject}} সহ একটি নতুন কপি তৈরি হবে। চালিয়ে যাবেন?",
+    duplicateDivisionMessage:
+      "{{division}}টির সব {{class}} ও {{subject}} সহ একটি নতুন কপি তৈরি হবে। চালিয়ে যাবেন?",
     duplicateClass: "{{class}} ডুপ্লিকেট করুন",
     duplicateClassMessage: "{{class}}টির সব {{subject}} সহ একটি নতুন কপি তৈরি হবে। চালিয়ে যাবেন?",
     duplicateBook: "{{subject}} ডুপ্লিকেট করুন",
@@ -121,6 +133,13 @@ export const talimatSettingsText = defineText({
     selectClassFirst: "আগে একটি {{class}} বেছে নিন",
   },
   en: {
+    loadingList: "Loading the list…",
+    addingDivision: "Adding {{division}}",
+    addingClass: "Adding {{class}}",
+    addingBook: "Adding {{subject}}",
+    savingItem: "Saving details",
+    addedSuccessfully: "Added successfully",
+    addedRefreshFailed: "Added successfully. Reload the list to see it.",
     selectAll: "Select all",
     clearSelection: "Clear selection",
     selectedCount: (n) => `${n} selected`,
@@ -128,8 +147,10 @@ export const talimatSettingsText = defineText({
     duplicateSelected: "Duplicate selected",
     deleteSelected: "Delete selected",
     bulkConfirm: (n, label) => `${label}: ${n} selected items. Continue?`,
-    bulkDuplicateHint: "Duplicating a {{division}} or {{class}} also copies its {{class}}es and {{subject}}s.",
-    bulkDeleteHint: "Deleting a {{division}} or {{class}} also affects its contents. Existing deletion rules apply.",
+    bulkDuplicateHint:
+      "Duplicating a {{division}} or {{class}} also copies its {{class}}es and {{subject}}s.",
+    bulkDeleteHint:
+      "Deleting a {{division}} or {{class}} also affects its contents. Existing deletion rules apply.",
     bulkCompleted: (n) => `Completed for ${n} items`,
     bulkFailed: (n) => `Could not complete ${n} items. They remain selected.`,
     navClassBook: "{{division}}, {{class}} & {{subject}}",
@@ -161,7 +182,7 @@ export const talimatSettingsText = defineText({
     regLoadFailed: "Could not load block data",
     noClasses: "No {{class}}es added",
     classCount: (n) => `${n} {{class}}es`,
-    noBlock: "No block — gets the next number after the {{institution}}'s latest",
+    noBlock: "No block — gets the first available number after the reserved blocks",
     blockFull: (n) => `Block full (${n} numbers used) — increase the end number`,
     usedNext: (n) => `${n} used · next number `,
     start: "Start",
@@ -197,16 +218,19 @@ export const talimatSettingsText = defineText({
     books: "{{subject}}s",
     addBook: "Add {{subject}}",
     bookName: "{{subject}} name",
-    miyariSummary: (n) => `${n} core · press ✎ to change full marks, pass mark, core flag and mark breakdown`,
+    miyariSummary: (n) =>
+      `${n} core · press ✎ to change full marks, pass mark, core flag and mark breakdown`,
     noBooks: "No {{subject}}s added",
     fullMarks: "Full marks",
     passMark: "Pass mark",
     global: "Global",
     passMarkHint: "Leave the pass mark empty to use the {{institution}}'s global fail mark",
     miyariBook: "Core {{subject}}",
-    miyariHint: "Failing this means the result is FAIL even if the average passes. Saved instantly when toggled.",
+    miyariHint:
+      "Failing this means the result is FAIL even if the average passes. Saved instantly when toggled.",
     optionalBook: "4th (optional) {{subject}}",
-    optionalHint: "Only grade points above 2 from this {{subject}} are added to the GPA, and failing it never fails the result. Saved instantly when toggled.",
+    optionalHint:
+      "Only grade points above 2 from this {{subject}} are added to the GPA, and failing it never fails the result. Saved instantly when toggled.",
     optionalSaved: "4th {{subject}} saved",
     markComponents: "Mark breakdown (written/MCQ/...)",
     moveBook: "Move {{subject}}",
@@ -220,9 +244,11 @@ export const talimatSettingsText = defineText({
     divisionName: "{{division}} name",
     duplicate: "Duplicate",
     duplicateDivision: "Duplicate {{division}}",
-    duplicateDivisionMessage: "A new copy of this {{division}} will be created with all its {{class}}es and {{subject}}s. Continue?",
+    duplicateDivisionMessage:
+      "A new copy of this {{division}} will be created with all its {{class}}es and {{subject}}s. Continue?",
     duplicateClass: "Duplicate {{class}}",
-    duplicateClassMessage: "A new copy of this {{class}} will be created with all its {{subject}}s. Continue?",
+    duplicateClassMessage:
+      "A new copy of this {{class}} will be created with all its {{subject}}s. Continue?",
     duplicateBook: "Duplicate {{subject}}",
     duplicateBookMessage: "A new copy of this {{subject}} will be created. Continue?",
     duplicateAction: "Duplicate",

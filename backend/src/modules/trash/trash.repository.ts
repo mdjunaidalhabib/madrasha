@@ -10,6 +10,17 @@ export interface RestoreImpactMaster {
 }
 
 export class TrashRepository {
+  findTrashedStaff(madrasaId: number) {
+    return prisma.staff.findMany({ where: { madrasaId, deletedAt: { not: null } }, orderBy: { deletedAt: "desc" } });
+  }
+
+  restoreStaff(id: number, madrasaId: number) {
+    return prisma.staff.updateMany({ where: { id, madrasaId, deletedAt: { not: null } }, data: { deletedAt: null } });
+  }
+
+  permanentDeleteStaff(id: number, madrasaId: number) {
+    return prisma.staff.deleteMany({ where: { id, madrasaId, deletedAt: { not: null } } });
+  }
   /* ================= LIST ================= */
 
   async findTrashedStudents(madrasaId: number) {
@@ -350,6 +361,7 @@ export class TrashRepository {
    * left untouched in Trash past the retention cutoff, across every
    * madrasa. Reuses the same cascade-safe ordering as the manual delete. */
   async purgeExpired(cutoff: Date): Promise<{
+    staff: number;
     students: number;
     teachers: number;
     exams: number;
@@ -377,6 +389,7 @@ export class TrashRepository {
         where: { id: { in: expiredStudents.map((s) => s.id) } },
       });
     }
+    const expiredStaff = await prisma.staff.deleteMany({ where: { deletedAt: { lt: cutoff } } });
     if (expiredTeachers.length) {
       await prisma.teacher.deleteMany({
         where: { id: { in: expiredTeachers.map((t) => t.id) } },
@@ -419,6 +432,7 @@ export class TrashRepository {
     }
 
     return {
+      staff: expiredStaff.count,
       students: expiredStudents.length,
       teachers: expiredTeachers.length,
       exams: expiredExams.length,

@@ -12,6 +12,18 @@ const getMadrasaId = (req: Request): number => {
 };
 
 /* ================= LIST ================= */
+export const getTrashedStaff = asyncHandler(async (req: Request, res: Response) =>
+  ApiResponse.success(res, { data: await trashService.listStaff(getMadrasaId(req)) }));
+
+export const restoreStaff = asyncHandler(async (req: Request, res: Response) => {
+  await trashService.restoreStaff(Number(req.params.id), getMadrasaId(req));
+  return ApiResponse.message(res, t({ bn: "স্টাফ পুনরুদ্ধার করা হয়েছে", en: "Staff member restored" }));
+});
+
+export const permanentDeleteStaff = asyncHandler(async (req: Request, res: Response) => {
+  await trashService.permanentDeleteStaff(Number(req.params.id), getMadrasaId(req));
+  return ApiResponse.message(res, t({ bn: "স্টাফ স্থায়ীভাবে মুছে ফেলা হয়েছে", en: "Staff member permanently deleted" }));
+});
 
 export const getTrashedStudents = asyncHandler(async (req: Request, res: Response) => {
   const data = await trashService.listStudents(getMadrasaId(req));

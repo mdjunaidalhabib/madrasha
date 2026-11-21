@@ -10,6 +10,8 @@ import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverl
 import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { bulkUpdateProgressText } from "./bulkUpdate.progress.text";
 import { bulkUpdateText, type BulkUpdateFieldKey } from "./bulkUpdate.text";
+import { academicExcelId, academicExcelValue, appendAcademicExcelIds } from "../../utils/academicExcelIds";
+import { getAcademicExcelReferences } from "../../services/academicReferencesApi";
 
 export interface BulkUpdateExcelRow {
   id?: string | number;
@@ -250,6 +252,11 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
     }
 
     const XLSX = await import("xlsx-js-style");
+    const academicRefs = await getAcademicExcelReferences();
+    const classRefs = academicRefs.classes.map((c) => ({
+      id: c.class_id, local_no: c.local_no, scope_id: c.division_id ?? 0,
+      scope_key: c.division_id == null ? "0" : String(academicExcelId(academicRefs.divisions.find((d) => d.division_id === c.division_id))),
+    }));
     const tx = getText(bulkUpdateText);
 
     type ColType = "locked" | "required" | "optional";
@@ -268,6 +275,7 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
       const record = s as unknown as Record<string, unknown>;
       return columns.map((col) => {
         if (DATE_FIELDS.has(col.key)) return toDateCell(record[col.key] as string | null);
+        if (col.key === "previous_class_id") return academicExcelValue(classRefs, record[col.key]);
         if (col.key === "division_name") return divisionName.get(String(s.division_id ?? "")) ?? "";
         return record[col.key] ?? "";
       });
@@ -326,16 +334,17 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
       [2, tx.female],
       [],
       [tx.guideClass],
-      ["ID", tx.guideClassName, tx.guideDivision],
-      ...classes.map((c) => [c.class_id, c.class_name_bn, divisionName.get(String(c.division_id ?? "")) ?? ""]),
+      ["ID", tx.guideClassName, tx.guideDivision, "Excel Code (previous_class_id)"],
+      ...academicRefs.classes.map((c) => [academicExcelId(c), c.class_name_bn, academicRefs.divisions.find((d) => d.division_id === c.division_id)?.division_name_bn ?? "", academicExcelValue(classRefs, c.class_id)]),
     ];
 
     const guideWs = XLSX.utils.aoa_to_sheet(guideRows);
-    guideWs["!cols"] = [{ wch: 15 }, { wch: 35 }, { wch: 18 }];
+    guideWs["!cols"] = [{ wch: 15 }, { wch: 35 }, { wch: 18 }, { wch: 32 }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Bulk Update");
     XLSX.utils.book_append_sheet(wb, guideWs, "Guide");
+    appendAcademicExcelIds(XLSX, wb, { previous_class_id: classRefs });
     // Locked columns (grey) and the title/header rows can't be typed into -
     // only the editable columns' data cells take input.
     downloadLockedWorkbook(XLSX, wb, "student-bulk-update.xlsx", {

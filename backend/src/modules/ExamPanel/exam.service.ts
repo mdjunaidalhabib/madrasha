@@ -111,6 +111,7 @@ export class ExamService {
         const { _count, divisions, ...rest } = exam;
         return {
           ...rest,
+          local_no: exam.localNo,
           has_fee_link: _count.feeStructures > 0,
           // বিভাগভিত্তিক scope: empty division_ids = সকল বিভাগ.
           all_divisions: divisions.length === 0,

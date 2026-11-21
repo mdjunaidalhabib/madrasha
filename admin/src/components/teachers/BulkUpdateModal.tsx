@@ -5,6 +5,8 @@ import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { TeacherFullRecord } from "../../types/teacher";
 import { downloadLockedWorkbook } from "../../utils/excelSheetLock";
+import { academicExcelId, academicExcelValue, appendAcademicExcelIds } from "../../utils/academicExcelIds";
+import { getAcademicExcelReferences } from "../../services/academicReferencesApi";
 import { commonText, getText, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
 import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
@@ -196,6 +198,8 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
     }
 
     const XLSX = await import("xlsx-js-style");
+    const academicRefs = await getAcademicExcelReferences();
+    const divisionRefs = academicRefs.divisions.map((d) => ({ id: d.division_id, local_no: d.local_no }));
 
     type ColType = "locked" | "required" | "optional";
     const columns: { key: string; type: ColType }[] = [
@@ -214,6 +218,7 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
       const record = t as unknown as Record<string, unknown>;
       return columns.map((col) => {
         if (DATE_FIELDS.has(col.key)) return toDateCell(record[col.key] as string | null);
+        if (col.key === "division_id") return academicExcelValue(divisionRefs, record[col.key]);
         return record[col.key] ?? "";
       });
     });
@@ -272,7 +277,7 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
       [],
       [getText(teacherStaffText).divisionGuide],
       ["ID", "Division Name"],
-      ...divisions.map((d) => [d.division_id, d.division_name_bn]),
+      ...academicRefs.divisions.map((d) => [academicExcelId(d), d.division_name_bn]),
     ];
 
     const guideWs = XLSX.utils.aoa_to_sheet(guideRows);
@@ -281,6 +286,7 @@ const BulkUpdateModal = ({ open, teachers, divisions, onClose, onSuccess }: Bulk
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Bulk Update");
     XLSX.utils.book_append_sheet(wb, guideWs, "Guide");
+    appendAcademicExcelIds(XLSX, wb, { division_id: divisionRefs });
     // Locked columns (grey) and the title/header rows can't be typed into -
     // only the editable columns' data cells take input.
     downloadLockedWorkbook(XLSX, wb, "teacher-bulk-update.xlsx", {

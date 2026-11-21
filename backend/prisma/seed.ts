@@ -346,9 +346,9 @@ async function main() {
      assignMissingRegistrationBlocksOnTx). Create-only - a size the super
      admin edited on the Plans page is never overwritten by a re-seed. */
   const planRegBlockSizes: Record<string, Record<string, number>> = {
-    Basic: { nurani: 30, nazera_hifz: 40, kitab: 20, takhassus: 10 },
-    Standard: { nurani: 60, nazera_hifz: 80, kitab: 40, takhassus: 20 },
-    Premium: { nurani: 150, nazera_hifz: 200, kitab: 100, takhassus: 50 },
+    Basic: { nurani: 50, nazera_hifz: 50, kitab: 50, takhassus: 50 },
+    Standard: { nurani: 50, nazera_hifz: 50, kitab: 50, takhassus: 50 },
+    Premium: { nurani: 50, nazera_hifz: 50, kitab: 50, takhassus: 50 },
   };
   for (let index = 0; index < plans.length; index++) {
     // New tiers reuse the nearest existing registration-block preset.

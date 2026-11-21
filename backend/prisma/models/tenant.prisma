@@ -38,8 +38,10 @@ enum PaymentStatus {
 }
 
 model Madrasa {
+  academicSequences AcademicSequence[]
   websiteDonations WebsiteDonationSettings?
   id            Int           @id @default(autoincrement())
+  madrasaNo     Int?          @unique(map: "uniq_madrasa_no") @map("madrasa_no")
   name          String        @db.VarChar(200)
   slug          String        @unique @db.VarChar(120)
   phone         String?       @db.VarChar(20)

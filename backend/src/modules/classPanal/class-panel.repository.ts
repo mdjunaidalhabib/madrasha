@@ -4,10 +4,23 @@ import { linkName } from "../../shared/utils/tenant-name.util";
 import type { TransactionClient as Tx } from "../../shared/database/transaction";
 
 export class ClassPanelRepository {
+  async findAcademicReferences(madrasaId: number) {
+    const [divisions, classes, books] = await Promise.all([
+      prisma.madrasaDivision.findMany({ where: { madrasaId }, include: { division: true }, orderBy: { localNo: "asc" } }),
+      prisma.madrasaClass.findMany({ where: { madrasaId }, include: { class: true }, orderBy: { localNo: "asc" } }),
+      prisma.madrasaBook.findMany({ where: { madrasaId }, include: { book: true }, orderBy: { localNo: "asc" } }),
+    ]);
+    return {
+      divisions: divisions.map((r) => ({ division_id: r.divisionId, local_no: r.localNo, division_name_bn: linkName(r, r.division), is_active: r.isActive, deleted_at: r.deletedAt })),
+      classes: classes.map((r) => ({ class_id: r.classId, local_no: r.localNo, class_name_bn: linkName(r, r.class), division_id: r.class.divisionId, is_active: r.isActive, deleted_at: r.deletedAt })),
+      subjects: books.map((r) => ({ book_id: r.bookId, local_no: r.localNo, book_name_bn: r.book.nameBn, class_id: r.book.classId, is_active: r.isActive, deleted_at: r.deletedAt })),
+    };
+  }
+
   findActiveDivisions(madrasaId: number) {
     return prisma.madrasaDivision.findMany({
       where: { madrasaId, isActive: 1 },
-      select: { id: true, sortOrder: true, nameBn: true, division: { select: { id: true, nameBn: true, name: true } } },
+      select: { id: true, localNo: true, sortOrder: true, nameBn: true, division: { select: { id: true, nameBn: true, name: true } } },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
@@ -31,7 +44,7 @@ export class ClassPanelRepository {
   findActiveClassesByDivision(madrasaId: number, divisionId: number) {
     return prisma.madrasaClass.findMany({
       where: { madrasaId, isActive: 1, class: { divisionId } },
-      select: { id: true, sortOrder: true, nameBn: true, class: { select: { id: true, nameBn: true, name: true, divisionId: true } } },
+      select: { id: true, localNo: true, sortOrder: true, nameBn: true, class: { select: { id: true, nameBn: true, name: true, divisionId: true } } },
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
   }
@@ -114,12 +127,13 @@ export class ClassPanelRepository {
 
   /** Numbers already held inside a block - trashed students included, since
    * they still hold theirs. */
-  getRegistrationUsageInRange(madrasaId: number, start: number, end: number) {
-    return prisma.student.aggregate({
+  async getRegistrationUsageInRange(madrasaId: number, start: number, end: number) {
+    const rows = await prisma.student.findMany({
       where: { madrasaId, registrationNo: { gte: start, lte: end } },
-      _count: { registrationNo: true },
-      _max: { registrationNo: true },
+      select: { registrationNo: true },
     });
+    const numbers = rows.flatMap((r) => r.registrationNo == null ? [] : [r.registrationNo]);
+    return { _count: { registrationNo: numbers.length }, numbers };
   }
 
   findOverlappingRegistrationBlock(madrasaId: number, classId: number, start: number, end: number) {
@@ -148,6 +162,7 @@ export class ClassPanelRepository {
       select: {
         id: true,
         isMiyari: true,
+        localNo: true,
         isOptional: true,
         fullMark: true,
         passMark: true,
@@ -335,6 +350,10 @@ export class ClassPanelRepository {
 
   findMadrasaInstitutionType(madrasaId: number) {
     return prisma.madrasa.findUnique({ where: { id: madrasaId }, select: { institutionType: true } });
+  }
+
+  findActiveDivisionForMadrasa(madrasaId: number, divisionId: number) {
+    return prisma.madrasaDivision.findFirst({ where: { madrasaId, divisionId, isActive: 1, deletedAt: null }, select: { id: true } });
   }
 
   /** A madrasa's own বিভাগ - owned by it, so the Super Admin catalogue and

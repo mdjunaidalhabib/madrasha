@@ -94,11 +94,9 @@ export class MadrasaCleanRepository {
       await tx.notificationLog.deleteMany({ where: { madrasaId: id } });
       await tx.activityLog.deleteMany({ where: { madrasaId: id } });
 
-      // Registration numbers: every student is gone, so each class block must
-      // start over from regNoStart. regNoLastIssued is the "never reuse a
-      // freed number" high-water mark (see registration-no.allocator.ts) -
-      // left alone it would keep the next student at e.g. 38 instead of 1.
-      // The block ranges themselves (regNoStart/regNoEnd) are config and stay.
+      // Reset the historical high-water marks along with the removed roster.
+      // The configured class ranges stay in place and allocation starts at
+      // each block's first available number.
       await tx.madrasaClass.updateMany({ where: { madrasaId: id }, data: { regNoLastIssued: null } });
     })();
   }
@@ -138,6 +136,7 @@ export class MadrasaCleanRepository {
       await tx.generalGrade.deleteMany({ where: { madrasaId: id } });
       await tx.madrasaGrade.deleteMany({ where: { madrasaId: id } });
       await tx.markComponentConfig.deleteMany({ where: { madrasaId: id } });
+      await tx.academicSequence.deleteMany({ where: { madrasaId: id } });
 
       // Document templates & public website/branding content
       await tx.tenantDocumentDefault.deleteMany({ where: { madrasaId: id } });

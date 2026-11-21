@@ -4,6 +4,7 @@ import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { getText, useText } from "@madrasha/shared-ui/src/i18n";
 import { commonUiText } from "./commonUi.text";
+import { AcademicExcelIdError, resolveAcademicExcelIds } from "../../utils/academicExcelIds";
 
 interface ExcelUploadProps<T> {
   onDataUpload: (data: T[]) => void;
@@ -98,9 +99,13 @@ const ExcelUpload = <T,>({
 
         if (!cleanedRows.length) return useToastStore.getState().show(getText(commonUiText).noStudentData, "error");
 
-        onDataUpload(cleanedRows);
+        onDataUpload(resolveAcademicExcelIds(XLSX, workbook, cleanedRows, headerRowIndex + 2));
       } catch (error) {
         logger.error("EXCEL UPLOAD ERROR:", error);
+        if (error instanceof AcademicExcelIdError) {
+          useToastStore.getState().show(getText(commonUiText).unknownAcademicId(error.row, error.field, error.value), "error");
+          return;
+        }
         useToastStore.getState().show("Invalid Excel file", "error");
       }
     };

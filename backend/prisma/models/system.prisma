@@ -180,7 +180,7 @@ model Plan {
 }
 
 /// Per-বিভাগ student registration-number block size a plan gives each class
-/// (e.g. Basic: নূরানী 30, নাযেরা/হিফজ 40, কিতাব 20 per class). Used only to
+/// (default: 50 per madrasa class across all plans). Used only to
 /// lay out a madrasa's class blocks automatically - on creation, plan change
 /// and when a class is added (see assignMissingRegistrationBlocksOnTx). The
 /// madrasa admin can change any block afterwards; those edits are kept.

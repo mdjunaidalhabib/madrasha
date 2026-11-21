@@ -58,6 +58,11 @@ export class StaffRepository {
     return result._max.registrationNo ?? 0;
   }
 
+  async getRegistrationNumbersOnTx(tx: TransactionClient, madrasaId: number) {
+    const rows = await tx.staff.findMany({ where: { madrasaId }, select: { registrationNo: true } });
+    return rows.map((r) => r.registrationNo);
+  }
+
   /** Which of `ids` are live staff of this madrasa - tenant guard for the
    * নাম (৩ ভাষা) bulk save. */
   findIdsForTenant(madrasaId: number, ids: number[]) {

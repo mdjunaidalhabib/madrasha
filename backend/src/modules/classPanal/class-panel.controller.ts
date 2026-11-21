@@ -16,6 +16,14 @@ const respondError = (res: Response, error: unknown, logTag: string, fallbackMes
   return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: fallbackMessage });
 };
 
+export const getAcademicReferences = async (req: Request, res: Response) => {
+  try {
+    res.json(await classPanelService.listAcademicReferences(req.tenant?.madrasa_id));
+  } catch (error) {
+    respondError(res, error, "Academic references error:", "Failed to load academic references");
+  }
+};
+
 /* =========================================================
    STUDENT REGISTRATION-NUMBER BLOCKS (per class)
 ========================================================= */

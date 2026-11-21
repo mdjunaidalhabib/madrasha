@@ -7,6 +7,7 @@ import { logger } from "../../shared/logger/logger";
 import { linkName } from "../../shared/utils/tenant-name.util";
 import { withTransaction } from "../../shared/database/transaction";
 import { assignMissingRegistrationBlocksOnTx } from "../students/registration-block.provisioner";
+import { createAvailableNumberPool } from "../../shared/utils/available-number.util";
 import {
   AddDivisionRequestDto,
   AddClassRequestDto,
@@ -32,7 +33,12 @@ export class ClassPanelService {
     if (!madrasaId) throw new TenantNotFoundInPanelError();
 
     const rows = await this.repository.findActiveDivisions(madrasaId);
-    return rows.map((r) => ({ division_id: r.division.id, division_name_bn: linkName(r, r.division) }));
+    return rows.map((r) => ({ division_id: r.division.id, local_no: r.localNo, division_name_bn: linkName(r, r.division) }));
+  }
+
+  async listAcademicReferences(madrasaId: number | undefined) {
+    if (!madrasaId) throw new TenantNotFoundInPanelError();
+    return this.repository.findAcademicReferences(madrasaId);
   }
 
   async listClasses(madrasaId: number | undefined, divisionId: number) {
@@ -42,6 +48,7 @@ export class ClassPanelService {
     const rows = await this.repository.findActiveClassesByDivision(madrasaId, divisionId);
     return rows.map((r) => ({
       class_id: r.class.id,
+      local_no: r.localNo,
       class_name_bn: linkName(r, r.class),
       division_id: r.class.divisionId,
     }));
@@ -117,6 +124,9 @@ export class ClassPanelService {
       throw new BadRequestError(t({ bn: "division_id ও name_bn আবশ্যক", en: "division_id and name_bn required" }));
     }
 
+    if (!await this.repository.findActiveDivisionForMadrasa(madrasaId, Number(dto.division_id))) {
+      throw new NotFoundError(t({ bn: "এই প্রতিষ্ঠানে বিভাগটি পাওয়া যায়নি", en: "Division not found in this institution" }));
+    }
     const created = await this.repository.createClass(madrasaId, dto.name_bn, Number(dto.division_id));
     await this.repository.linkClassToMadrasa(madrasaId, created.id, Number(dto.division_id));
 
@@ -231,12 +241,7 @@ export class ClassPanelService {
           const usage = await this.repository.getRegistrationUsageInRange(madrasaId, start, end);
           usedCount = usage._count.registrationNo;
           // Same rule as allocateStudentRegistrationNoOnTx.
-          const lastIssued =
-            row.regNoLastIssued != null && row.regNoLastIssued >= start && row.regNoLastIssued <= end
-              ? row.regNoLastIssued
-              : start - 1;
-          const next = Math.max(start - 1, lastIssued, usage._max.registrationNo ?? 0) + 1;
-          nextRegNo = next > end ? null : next;
+          nextRegNo = createAvailableNumberPool(usage.numbers, start, end).next();
         }
         return {
           class_id: row.classId,
@@ -302,6 +307,7 @@ export class ClassPanelService {
     const rows = await this.repository.findActiveSubjectsByClass(madrasaId, classId);
     return rows.map((r) => ({
       book_id: r.book.id,
+      local_no: r.localNo,
       book_name_bn: r.book.nameBn,
       class_id: r.book.classId,
       is_miyari: r.isMiyari,

@@ -3,6 +3,7 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 /** Shared list/export widgets in components/common. */
 export const commonUiText = defineText({
   bn: {
+    unknownAcademicId: (row: number, field: string, value: string) => "Row " + row + ": " + field + " = " + value + " is not in the Guide sheet.Download a new template.",
     // ColumnVisibilityMenu
     showAllDefault: "সব দেখান (ডিফল্ট)",
     columns: "কলাম",
@@ -60,6 +61,7 @@ export const commonUiText = defineText({
     noNext: "পরের কেউ নেই",
   },
   en: {
+    unknownAcademicId: (row, field, value) => "Row " + row + ": " + field + " = " + value + " is not in the Guide sheet. Download a new template.",
     showAllDefault: "Show all (default)",
     columns: "Columns",
     showHideColumns: "Show / hide columns",

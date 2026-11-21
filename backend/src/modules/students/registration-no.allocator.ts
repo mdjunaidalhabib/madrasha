@@ -1,21 +1,10 @@
 import { TransactionClient } from "../../shared/database/transaction";
 import { BadRequestError } from "../../shared/errors";
+import { createAvailableNumberPool } from "../../shared/utils/available-number.util";
 
-/**
- * Student registration numbers are unique madrasa-wide, but each class can
- * own a block of them (MadrasaClass.regNoStart/regNoEnd - e.g. one class
- * 1-50, the next 51-100), so a class's list reads as one tidy run. Every
- * flow that hands out a number (admission approval, bulk admission,
- * promotion, class change) goes through here.
- */
-
-/** Serialises registration-number allocation per madrasa. Uniqueness is
- * madrasa-wide (and the no-block fallback looks past every block), so the
- * lock can't be narrower than the madrasa. */
+/** All allocators share this tenant lock, including promotion and class changes. */
 export const lockStudentRegistrationScopeOnTx = (tx: TransactionClient, madrasaId: number) => {
-  const key = `student-registration:${madrasaId}`;
-  // $executeRaw, not $queryRaw - pg_advisory_xact_lock() returns `void`,
-  // which Prisma can't deserialize (see StudentRepository.lockKeyOnTx).
+  const key = "student-registration:" + madrasaId;
   return tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
 };
 
@@ -28,113 +17,97 @@ export class RegistrationBlockFullError extends BadRequestError {
   }
 }
 
-/**
- * Next registration number for a student of `classId`. The caller must
- * already hold lockStudentRegistrationScopeOnTx for this madrasa.
- *
- * - Class has a block: one past the highest number already used or ever
- *   issued inside the block (so a number freed by a promoted student is not
- *   reused). Throws RegistrationBlockFullError once the block is used up.
- * - No block: one past the highest number used anywhere in the madrasa or
- *   reserved by any class's block, so it never lands inside a block.
- */
+/** Caller holds lockStudentRegistrationScopeOnTx. Trash retains its numbers. */
 export async function allocateStudentRegistrationNoOnTx(
   tx: TransactionClient,
   madrasaId: number,
   classId: number,
 ): Promise<number> {
-  const block = await tx.madrasaClass.findFirst({
-    where: { madrasaId, classId },
-    select: { id: true, regNoStart: true, regNoEnd: true, regNoLastIssued: true },
-  });
-
-  if (block && block.regNoStart != null && block.regNoEnd != null) {
-    const { regNoStart: start, regNoEnd: end } = block;
-    // Trashed students included - they still hold their number.
-    const used = await tx.student.aggregate({
-      where: { madrasaId, registrationNo: { gte: start, lte: end } },
-      _max: { registrationNo: true },
-    });
-    const lastIssued =
-      block.regNoLastIssued != null && block.regNoLastIssued >= start && block.regNoLastIssued <= end
-        ? block.regNoLastIssued
-        : start - 1;
-    const next = Math.max(start - 1, lastIssued, used._max.registrationNo ?? 0) + 1;
-    if (next > end) throw new RegistrationBlockFullError(start, end);
-
-    await tx.madrasaClass.update({ where: { id: block.id }, data: { regNoLastIssued: next } });
-    return next;
-  }
-
-  const [used, blocks] = await Promise.all([
-    tx.student.aggregate({ where: { madrasaId }, _max: { registrationNo: true } }),
-    tx.madrasaClass.aggregate({ where: { madrasaId, regNoEnd: { not: null } }, _max: { regNoEnd: true } }),
-  ]);
-  return Math.max(used._max.registrationNo ?? 0, blocks._max.regNoEnd ?? 0) + 1;
+  const batch = createRegistrationNoBatchOnTx(tx, madrasaId);
+  const next = await batch.next(classId);
+  await batch.flush();
+  return next;
 }
 
-/**
- * Batch version of allocateStudentRegistrationNoOnTx for flows that hand
- * out many numbers in one transaction (bulk admission). Each class is read
- * from the DB once, later numbers are counted up in memory, and every
- * block's regNoLastIssued is written once in flush() - instead of 3 queries
- * per student, which on a remote DB blew Prisma's interactive-transaction
- * timeout. Same rules and same lock requirement as the single allocator;
- * call flush() before the transaction commits.
- */
+/** One numeric roster read per batch; all class pools share the same occupied set. */
 export function createRegistrationNoBatchOnTx(tx: TransactionClient, madrasaId: number) {
-  type BlockState = { id: number; start: number; end: number; last: number };
-  const blocks = new Map<number, BlockState | null>();
-  const dirty = new Set<BlockState>();
-  let fallbackLast: number | null = null;
+  type State = {
+    id: number;
+    start: number;
+    end: number;
+    last: number;
+    pool: ReturnType<typeof createAvailableNumberPool>;
+  };
+  const blocks = new Map<number, State | null>();
+  const dirty = new Set<State>();
+  let used: Set<number> | null = null;
+  let fallback: ReturnType<typeof createAvailableNumberPool> | null = null;
 
-  const loadBlock = async (classId: number): Promise<BlockState | null> => {
+  async function occupied() {
+    if (used == null) {
+      const rows = await tx.student.findMany({
+        where: { madrasaId, registrationNo: { not: null } },
+        select: { registrationNo: true },
+      });
+      used = new Set(rows.flatMap((r) => (r.registrationNo == null ? [] : [r.registrationNo])));
+    }
+    return used;
+  }
+
+  async function loadBlock(classId: number) {
     if (blocks.has(classId)) return blocks.get(classId)!;
     const block = await tx.madrasaClass.findFirst({
       where: { madrasaId, classId },
       select: { id: true, regNoStart: true, regNoEnd: true, regNoLastIssued: true },
     });
-    let state: BlockState | null = null;
-    if (block && block.regNoStart != null && block.regNoEnd != null) {
-      const { regNoStart: start, regNoEnd: end } = block;
-      const used = await tx.student.aggregate({
-        where: { madrasaId, registrationNo: { gte: start, lte: end } },
-        _max: { registrationNo: true },
-      });
-      const lastIssued =
-        block.regNoLastIssued != null && block.regNoLastIssued >= start && block.regNoLastIssued <= end
-          ? block.regNoLastIssued
-          : start - 1;
-      state = { id: block.id, start, end, last: Math.max(start - 1, lastIssued, used._max.registrationNo ?? 0) };
+    let state: State | null = null;
+    if (block?.regNoStart != null && block.regNoEnd != null) {
+      const start = block.regNoStart,
+        end = block.regNoEnd;
+      state = {
+        id: block.id,
+        start,
+        end,
+        last:
+          block.regNoLastIssued != null &&
+          block.regNoLastIssued >= start &&
+          block.regNoLastIssued <= end
+            ? block.regNoLastIssued
+            : start - 1,
+        pool: createAvailableNumberPool(await occupied(), start, end),
+      };
     }
     blocks.set(classId, state);
     return state;
-  };
+  }
 
   return {
     async next(classId: number): Promise<number> {
       const block = await loadBlock(classId);
       if (block) {
-        const next = block.last + 1;
-        if (next > block.end) throw new RegistrationBlockFullError(block.start, block.end);
-        block.last = next;
+        const next = block.pool.next();
+        if (next == null) throw new RegistrationBlockFullError(block.start, block.end);
+        block.last = Math.max(block.last, next);
         dirty.add(block);
         return next;
       }
-      // No block: numbers sit above every block, so block allocations made
-      // in this batch (all <= the highest regNoEnd) never collide with these.
-      if (fallbackLast == null) {
-        const [used, ends] = await Promise.all([
-          tx.student.aggregate({ where: { madrasaId }, _max: { registrationNo: true } }),
-          tx.madrasaClass.aggregate({ where: { madrasaId, regNoEnd: { not: null } }, _max: { regNoEnd: true } }),
-        ]);
-        fallbackLast = Math.max(used._max.registrationNo ?? 0, ends._max.regNoEnd ?? 0);
+      if (!fallback) {
+        const ends = await tx.madrasaClass.aggregate({
+          where: { madrasaId },
+          _max: { regNoEnd: true },
+        });
+        fallback = createAvailableNumberPool(await occupied(), (ends._max.regNoEnd ?? 0) + 1);
       }
-      return ++fallbackLast;
+      const next = fallback.next();
+      if (next == null) throw new BadRequestError("No available registration number");
+      return next;
     },
     async flush() {
       for (const block of dirty) {
-        await tx.madrasaClass.update({ where: { id: block.id }, data: { regNoLastIssued: block.last } });
+        await tx.madrasaClass.update({
+          where: { id: block.id },
+          data: { regNoLastIssued: block.last },
+        });
       }
       dirty.clear();
     },

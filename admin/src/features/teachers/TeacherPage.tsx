@@ -17,6 +17,7 @@ import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverl
 import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
 import { teacherStaffText } from "./teacherStaff.text";
 import { teacherProgressText } from "./teacherStaff.progress.text";
+import { academicExcelId, appendAcademicExcelIds } from "../../utils/academicExcelIds";
 
 export interface TeacherFormData {
   name_bn: string;
@@ -57,6 +58,7 @@ export type TeacherFormErrors = Partial<Record<keyof TeacherFormData, string>>;
 
 type DivisionItem = {
   division_id: number;
+  local_no?: number | null;
   division_name_bn: string;
 };
 
@@ -289,35 +291,17 @@ const TeacherPage: React.FC = () => {
 
     const headerRow = columns.map((col) => (col.required ? `${col.key} *` : col.key));
 
-    const sampleRow = [
-      "মোঃ আব্দুল করিম",
-      "عبد الكريم",
-      "1234567890",
-      "1",
-      "1990-01-20",
-      "01700000000",
-      "teacher@example.com",
-      "সহকারী শিক্ষক",
-      divisions[0]?.division_id || "1",
-      "দাওরা হাদিস",
-      "5",
-      "6",
-      "2024-01-01",
-      "25000",
-      "মোঃ রহিম",
-      "رحيم",
-      "",
-      "Business",
-      "মোছাঃ আমিনা",
-      "",
-      "Housewife",
-      "01800000000",
-      "Dhaka",
-      "Dhaka",
-      "Mirpur",
-      "Kazipara",
-      "",
-    ];
+    const sample: Record<string, string | number> = {
+      name_bn: "মোঃ আব্দুল করিম", name_ar: "", name_en: "Abdul Karim", nid: "1234567890",
+      gender: "1", dob: "1990-01-20", phone: "01700000000", email: "teacher@example.com",
+      designation: "Assistant Teacher", academic_division: academicExcelId(divisions[0]),
+      qualification: "Dawra Hadith", experience_year: "5", experience_month: "6",
+      joining_date: "2024-01-01", salary: "25000", father_name: "Rahim", father_name_en: "Rahim",
+      father_occupation: "Business", mother_name: "Amina", mother_name_en: "Amina",
+      mother_occupation: "Housewife", parent_phone: "01800000000",
+      division: "Dhaka", district: "Dhaka", thana: "Mirpur", village: "Kazipara",
+    };
+    const sampleRow = columns.map((column) => sample[column.key] ?? "");
 
     const ws = XLSX.utils.aoa_to_sheet([
       ["Required fields are marked with red color and * symbol"],
@@ -368,7 +352,7 @@ const TeacherPage: React.FC = () => {
       [],
       ["Academic Division Guide"],
       ["ID", "Academic Division Name"],
-      ...divisions.map((d) => [d.division_id, d.division_name_bn]),
+      ...divisions.map((d) => [academicExcelId(d), d.division_name_bn]),
     ];
 
     const guideWs = XLSX.utils.aoa_to_sheet(guideRows);
@@ -377,6 +361,8 @@ const TeacherPage: React.FC = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Teacher Template");
     XLSX.utils.book_append_sheet(wb, guideWs, "Guide");
+    const divisionRefs = divisions.map((d) => ({ id: d.division_id, local_no: d.local_no }));
+    appendAcademicExcelIds(XLSX, wb, { academic_division: divisionRefs, division_id: divisionRefs });
     XLSX.writeFile(wb, "teacher-template.xlsx");
   };
 

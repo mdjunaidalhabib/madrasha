@@ -9,7 +9,7 @@ function setup() {
   const repo = {
     runTransaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(tx)),
     lockRegistrationScopeOnTx: vi.fn(async () => {}),
-    getMaxRegistrationNoOnTx: vi.fn(async () => 40),
+    getRegistrationNumbersOnTx: vi.fn(async () => Array.from({ length: 40 }, (_, i) => i + 1)),
     findByNidOnTx: vi.fn(async (_tx, _tenant, nid) => (nid === "existing" ? { id: 7 } : null)),
     createOnTx: vi.fn(async (_tx, data) => ({ id: data.registrationNo })),
     updateManyForTenantOnTx: vi.fn(async () => ({ count: 1 })),
@@ -18,6 +18,12 @@ function setup() {
 }
 
 describe("staff bulk admission", () => {
+  it("fills hard-deleted registration holes without consuming a number for an update", async () => {
+    const { repo, service } = setup();
+    repo.getRegistrationNumbersOnTx.mockResolvedValue([1, 3]);
+    await service.bulkCreateStaff([{ name_bn: "New" }, { name_bn: "Existing", nid: "existing" }, { name_bn: "Next" }], 9);
+    expect(repo.createOnTx.mock.calls.map((call) => call[1].registrationNo)).toEqual([2, 4]);
+  });
   it("allocates consecutive registration numbers and updates NID matches within the tenant transaction", async () => {
     const { tx, repo, service } = setup();
     const result = await service.bulkCreateStaff(

@@ -158,7 +158,7 @@ export default function MadrasasTable({
                     aria-label={t.selectRow(m.name)}
                   />
                   <div className="min-w-0">
-                    <div className="break-words font-semibold text-gray-900 dark:text-slate-100">{m.name}</div>
+                    <div className="break-words font-semibold text-gray-900 dark:text-slate-100">#{formatNumber(m.madrasa_no ?? m.id, lang)} · {m.name}</div>
                     <div className="truncate font-mono text-xs text-gray-500 dark:text-slate-400" title={m.slug}>
                       /{m.slug}
                     </div>
@@ -249,7 +249,7 @@ export default function MadrasasTable({
                       its own column, which got squeezed and broke mid-word. */}
                   <td className="p-3 text-start">
                     <div className="min-w-[180px] max-w-[280px]">
-                      <div className="break-words font-medium dark:text-slate-100">{m.name}</div>
+                      <div className="break-words font-medium dark:text-slate-100">#{formatNumber(m.madrasa_no ?? m.id, lang)} · {m.name}</div>
                       <div className="truncate font-mono text-xs text-gray-500 dark:text-slate-400" title={m.slug}>
                         /{m.slug}
                       </div>

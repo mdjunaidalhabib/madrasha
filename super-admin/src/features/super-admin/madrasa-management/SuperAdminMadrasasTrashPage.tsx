@@ -260,7 +260,7 @@ export default function SuperAdminMadrasasTrashPage() {
                         aria-label={t.selectRow(m.name)}
                       />
                     </td>
-                    <td className="p-2 dark:text-slate-100">{m.name}</td>
+                    <td className="p-2 dark:text-slate-100">#{formatNumber(m.madrasaNo ?? m.madrasa_no ?? m.id, lang)} · {m.name}</td>
                     <td className="p-2 dark:text-slate-300">{m.slug}</td>
                     <td className="p-2 text-gray-500 dark:text-slate-400">
                       {m.deleted_at ? formatDateTime(m.deleted_at, lang) : "-"}

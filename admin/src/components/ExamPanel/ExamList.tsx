@@ -24,6 +24,7 @@ import { examCoversDivision, type ExamDivisionRef } from "./examDivisionScope";
 
 type ExamItem = {
   id: string | number;
+  local_no?: number | null;
   name: string;
   isActive: boolean;
   startDate?: string | null;
@@ -457,11 +458,9 @@ export default function ExamList({
                           </span>
                         )}
 
-                        {/* ক্রমিক নম্বর = the exam's madrasa-wide serial (position in
-                            the full sortOrder list), so it stays the same under a
-                            division filter. */}
+                        {/* Stable institution-local exam number. */}
                         <span className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 px-1 text-xs font-semibold tabular-nums text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                          {formatNumber(items.indexOf(e) + 1, lang)}
+                          {formatNumber(e.local_no ?? (items.indexOf(e) + 1), lang)}
                         </span>
 
                         <div>

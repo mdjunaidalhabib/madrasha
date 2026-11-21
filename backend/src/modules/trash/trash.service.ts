@@ -3,6 +3,7 @@ import { logActivity } from "../../shared/utils/activity.util";
 import { trashRepository, TrashRepository } from "./trash.repository";
 import { toStudentApiDto } from "../students/student.mapper";
 import { toTeacherApiDto } from "../teacher/teacher.mapper";
+import { toStaffApiDto } from "../staff/staff.mapper";
 import { linkName, tenantDivisionName, tenantClassName } from "../../shared/utils/tenant-name.util";
 import { t } from "../../shared/i18n";
 
@@ -39,6 +40,21 @@ export class TrashService {
       deleted_at: row.deletedAt,
       days_remaining: daysRemaining(row.deletedAt),
     }));
+  }
+
+  async listStaff(madrasaId: number) {
+    const rows = await this.repository.findTrashedStaff(madrasaId);
+    return rows.map((row) => ({ ...toStaffApiDto(row), deleted_at: row.deletedAt, days_remaining: daysRemaining(row.deletedAt) }));
+  }
+
+  async restoreStaff(id: number, madrasaId: number) {
+    const result = await this.repository.restoreStaff(id, madrasaId);
+    if (!result.count) throw new NotFoundError(t({ bn: "ট্র্যাশে স্টাফ পাওয়া যায়নি", en: "Trashed staff member not found" }));
+  }
+
+  async permanentDeleteStaff(id: number, madrasaId: number) {
+    const result = await this.repository.permanentDeleteStaff(id, madrasaId);
+    if (!result.count) throw new NotFoundError(t({ bn: "ট্র্যাশে স্টাফ পাওয়া যায়নি", en: "Trashed staff member not found" }));
   }
 
   async listExams(madrasaId: number) {
