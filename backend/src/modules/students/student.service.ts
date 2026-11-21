@@ -220,6 +220,14 @@ export class StudentService {
     return { id: row.id };
   }
 
+  async searchForAdmission(query: string, madrasaId: number | undefined) {
+    if (!madrasaId) throw new TenantNotResolvedError();
+    const term = query.trim().replace(/[০-৯]/g, (digit) => String("০১২৩৪৫৬৭৮৯".indexOf(digit)));
+    if (term.length < 2 && !/^\d+$/.test(term)) return [];
+    const rows = await this.repository.searchForAdmission(madrasaId, term.slice(0, 100));
+    return rows.map(toStudentApiDto);
+  }
+
   async lookupByNid(
     nid: string,
     madrasaId: number | undefined,
@@ -244,6 +252,14 @@ export class StudentService {
 
     if (!body || Object.keys(body).length === 0) {
       throw new BadRequestError(t({ bn: "অনুরোধের বডি খালি", en: "Empty request body (Check express.json())" }));
+    }
+
+    const selectedId = body.existing_student_id == null ? null : Number(body.existing_student_id);
+    if (selectedId !== null && (!createdById || !Number.isSafeInteger(selectedId) || selectedId <= 0)) {
+      throw new BadRequestError(t({ bn: "পুরাতন শিক্ষার্থী সঠিকভাবে নির্বাচন করুন", en: "Select a valid existing student" }));
+    }
+    if (body.admission_mode === "existing" && selectedId === null) {
+      throw new BadRequestError(t({ bn: "আগে পুরাতন শিক্ষার্থী নির্বাচন করুন", en: "Select an existing student first" }));
     }
 
     const missing = validateRequiredFields(body);
@@ -273,10 +289,21 @@ export class StudentService {
         await this.repository.lockStudentIdentityOnTx(tx, madrasaId, nid);
       }
 
-      let existing = nid ? await this.repository.findByNidOnTx(tx, madrasaId, nid) : null;
+      const matchedByNid = nid ? await this.repository.findByNidOnTx(tx, madrasaId, nid) : null;
+      let existing = selectedId !== null
+        ? await this.repository.findByIdForTenantOnTx(tx, selectedId, madrasaId)
+        : matchedByNid;
+      if (selectedId !== null && !existing) throw new StudentNotFoundError();
+      if (selectedId !== null && matchedByNid && matchedByNid.id !== selectedId) {
+        throw new BadRequestError(t({ bn: "এই জন্ম নিবন্ধন/NID অন্য শিক্ষার্থীর নামে আছে", en: "This NID belongs to another student" }));
+      }
+      if (body.admission_mode === "new" && existing) {
+        throw new BadRequestError(t({ bn: "এই শিক্ষার্থী আগে ভর্তি আছে। পুরাতন শিক্ষার্থী নির্বাচন করে পুনঃভর্তি করুন", en: "This student already exists. Select existing student to re-admit." }));
+      }
       if (existing) {
         await this.repository.lockStudentRecordOnTx(tx, madrasaId, existing.id);
         existing = await this.repository.findByIdForTenantOnTx(tx, existing.id, madrasaId);
+        if (!existing) throw new StudentNotFoundError();
       }
 
       const data = makeStudentData(body, madrasaId) as Record<string, any>;

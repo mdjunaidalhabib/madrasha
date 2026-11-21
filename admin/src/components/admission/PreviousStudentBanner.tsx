@@ -34,7 +34,7 @@ const PreviousStudentBanner: React.FC<Props> = ({
   }
 
   return (
-    <div className="flex items-start justify-between gap-4 bg-amber-50 border border-amber-300 text-amber-900 text-sm px-4 py-3 rounded-lg dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400">
+    <div className="flex flex-col sm:flex-row items-start justify-between gap-4 bg-amber-50 border border-amber-300 text-amber-900 text-sm px-4 py-3 rounded-lg dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400">
       <div className="flex items-start gap-2">
         <span className="text-lg leading-none">⚠️</span>
         <div>

@@ -96,6 +96,15 @@ export const getStudentIdByRegistrationNo = async (req: Request, res: Response) 
 /* =========================================================
    LOOKUP STUDENT BY NID (returning-student check for admission)
 ========================================================= */
+export const searchStudentsForAdmission = async (req: Request, res: Response) => {
+  try {
+    const data = await studentService.searchForAdmission(String(req.query.q || ""), req.tenant?.madrasa_id);
+    return res.json({ success: true, data });
+  } catch (error) {
+    return respondWithError(res, error, "SEARCH STUDENTS FOR ADMISSION ERROR:");
+  }
+};
+
 export const lookupStudentByNid = async (req: Request, res: Response) => {
   try {
     const madrasaId = req.tenant?.madrasa_id;

@@ -72,6 +72,7 @@ export type AdmissionFormErrors = Partial<Record<keyof AdmissionFormData, string
 
 interface PreviousStudentData {
   id: number;
+  registration_no: number | null;
   name_bn: string;
   arabic_name: string | null;
   name_en: string | null;
@@ -212,15 +213,98 @@ const AdmissionPage = () => {
   const [classes, setClasses] = useState<ClassItem[]>([]);
 
   const [previousStudent, setPreviousStudent] = useState<PreviousStudentData | null>(null);
+  const [admissionMode, setAdmissionMode] = useState<"new" | "existing">("new");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<PreviousStudentData[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState(false);
+  const canSearch = searchQuery.trim().length >= 2 || /^[0-9০-৯]+$/.test(searchQuery.trim());
   const [nidLookupLoading, setNidLookupLoading] = useState(false);
   const lookupAbortRef = useRef<AbortController | null>(null);
 
   const extractData = (res: any) => res?.data?.data || res?.data?.result || res?.data || [];
 
+  const selectPreviousStudent = (data: PreviousStudentData) => {
+    lookupAbortRef.current?.abort();
+    setNidLookupLoading(false);
+    setAdmissionMode("existing");
+    setPreviousStudent(data);
+    setErrors({});
+    setFormData((prev) => ({
+      ...initialState,
+      academicYear: String(data.division_id || "") === prev.academicDivision ? prev.academicYear : "",
+      nid: data.nid || "",
+      name: data.name_bn || initialState.name,
+      arabicName: data.arabic_name || initialState.arabicName,
+      nameEn: data.name_en || initialState.nameEn,
+      gender: data.gender ?? initialState.gender,
+      dob: data.dob ? String(data.dob).slice(0, 10) : initialState.dob,
+      age: data.age ?? initialState.age,
+      academicDivision: data.division_id ? String(data.division_id) : initialState.academicDivision,
+      previousClass: data.class_id ? String(data.class_id) : initialState.previousClass,
+      bloodGroup: data.blood_group || initialState.bloodGroup,
+      residencyType: data.residency_type ?? initialState.residencyType,
+      isOrphan: data.is_orphan === 1 ? true : initialState.isOrphan,
+      previousInstitution: data.previous_institution || initialState.previousInstitution,
+      previousResult: data.previous_result || initialState.previousResult,
+      fatherName: data.father_name || initialState.fatherName,
+      fatherArabicName: data.father_arabic_name || initialState.fatherArabicName,
+      fatherNameEn: data.father_name_en || initialState.fatherNameEn,
+      fatherNid: data.father_nid || initialState.fatherNid,
+      fatherOccupation: data.father_occupation || initialState.fatherOccupation,
+      motherName: data.mother_name || initialState.motherName,
+      motherArabicName: data.mother_arabic_name || initialState.motherArabicName,
+      motherNameEn: data.mother_name_en || initialState.motherNameEn,
+      motherNid: data.mother_nid || initialState.motherNid,
+      motherOccupation: data.mother_occupation || initialState.motherOccupation,
+      parentPhone: data.guardian_phone || initialState.parentPhone,
+      parentPhone2: data.guardian_phone_2 || initialState.parentPhone2,
+      hasAltGuardian: Boolean(data.alt_guardian_name) || initialState.hasAltGuardian,
+      altGuardianName: data.alt_guardian_name || initialState.altGuardianName,
+      altGuardianArabicName: data.alt_guardian_arabic_name || initialState.altGuardianArabicName,
+      altGuardianNameEn: data.alt_guardian_name_en || initialState.altGuardianNameEn,
+      altGuardianRelation: data.alt_guardian_relation || initialState.altGuardianRelation,
+      altGuardianAddress: data.alt_guardian_address || initialState.altGuardianAddress,
+      altGuardianPhone: data.alt_guardian_phone || initialState.altGuardianPhone,
+      division: data.division || initialState.division,
+      district: data.district || initialState.district,
+      thana: data.thana || initialState.thana,
+      village: data.village || initialState.village,
+      image: data.image || initialState.image,
+    }));
+  };
+
+  useEffect(() => {
+    if (admissionMode !== "existing" || previousStudent || !canSearch) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      setSearchError(false);
+      return;
+    }
+    const controller = new AbortController();
+    setSearchLoading(true);
+    setSearchError(false);
+    setSearchResults([]);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.get("/students/admission/search", {
+          params: { q: searchQuery.trim() }, signal: controller.signal,
+        });
+        if (!controller.signal.aborted) setSearchResults(res.data?.data || []);
+      } catch {
+        if (!controller.signal.aborted) setSearchError(true);
+      } finally {
+        if (!controller.signal.aborted) setSearchLoading(false);
+      }
+    }, 350);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [admissionMode, searchQuery, previousStudent, canSearch]);
+
   // Look up previous admission data by NID as soon as office staff types it
   // in, so returning students can be detected before submit and re-admitted
   // into the new session instead of being entered as a duplicate.
   useEffect(() => {
+    if (previousStudent || admissionMode === "existing") return;
     const nid = formData.nid.trim();
 
     lookupAbortRef.current?.abort();
@@ -245,49 +329,9 @@ const AdmissionPage = () => {
         const found = res?.data?.found;
         const data = res?.data?.data as PreviousStudentData | null;
 
+        if (controller.signal.aborted) return;
         if (found && data) {
-          setPreviousStudent(data);
-
-          setFormData((prev) => ({
-            ...prev,
-            name: data.name_bn || prev.name,
-            arabicName: data.arabic_name || prev.arabicName,
-            nameEn: data.name_en || prev.nameEn,
-            gender: data.gender ?? prev.gender,
-            dob: data.dob ? String(data.dob).slice(0, 10) : prev.dob,
-            age: data.age ?? prev.age,
-            academicDivision: data.division_id ? String(data.division_id) : prev.academicDivision,
-            previousClass: data.class_id ? String(data.class_id) : prev.previousClass,
-            bloodGroup: data.blood_group || prev.bloodGroup,
-            residencyType: data.residency_type ?? prev.residencyType,
-            isOrphan: data.is_orphan === 1 ? true : prev.isOrphan,
-            previousInstitution: data.previous_institution || prev.previousInstitution,
-            previousResult: data.previous_result || prev.previousResult,
-            fatherName: data.father_name || prev.fatherName,
-            fatherArabicName: data.father_arabic_name || prev.fatherArabicName,
-            fatherNameEn: data.father_name_en || prev.fatherNameEn,
-            fatherNid: data.father_nid || prev.fatherNid,
-            fatherOccupation: data.father_occupation || prev.fatherOccupation,
-            motherName: data.mother_name || prev.motherName,
-            motherArabicName: data.mother_arabic_name || prev.motherArabicName,
-            motherNameEn: data.mother_name_en || prev.motherNameEn,
-            motherNid: data.mother_nid || prev.motherNid,
-            motherOccupation: data.mother_occupation || prev.motherOccupation,
-            parentPhone: data.guardian_phone || prev.parentPhone,
-            parentPhone2: data.guardian_phone_2 || prev.parentPhone2,
-            hasAltGuardian: Boolean(data.alt_guardian_name) || prev.hasAltGuardian,
-            altGuardianName: data.alt_guardian_name || prev.altGuardianName,
-            altGuardianArabicName: data.alt_guardian_arabic_name || prev.altGuardianArabicName,
-            altGuardianNameEn: data.alt_guardian_name_en || prev.altGuardianNameEn,
-            altGuardianRelation: data.alt_guardian_relation || prev.altGuardianRelation,
-            altGuardianAddress: data.alt_guardian_address || prev.altGuardianAddress,
-            altGuardianPhone: data.alt_guardian_phone || prev.altGuardianPhone,
-            division: data.division || prev.division,
-            district: data.district || prev.district,
-            thana: data.thana || prev.thana,
-            village: data.village || prev.village,
-            image: data.image || prev.image,
-          }));
+          selectPreviousStudent(data);
         } else {
           setPreviousStudent(null);
         }
@@ -296,7 +340,7 @@ const AdmissionPage = () => {
           logger.error("NID lookup error:", err);
         }
       } finally {
-        setNidLookupLoading(false);
+        if (!controller.signal.aborted) setNidLookupLoading(false);
       }
     }, 500);
 
@@ -305,7 +349,7 @@ const AdmissionPage = () => {
       controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.nid]);
+  }, [formData.nid, admissionMode, previousStudent]);
 
   // ভর্তির সময় কোনো রোল দেখানো/দেওয়া হয় না - মুহতামিম অনুমোদন করলে তবেই
   // সার্ভার রোল বরাদ্দ করে (backend approveAdmission)।
@@ -315,6 +359,9 @@ const AdmissionPage = () => {
     setErrors({});
     setPreviousStudent(null);
     setSuccessInfo(null);
+    setAdmissionMode("new");
+    setSearchQuery("");
+    setSearchResults([]);
   };
 
   // Auto-focus the "নতুন ভর্তি ফর্ম" button as soon as the success modal
@@ -324,10 +371,19 @@ const AdmissionPage = () => {
     if (successInfo) newFormButtonRef.current?.focus();
   }, [successInfo]);
 
-  const handleDismissPreviousStudent = () => {
+  const changeAdmissionMode = (mode: "new" | "existing") => {
+    lookupAbortRef.current?.abort();
+    setNidLookupLoading(false);
+    setFormData(initialState);
+    setErrors({});
     setPreviousStudent(null);
-    setFormData((prev) => ({ ...prev, nid: "" }));
+    setAdmissionMode(mode);
+    setSearchQuery("");
+    setSearchResults([]);
+    setSearchError(false);
   };
+
+  const handleDismissPreviousStudent = () => changeAdmissionMode("existing");
 
   useEffect(() => {
     const fetchHelperData = async () => {
@@ -622,6 +678,11 @@ const AdmissionPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (admissionMode === "existing" && !previousStudent) {
+      useToastStore.getState().show(t.selectExistingFirst, "error");
+      return;
+    }
+    if (nidLookupLoading || loading) return;
     const isValid = validateForm();
     if (!isValid) {
       useToastStore.getState().show(t.fillRequired, "error");
@@ -629,6 +690,8 @@ const AdmissionPage = () => {
     }
 
     const payload = {
+      admission_mode: admissionMode,
+      existing_student_id: previousStudent?.id,
       name_bn: formData.name,
       gender: toGenderNumber(formData.gender),
       dob: formData.dob || null,
@@ -722,6 +785,45 @@ const AdmissionPage = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+        <fieldset disabled={loading} className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+          <legend className="px-2 font-semibold">{t.studentType}</legend>
+          <div className="flex flex-wrap gap-3">
+            {(["new", "existing"] as const).map((mode) => (
+              <label key={mode} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-3 text-sm font-normal ${admissionMode === mode ? "border-blue-600 bg-blue-50 text-blue-800 dark:bg-blue-950 dark:text-blue-200" : "border-gray-300 dark:border-slate-600"}`}>
+                <input type="radio" name="studentType" value={mode} checked={admissionMode === mode} onChange={() => changeAdmissionMode(mode)} />
+                {mode === "new" ? t.newStudent : t.existingStudent}
+              </label>
+            ))}
+          </div>
+          {admissionMode === "existing" && (
+            <div className="mt-4">
+              {previousStudent ? (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="font-medium">{previousStudent.name_bn} · {t.registrationNo}: {previousStudent.registration_no || "—"}</p>
+                </div>
+              ) : (
+                <>
+                  <label htmlFor="existing-student-search" className="mb-2 block text-sm font-medium">{t.findStudent}</label>
+                  <input id="existing-student-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={t.searchPlaceholder} maxLength={100} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-3 dark:border-slate-600 dark:bg-slate-800" />
+                  <div aria-live="polite" className="mt-2 text-sm">
+                    {searchLoading ? t.searching : searchError ? t.searchFailed : !canSearch ? t.searchHint : searchResults.length === 0 ? t.noStudents : t.searchLimit}
+                  </div>
+                  <ul className="mt-2 max-h-72 overflow-y-auto divide-y divide-gray-200 dark:divide-slate-700">
+                    {searchResults.map((student) => (
+                      <li key={student.id}>
+                        <button type="button" onClick={() => selectPreviousStudent(student)} className="w-full rounded-lg p-3 text-start hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-slate-800">
+                          <span className="block font-semibold">{student.name_bn}{student.name_en ? ` (${student.name_en})` : ""}</span>
+                          <span className="block text-sm text-gray-600 dark:text-slate-400">{t.registrationNo}: {student.registration_no || "—"} · {student.current_class || "—"} · {student.academic_year || "—"}</span>
+                          <span className="block text-sm text-gray-600 dark:text-slate-400">{t.fatherName}: {student.father_name || "—"} · {t.birthRegistration}: {student.nid || "—"}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+          )}
+        </fieldset>
         {(nidLookupLoading || previousStudent) && (
           <PreviousStudentBanner
             loading={nidLookupLoading}
@@ -732,29 +834,31 @@ const AdmissionPage = () => {
           />
         )}
 
-        <ImageUpload formData={formData} setFormData={setFormData} />
+        <fieldset disabled={loading || (admissionMode === "existing" && !previousStudent)} className="min-w-0 space-y-4 disabled:opacity-60 sm:space-y-6">
+          <ImageUpload formData={formData} setFormData={setFormData} />
 
-        <StudentInfo
-          formData={formData}
-          setFormData={setFormData}
-          errors={errors}
-          setErrors={setErrors}
-          isReturning={Boolean(previousStudent)}
-        />
+          <StudentInfo
+            formData={formData}
+            setFormData={setFormData}
+            errors={errors}
+            setErrors={setErrors}
+            isReturning={Boolean(previousStudent)}
+          />
 
-        <ParentInfo
-          formData={formData}
-          setFormData={setFormData}
-          errors={errors}
-          setErrors={setErrors}
-        />
+          <ParentInfo
+            formData={formData}
+            setFormData={setFormData}
+            errors={errors}
+            setErrors={setErrors}
+          />
 
-        <AlternateGuardianInfo formData={formData} setFormData={setFormData} />
+          <AlternateGuardianInfo formData={formData} setFormData={setFormData} />
 
-        <OtherInfo formData={formData} setFormData={setFormData} />
+          <OtherInfo formData={formData} setFormData={setFormData} />
 
-        <AddressInfo formData={formData} setFormData={setFormData} />
-        <SubmitButton loading={loading} isReAdmission={Boolean(previousStudent)} />
+          <AddressInfo formData={formData} setFormData={setFormData} />
+          <SubmitButton loading={loading || nidLookupLoading} isReAdmission={Boolean(previousStudent)} />
+        </fieldset>
       </form>
 
       <BulkAdmissionModal

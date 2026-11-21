@@ -8,6 +8,7 @@ import {
   createStudentsBulk,
   updateStudentsBulk,
   lookupStudentByNid,
+  searchStudentsForAdmission,
   getStudentIdByRegistrationNo,
   getNextRoll,
   getPendingAdmissions,
@@ -91,6 +92,7 @@ router.patch(
 // registered before the "/:id" route below, otherwise "lookup" would be
 // parsed as an :id value.
 router.get("/lookup", tenantMiddleware, authMiddleware, rbacMiddleware("students.read"), lookupStudentByNid);
+router.get("/admission/search", tenantMiddleware, authMiddleware, rbacMiddleware("students.create"), searchStudentsForAdmission);
 
 // REGISTRATION NO -> ID (admin profile URLs show the madrasa's own reg no
 // instead of the global DB id).

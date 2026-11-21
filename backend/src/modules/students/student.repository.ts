@@ -29,6 +29,25 @@ const withTenantClassRef = <T extends { classRef: TenantClassRow | null }>(row: 
 });
 
 export class StudentRepository {
+  async searchForAdmission(madrasaId: number, query: string) {
+    const registrationNo = /^\d+$/.test(query) ? Number(query) : null;
+    const rows = await prisma.student.findMany({
+      where: {
+        madrasaId, deletedAt: null,
+        OR: [
+          { nameBn: { contains: query, mode: "insensitive" } },
+          { nameEn: { contains: query, mode: "insensitive" } },
+          { nid: { contains: query } },
+          ...(registrationNo && Number.isSafeInteger(registrationNo) ? [{ registrationNo }] : []),
+        ],
+      },
+      include: { classRef: { select: tenantClassNameSelect(madrasaId) } },
+      orderBy: { id: "desc" },
+      take: 20,
+    });
+    return rows.map(withTenantClassRef);
+  }
+
   async findMany(madrasaId: number, where: Prisma.StudentWhereInput) {
     const rows = await prisma.student.findMany({
       where: { ...where, madrasaId, deletedAt: null },

@@ -81,12 +81,12 @@ export const admissionText = defineText({
     submitAdmission: "ভর্তি সম্পন্ন করুন",
     submitReadmission: "সেশন আপডেট করুন (পুনঃভর্তি)",
     lookingUpNid: "NID দিয়ে পূর্বের তথ্য খোঁজা হচ্ছে...",
-    previousFound: "এই NID দিয়ে পূর্বে ভর্তিকৃত একজন {{student}} পাওয়া গেছে",
+    previousFound: "পূর্বে ভর্তিকৃত {{student}} নির্বাচন করা হয়েছে",
     previousSession: "পূর্বের সেশন:",
     previousClassLabel: "পূর্বের {{class}}:",
     autoFilledNote:
-      "ফর্মটি স্বয়ংক্রিয়ভাবে পূরণ করা হয়েছে। জমা দিলে নতুন {{student}} তৈরি হবে না - শুধু এই {{student}}র সেশন/{{class}} আপডেট হয়ে পুনঃভর্তি সম্পন্ন হবে।",
-    admitAsNew: "নতুন হিসেবে ভর্তি করুন",
+      "আগের তথ্য দিয়ে ফর্ম পূরণ হয়েছে। নতুন {{class}} ও চলমান সেশন যাচাই করে আবেদন জমা দিন। একই {{student}}র রেকর্ডে পুনঃভর্তির আবেদন হবে; অনুমোদনের পর ভর্তি চূড়ান্ত হবে।",
+    admitAsNew: "অন্য শিক্ষার্থী নির্বাচন করুন",
 
     // bulk admission modal
     bulkTitle: "একসাথে ভর্তি (Excel)",
@@ -197,12 +197,12 @@ export const admissionText = defineText({
     submitAdmission: "Submit Admission",
     submitReadmission: "Update Session (Re-admission)",
     lookingUpNid: "Looking up previous records by NID...",
-    previousFound: "A previously admitted {{student}} was found with this NID",
+    previousFound: "A previously admitted {{student}} has been selected",
     previousSession: "Previous session:",
     previousClassLabel: "Previous {{class}}:",
     autoFilledNote:
-      "The form has been filled automatically. Submitting will not create a new {{student}} - it will only update this {{student}}'s session/{{class}} and complete the re-admission.",
-    admitAsNew: "Admit as new",
+      "Previous details have been filled in. Check the new {{class}} and current session, then submit. Re-admission uses the same {{student}} record and becomes final after approval.",
+    admitAsNew: "Select another student",
 
     bulkTitle: "Bulk Admission Upload",
     bulkSubtitle: "Admit {{student}}s in bulk by uploading an Excel file",
