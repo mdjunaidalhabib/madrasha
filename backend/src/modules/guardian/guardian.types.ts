@@ -15,6 +15,8 @@ export interface GuardianLoginResult {
 }
 
 export interface GuardianChildSummary {
+  isActive: number;
+  admissionStatus: "PENDING" | "APPROVED" | "REJECTED";
   id: number;
   nameBn: string;
   roll: number | null;

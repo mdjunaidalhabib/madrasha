@@ -1,14 +1,79 @@
 import { prisma } from "../../shared/database/prisma";
 import { GUARDIAN_NOTICES_LIMIT } from "./guardian.constants";
-import { tenantClassNameSelect } from "../../shared/utils/tenant-name.util";
+import { tenantClassNameSelect, tenantDivisionNameSelect } from "../../shared/utils/tenant-name.util";
+import { activityContext } from "../../shared/utils/activityContext";
+import { NotFoundError } from "../../shared/errors";
+import { t } from "../../shared/i18n";
 
 export class GuardianRepository {
-  findActiveByPhone(madrasaId: number, phone: string) {
-    return prisma.guardian.findFirst({ where: { madrasaId, phone, isActive: 1 } });
+  findPersonalProfile(madrasaId: number, studentId: number) {
+    return prisma.student.findFirst({
+      where: { id: studentId, madrasaId, deletedAt: null },
+      select: {
+        id: true, nameBn: true, nameEn: true, arabicName: true, image: true,
+        roll: true, registrationNo: true, dob: true, age: true, gender: true,
+        nid: true, bloodGroup: true, residencyType: true, isOrphan: true,
+        fatherName: true, fatherNameEn: true, fatherArabicName: true,
+        fatherNid: true, fatherOccupation: true,
+        motherName: true, motherNameEn: true, motherArabicName: true,
+        motherNid: true, motherOccupation: true,
+        guardianPhone: true, guardianPhone2: true,
+        altGuardianName: true, altGuardianNameEn: true, altGuardianArabicName: true,
+        altGuardianRelation: true, altGuardianAddress: true, altGuardianPhone: true,
+        division: true, district: true, thana: true, village: true,
+        academicYear: true, admissionDate: true, admissionStatus: true,
+        admissionType: true, isActive: true,
+        previousInstitution: true, previousResult: true,
+        classRef: { select: tenantClassNameSelect(madrasaId) },
+        divisionRef: { select: tenantDivisionNameSelect(madrasaId) },
+        previousClass: { select: tenantClassNameSelect(madrasaId) },
+        sessionRef: { select: { name: true } },
+      },
+    });
   }
 
-  findByIdForTenant(id: number, madrasaId: number) {
-    return prisma.guardian.findFirst({ where: { id, madrasaId, isActive: 1 } });
+  async findForStudent(madrasaId: number, studentId: number) {
+    const student = await prisma.student.findFirst({
+      where: { id: studentId, madrasaId, deletedAt: null },
+      select: { guardianPhone: true },
+    });
+    if (!student?.guardianPhone) return null;
+    return prisma.guardian.findFirst({
+      where: { madrasaId, phone: student.guardianPhone, isActive: 1,
+        students: { some: { studentId } } },
+    });
+  }
+
+  async resetPassword(guardianId: number, madrasaId: number, passwordHash: string, actorId: number, studentId: number) {
+    await prisma.$transaction(async (tx) => {
+      const updated = await tx.guardian.updateMany({
+        where: { id: guardianId, madrasaId, isActive: 1 },
+        data: { passwordHash, mustChangePassword: true, failedLoginAttempts: 0, lockedUntil: null },
+      });
+      if (!updated.count) throw new NotFoundError(t({ bn: "অভিভাবক অ্যাকাউন্ট পাওয়া যায়নি।", en: "Guardian account not found." }));
+      await tx.activityLog.create({ data: {
+        madrasaId, userId: actorId, action: "UPDATE", entity: "students/guardian/reset-password",
+        entityId: studentId, details: JSON.stringify({ guardianId, cardVerified: true, resetConfirmed: true }),
+      } });
+    });
+    activityContext.getStore()?.logged.push({ madrasaId, userId: actorId, entity: "students/guardian/reset-password" });
+  }
+
+  findActiveByPhone(madrasaId: number, phone: string) {
+    return prisma.guardian.findFirst({ where: {
+      madrasaId, phone, isActive: 1,
+      students: { some: { student: { madrasaId, deletedAt: null, guardianPhone: phone } } },
+    } });
+  }
+
+  async findByIdForTenant(id: number, madrasaId: number) {
+    const guardian = await prisma.guardian.findFirst({ where: { id, madrasaId, isActive: 1 } });
+    if (!guardian) return null;
+    const child = await prisma.guardianStudent.findFirst({
+      where: { guardianId: id, student: { madrasaId, deletedAt: null, guardianPhone: guardian.phone } },
+      select: { id: true },
+    });
+    return child ? guardian : null;
   }
 
   /** Finds the existing guardian for (madrasaId, phone), or creates a new
@@ -21,7 +86,11 @@ export class GuardianRepository {
     name: string | null;
     passwordHash: string;
   }) {
-    const existing = await this.findActiveByPhone(params.madrasaId, params.phone);
+    // Reuse an existing account even when its last student was removed.
+    // Login eligibility is checked separately from account provisioning.
+    const existing = await prisma.guardian.findFirst({
+      where: { madrasaId: params.madrasaId, phone: params.phone, isActive: 1 },
+    });
     if (existing) return { guardian: existing, created: false };
 
     const created = await prisma.guardian.create({
@@ -65,15 +134,22 @@ export class GuardianRepository {
     });
   }
 
-  findOwnership(guardianId: number, studentId: number) {
-    return prisma.guardianStudent.findUnique({
+  async findOwnership(guardianId: number, studentId: number) {
+    const link = await prisma.guardianStudent.findUnique({
       where: { guardianId_studentId: { guardianId, studentId } },
+      include: { guardian: true, student: true },
     });
+    if (!link || link.guardian.isActive !== 1 || link.student.deletedAt ||
+      link.student.madrasaId !== link.guardian.madrasaId ||
+      link.student.guardianPhone !== link.guardian.phone) return null;
+    return link;
   }
 
-  findChildrenForGuardian(guardianId: number, madrasaId: number) {
+  async findChildrenForGuardian(guardianId: number, madrasaId: number) {
+    const guardian = await this.findByIdForTenant(guardianId, madrasaId);
+    if (!guardian) return [];
     return prisma.guardianStudent.findMany({
-      where: { guardianId, student: { madrasaId, deletedAt: null } },
+      where: { guardianId, student: { madrasaId, deletedAt: null, guardianPhone: guardian.phone } },
       include: {
         student: {
           select: {
@@ -82,6 +158,8 @@ export class GuardianRepository {
             roll: true,
             registrationNo: true,
             image: true,
+            isActive: true,
+            admissionStatus: true,
             classRef: { select: tenantClassNameSelect(madrasaId) },
           },
         },

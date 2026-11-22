@@ -20,3 +20,8 @@ export const executePromotion = asyncHandler(async (req: Request, res: Response)
   const data = await promotionService.execute(getMadrasaId(req), req.user?.id, req.body);
   return ApiResponse.success(res, { message: t({ bn: "প্রমোশন সম্পন্ন হয়েছে", en: "Promotion completed successfully" }), data });
 });
+
+export const previewPromotionTarget = asyncHandler(async (req: Request, res: Response) => {
+  const data = await promotionService.targetPreview(getMadrasaId(req), req.body);
+  res.json({ success: true, data });
+});

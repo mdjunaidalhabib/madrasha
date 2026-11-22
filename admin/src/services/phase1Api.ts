@@ -312,19 +312,41 @@ export interface PromotionPreviewRow {
   student_id: number;
   name_bn: string;
   roll: number;
+  registration_no: number | null;
+  class_id: number;
   result_status: "PASS" | "FAIL" | "ABSENT" | "NO_RESULT";
   suggested_status: "PROMOTED" | "RETAINED";
+}
+
+export interface PromotionTargetRow {
+  student_id: number;
+  name_bn: string;
+  status: "PROMOTED" | "RETAINED" | "TRANSFERRED";
+  old_roll: number;
+  old_registration_no: number | null;
+  from_class_id: number;
+  from_class_name: string | null;
+  class_id: number;
+  class_name: string | null;
+  academic_year: string;
+  roll: number;
+  registration_no: number | null;
+}
+
+export interface PromotionPayload {
+  from_class_id: number;
+  to_class_id: number;
+  from_year: string;
+  to_year: string;
+  decisions: Array<{ student_id: number; status: "PROMOTED" | "RETAINED" | "TRANSFERRED" }>;
+  preview_token?: string;
 }
 
 export const promotionApi = {
   preview: (payload: { from_class_id: number; from_year: string; exam_id?: number }) =>
     api.post<{ success: boolean; data: PromotionPreviewRow[] }>("/promotion/preview", payload),
 
-  execute: (payload: {
-    from_class_id: number;
-    to_class_id: number;
-    from_year: string;
-    to_year: string;
-    decisions: Array<{ student_id: number; status: "PROMOTED" | "RETAINED" | "TRANSFERRED" }>;
-  }) => api.post("/promotion/execute", payload),
+  targetPreview: (payload: PromotionPayload) =>
+    api.post<{ success: boolean; data: { rows: PromotionTargetRow[]; preview_token: string } }>("/promotion/target-preview", payload),
+  execute: (payload: PromotionPayload) => api.post("/promotion/execute", payload),
 };

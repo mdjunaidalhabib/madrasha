@@ -20,6 +20,8 @@ function SiteInstallPrompt() {
   const t = useText(appText);
   const { installEnabled, appId } = usePwaInstall();
   if (!installEnabled || !appId) return null;
+  // Guardian pages provide their own persistent install card and instructions.
+  if (new URL(appId).pathname.endsWith("/guardian")) return null;
   return (
     <InstallPrompt
       appName={t.appName}

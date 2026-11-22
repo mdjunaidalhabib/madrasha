@@ -1,5 +1,6 @@
 import type { InstitutionType } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
+import { getReservedPersonnelNumbers } from "../../shared/utils/personnel-number.util";
 import { linkName } from "../../shared/utils/tenant-name.util";
 import type { TransactionClient as Tx } from "../../shared/database/transaction";
 
@@ -125,14 +126,10 @@ export class ClassPanelRepository {
     });
   }
 
-  /** Numbers already held inside a block - trashed students included, since
-   * they still hold theirs. */
+  /** Issued numbers stay reserved after class changes and permanent deletion. */
   async getRegistrationUsageInRange(madrasaId: number, start: number, end: number) {
-    const rows = await prisma.student.findMany({
-      where: { madrasaId, registrationNo: { gte: start, lte: end } },
-      select: { registrationNo: true },
-    });
-    const numbers = rows.flatMap((r) => r.registrationNo == null ? [] : [r.registrationNo]);
+    const reserved = await getReservedPersonnelNumbers(prisma, madrasaId, "student-registration");
+    const numbers = reserved.filter((n) => n >= start && n <= end);
     return { _count: { registrationNo: numbers.length }, numbers };
   }
 

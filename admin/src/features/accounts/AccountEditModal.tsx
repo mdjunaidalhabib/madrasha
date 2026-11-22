@@ -103,13 +103,15 @@ export default function AccountEditModal({ row, onClose, onSaved }: Props) {
   };
 
   const handleGroupChange = (groupName: string) => {
-    const group = expenseGroups.find((g) => g.name === groupName) || expenseGroups[0] || { name: "", categories: [] };
+    const group = expenseGroups.find((g) => g.name === groupName) ||
+      expenseGroups[0] || { name: "", categories: [] };
     setEditForm((prev) => ({ ...prev, group: group.name, category: group.categories[0] || "" }));
   };
 
   const handleSave = async () => {
     if (!row) return;
-    if (!editForm.name.trim()) return toast.push("error", t.enterName);
+    if (!editForm.name.trim())
+      return toast.push("error", row.type === "income" ? t.enterName : t.enterExpenseSubject);
     if (!editForm.amount || !Number(editForm.amount) || Number(editForm.amount) <= 0)
       return toast.push("error", t.enterAmount);
 
@@ -122,11 +124,11 @@ export default function AccountEditModal({ row, onClose, onSaved }: Props) {
       payment_method: editForm.payment_method,
       note: editForm.note,
       mobile: editForm.mobile,
+      address: editForm.address,
     };
     if (row.type === "income") {
       payload.receipt_no = editForm.no;
       payload.donor_name = editForm.name;
-      payload.address = editForm.address;
     } else {
       payload.voucher_no = editForm.no;
       payload.receiver_name = editForm.name;
@@ -157,11 +159,19 @@ export default function AccountEditModal({ row, onClose, onSaved }: Props) {
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <FieldLabel>{c.date}</FieldLabel>
-            <Input type="date" value={editForm.entry_date} onChange={(e) => setField("entry_date", e.target.value)} />
+            <Input
+              type="date"
+              value={editForm.entry_date}
+              onChange={(e) => setField("entry_date", e.target.value)}
+            />
           </div>
           <div>
             <FieldLabel>{t.time}</FieldLabel>
-            <Input type="time" value={editForm.entry_time} onChange={(e) => setField("entry_time", e.target.value)} />
+            <Input
+              type="time"
+              value={editForm.entry_time}
+              onChange={(e) => setField("entry_time", e.target.value)}
+            />
           </div>
           <div>
             <FieldLabel>{row.type === "income" ? t.receiptNumber : t.voucherNumber}</FieldLabel>
@@ -204,15 +214,21 @@ export default function AccountEditModal({ row, onClose, onSaved }: Props) {
             </select>
           </div>
           <div>
-            <FieldLabel required>{c.name}</FieldLabel>
-            <Input required value={editForm.name} onChange={(e) => setField("name", e.target.value)} />
+            <FieldLabel required>{row.type === "income" ? c.name : t.expenseSubject}</FieldLabel>
+            <Input
+              required
+              value={editForm.name}
+              onChange={(e) => setField("name", e.target.value)}
+            />
           </div>
-          {row.type === "income" && (
-            <div>
-              <FieldLabel>{c.address}</FieldLabel>
-              <Input value={editForm.address} onChange={(e) => setField("address", e.target.value)} />
-            </div>
-          )}
+          <div>
+            <FieldLabel>{c.address}</FieldLabel>
+            <Input
+              maxLength={255}
+              value={editForm.address}
+              onChange={(e) => setField("address", e.target.value)}
+            />
+          </div>
           <div>
             <FieldLabel>{t.mobileNumber}</FieldLabel>
             <Input value={editForm.mobile} onChange={(e) => setField("mobile", e.target.value)} />

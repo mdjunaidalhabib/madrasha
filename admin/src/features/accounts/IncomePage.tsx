@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api";
-import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
-import Button from "@madrasha/shared-ui/src/components/ui/Button";
+import AccountEntryLayout, {
+  AccountEntrySection,
+  AccountEntrySelect,
+  FieldLabel,
+} from "./AccountEntryLayout";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import { useAccountOptions } from "./useAccountOptions";
 import { normalizeBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
@@ -16,18 +19,13 @@ const nowTimeInput = () => {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
 
-const FieldLabel = ({ children, required = false }: { children: string; required?: boolean }) => (
-  <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-    {children} {required && <span className="text-rose-600 dark:text-rose-400">*</span>}
-  </label>
-);
-
 export default function IncomePage() {
   const toast = useToastStore();
   const t = useText(accountsText);
   const c = useText(commonText);
   const { incomeFunds, paymentMethods, loading } = useAccountOptions();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
     fund: "",
     category: "",
@@ -60,7 +58,9 @@ export default function IncomePage() {
   }, [paymentMethods, form.payment_method]);
 
   const selectedFund = useMemo(
-    () => incomeFunds.find((fund) => fund.name === form.fund) || incomeFunds[0] || { name: "", categories: [] },
+    () =>
+      incomeFunds.find((fund) => fund.name === form.fund) ||
+      incomeFunds[0] || { name: "", categories: [] },
     [form.fund, incomeFunds],
   );
   const setField = (key: keyof typeof form, value: string) =>
@@ -71,11 +71,16 @@ export default function IncomePage() {
     setForm((prev) => ({ ...prev, fund: fund.name, category: fund.categories[0] ?? "" }));
   };
 
+  const invalidName = !form.donor_name.trim();
+  const invalidAmount = !Number.isFinite(Number(form.amount)) || Number(form.amount) <= 0;
+
   const handleSubmit = async () => {
-    if (!form.donor_name.trim()) return toast.push("error", t.enterName);
-    if (!form.amount || !Number(form.amount) || Number(form.amount) <= 0) return toast.push("error", t.enterAmount);
+    setSubmitted(true);
+    if (invalidName) return toast.push("error", t.enterName);
+    if (invalidAmount) return toast.push("error", t.enterAmount);
     await api.post("/accounts/income", form);
     toast.push("success", t.incomeSaved);
+    setSubmitted(false);
     setForm((prev) => ({
       ...prev,
       donor_name: "",
@@ -90,69 +95,78 @@ export default function IncomePage() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader
+    <div className="mx-auto w-full max-w-4xl space-y-6">
+      <AccountEntryLayout
         title={t.incomeTitle}
         subtitle={t.incomeSubtitle}
-      />
-      <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <FieldLabel>{t.fund}</FieldLabel>
-              <select
-                className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                value={form.fund}
-                onChange={(e) => handleFundChange(e.target.value)}
-                disabled={loading}
-              >
-                {incomeFunds.map((fund) => (
-                  <option key={fund.name}>{fund.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <FieldLabel>{t.category}</FieldLabel>
-              <select
-                className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                value={form.category}
-                onChange={(e) => setField("category", e.target.value)}
-                disabled={loading}
-              >
-                {selectedFund.categories.map((category) => (
-                  <option key={category}>{category}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <FieldLabel>{c.date}</FieldLabel>
-              <Input type="date" value={form.entry_date} onChange={(e) => setField("entry_date", e.target.value)} />
-            </div>
-            <div>
-              <FieldLabel>{t.time}</FieldLabel>
-              <Input type="time" value={form.entry_time} onChange={(e) => setField("entry_time", e.target.value)} />
-            </div>
-          </div>
-          <div>
+        submitLabel={t.submitIncome}
+        onSave={handleSubmit}
+      >
+        <AccountEntrySection title={t.entryDetails}>
+          <label>
+            <FieldLabel>{t.fund}</FieldLabel>
+            <AccountEntrySelect
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 outline-none transition-colors hover:border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              value={form.fund}
+              onChange={(e) => handleFundChange(e.target.value)}
+              disabled={loading}
+            >
+              {incomeFunds.map((fund) => (
+                <option key={fund.name}>{fund.name}</option>
+              ))}
+            </AccountEntrySelect>
+          </label>
+          <label>
+            <FieldLabel>{t.category}</FieldLabel>
+            <AccountEntrySelect
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 outline-none transition-colors hover:border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              value={form.category}
+              onChange={(e) => setField("category", e.target.value)}
+              disabled={loading}
+            >
+              {selectedFund.categories.map((category) => (
+                <option key={category}>{category}</option>
+              ))}
+            </AccountEntrySelect>
+          </label>
+          <label>
+            <FieldLabel>{c.date}</FieldLabel>
+            <Input
+              type="date"
+              value={form.entry_date}
+              onChange={(e) => setField("entry_date", e.target.value)}
+            />
+          </label>
+          <label>
+            <FieldLabel>{t.time}</FieldLabel>
+            <Input
+              type="time"
+              value={form.entry_time}
+              onChange={(e) => setField("entry_time", e.target.value)}
+            />
+          </label>
+        </AccountEntrySection>
+        <AccountEntrySection title={t.donorDetails} kind="party">
+          <label>
             <FieldLabel required>{c.name}</FieldLabel>
             <Input
               required
               placeholder={t.donorNamePlaceholder}
+              invalid={submitted && invalidName}
+              aria-invalid={submitted && invalidName}
               value={form.donor_name}
               onChange={(e) => setField("donor_name", e.target.value)}
             />
-          </div>
-          <div>
+          </label>
+          <label>
             <FieldLabel>{c.address}</FieldLabel>
             <Input
               placeholder={c.address}
               value={form.address}
               onChange={(e) => setField("address", e.target.value)}
             />
-          </div>
-          <div>
+          </label>
+          <label>
             <FieldLabel>{t.mobileNumber}</FieldLabel>
             <Input
               type="tel"
@@ -160,51 +174,47 @@ export default function IncomePage() {
               value={form.mobile}
               onChange={(e) => setField("mobile", e.target.value)}
             />
-            <p className="mt-1 text-xs text-slate-400">{t.usedForSms}</p>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <FieldLabel required>{c.amount}</FieldLabel>
-              <Input
-                required
-                type="text"
-                inputMode="decimal"
-                placeholder={c.amount}
-                value={form.amount}
-                onChange={(e) => setField("amount", normalizeBanglaDigits(e.target.value))}
-              />
-            </div>
-            <div>
-              <FieldLabel>{t.paymentMethod}</FieldLabel>
-              <select
-                className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                value={form.payment_method}
-                onChange={(e) => setField("payment_method", e.target.value)}
-                disabled={loading}
-              >
-                {paymentMethods.map((method) => (
-                  <option key={method}>{method}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div>
+          </label>
+        </AccountEntrySection>
+        <AccountEntrySection title={t.paymentDetails} kind="payment">
+          <label>
+            <FieldLabel required>{c.amount}</FieldLabel>
+            <Input
+              required
+              type="text"
+              inputMode="decimal"
+              invalid={submitted && invalidAmount}
+              aria-invalid={submitted && invalidAmount}
+              placeholder={c.amount}
+              value={form.amount}
+              onChange={(e) => setField("amount", normalizeBanglaDigits(e.target.value))}
+            />
+          </label>
+          <label>
+            <FieldLabel>{t.paymentMethod}</FieldLabel>
+            <AccountEntrySelect
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 outline-none transition-colors hover:border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              value={form.payment_method}
+              onChange={(e) => setField("payment_method", e.target.value)}
+              disabled={loading}
+            >
+              {paymentMethods.map((method) => (
+                <option key={method}>{method}</option>
+              ))}
+            </AccountEntrySelect>
+          </label>
+          <label className="sm:col-span-2 lg:col-span-1">
             <FieldLabel>{t.noteDescription}</FieldLabel>
             <textarea
-              rows={2}
+              rows={1}
               placeholder={t.optionalNote}
-              className="w-full rounded border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 outline-none transition-colors hover:border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               value={form.note}
               onChange={(e) => setField("note", e.target.value)}
             />
-          </div>
-        </div>
-        <div className="mt-6 flex justify-end">
-          <Button onClick={handleSubmit} className="w-full rounded-xl px-8">
-            {c.save}
-          </Button>
-        </div>
-      </div>
+          </label>
+        </AccountEntrySection>
+      </AccountEntryLayout>
 
       <AccountRecentPanel type="income" refreshKey={refreshKey} />
     </div>

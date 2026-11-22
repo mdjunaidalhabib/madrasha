@@ -9,6 +9,8 @@ export type GuardianUser = {
 };
 
 export type GuardianChild = {
+  isActive: number;
+  admissionStatus: "PENDING" | "APPROVED" | "REJECTED";
   id: number;
   nameBn: string;
   roll: number | null;

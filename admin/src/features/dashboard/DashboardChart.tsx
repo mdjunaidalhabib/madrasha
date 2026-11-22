@@ -82,7 +82,7 @@ export default function DashboardChart({ variant, data, trends, loading, trendsL
       return (
         <ChartCard
           title={t.incomeExpenseTrend}
-          subtitle={t.last12Months}
+          subtitle={t.sessionPeriod}
           loading={trendsLoading}
           empty={!trendsLoading && !trends?.incomeExpense?.length}
           height="h-48"

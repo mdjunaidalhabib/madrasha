@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { createAvailableNumberPool } from "../../shared/utils/available-number.util";
+import { createPermanentNumberPool } from "../../shared/utils/personnel-number.util";
 import { staffRepository, StaffRepository } from "./staff.repository";
 import { toNumber } from "../../shared/utils/parse.util";
 import { BadRequestError, TenantNotResolvedError } from "../../shared/errors";
@@ -147,7 +147,8 @@ export class StaffService {
 
     const created = await this.repository.runTransaction(async (tx) => {
       await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
-      const nextRegistrationNo = createAvailableNumberPool(await this.repository.getRegistrationNumbersOnTx(tx, madrasaId)).next()!;
+      const nextRegistrationNo = createPermanentNumberPool(await this.repository.getRegistrationNumbersOnTx(tx, madrasaId)).next();
+      if (nextRegistrationNo == null) throw new BadRequestError("No available registration number");
 
       return this.repository.createOnTx(tx, {
         ...data,
@@ -182,7 +183,7 @@ export class StaffService {
     });
     return this.repository.runTransaction(async (tx) => {
       await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
-      const registrationNumbers = createAvailableNumberPool(await this.repository.getRegistrationNumbersOnTx(tx, madrasaId));
+      const registrationNumbers = createPermanentNumberPool(await this.repository.getRegistrationNumbersOnTx(tx, madrasaId));
       let inserted = 0;
       let updated = 0;
       const preview: {
@@ -208,9 +209,11 @@ export class StaffService {
             name: data.nameBn,
           });
         } else {
+          const nextRegistrationNo = registrationNumbers.next();
+          if (nextRegistrationNo == null) throw new BadRequestError("No available registration number");
           const created = await this.repository.createOnTx(tx, {
             ...data,
-            registrationNo: registrationNumbers.next()!,
+            registrationNo: nextRegistrationNo,
           } as Prisma.StaffUncheckedCreateInput);
           inserted++;
           preview.push({

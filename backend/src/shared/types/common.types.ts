@@ -17,6 +17,7 @@ export interface AuthenticatedUser {
 export interface AuthenticatedGuardian {
   type: "guardian";
   guardianId: number;
+  credentialVersion?: string;
   madrasaId: number;
 }
 

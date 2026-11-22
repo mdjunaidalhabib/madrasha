@@ -35,6 +35,7 @@ export const GUARDIAN_TENANT_BLOCK_STORAGE_KEY = "ems:guardian-tenant-block";
 guardianApi.interceptors.response.use(
   (res) => res,
   (err) => {
+    if (axios.isCancel(err)) return Promise.reject(err);
     const status = err?.response?.status;
 
     if (status === 401 || status === 410 || status === 423) {

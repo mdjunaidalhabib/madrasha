@@ -1,6 +1,7 @@
 import { TransactionClient } from "../../shared/database/transaction";
 import { BadRequestError } from "../../shared/errors";
 import { createAvailableNumberPool } from "../../shared/utils/available-number.util";
+import { getReservedPersonnelNumbers } from "../../shared/utils/personnel-number.util";
 
 /** All allocators share this tenant lock, including promotion and class changes. */
 export const lockStudentRegistrationScopeOnTx = (tx: TransactionClient, madrasaId: number) => {
@@ -45,11 +46,7 @@ export function createRegistrationNoBatchOnTx(tx: TransactionClient, madrasaId: 
 
   async function occupied() {
     if (used == null) {
-      const rows = await tx.student.findMany({
-        where: { madrasaId, registrationNo: { not: null } },
-        select: { registrationNo: true },
-      });
-      used = new Set(rows.flatMap((r) => (r.registrationNo == null ? [] : [r.registrationNo])));
+      used = new Set(await getReservedPersonnelNumbers(tx, madrasaId, "student-registration"));
     }
     return used;
   }
@@ -74,7 +71,11 @@ export function createRegistrationNoBatchOnTx(tx: TransactionClient, madrasaId: 
           block.regNoLastIssued <= end
             ? block.regNoLastIssued
             : start - 1,
-        pool: createAvailableNumberPool(await occupied(), start, end),
+        pool: createAvailableNumberPool(
+          await occupied(),
+          Math.max(start, (block.regNoLastIssued ?? start - 1) + 1),
+          end,
+        ),
       };
     }
     blocks.set(classId, state);
@@ -96,7 +97,9 @@ export function createRegistrationNoBatchOnTx(tx: TransactionClient, madrasaId: 
           where: { madrasaId },
           _max: { regNoEnd: true },
         });
-        fallback = createAvailableNumberPool(await occupied(), (ends._max.regNoEnd ?? 0) + 1);
+        const numbers = await occupied();
+        const highest = [...numbers].reduce((max, n) => Math.max(max, n), 0);
+        fallback = createAvailableNumberPool(numbers, Math.max(ends._max.regNoEnd ?? 0, highest) + 1, 2147483647);
       }
       const next = fallback.next();
       if (next == null) throw new BadRequestError("No available registration number");

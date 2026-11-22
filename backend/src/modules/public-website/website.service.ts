@@ -83,6 +83,16 @@ export const normalizeSlideLink = (value: unknown): string | null => {
 export class WebsiteService {
   constructor(private readonly repository: WebsiteRepository = websiteRepository) {}
 
+  async getPublicBrand(slug: string) {
+    const madrasa = await this.repository.findPublicMadrasaBySlug(slug);
+    if (!madrasa) throw new NotFoundError("Institution not found");
+    await this.assertWebsiteAvailable(madrasa);
+    const settings = await this.repository.findSettings(madrasa.id);
+    if (settings?.isPublished === 0) throw new ForbiddenError("This website is not published yet");
+    const brand = toMadrasaApiDto(madrasa)!;
+    return { slug: brand.slug, name: brand.name, address: brand.address, logo_url: brand.logo_url, institution: brand.institution };
+  }
+
   async getPublicShareMetadata(slug: string) {
     const madrasa = await this.repository.findPublicMadrasaBySlug(slug);
     if (!madrasa) throw new NotFoundError("Institution not found");

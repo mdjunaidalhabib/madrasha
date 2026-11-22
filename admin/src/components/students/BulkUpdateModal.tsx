@@ -334,12 +334,16 @@ const BulkUpdateModal = ({ open, students, divisions, classes, onClose, onSucces
       [2, tx.female],
       [],
       [tx.guideClass],
-      ["ID", tx.guideClassName, tx.guideDivision, "Excel Code (previous_class_id)"],
+      ["ID", tx.guideClassName, tx.guideDivision, tx.previousClassCode],
       ...academicRefs.classes.map((c) => [academicExcelId(c), c.class_name_bn, academicRefs.divisions.find((d) => d.division_id === c.division_id)?.division_name_bn ?? "", academicExcelValue(classRefs, c.class_id)]),
+      [],
+      [tx.previousClassHint],
+      [tx.previousClassExample],
+      [tx.previousClassBlank],
     ];
 
     const guideWs = XLSX.utils.aoa_to_sheet(guideRows);
-    guideWs["!cols"] = [{ wch: 15 }, { wch: 35 }, { wch: 18 }, { wch: 32 }];
+    guideWs["!cols"] = [{ wch: 15 }, { wch: 35 }, { wch: 18 }, { wch: 48 }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Bulk Update");

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { tenantMiddleware } from "../../shared/middleware/tenant.middleware";
 import { authMiddleware } from "../../shared/middleware/auth.middleware";
 import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
-import { previewPromotion, executePromotion } from "./promotion.controller";
+import { previewPromotion, executePromotion, previewPromotionTarget } from "./promotion.controller";
 
 const router = Router();
 
@@ -13,6 +13,7 @@ router.use(tenantMiddleware, authMiddleware);
 
 // Preview which students would be promoted/retained before committing.
 router.post("/preview", rbacMiddleware("students.read"), previewPromotion);
+router.post("/target-preview", rbacMiddleware("students.promote"), previewPromotionTarget);
 
 // Commit a reviewed promotion batch.
 router.post("/execute", rbacMiddleware("students.promote"), executePromotion);

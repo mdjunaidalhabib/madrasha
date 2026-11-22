@@ -18,11 +18,11 @@ function setup() {
 }
 
 describe("staff bulk admission", () => {
-  it("fills hard-deleted registration holes without consuming a number for an update", async () => {
+  it("keeps registration holes reserved without consuming a number for an update", async () => {
     const { repo, service } = setup();
     repo.getRegistrationNumbersOnTx.mockResolvedValue([1, 3]);
     await service.bulkCreateStaff([{ name_bn: "New" }, { name_bn: "Existing", nid: "existing" }, { name_bn: "Next" }], 9);
-    expect(repo.createOnTx.mock.calls.map((call) => call[1].registrationNo)).toEqual([2, 4]);
+    expect(repo.createOnTx.mock.calls.map((call) => call[1].registrationNo)).toEqual([4, 5]);
   });
   it("allocates consecutive registration numbers and updates NID matches within the tenant transaction", async () => {
     const { tx, repo, service } = setup();

@@ -1,3 +1,4 @@
+import type { DashboardSession, DashboardScope } from "./dashboard.scope";
 export interface TodayTotalsRow {
   income: number | null;
   expense: number | null;
@@ -110,6 +111,12 @@ export interface DashboardTrends {
 }
 
 export interface DashboardSummary {
+  sessionContext: {
+    mode: DashboardScope["mode"];
+    sessions: DashboardSession[];
+    selectedSessionIds: number[];
+  };
+  currentBalance: number;
   students: number;
   teachers: number;
   users: number;

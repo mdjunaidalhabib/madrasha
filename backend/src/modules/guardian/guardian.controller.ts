@@ -27,6 +27,16 @@ export const guardianLogin = async (req: Request, res: Response) => {
     const result = await guardianService.login(phone, password, madrasa_id);
     res.json({ success: true, ...result });
   } catch (err) {
+    if (err instanceof ApiError && (err.details as any)?.code === "GUARDIAN_LOGIN_INVALID") {
+      const details = err.details as { code: string; remainingAttempts: number };
+      return res.status(err.statusCode).json({ success: false, message: err.message, ...details });
+    }
+    if (err instanceof ApiError && (err.details as any)?.code === "GUARDIAN_LOGIN_LOCKED") {
+      const details = err.details as { code: string; lockedUntil: string };
+      const retryAfterSeconds = Math.max(0, Math.ceil((Date.parse(details.lockedUntil) - Date.now()) / 1000));
+      res.setHeader("Retry-After", String(retryAfterSeconds));
+      return res.status(err.statusCode).json({ success: false, message: err.message, ...details, retryAfterSeconds });
+    }
     respondWithError(res, err, "GUARDIAN LOGIN ERROR:");
   }
 };
@@ -35,8 +45,8 @@ export const guardianChangePassword = async (req: Request, res: Response) => {
   try {
     const madrasa_id = req.tenant!.madrasa_id;
     const guardianId = req.guardian!.guardianId;
-    await guardianService.changePassword(guardianId, madrasa_id, req.body.new_password);
-    res.json({ success: true, message: t({ bn: "পাসওয়ার্ড আপডেট হয়েছে", en: "Password updated successfully" }) });
+    const token = await guardianService.changePassword(guardianId, madrasa_id, req.body.new_password);
+    res.json({ success: true, token, message: t({ bn: "পাসওয়ার্ড আপডেট হয়েছে", en: "Password updated successfully" }) });
   } catch (err) {
     respondWithError(res, err, "GUARDIAN CHANGE PASSWORD ERROR:");
   }
@@ -136,6 +146,17 @@ export const getChildPromotion = async (req: Request, res: Response) => {
     res.json({ success: true, data });
   } catch (err) {
     respondWithError(res, err, "GUARDIAN PROMOTION ERROR:");
+  }
+};
+
+export const getChildPersonalProfile = async (req: Request, res: Response) => {
+  try {
+    const data = await guardianService.getChildPersonalProfile(
+      req.guardian!.guardianId, req.tenant!.madrasa_id, Number(req.params.studentId),
+    );
+    res.json({ success: true, data });
+  } catch (err) {
+    respondWithError(res, err, "GUARDIAN PROFILE ERROR:");
   }
 };
 

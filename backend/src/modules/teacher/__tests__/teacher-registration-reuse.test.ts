@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../../../shared/database/prisma", () => ({ prisma: {} }));
 import { TeacherService } from "../teacher.service";
 
-describe("teacher registration number reuse", () => {
+describe("teacher permanent registration numbers", () => {
   const setup = () => {
     const tx = {};
     const repo = {
@@ -17,13 +17,13 @@ describe("teacher registration number reuse", () => {
     };
     return { repo, tx, service: new TeacherService(repo as any) };
   };
-  it("uses the smallest free number under the tenant lock", async () => {
+  it("continues above issued numbers under the tenant lock", async () => {
     const { repo, tx, service } = setup();
     await service.createTeacher({ name_bn: "New", academic_division: 10 }, 7);
     expect(repo.lockRegistrationScopeOnTx).toHaveBeenCalledWith(tx, 7);
     expect(repo.createOnTx).toHaveBeenCalledWith(
       tx,
-      expect.objectContaining({ madrasaId: 7, registrationNo: 2 }),
+      expect.objectContaining({ madrasaId: 7, registrationNo: 4 }),
     );
   });
   it("keeps bulk allocations unique and does not allocate a number for NID updates", async () => {
@@ -36,6 +36,6 @@ describe("teacher registration number reuse", () => {
       ],
       7,
     );
-    expect(repo.createOnTx.mock.calls.map((call) => call[1].registrationNo)).toEqual([2, 4]);
+    expect(repo.createOnTx.mock.calls.map((call) => call[1].registrationNo)).toEqual([4, 5]);
   });
 });

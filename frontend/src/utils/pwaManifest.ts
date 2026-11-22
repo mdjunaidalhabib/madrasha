@@ -2,10 +2,11 @@ import { disablePwaInstall, setPwaManifest } from "@madrasha/shared-ui/src/pwa/p
 import { applyBrandFavicon, logoVersion, platformIconBase, tenantIconBase } from "@madrasha/shared-ui/src/pwa/brandIcons";
 import { API_BASE_URL } from "@madrasha/shared-ui/src/services/apiConfig";
 import { resolveDomainToSlug } from "../services/domainResolve";
-import { getPublicWebsite } from "../services/publicWebsiteApi";
+import { getPublicBrand } from "../services/publicWebsiteApi";
 import { isPlatformRootHost } from "./platformHost";
 import { getText } from "@madrasha/shared-ui/src/i18n";
 import { appText } from "../app/app.text";
+import { guardianPwaText } from "../features/guardian/guardianPwa.text";
 
 const RESERVED = new Set(["", "m", "demo", "admin", "api", "assets", "login", "super-admin", "guardian", "admission", "contact"]);
 const platformTitle = document.title;
@@ -15,6 +16,8 @@ export function getTenantStartUrl(pathname = window.location.pathname) {
   if (!isPlatformRootHost()) return "/";
   const [first = "", second = ""] = pathname.split("/").filter(Boolean);
   const slug = first === "m" ? second : first;
+  // /demo redirects to marketing, but /demo/guardian/* is a tenant portal.
+  if (first === "demo" && second === "guardian") return "/demo/";
   return RESERVED.has(slug) ? "/" : `/${slug}/`;
 }
 
@@ -22,11 +25,15 @@ let activeSlug: string | null = null;
 let routeVersion = 0;
 let lastPathname = "";
 let brandRequest = 0;
+let guardianMode = false;
+let activeBrand: { name?: string | null; slug?: string | null; logo?: string | null } | null = null;
 
 /** Apply only the brand belonging to the current route; ignore late responses. */
 export function setTenantBrand({ name, slug, logo }: { name?: string | null; slug?: string | null; logo?: string | null }) {
   if (!slug || slug !== activeSlug) return;
-  document.title = name?.trim() || getText(appText).appName;
+  activeBrand = { name, slug, logo };
+  const appName = guardianMode && name ? `${name} — ${getText(guardianPwaText).title}` : name;
+  document.title = appName?.trim() || getText(appText).appName;
   const icons = logo ? { base: tenantIconBase(slug), version: logoVersion(logo) } : null;
   applyBrandFavicon(icons);
   if (!name || !icons) {
@@ -35,15 +42,16 @@ export function setTenantBrand({ name, slug, logo }: { name?: string | null; slu
   }
 
   const startUrl = isPlatformRootHost() ? `/${encodeURIComponent(slug)}/` : "/";
+  const guardianBase = `${startUrl}guardian/`;
   setPwaManifest({
-    name,
-    shortName: name,
-    // Stable across /m/:slug, /:slug and guardian/admission pages.
-    id: `/${encodeURIComponent(slug)}`,
-    startUrl,
+    name: appName || name,
+    shortName: appName || name,
+    // Guardian and public apps have separate, stable installation identities.
+    id: guardianMode ? `/${encodeURIComponent(slug)}/guardian` : `/${encodeURIComponent(slug)}`,
+    startUrl: guardianMode ? `${guardianBase}dashboard` : startUrl,
     // The trailing slash keeps similarly named institutions outside this app.
-    scope: startUrl,
-    description: getText(appText).pwaDescription(name),
+    scope: guardianMode ? guardianBase : startUrl,
+    description: guardianMode ? getText(guardianPwaText).description : getText(appText).pwaDescription(name),
     icons,
   });
 }
@@ -72,11 +80,14 @@ export async function setupTenantManifest(pathname = window.location.pathname) {
   lastPathname = pathname;
   const version = ++routeVersion;
   const platform = isPlatformRootHost();
+  const segments = pathname.split("/").filter(Boolean);
+  guardianMode = platform ? segments[1] === "guardian" : segments[0] === "guardian";
   const startUrl = getTenantStartUrl(pathname);
 
   if (platform && startUrl === "/") {
     brandRequest++;
     activeSlug = null;
+    activeBrand = null;
     document.title = platformTitle;
     disablePwaInstall();
     await applyPlatformIcons(version);
@@ -91,8 +102,12 @@ export async function setupTenantManifest(pathname = window.location.pathname) {
   }
   const slug = platform ? decodeURIComponent(startUrl.split("/")[1]) : await resolveDomainToSlug();
   if (version !== routeVersion) return;
-  if (slug === activeSlug) return;
+  if (slug === activeSlug) {
+    if (activeBrand) setTenantBrand(activeBrand);
+    return;
+  }
   activeSlug = slug;
+  activeBrand = null;
   document.title = getText(appText).appName;
   const request = ++brandRequest;
   disablePwaInstall();
@@ -100,9 +115,8 @@ export async function setupTenantManifest(pathname = window.location.pathname) {
   if (!slug) return;
 
   try {
-    const data = await getPublicWebsite(slug);
+    const madrasa = await getPublicBrand(slug);
     if (activeSlug !== slug || request !== brandRequest) return;
-    const madrasa = data?.madrasa;
     if (madrasa?.slug === slug) {
       setTenantBrand({ name: madrasa.name, slug, logo: madrasa.logo_url });
     }

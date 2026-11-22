@@ -1,4 +1,11 @@
 import { prisma } from "../../shared/database/prisma";
+import { Prisma } from "@prisma/client";
+import {
+  DashboardScope,
+  sessionDateSql,
+  sessionDateWhere,
+  studentSessionWhere,
+} from "./dashboard.scope";
 import {
   DASHBOARD_RECENT_TRANSACTIONS_LIMIT,
   DASHBOARD_OVERDUE_FEES_LIST_LIMIT,
@@ -16,17 +23,44 @@ import {
   UpcomingExamRow,
 } from "./dashboard.types";
 import { startOfTodayUTC, endOfTodayUTC } from "../../shared/utils/date.util";
-import { tenantClassNameSelect, tenantClassName } from "../../shared/utils/tenant-name.util";
+import {
+  tenantClassNameSelect,
+  tenantClassName,
+  tenantDivisionNameSelect,
+  withTenantDivisionName,
+} from "../../shared/utils/tenant-name.util";
 
 export class DashboardRepository {
+  async findDashboardSessions(madrasaId: number) {
+    const rows = await prisma.session.findMany({
+      where: { madrasaId },
+      select: {
+        id: true,
+        name: true,
+        divisionId: true,
+        startDate: true,
+        endDate: true,
+        isActive: true,
+        division: { select: { id: true, ...tenantDivisionNameSelect(madrasaId) } },
+      },
+      orderBy: [{ startDate: "desc" }, { id: "desc" }],
+    });
+    return rows.map((row) => ({ ...row, division: withTenantDivisionName(row.division) }));
+  }
   // A PENDING admission isn't a real enrolled student yet (see
   // student.service.ts:admitStudent), and a REJECTED one never became one -
   // only APPROVED admissions should count as "students" on the dashboard.
   // isActive alone isn't enough to exclude these, since it defaults to 1
   // regardless of admissionStatus at creation time.
-  countActiveStudents(madrasaId: number) {
+  countActiveStudents(madrasaId: number, scope: DashboardScope) {
     return prisma.student.count({
-      where: { madrasaId, isActive: 1, deletedAt: null, admissionStatus: "APPROVED" },
+      where: {
+        madrasaId,
+        isActive: 1,
+        deletedAt: null,
+        admissionStatus: "APPROVED",
+        ...studentSessionWhere(scope),
+      },
     });
   }
 
@@ -34,10 +68,16 @@ export class DashboardRepository {
     return prisma.teacher.count({ where: { madrasaId, isActive: 1, deletedAt: null } });
   }
 
-  countActiveStudentsByGender(madrasaId: number) {
+  countActiveStudentsByGender(madrasaId: number, scope: DashboardScope) {
     return prisma.student.groupBy({
       by: ["gender"],
-      where: { madrasaId, isActive: 1, deletedAt: null, admissionStatus: "APPROVED" },
+      where: {
+        madrasaId,
+        isActive: 1,
+        deletedAt: null,
+        admissionStatus: "APPROVED",
+        ...studentSessionWhere(scope),
+      },
       _count: { _all: true },
     });
   }
@@ -46,15 +86,27 @@ export class DashboardRepository {
     return prisma.user.count({ where: { madrasaId } });
   }
 
-  sumAccountsByType(madrasaId: number, type: "income" | "expense") {
+  sumAccountsByType(madrasaId: number, type: "income" | "expense", scope?: DashboardScope) {
     return prisma.account.aggregate({
-      where: { madrasaId, type, deletedAt: null },
+      where: {
+        madrasaId,
+        type,
+        deletedAt: null,
+        ...(scope && scope.mode !== "all"
+          ? {
+              OR: sessionDateWhere(scope)!.flatMap((range) => [
+                { entryDate: range },
+                { entryDate: null, createdAt: range },
+              ]),
+            }
+          : {}),
+      },
       _sum: { amount: true },
     });
   }
 
   // CURRENT_DATE/GROUP BY combos are cleaner left as raw SQL than emulated in JS.
-  findTodayTotals(madrasaId: number) {
+  findTodayTotals(madrasaId: number, scope: DashboardScope) {
     return prisma.$queryRaw<TodayTotalsRow[]>`
       SELECT
         SUM(CASE WHEN type='income' THEN amount ELSE 0 END) as income,
@@ -62,6 +114,7 @@ export class DashboardRepository {
       FROM accounts
       WHERE madrasa_id = ${madrasaId} AND deleted_at IS NULL
         AND COALESCE(entry_date, CAST(created_at AS DATE)) = CURRENT_DATE
+        AND ${sessionDateSql(scope, Prisma.sql`COALESCE(entry_date, CAST(created_at AS DATE))`)}
     `;
   }
 
@@ -82,7 +135,7 @@ export class DashboardRepository {
   // anything mentioning bank/mobile (in English or Bangla) is "online",
   // everything else (cash and unrecognized/NULL values) is "offline" - so
   // the two buckets always sum to the tenant's true total.
-  findPaymentMethodTotals(madrasaId: number) {
+  findPaymentMethodTotals(madrasaId: number, scope: DashboardScope) {
     return prisma.$queryRaw<PaymentMethodTotalRow[]>`
       SELECT
         CASE
@@ -94,11 +147,12 @@ export class DashboardRepository {
         SUM(CASE WHEN type='expense' THEN amount ELSE 0 END) AS expense
       FROM accounts
       WHERE madrasa_id = ${madrasaId} AND deleted_at IS NULL
+        AND ${sessionDateSql(scope, Prisma.sql`COALESCE(entry_date, CAST(created_at AS DATE))`)}
       GROUP BY 1
     `;
   }
 
-  findRecentTransactions(madrasaId: number) {
+  findRecentTransactions(madrasaId: number, scope: DashboardScope) {
     return prisma.$queryRaw<RecentTransactionRow[]>`
       SELECT id, type, amount, fund, category,
         payment_method AS "paymentMethod",
@@ -111,27 +165,44 @@ export class DashboardRepository {
         entry_time AS "entryTime"
       FROM accounts
       WHERE madrasa_id = ${madrasaId} AND deleted_at IS NULL
+        AND ${sessionDateSql(scope, Prisma.sql`COALESCE(entry_date, CAST(created_at AS DATE))`)}
       ORDER BY COALESCE(entry_date, CAST(created_at AS DATE)) DESC, id DESC
       LIMIT ${DASHBOARD_RECENT_TRANSACTIONS_LIMIT}
     `;
   }
 
-  async findTodayStudentAttendanceCounts(madrasaId: number) {
-    const groups = await prisma.attendance.groupBy({
-      by: ["status"],
-      where: { madrasaId, attendeeType: "STUDENT", date: startOfTodayUTC() },
-      _count: { _all: true },
-    });
+  async findTodayStudentAttendanceCounts(madrasaId: number, scope: DashboardScope) {
+    const groups = await prisma.$queryRaw<
+      { status: "PRESENT" | "ABSENT" | "LATE" | "LEAVE"; count: bigint }[]
+    >`
+      SELECT status, COUNT(*) AS count FROM attendances
+      WHERE madrasa_id = ${madrasaId} AND attendee_type = 'STUDENT' AND date = ${startOfTodayUTC()}
+        AND ${sessionDateSql(scope, Prisma.sql`date`)}
+        AND ${
+          scope.mode === "all"
+            ? Prisma.sql`TRUE`
+            : Prisma.sql`attendee_id IN (
+          SELECT id FROM students WHERE madrasa_id = ${madrasaId}
+            AND session_id = ANY(${scope.selected.map((s) => s.id)}::int[])
+        )`
+        }
+      GROUP BY status
+    `;
     const counts = { PRESENT: 0, ABSENT: 0, LATE: 0, LEAVE: 0 };
     for (const group of groups) {
-      counts[group.status] = group._count._all;
+      counts[group.status] = Number(group.count);
     }
     return counts;
   }
 
-  countPendingAdmissions(madrasaId: number) {
+  countPendingAdmissions(madrasaId: number, scope: DashboardScope) {
     return prisma.student.count({
-      where: { madrasaId, admissionStatus: "PENDING", deletedAt: null },
+      where: {
+        madrasaId,
+        admissionStatus: "PENDING",
+        deletedAt: null,
+        ...studentSessionWhere(scope),
+      },
     });
   }
 
@@ -145,7 +216,7 @@ export class DashboardRepository {
    * showing here until reviewed - but once a Muhtamim rejects it, the
    * admission is cancelled and that fee is no longer collectible, so it
    * must stop showing as outstanding. */
-  async findOverdueSummary(madrasaId: number): Promise<OverdueFeesSummary> {
+  async findOverdueSummary(madrasaId: number, scope: DashboardScope): Promise<OverdueFeesSummary> {
     // Aggregate every qualifying invoice in PostgreSQL, returning only the
     // largest student balances. Totals are calculated BEFORE limiting the list.
     const [row] = await prisma.$queryRaw<
@@ -167,6 +238,14 @@ export class DashboardRepository {
           AND i.due_date <= ${endOfTodayUTC()}
           AND i.status IN ('UNPAID', 'PARTIALLY_PAID')
           AND s.admission_status <> 'REJECTED'
+          AND ${
+            scope.mode === "all"
+              ? Prisma.sql`TRUE`
+              : Prisma.sql`COALESCE(
+            (SELECT fs.session_id FROM fee_structures fs WHERE fs.id = i.fee_structure_id AND fs.madrasa_id = ${madrasaId}),
+            s.session_id
+          ) = ANY(${scope.selected.map((s) => s.id)}::int[])`
+          }
         GROUP BY i.student_id, s.name_bn
       )
       SELECT COALESCE(SUM(invoice_count), 0)::bigint AS count,
@@ -196,26 +275,46 @@ export class DashboardRepository {
   // `periodExpr` is server-built (buildPeriodExpr, a fixed 3-branch
   // ternary), never user input, so it is safe to interpolate directly —
   // madrasaId stays parameterized. Same discipline as account.repository.ts.
-  findIncomeExpenseTrend(madrasaId: number, periodExpr: string, limit: number) {
-    return prisma.$queryRawUnsafe<IncomeExpenseTrendRow[]>(
-      `SELECT ${periodExpr} AS period,
+  findIncomeExpenseTrend(
+    madrasaId: number,
+    periodExpr: string,
+    limit: number,
+    scope: DashboardScope,
+  ) {
+    const period = Prisma.raw(periodExpr);
+    return prisma.$queryRaw<IncomeExpenseTrendRow[]>`
+      SELECT ${period} AS period,
         SUM(CASE WHEN type='income' THEN amount ELSE 0 END) AS total_income,
         SUM(CASE WHEN type='expense' THEN amount ELSE 0 END) AS total_expense
-       FROM accounts WHERE madrasa_id = $1 AND deleted_at IS NULL
-       GROUP BY ${periodExpr} ORDER BY period DESC LIMIT ${limit}`,
-      madrasaId,
-    );
+       FROM accounts WHERE madrasa_id = ${madrasaId} AND deleted_at IS NULL
+         AND ${sessionDateSql(scope, Prisma.sql`COALESCE(entry_date, CAST(created_at AS DATE))`)}
+       GROUP BY ${period} ORDER BY period DESC LIMIT ${limit}
+    `;
   }
 
-  findAttendanceRateTrend(madrasaId: number, periodExpr: string, limit: number) {
-    return prisma.$queryRawUnsafe<AttendanceTrendRow[]>(
-      `SELECT ${periodExpr} AS period,
+  findAttendanceRateTrend(
+    madrasaId: number,
+    periodExpr: string,
+    limit: number,
+    scope: DashboardScope,
+  ) {
+    const period = Prisma.raw(periodExpr);
+    return prisma.$queryRaw<AttendanceTrendRow[]>`
+      SELECT ${period} AS period,
         COUNT(*) FILTER (WHERE status IN ('PRESENT','LATE')) AS present,
         COUNT(*) AS total
-       FROM attendances WHERE madrasa_id = $1 AND attendee_type = 'STUDENT'
-       GROUP BY ${periodExpr} ORDER BY period DESC LIMIT ${limit}`,
-      madrasaId,
-    );
+       FROM attendances WHERE madrasa_id = ${madrasaId} AND attendee_type = 'STUDENT'
+         AND ${sessionDateSql(scope, Prisma.sql`date`)}
+         AND ${
+           scope.mode === "all"
+             ? Prisma.sql`TRUE`
+             : Prisma.sql`attendee_id IN (
+           SELECT id FROM students WHERE madrasa_id = ${madrasaId}
+             AND session_id = ANY(${scope.selected.map((s) => s.id)}::int[])
+         )`
+         }
+       GROUP BY ${period} ORDER BY period DESC LIMIT ${limit}
+    `;
   }
 
   /** Global (not tenant-scoped) "গুরুত্বপূর্ণ লিংক" list managed by Super
@@ -228,7 +327,7 @@ export class DashboardRepository {
     });
   }
 
-  async findUpcomingExams(madrasaId: number): Promise<UpcomingExamRow[]> {
+  async findUpcomingExams(madrasaId: number, scope: DashboardScope): Promise<UpcomingExamRow[]> {
     const rows = await prisma.examRoutine.findMany({
       // Active exams only - dormant (demo / not yet started) exams keep
       // their routines but aren't really "upcoming". Same-day slots follow
@@ -237,6 +336,16 @@ export class DashboardRepository {
         madrasaId,
         examDate: { gte: startOfTodayUTC() },
         exam: { deletedAt: null, isActive: true },
+        ...(scope.mode !== "all"
+          ? {
+              OR: scope.selected.map((session) => ({
+                examDate: { gte: session.startDate, lte: session.endDate },
+                ...(session.divisionId != null
+                  ? { class: { divisionId: session.divisionId } }
+                  : {}),
+              })),
+            }
+          : {}),
       },
       orderBy: [
         { examDate: "asc" },

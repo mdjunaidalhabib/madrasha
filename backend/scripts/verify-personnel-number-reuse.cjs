@@ -1,16 +1,18 @@
 const assert = require("node:assert/strict");
 const path = require("node:path");
+const fs = require("node:fs");
 require("../node_modules/ts-node").register({
   project: path.resolve("backend/tsconfig.json"),
   transpileOnly: true,
 });
-const { createAvailableNumberPool } = require("../src/shared/utils/available-number.util.ts");
+const { createPermanentNumberPool, getNextReservedRoll } = require("../src/shared/utils/personnel-number.util.ts");
 const {
   allocateStudentRegistrationNoOnTx,
   createRegistrationNoBatchOnTx,
 } = require("../src/modules/students/registration-no.allocator.ts");
 
 module.exports = async function verifyPersonnelNumbers(db) {
+  await db.exec(fs.readFileSync("backend/prisma/migrations/20261122020000_reserve_personnel_numbers/migration.sql", "utf8"));
   for (const table of ["sessions", "students", "classes", "books", "divisions", "madrasas"]) {
     await db.exec(
       "SELECT setval(pg_get_serial_sequence('" +
@@ -62,7 +64,7 @@ module.exports = async function verifyPersonnelNumbers(db) {
       )
     ).rows[0].id;
     await db.query(
-      "INSERT INTO madrasa_classes (madrasa_id,class_id,reg_no_start,reg_no_end,reg_no_last_issued) VALUES (800,$1,$2,$3,$3)",
+      "INSERT INTO madrasa_classes (madrasa_id,class_id,reg_no_start,reg_no_end) VALUES (800,$1,$2,$3)",
       [id, start, start + 49],
     );
     classes.push(id);
@@ -73,6 +75,7 @@ module.exports = async function verifyPersonnelNumbers(db) {
     )
   ).rows[0].id;
   const tx = {
+    $queryRaw: async (sql) => (await db.query(sql.text, sql.values)).rows,
     student: {
       findMany: async () =>
         (
@@ -115,9 +118,9 @@ module.exports = async function verifyPersonnelNumbers(db) {
     }
     const table = kind === "teacher" ? "teachers" : "staff";
     const numbers = (
-      await db.query("SELECT registration_no FROM " + table + " WHERE madrasa_id=$1", [tenant])
-    ).rows.map((r) => r.registration_no);
-    const n = createAvailableNumberPool(numbers).next();
+      await db.query("SELECT number FROM personnel_number_reservations WHERE madrasa_id=$1 AND kind=$2", [tenant, kind + "-registration"])
+    ).rows.map((r) => r.number);
+    const n = createPermanentNumberPool(numbers).next();
     return (
       await db.query(
         "INSERT INTO " +
@@ -145,7 +148,7 @@ module.exports = async function verifyPersonnelNumbers(db) {
     await db.query("UPDATE " + table + " SET deleted_at=NULL WHERE id=$1", [second.id]);
     await db.query("DELETE FROM " + table + " WHERE id=$1", [second.id]);
     const next = await create(kind);
-    assert.equal(next.registration_no, 2);
+    assert.equal(next.registration_no, 5);
     assert.notEqual(next.id, second.id);
     assert.equal(
       (await db.query("SELECT registration_no FROM " + table + " WHERE id=$1", [third.id])).rows[0]
@@ -156,10 +159,30 @@ module.exports = async function verifyPersonnelNumbers(db) {
   }
   assert.equal((await create("student", 800, classes[1])).registration_no, 51);
   const batch = createRegistrationNoBatchOnTx(tx, 800);
-  assert.equal(await batch.next(classes[0]), 5);
   assert.equal(await batch.next(classes[0]), 6);
+  assert.equal(await batch.next(classes[0]), 7);
   await batch.flush();
+  const student = await create("student");
+  await db.query("UPDATE students SET roll=4 WHERE id=$1", [student.id]);
+  assert.equal(await getNextReservedRoll(tx, 800, classes[0], "2025"), 5);
+  await db.query("UPDATE students SET roll=2 WHERE id=$1", [student.id]);
+  assert.equal(await getNextReservedRoll(tx, 800, classes[0], "2025"), 5, "manual adjustment does not free the old roll for automatic reuse");
+  await assert.rejects(db.query("UPDATE students SET registration_no=49 WHERE id=$1", [student.id]), /only with the class/);
+  const newReg = await allocateStudentRegistrationNoOnTx(tx, 800, classes[1]);
+  await db.query("UPDATE students SET class_id=$1,registration_no=$2 WHERE id=$3", [classes[1], newReg, student.id]);
+  assert.equal((await db.query("SELECT registration_no FROM students WHERE id=$1", [student.id])).rows[0].registration_no, newReg, "class changes receive the new class registration number");
+  await db.query("DELETE FROM students WHERE id=$1", [student.id]);
+  assert.equal(await getNextReservedRoll(tx, 800, classes[0], "2025"), 5, "permanent deletion retains roll history");
+  assert.equal(await getNextReservedRoll(tx, 800, classes[1], "2025"), 3, "class changes reserve the roll in the destination");
+  for (const table of ["teachers", "staff"]) {
+    await assert.rejects(db.query(`UPDATE ${table} SET registration_no=99 WHERE madrasa_id=800`), /managed by the system/);
+    const highest = await create(table === "teachers" ? "teacher" : "staff");
+    await db.query(`DELETE FROM ${table} WHERE id=$1`, [highest.id]);
+    assert.equal((await create(table === "teachers" ? "teacher" : "staff")).registration_no, highest.registration_no + 1, "highest deleted number stays reserved");
+    const tenant = await create(table === "teachers" ? "teacher" : "staff", 801);
+    assert.equal(tenant.registration_no, 2, "tenant numbering stays independent");
+  }
   console.log(
-    "PASS: student class blocks, teacher/staff registration holes and reusable institution numbers; trash stays reserved and internal IDs stay unique",
+    "PASS: student class blocks and teacher/staff registration numbers stay reserved after permanent deletion; institution numbering and internal IDs are preserved",
   );
 };

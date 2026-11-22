@@ -152,10 +152,9 @@ model Student {
   /// A student in Trash still holds its roll - restoring it later must never
   /// clash with someone who took "its" number in the meantime, so this stays
   /// a plain (not partial/deletedAt-scoped) constraint on purpose. Only a
-  /// permanent delete (a real DELETE, see TrashRepository.permanentDeleteStudent)
-  /// removes the row and actually frees the roll - see
-  /// StudentRepository.getNextAvailableRoll(OnTx), which then picks that
-  /// freed number back up instead of leaving a permanent gap. Postgres
+  /// permanent delete removes the row, but PersonnelNumberReservation keeps
+  /// its number reserved for automatic allocation. Admins may explicitly
+  /// adjust a roll if no current student holds it. Postgres
   /// treats every NULL as distinct for uniqueness purposes, so any number of
   /// PENDING/REJECTED applicants (roll = null, see the field's doc-comment
   /// above) can coexist here without ever colliding on this constraint.

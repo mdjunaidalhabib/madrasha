@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import guardianApi from "../../services/guardianApi";
 import { useGuardianAuthStore } from "../../store/guardianAuthStore";
-import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import StatTile from "@madrasha/shared-ui/src/components/ui/StatTile";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
-import { formatCurrency, formatDate, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { formatCurrency, formatDate, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { guardianText } from "./guardian.text";
+import GuardianPersonalDetails from "./GuardianPersonalDetails";
 
 // Labels come from guardianText.tabs[key].
 const TABS = [
@@ -24,23 +24,51 @@ export default function MyChildProfile() {
   const money = (value: number | string | undefined) => formatCurrency(value || 0, lang);
   const dateBn = (value: string | Date | null | undefined) => (value ? formatDate(value, lang) : "-");
   const selectedStudentId = useGuardianAuthStore((s) => s.selectedStudentId);
-  const children = useGuardianAuthStore((s) => s.children);
   const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const cache = useRef<Record<string, any>>({});
   const [tab, setTab] = useState<TabKey>("overview");
 
-  const child = children.find((c) => c.id === selectedStudentId);
 
   useEffect(() => {
     if (!selectedStudentId) return;
+    const key = `${selectedStudentId}:${tab}`;
+    const cached = cache.current[key];
+    setError(false);
+    if (cached) {
+      setData(cached);
+      setLoading(false);
+      return;
+    }
+    const controller = new AbortController();
     setLoading(true);
     setData(null);
     (async () => {
-      const res = await guardianApi.get(`/guardian/students/${selectedStudentId}/profile-360`);
-      setData(res.data?.data || null);
-      setLoading(false);
+      try {
+        const root = `/guardian/students/${selectedStudentId}`;
+        const get = async (path: string) => (await guardianApi.get(`${root}/${path}`, { signal: controller.signal, timeout: 15000 })).data?.data;
+        let result;
+        if (tab === "overview") result = { profile: await get("profile") };
+        else if (tab === "academic") {
+          const [results, promotion] = await Promise.all([get("results"), get("promotion")]);
+          result = { results, promotion };
+        } else if (tab === "attendance") result = { attendance: await get("attendance") };
+        else if (tab === "financial") result = { fees: await get("fees") };
+        else result = { library: await get("library") };
+        if (!controller.signal.aborted) {
+          cache.current[key] = result;
+          setData(result);
+        }
+      } catch {
+        if (!controller.signal.aborted) setError(true);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
     })();
-  }, [selectedStudentId]);
+    return () => controller.abort();
+  }, [selectedStudentId, tab, retry]);
 
   if (!selectedStudentId) {
     return <EmptyState title={t.noChild} hint={t.noChildHint} />;
@@ -54,10 +82,6 @@ export default function MyChildProfile() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={child ? child.nameBn : t.childProfile}
-        subtitle={child ? `${child.className || ""} · ${t.roll} ${localizeDigits(child.roll ?? "-", lang)} · ${t.regShort} ${localizeDigits(child.registrationNo ?? "-", lang)}` : undefined}
-      />
 
       <div className="flex gap-1 overflow-x-auto border-b border-slate-200">
         {TABS.map((item) => (
@@ -74,20 +98,10 @@ export default function MyChildProfile() {
         ))}
       </div>
 
-      {tab === "overview" && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatTile
-            label={t.monthAttendancePct}
-            value={attendance?.summary?.percentage ?? 0}
-            variant="percentage"
-            tone="emerald"
-            loading={loading}
-          />
-          <StatTile label={t.publishedResults} value={results.length} tone="indigo" loading={loading} />
-          <StatTile label={t.dueFees} value={fees?.summary?.totalDue ?? 0} variant="currency" tone="rose" loading={loading} />
-          <StatTile label={t.libraryRecords} value={library.length} tone="amber" loading={loading} />
-        </div>
-      )}
+      {loading && <div className="guardian-loading" role="status"><span />{t.loadingOverview}</div>}
+      {error && <div className="guardian-error" role="alert"><span>{t.overviewError}</span><button type="button" onClick={() => setRetry((value) => value + 1)}>{t.tryAgain}</button></div>}
+      <div hidden={loading || error}>
+      {tab === "overview" && data?.profile && <GuardianPersonalDetails profile={data.profile} />}
 
       {tab === "academic" && (
         <div className="space-y-6">
@@ -310,6 +324,7 @@ export default function MyChildProfile() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

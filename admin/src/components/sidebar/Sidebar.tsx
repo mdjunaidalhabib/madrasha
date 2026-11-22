@@ -131,8 +131,8 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
   };
 
   const header = (
-    <div className="admin-shell-header shrink-0 border-b border-t-2 border-teal-200 border-t-teal-600 bg-white dark:border-teal-900 dark:border-t-teal-400 dark:bg-slate-900">
-      <div className={`flex h-full items-center ${collapsed ? "flex-col justify-center gap-1 p-2" : "gap-2 p-3"}`}>
+    <div className="admin-shell-header relative shrink-0 border-b border-t-2 border-teal-200 border-t-teal-600 bg-white dark:border-teal-900 dark:border-t-teal-400 dark:bg-slate-900">
+      <div className={`flex h-full items-center ${collapsed ? "flex-col justify-center gap-1 p-2" : closeSidebar ? "gap-2 py-3 ps-3 pe-9 md:p-3" : "gap-2 p-3"}`}>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {branding?.report_logo && !logoFailed ? (
             <img
@@ -156,7 +156,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
           {closeSidebar && (
             <button
               type="button"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-red-200 bg-white text-red-600 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:border-red-900 dark:bg-slate-900 dark:text-red-400 dark:hover:border-red-800 dark:hover:bg-red-950/40 dark:hover:text-red-300 md:hidden"
+              className="absolute end-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full border border-red-200 bg-white text-red-600 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:border-red-900 dark:bg-slate-900 dark:text-red-400 dark:hover:border-red-800 dark:hover:bg-red-950/40 dark:hover:text-red-300 md:hidden"
               onClick={closeSidebar}
               aria-label={t.closeMenu}
             >

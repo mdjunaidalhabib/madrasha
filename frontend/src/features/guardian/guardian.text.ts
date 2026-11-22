@@ -4,6 +4,13 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
  * backend's enum values - only their labels are translated here. */
 export const guardianText = defineText({
   bn: {
+    studentStatus: "শিক্ষার্থীর অবস্থা",
+    admissionStatus: "ভর্তির অবস্থা",
+    studentActive: "সক্রিয়",
+    studentInactive: "বহিষ্কৃত",
+    admissionApproved: "অনুমোদিত",
+    admissionPending: "অপেক্ষমাণ",
+    admissionRejected: "প্রত্যাখ্যাত",
     // Layout
     nav: {
       dashboard: "ড্যাশবোর্ড",
@@ -41,7 +48,7 @@ export const guardianText = defineText({
     recordedDays: "রেকর্ডকৃত দিন",
     loginWelcome: "সন্তানের অগ্রগতির সাথে থাকুন",
     loginDescription: "হাজিরা, পরীক্ষার ফলাফল, ফি ও প্রতিষ্ঠানের নোটিশ — সব তথ্য এক প্যানেলে।",
-    loginHint: "আপনার নিবন্ধিত মোবাইল নম্বর দিয়ে প্রবেশ করুন",
+    loginHint: "আপনার নিবন্ধিত মোবাইল নম্বর ও পাসওয়ার্ড দিন",
     selectChild: "সন্তান নির্বাচন করুন",
     logout: "লগআউট",
     // Common
@@ -52,7 +59,7 @@ export const guardianText = defineText({
     noRecords: "কোনো রেকর্ড নেই",
     noData: "কোনো তথ্য নেই",
     // Login
-    loginTitle: "অভিভাবক লগইন",
+    loginTitle: "লগইন করুন",
     tryAgain: "আবার চেষ্টা করুন",
     institutionLabel: "{{institution}}:",
     mobileNumber: "মোবাইল নম্বর",
@@ -62,7 +69,10 @@ export const guardianText = defineText({
     firstLoginHint: "প্রথমবার লগইন করছেন? ডিফল্ট পাসওয়ার্ড আপনার মোবাইল নম্বরের শেষ ৪ ডিজিট।",
     loggingIn: "লগইন হচ্ছে...",
     login: "লগইন",
+    forgotPasswordHint: "পাসওয়ার্ড ভুলে গেছেন? মাদরাসার অফিসে যোগাযোগ করুন। রিসেটের পর নিবন্ধিত মোবাইল নম্বরের শেষ ৪ ডিজিট দিয়ে লগইন করতে পারবেন।",
     // Change password
+    newPasswordRequired: "নতুন পাসওয়ার্ড লিখুন।",
+    confirmPasswordRequired: "পাসওয়ার্ড আবার লিখুন।",
     passwordTooShort: "পাসওয়ার্ড কমপক্ষে ৪ ক্যারেক্টার হতে হবে",
     passwordMismatch: "দুটি পাসওয়ার্ড মিলছে না",
     passwordChanged: "পাসওয়ার্ড পরিবর্তন হয়েছে",
@@ -234,6 +244,14 @@ export const guardianText = defineText({
     },
   },
   en: {
+    studentStatus: "Student status",
+    admissionStatus: "Admission status",
+    studentActive: "Active",
+    studentInactive: "Expelled",
+    admissionApproved: "Approved",
+    admissionPending: "Pending",
+    admissionRejected: "Rejected",
+    forgotPasswordHint: "Forgot your password? Contact the madrasa office. After a reset, log in with the last 4 digits of your registered mobile number.",
     nav: {
       dashboard: "Dashboard",
       profile: "Profile",
@@ -271,7 +289,7 @@ export const guardianText = defineText({
     loginWelcome: "Be part of their progress",
     loginDescription:
       "Attendance, exam results, fees and institution notices — together in one place.",
-    loginHint: "Sign in with your registered mobile number",
+    loginHint: "Enter your registered mobile number and password",
     selectChild: "Select child",
     logout: "Logout",
     noChild: "No child linked",
@@ -280,7 +298,7 @@ export const guardianText = defineText({
     regShort: "Reg.",
     noRecords: "No records",
     noData: "No data",
-    loginTitle: "Guardian Login",
+    loginTitle: "Sign in",
     tryAgain: "Try again",
     institutionLabel: "{{institution}}:",
     mobileNumber: "Mobile number",
@@ -291,6 +309,8 @@ export const guardianText = defineText({
       "Logging in for the first time? The default password is the last 4 digits of your mobile number.",
     loggingIn: "Logging in...",
     login: "Login",
+    newPasswordRequired: "Enter your new password.",
+    confirmPasswordRequired: "Re-enter your password.",
     passwordTooShort: "Password must be at least 4 characters",
     passwordMismatch: "The two passwords do not match",
     passwordChanged: "Password changed",

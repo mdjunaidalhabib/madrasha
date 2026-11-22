@@ -16,6 +16,7 @@ import { hasPermission } from "../../utils/permissions";
 import { studentStatus } from "../../utils/studentStatus";
 import { studentProfilePageText } from "./StudentProfilePage.text";
 import { profile360Text } from "./StudentProfile360.text";
+import GuardianPasswordReset, { guardianPasswordResetText } from "./GuardianPasswordReset";
 
 const menuActionClass =
   "flex min-h-10 w-full items-center gap-2 rounded-md px-3 py-2 text-start text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800";
@@ -38,6 +39,8 @@ export default function StudentProfileActions({
   const t = useText(studentProfilePageText);
   const c = useText(commonText);
   const tx = useText(profile360Text);
+  const guardianResetText = useText(guardianPasswordResetText);
+  const [guardianResetOpen, setGuardianResetOpen] = useState(false);
   const navigate = useNavigate();
   const id = student.id;
   const [expelBusy, setExpelBusy] = useState(false);
@@ -267,6 +270,12 @@ export default function StudentProfileActions({
               {t.sessionTransfer}
             </button>
           )}
+          {canUpdate && student.guardian_phone && (
+            <button type="button" className={menuActionClass} disabled={!detailsReady}
+              onClick={() => setGuardianResetOpen(true)}>
+              {guardianResetText.title}
+            </button>
+          )}
           {canManageDeviceCard && (
             <button
               type="button"
@@ -386,6 +395,11 @@ export default function StudentProfileActions({
           </button>
         </div>
       </Modal>
+
+      {guardianResetOpen && (
+        <GuardianPasswordReset studentId={id} phone={student.guardian_phone}
+          onClose={() => setGuardianResetOpen(false)} />
+      )}
 
       <EnrollCardModal
         open={!!deviceCardPerson}

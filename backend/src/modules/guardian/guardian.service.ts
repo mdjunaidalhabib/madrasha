@@ -26,8 +26,9 @@ import {
   GuardianNoticeRow,
   GuardianResultRow,
 } from "./guardian.types";
-import { tenantClassName } from "../../shared/utils/tenant-name.util";
+import { tenantClassName, tenantDivisionName } from "../../shared/utils/tenant-name.util";
 import { t } from "../../shared/i18n";
+import { guardianCredentialVersion } from "./guardian-session";
 
 const cleanPhone = (value: string | null | undefined) => String(value || "").trim();
 
@@ -71,6 +72,14 @@ export class GuardianService {
 
   /* ================= AUTH ================= */
 
+  async resetPasswordForStudent(madrasaId: number, studentId: number, actorId: number) {
+    const guardian = await this.repository.findForStudent(madrasaId, studentId);
+    if (!guardian) throw new NotFoundError(t({ bn: "এই শিক্ষার্থীর নিবন্ধিত নম্বরে যুক্ত সক্রিয় অভিভাবক অ্যাকাউন্ট পাওয়া যায়নি।", en: "No active guardian account linked to this student's registered phone." }));
+    const temporaryPassword = cleanPhone(guardian.phone).slice(-DEFAULT_PASSWORD_SUFFIX_LENGTH);
+    await this.repository.resetPassword(guardian.id, madrasaId, await hashPassword(temporaryPassword), actorId, studentId);
+    return { phone: guardian.phone, temporaryPassword };
+  }
+
   async login(phone: string, password: string, madrasaId: number): Promise<GuardianLoginResult> {
     const guardian = await this.repository.findActiveByPhone(madrasaId, cleanPhone(phone));
     if (!guardian) {
@@ -79,12 +88,15 @@ export class GuardianService {
 
     if (guardian.lockedUntil && guardian.lockedUntil.getTime() > Date.now()) {
       const minutesLeft = Math.ceil((guardian.lockedUntil.getTime() - Date.now()) / 60000);
-      throw new BadRequestError(t({ bn: `অনেকবার ভুল চেষ্টা হয়েছে। ${minutesLeft} মিনিট পর আবার চেষ্টা করুন।`, en: `Too many failed attempts. Try again in ${minutesLeft} minute(s).` }));
+      throw new BadRequestError(t({ bn: `অনেকবার ভুল চেষ্টা হয়েছে। ${minutesLeft} মিনিট পর আবার চেষ্টা করুন।`, en: `Too many failed attempts. Try again in ${minutesLeft} minute(s).` }), {
+        code: "GUARDIAN_LOGIN_LOCKED", lockedUntil: guardian.lockedUntil.toISOString(),
+      });
     }
 
     const validPassword = await comparePassword(password, guardian.passwordHash);
     if (!validPassword) {
-      const attempts = guardian.failedLoginAttempts + 1;
+      // Once the lock expires, start a fresh allowance of failed attempts.
+      const attempts = (guardian.lockedUntil ? 0 : guardian.failedLoginAttempts) + 1;
       const lockedUntil =
         attempts >= MAX_FAILED_LOGIN_ATTEMPTS ? new Date(Date.now() + ACCOUNT_LOCKOUT_DURATION_MS) : null;
       await this.repository.recordFailedLogin(guardian.id, attempts, lockedUntil);
@@ -92,15 +104,19 @@ export class GuardianService {
       if (lockedUntil) {
         throw new BadRequestError(
           t({ bn: `অনেকবার ভুল চেষ্টা হয়েছে। অ্যাকাউন্টটি ${ACCOUNT_LOCKOUT_DURATION_MS / 60000} মিনিটের জন্য লক করা হয়েছে।`, en: `Too many failed attempts. Account locked for ${ACCOUNT_LOCKOUT_DURATION_MS / 60000} minutes.` }),
+          { code: "GUARDIAN_LOGIN_LOCKED", lockedUntil: lockedUntil.toISOString() },
         );
       }
-      throw new BadRequestError(t({ bn: "ইমেইল বা পাসওয়ার্ড সঠিক নয়", en: "Invalid credentials" }));
+      throw new BadRequestError(t({ bn: "ইমেইল বা পাসওয়ার্ড সঠিক নয়", en: "Invalid credentials" }), {
+        code: "GUARDIAN_LOGIN_INVALID",
+        remainingAttempts: MAX_FAILED_LOGIN_ATTEMPTS - attempts,
+      });
     }
 
     await this.repository.recordSuccessfulLogin(guardian.id);
 
     const token = generateToken(
-      { type: "guardian", guardianId: guardian.id, madrasaId: guardian.madrasaId },
+      { type: "guardian", guardianId: guardian.id, madrasaId: guardian.madrasaId, credentialVersion: guardianCredentialVersion(guardian.passwordHash) },
       GUARDIAN_TOKEN_EXPIRY,
     );
 
@@ -115,12 +131,13 @@ export class GuardianService {
     };
   }
 
-  async changePassword(guardianId: number, madrasaId: number, newPassword: string): Promise<void> {
+  async changePassword(guardianId: number, madrasaId: number, newPassword: string): Promise<string> {
     const guardian = await this.repository.findByIdForTenant(guardianId, madrasaId);
     if (!guardian) throw new NotFoundError(t({ bn: "অভিভাবক অ্যাকাউন্ট পাওয়া যায়নি", en: "Guardian account not found" }));
 
     const passwordHash = await hashPassword(newPassword);
     await this.repository.updatePassword(guardian.id, passwordHash);
+    return generateToken({ type: "guardian", guardianId, madrasaId, credentialVersion: guardianCredentialVersion(passwordHash) }, GUARDIAN_TOKEN_EXPIRY);
   }
 
   /* ================= OWNERSHIP ================= */
@@ -132,6 +149,20 @@ export class GuardianService {
 
   /* ================= DATA ================= */
 
+  async getChildPersonalProfile(guardianId: number, madrasaId: number, studentId: number) {
+    await this.assertOwnsStudent(guardianId, studentId);
+    const student = await this.repository.findPersonalProfile(madrasaId, studentId);
+    if (!student) throw new NotFoundError(t({ bn: "শিক্ষার্থীর তথ্য পাওয়া যায়নি।", en: "Student profile not found." }));
+    const { classRef, divisionRef, previousClass, sessionRef, ...profile } = student;
+    return {
+      ...profile,
+      className: tenantClassName(classRef),
+      divisionName: tenantDivisionName(divisionRef),
+      previousClassName: tenantClassName(previousClass),
+      sessionName: sessionRef?.name || student.academicYear,
+    };
+  }
+
   async listMyChildren(guardianId: number, madrasaId: number): Promise<GuardianChildSummary[]> {
     const rows = await this.repository.findChildrenForGuardian(guardianId, madrasaId);
     return rows.map(({ student }) => ({
@@ -141,6 +172,8 @@ export class GuardianService {
       registrationNo: student.registrationNo,
       className: tenantClassName(student.classRef),
       image: student.image,
+      isActive: student.isActive,
+      admissionStatus: student.admissionStatus,
     }));
   }
 

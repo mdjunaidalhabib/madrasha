@@ -18,6 +18,7 @@ export interface CreateExpenseRequestDto {
   fund: string;
   category: string;
   receiver_name: string;
+  address?: string;
   mobile?: string;
   payment_method: string;
   note?: string;

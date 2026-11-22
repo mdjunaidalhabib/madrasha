@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
+import { getReservedPersonnelNumbers } from "../../shared/utils/personnel-number.util";
 
 export class StaffRepository {
   findMany(madrasaId: number) {
@@ -59,8 +60,7 @@ export class StaffRepository {
   }
 
   async getRegistrationNumbersOnTx(tx: TransactionClient, madrasaId: number) {
-    const rows = await tx.staff.findMany({ where: { madrasaId }, select: { registrationNo: true } });
-    return rows.map((r) => r.registrationNo);
+    return getReservedPersonnelNumbers(tx, madrasaId, "staff-registration");
   }
 
   /** Which of `ids` are live staff of this madrasa - tenant guard for the

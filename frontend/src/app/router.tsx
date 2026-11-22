@@ -89,6 +89,8 @@ export const router = createBrowserRouter([
           { path: "profile", element: withSuspense(<MyChildProfile />) },
           { path: "attendance", element: withSuspense(<GuardianAttendancePage />) },
           { path: "results", element: withSuspense(<GuardianResultsPage />) },
+          { path: "results/:resultMasterId", element: withSuspense(<GuardianMarksheetPage />) },
+          { path: "exam-routine", element: withSuspense(<GuardianExamRoutinePage />) },
           { path: "fees", element: withSuspense(<GuardianFeesPage />) },
           { path: "notices", element: withSuspense(<GuardianNoticesPage />) },
           { path: "leave", element: withSuspense(<GuardianLeavePage />) },

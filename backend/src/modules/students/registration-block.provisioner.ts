@@ -1,5 +1,6 @@
 import { TransactionClient } from "../../shared/database/transaction";
 import { lockStudentRegistrationScopeOnTx } from "./registration-no.allocator";
+import { getReservedPersonnelNumbers } from "../../shared/utils/personnel-number.util";
 
 /**
  * Gives every active class that has no registration-number block yet a
@@ -82,11 +83,12 @@ export async function assignMissingRegistrationBlocksOnTx(
 
   // Same lock as number allocation, so a block is never laid over a number
   // being handed out concurrently.
-  const [blocks, used] = await Promise.all([
+  const [blocks, used, reserved] = await Promise.all([
     tx.madrasaClass.aggregate({ where: { madrasaId }, _max: { regNoEnd: true } }),
     tx.student.aggregate({ where: { madrasaId }, _max: { registrationNo: true } }),
+    getReservedPersonnelNumbers(tx, madrasaId, "student-registration"),
   ]);
-  let cursor = Math.max(blocks._max.regNoEnd ?? 0, used._max.registrationNo ?? 0);
+  let cursor = reserved.reduce((max, n) => Math.max(max, n), Math.max(blocks._max.regNoEnd ?? 0, used._max.registrationNo ?? 0));
 
   for (const row of eligible) {
     const size = blockSize(row.class.divisionId!)!;

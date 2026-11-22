@@ -241,7 +241,7 @@ export class ClassPanelService {
           const usage = await this.repository.getRegistrationUsageInRange(madrasaId, start, end);
           usedCount = usage._count.registrationNo;
           // Same rule as allocateStudentRegistrationNoOnTx.
-          nextRegNo = createAvailableNumberPool(usage.numbers, start, end).next();
+          nextRegNo = createAvailableNumberPool(usage.numbers, Math.max(start, (row.regNoLastIssued ?? start - 1) + 1), end).next();
         }
         return {
           class_id: row.classId,

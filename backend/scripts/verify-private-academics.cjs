@@ -17,9 +17,10 @@ function beforeSchema() {
     .filter((f) => f.endsWith(".prisma"))) {
     let text = fs.readFileSync(path.join(source, file), "utf8");
     text = text.replace(/model AcademicSequence \{[\s\S]*?\n\}/g, "");
+    text = text.replace(/model PersonnelNumberReservation \{[\s\S]*?\n\}/g, "");
     text = text
       .split(/\r?\n/)
-      .filter((line) => !/\b(sourceTemplateId|localNo|localScopeId|academicSequences|madrasaNo)\b/.test(line))
+      .filter((line) => !/\b(sourceTemplateId|localNo|localScopeId|academicSequences|madrasaNo|personnelNumberReservations)\b/.test(line))
       .join("\n");
     const target = path.join(scratch, file);
     fs.mkdirSync(path.dirname(target), { recursive: true });
@@ -237,6 +238,7 @@ async function main() {
     await require("./verify-academic-number-reuse.cjs")(db);
     await require("./verify-personnel-number-reuse.cjs")(db);
     await require("./verify-parent-scoped-academics.cjs")(db);
+    await require("./verify-reserved-academic-numbers.cjs")(db);
     const expected = new PGlite();
     try {
       await expected.exec(renderSchema(path.resolve("backend/prisma")));

@@ -10,6 +10,7 @@ export interface PromotionDecisionDto {
 }
 
 export interface PromotionExecuteRequestDto {
+  preview_token?: string;
   from_class_id: number | string;
   to_class_id: number | string;
   from_year: string;

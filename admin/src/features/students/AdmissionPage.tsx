@@ -515,15 +515,19 @@ const AdmissionPage = () => {
       ...divisions.map((d) => [academicExcelId(d), d.division_name_bn]),
       [],
       [t.classGuide],
-      ["ID", t.className, t.divisionId, "Excel Code (previous_class)"],
+      ["ID", t.className, t.divisionId, t.previousClassCode],
       ...classes.map((c) => {
         const divisionNo = academicExcelId(divisions.find((d) => d.division_id === c.division_id));
         return [academicExcelId(c), c.class_name_bn, divisionNo, `${divisionNo}/${academicExcelId(c)}`];
       }),
+      [],
+      [t.previousClassHint],
+      [t.previousClassExample],
+      [t.previousClassOptional],
     ];
 
     const guideWs = XLSX.utils.aoa_to_sheet(guideRows);
-    guideWs["!cols"] = [{ wch: 15 }, { wch: 35 }, { wch: 18 }, { wch: 30 }];
+    guideWs["!cols"] = [{ wch: 15 }, { wch: 35 }, { wch: 18 }, { wch: 48 }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Admission Template");

@@ -829,17 +829,26 @@ export class StudentService {
       throw new BadRequestError(t({ bn: "জন্মতারিখ সঠিক নয়", en: "Invalid DOB" }));
     }
 
-    assertRollIsServerManaged(body);
-
     const { count, guardianPhone, guardianFallbackName } = await this.repository.runTransaction(async (tx) => {
       await this.repository.lockStudentRecordOnTx(tx, madrasaId, id);
       const existing = await this.repository.findByIdForTenantOnTx(tx, id, madrasaId);
       if (!existing) throw new StudentNotFoundError();
 
+      const suppliedRegistration = body.registration_no ?? body.registrationNo;
+      if (suppliedRegistration !== undefined && String(suppliedRegistration) !== String(existing.registrationNo)) {
+        throw new BadRequestError(t({ bn: "রেজিস্ট্রেশন নম্বর সরাসরি পরিবর্তন করা যাবে না", en: "Registration numbers cannot be changed manually" }));
+      }
+      const requestedRoll = body.roll === undefined ? undefined : Number(body.roll);
+      if (requestedRoll !== undefined && (!Number.isSafeInteger(requestedRoll) || requestedRoll < 1 || requestedRoll > 2147483647)) {
+        throw new BadRequestError(t({ bn: "সঠিক ধনাত্মক রোল নম্বর দিন", en: "Enter a valid positive roll number" }));
+      }
+      if (requestedRoll !== undefined && !existing.roll) {
+        throw new BadRequestError(t({ bn: "ভর্তি অনুমোদনের পর রোল সংশোধন করুন", en: "Approve admission before adjusting the roll" }));
+      }
+
       const data: Record<string, any> = {};
       for (const key of Object.keys(body)) {
-        // Roll is immutable from the client and is assigned only when its scope
-        // changes. academic_year/session_id are resolved together below (must
+        // Roll is validated separately. academic_year/session_id are resolved together below (must
         // stay mirrored - sessionId is authoritative, academicYear is derived).
         if (key === "roll" || key === "manual_roll_override" || key === "academic_year") continue;
 
@@ -884,14 +893,18 @@ export class StudentService {
       const targetClassId = Number(data.classId ?? existing.classId);
       const scopeChanged = targetClassId !== existing.classId || targetSessionId !== existing.sessionId;
 
-      if (scopeChanged) {
+      if (scopeChanged || requestedRoll !== undefined) {
         await this.repository.lockRollScopeOnTx(tx, madrasaId, targetClassId, targetAcademicYear);
-        data.roll = await this.repository.getNextAvailableRollOnTx(
-          tx,
-          madrasaId,
-          targetClassId,
-          targetAcademicYear,
-        );
+        if (requestedRoll !== undefined) {
+          const taken = await tx.student.findFirst({
+            where: { madrasaId, classId: targetClassId, academicYear: targetAcademicYear, roll: requestedRoll, id: { not: id } },
+            select: { id: true },
+          });
+          if (taken) throw new BadRequestError(t({ bn: "এই রোল নম্বর ইতিমধ্যে ব্যবহৃত হচ্ছে", en: "This roll number is already in use" }));
+          data.roll = requestedRoll;
+        } else {
+          data.roll = await this.repository.getNextAvailableRollOnTx(tx, madrasaId, targetClassId, targetAcademicYear);
+        }
       }
 
       // Each class has its own registration-number block - a class change

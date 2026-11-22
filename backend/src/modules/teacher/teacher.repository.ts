@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
+import { getReservedPersonnelNumbers } from "../../shared/utils/personnel-number.util";
 import { tenantDivisionNameSelect, withTenantDivisionName } from "../../shared/utils/tenant-name.util";
 
 export class TeacherRepository {
@@ -103,8 +104,7 @@ export class TeacherRepository {
   }
 
   async getRegistrationNumbersOnTx(tx: TransactionClient, madrasaId: number) {
-    const rows = await tx.teacher.findMany({ where: { madrasaId }, select: { registrationNo: true } });
-    return rows.map((r) => r.registrationNo);
+    return getReservedPersonnelNumbers(tx, madrasaId, "teacher-registration");
   }
 
   updateOnTx(tx: TransactionClient, id: number, data: Record<string, unknown>) {

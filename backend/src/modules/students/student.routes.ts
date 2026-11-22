@@ -1,4 +1,5 @@
 import express from "express";
+import { resetStudentGuardianPassword } from "../guardian/guardian-admin.controller";
 import {
   getStudents,
   getStudentById,
@@ -37,6 +38,7 @@ import { validate } from "../../shared/middleware/validate.middleware";
 import { rbacMiddleware } from "../../shared/middleware/rbac.middleware";
 import {
   studentIdParamSchema,
+  guardianPasswordResetSchema,
   registrationNoParamSchema,
   studentBulkDeleteSchema,
   studentExpelSchema,
@@ -47,6 +49,9 @@ import {
 } from "./student.validation";
 
 const router = express.Router();
+
+router.post("/:id/guardian/reset-password", tenantMiddleware, authMiddleware,
+  rbacMiddleware("students.update"), validate(guardianPasswordResetSchema), resetStudentGuardianPassword);
 
 // NOTE: MUHTAMIM/SUPER_ADMIN always bypass rbacMiddleware, and TALIMAT
 // has a fallback covering students.* (see rbac-policy.ts).

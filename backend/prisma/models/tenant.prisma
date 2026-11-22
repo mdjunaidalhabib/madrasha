@@ -38,6 +38,7 @@ enum PaymentStatus {
 }
 
 model Madrasa {
+  personnelNumberReservations PersonnelNumberReservation[]
   academicSequences AcademicSequence[]
   websiteDonations WebsiteDonationSettings?
   id            Int           @id @default(autoincrement())

@@ -1,0 +1,13 @@
+/// Keeps issued numbers after a person is permanently deleted. Roll history
+/// blocks automatic reuse; an administrator may explicitly adjust a free roll.
+model PersonnelNumberReservation {
+  madrasaId Int     @map("madrasa_id")
+  kind      String
+  scope     String  @default("")
+  number    Int
+  personId  Int     @map("person_id")
+  madrasa   Madrasa @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@id([madrasaId, kind, scope, number])
+  @@map("personnel_number_reservations")
+}

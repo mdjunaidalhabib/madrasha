@@ -28,6 +28,9 @@ import {
 } from "@madrasha/shared-ui/src/navigation/refreshStore";
 import { LanguageSwitcher, localizeDigits, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { guardianText } from "../features/guardian/guardian.text";
+import { useGuardianBrand } from "../features/guardian/useGuardianBrand";
+import { useGuardianLightTheme } from "../features/guardian/useGuardianLightTheme";
+import GuardianAppInstall from "../features/guardian/GuardianAppInstall";
 import "../features/guardian/guardian.css";
 
 const NAV_ITEMS = [
@@ -42,9 +45,12 @@ const NAV_ITEMS = [
 ];
 
 export default function GuardianLayout() {
+  useGuardianLightTheme();
   const t = useText(guardianText);
   const lang = useLang();
-  const base = getTenantGuardianBase(useTenantSlug());
+  const slug = useTenantSlug();
+  const base = getTenantGuardianBase(slug);
+  const brand = useGuardianBrand(slug);
   const nav = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -137,11 +143,10 @@ export default function GuardianLayout() {
       >
         <div className="guardian-brand">
           <span className="guardian-brand-icon">
-            <BookOpen size={25} strokeWidth={1.6} />
+            {brand?.logo_url ? <img className="guardian-institution-logo" src={brand.logo_url} alt="" /> : <BookOpen size={25} strokeWidth={1.6} />}
           </span>
           <div>
             <strong>{t.panelTitle}</strong>
-            <span>{t.learningTogether}</span>
           </div>
           <button
             className="guardian-menu-close"
@@ -167,6 +172,7 @@ export default function GuardianLayout() {
             </NavLink>
           ))}
         </nav>
+        <GuardianAppInstall slug={slug} variant="sidebar" />
         <div className="guardian-sidebar-note">
           <GraduationCap size={30} strokeWidth={1.3} />
           <strong>{t.learningTogether}</strong>
@@ -206,8 +212,13 @@ export default function GuardianLayout() {
               <Menu size={22} />
             </button>
             <div>
-              <strong>{t.panelTitle}</strong>
-              <p>{t.portalTagline}</p>
+              <strong>
+                {brand?.name || t.panelTitle}
+                {brand?.address && (
+                  <span> · {brand.address}</span>
+                )}
+              </strong>
+              <p>{t.welcome}{guardian?.name ? `, ${guardian.name}` : ""}</p>
             </div>
           </div>
           <div className="guardian-topbar-actions">

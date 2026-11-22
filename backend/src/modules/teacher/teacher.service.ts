@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { createAvailableNumberPool } from "../../shared/utils/available-number.util";
+import { createPermanentNumberPool } from "../../shared/utils/personnel-number.util";
 import { teacherRepository, TeacherRepository } from "./teacher.repository";
 import { toNumber, clean, isValidDate } from "../../shared/utils/parse.util";
 import { BadRequestError, TenantNotResolvedError } from "../../shared/errors";
@@ -171,7 +171,8 @@ export class TeacherService {
 
     const created = await this.repository.runTransaction(async (tx) => {
       await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
-      const nextRegistrationNo = createAvailableNumberPool(await this.repository.getRegistrationNumbersOnTx(tx, madrasaId)).next()!;
+      const nextRegistrationNo = createPermanentNumberPool(await this.repository.getRegistrationNumbersOnTx(tx, madrasaId)).next();
+      if (nextRegistrationNo == null) throw new BadRequestError("No available registration number");
 
       return this.repository.createOnTx(tx, {
         ...data,
@@ -198,7 +199,7 @@ export class TeacherService {
       const preview: BulkTeacherResult["preview"] = [];
 
       await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
-      const registrationNumbers = createAvailableNumberPool(await this.repository.getRegistrationNumbersOnTx(tx, madrasaId));
+      const registrationNumbers = createPermanentNumberPool(await this.repository.getRegistrationNumbersOnTx(tx, madrasaId));
 
       for (let i = 0; i < teachers.length; i++) {
         const body = toSnakeCase(teachers[i] as Record<string, unknown>) as Record<string, any>;
@@ -226,9 +227,11 @@ export class TeacherService {
           updated++;
           preview.push({ row: i + 2, action: "update", id: existing.id, nid, changes });
         } else {
+          const nextRegistrationNo = registrationNumbers.next();
+          if (nextRegistrationNo == null) throw new BadRequestError("No available registration number");
           const created = await this.repository.createOnTx(tx, {
             ...data,
-            registrationNo: registrationNumbers.next()!,
+            registrationNo: nextRegistrationNo,
           } as Prisma.TeacherUncheckedCreateInput);
           inserted++;
           preview.push({ row: i + 2, action: "create", id: created.id, nid, changes: [] });

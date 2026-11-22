@@ -1,7 +1,11 @@
 import { Printer } from "lucide-react";
 import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
-import { ReportBackground, ReportBrandHeader, ReportWatermark } from "../../components/Report/ReportBranding";
+import {
+  ReportBackground,
+  ReportBrandHeader,
+  ReportWatermark,
+} from "../../components/Report/ReportBranding";
 import { AccountRow, money, partyName, toDateInput, toTimeInput } from "./accountHelpers";
 import { commonText, usePrintLang, usePrintText, useText } from "@madrasha/shared-ui/src/i18n";
 import { accountsPrintText, accountsText } from "./accounts.text";
@@ -40,14 +44,25 @@ export default function AccountReceiptModal({ row, onClose }: Props) {
   const docNo = (isIncome ? row.receiptNo : row.voucherNo) || "-";
 
   return (
-    <Modal open={!!row} title={t.printPreview(docTitle)} onClose={onClose} maxWidthClassName="max-w-lg">
-      <div lang={printLang} dir={printDir} className="print-area relative overflow-hidden rounded-xl border border-slate-200 bg-white p-6">
+    <Modal
+      open={!!row}
+      title={t.printPreview(docTitle)}
+      onClose={onClose}
+      maxWidthClassName="max-w-lg"
+    >
+      <div
+        lang={printLang}
+        dir={printDir}
+        className="print-area relative overflow-hidden rounded-xl border border-slate-200 bg-white p-6"
+      >
         <ReportBackground />
         <ReportWatermark />
         <ReportBrandHeader />
 
         <div className="report-content-body relative">
-          <h2 className="mt-2 text-center text-xl font-bold tracking-wide text-slate-900">{docTitle}</h2>
+          <h2 className="mt-2 text-center text-xl font-bold tracking-wide text-slate-900">
+            {docTitle}
+          </h2>
 
           <div className="mt-4 flex items-center justify-between text-sm text-slate-700">
             <span>
@@ -64,7 +79,7 @@ export default function AccountReceiptModal({ row, onClose }: Props) {
               <span className="text-slate-500">{isIncome ? p.donorName : p.receiverName}</span>
               <span className="font-semibold">{partyName(row)}</span>
             </div>
-            {isIncome && row.address && (
+            {row.address && (
               <div className="flex justify-between gap-4">
                 <span className="text-slate-500">{p.address}</span>
                 <span className="font-semibold">{row.address}</span>

@@ -20,6 +20,7 @@ const makeTx = (opts: {
   const update = vi.fn(async () => ({}));
   const tx = {
     $executeRaw: vi.fn(async () => 0),
+    $queryRaw: vi.fn(async () => []),
     madrasaSubscription: {
       findFirst: vi.fn(async () => (opts.planId ? { planId: opts.planId } : null)),
     },

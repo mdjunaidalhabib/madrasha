@@ -12,6 +12,14 @@ import { vmsg } from "../../shared/validators/messages";
  */
 export const studentIdParamSchema = idParamSchema;
 
+export const guardianPasswordResetSchema = z.object({
+  params: z.object({ id: z.coerce.number().int().positive() }),
+  body: z.object({
+    card_verified: z.literal(true, { errorMap: () => ({ message: vmsg({ bn: "আগে অভিভাবকের কার্ড যাচাই নিশ্চিত করুন।", en: "Confirm that the guardian's card has been verified." }) }) }),
+    reset_confirmed: z.literal(true, { errorMap: () => ({ message: vmsg({ bn: "দ্বিতীয়বার পাসওয়ার্ড রিসেট নিশ্চিত করুন।", en: "Confirm the password reset a second time." }) }) }),
+  }),
+});
+
 /** `/students/by-registration/:regNo` - the madrasa's own registration no. */
 export const registrationNoParamSchema = z.object({
   params: z.object({

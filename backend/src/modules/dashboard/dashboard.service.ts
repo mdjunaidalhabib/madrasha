@@ -1,3 +1,4 @@
+import { resolveDashboardScope } from "./dashboard.scope";
 import { buildPeriodExpr } from "../../shared/utils/period-expr.util";
 import { dashboardRepository, DashboardRepository } from "./dashboard.repository";
 import { DASHBOARD_TREND_DEFAULT_LIMIT, DASHBOARD_TREND_ROW_LIMIT } from "./dashboard.constants";
@@ -9,7 +10,11 @@ const ATTENDANCE_DATE_COLUMN = "date";
 export class DashboardService {
   constructor(private readonly repository: DashboardRepository = dashboardRepository) {}
 
-  async getSummary(madrasaId: number): Promise<DashboardSummary> {
+  async getSummary(madrasaId: number, selection = "active"): Promise<DashboardSummary> {
+    const scope = resolveDashboardScope(
+      await this.repository.findDashboardSessions(madrasaId),
+      selection,
+    );
     const [
       studentsCount,
       teachersCount,
@@ -26,22 +31,26 @@ export class DashboardService {
       overdueFees,
       upcomingExams,
       importantLinks,
+      currentIncome,
+      currentExpense,
     ] = await Promise.all([
-      this.repository.countActiveStudents(madrasaId),
+      this.repository.countActiveStudents(madrasaId, scope),
       this.repository.countActiveTeachers(madrasaId),
       this.repository.countUsers(madrasaId),
+      this.repository.sumAccountsByType(madrasaId, "income", scope),
+      this.repository.sumAccountsByType(madrasaId, "expense", scope),
+      this.repository.findTodayTotals(madrasaId, scope),
+      this.repository.findFundBalances(madrasaId),
+      this.repository.findPaymentMethodTotals(madrasaId, scope),
+      this.repository.findRecentTransactions(madrasaId, scope),
+      this.repository.countActiveStudentsByGender(madrasaId, scope),
+      this.repository.findTodayStudentAttendanceCounts(madrasaId, scope),
+      this.repository.countPendingAdmissions(madrasaId, scope),
+      this.repository.findOverdueSummary(madrasaId, scope),
+      this.repository.findUpcomingExams(madrasaId, scope),
+      this.repository.findActiveImportantLinks(),
       this.repository.sumAccountsByType(madrasaId, "income"),
       this.repository.sumAccountsByType(madrasaId, "expense"),
-      this.repository.findTodayTotals(madrasaId),
-      this.repository.findFundBalances(madrasaId),
-      this.repository.findPaymentMethodTotals(madrasaId),
-      this.repository.findRecentTransactions(madrasaId),
-      this.repository.countActiveStudentsByGender(madrasaId),
-      this.repository.findTodayStudentAttendanceCounts(madrasaId),
-      this.repository.countPendingAdmissions(madrasaId),
-      this.repository.findOverdueSummary(madrasaId),
-      this.repository.findUpcomingExams(madrasaId),
-      this.repository.findActiveImportantLinks(),
     ]);
 
     const income = Number(incomeAgg._sum.amount || 0);
@@ -64,6 +73,13 @@ export class DashboardService {
       attendanceTotal > 0 ? Math.round(((PRESENT + LATE) / attendanceTotal) * 1000) / 10 : 0;
 
     return {
+      sessionContext: {
+        mode: scope.mode,
+        sessions: scope.sessions,
+        selectedSessionIds: scope.selected.map((s) => s.id),
+      },
+      currentBalance:
+        Number(currentIncome._sum.amount || 0) - Number(currentExpense._sum.amount || 0),
       students: studentsCount,
       teachers: teachersCount,
       users: usersCount,
@@ -100,14 +116,22 @@ export class DashboardService {
     };
   }
 
-  async getTrends(madrasaId: number, groupBy: string): Promise<DashboardTrends> {
+  async getTrends(
+    madrasaId: number,
+    groupBy: string,
+    selection = "active",
+  ): Promise<DashboardTrends> {
+    const scope = resolveDashboardScope(
+      await this.repository.findDashboardSessions(madrasaId),
+      selection,
+    );
     const limit = DASHBOARD_TREND_ROW_LIMIT[groupBy] ?? DASHBOARD_TREND_DEFAULT_LIMIT;
     const accountsPeriodExpr = buildPeriodExpr(groupBy, ACCOUNTS_DATE_COLUMN);
     const attendancePeriodExpr = buildPeriodExpr(groupBy, ATTENDANCE_DATE_COLUMN);
 
     const [incomeExpenseRows, attendanceRows] = await Promise.all([
-      this.repository.findIncomeExpenseTrend(madrasaId, accountsPeriodExpr, limit),
-      this.repository.findAttendanceRateTrend(madrasaId, attendancePeriodExpr, limit),
+      this.repository.findIncomeExpenseTrend(madrasaId, accountsPeriodExpr, limit, scope),
+      this.repository.findAttendanceRateTrend(madrasaId, attendancePeriodExpr, limit, scope),
     ]);
 
     return {

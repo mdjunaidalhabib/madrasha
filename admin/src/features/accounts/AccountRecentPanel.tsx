@@ -101,7 +101,7 @@ export default function AccountRecentPanel({ type, refreshKey }: Props) {
                 <tr>
                   <th className="px-4 py-3">{c.date}</th>
                   <th className="px-4 py-3">{t.no}</th>
-                  <th className="px-4 py-3">{c.name}</th>
+                  <th className="px-4 py-3">{isIncome ? c.name : t.expenseSubject}</th>
                   <th className="px-4 py-3">{t.category}</th>
                   <th className="px-4 py-3">{c.amount}</th>
                   <th className="px-4 py-3">{t.method}</th>

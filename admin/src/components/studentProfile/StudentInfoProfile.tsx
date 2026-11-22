@@ -1,7 +1,8 @@
 import { profileSectionClass, profileHeadingClass, profileValueClass } from "./profileStyles";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Field from "./Field";
-import api, { cachedGet } from "../../services/api";
+import { cachedGet } from "../../services/api";
+import { type Session } from "../../services/sessionApi";
 import CustomDatePicker from "@madrasha/shared-ui/src/components/ui/CustomDatePicker";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { useText, commonText, useIsMadrasa, useLang, formatDate } from "@madrasha/shared-ui/src/i18n";
@@ -36,6 +37,35 @@ const StudentInfoProfile = ({
   const lang = useLang();
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState(false);
+  const loadSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    setSessionsError(false);
+    try {
+      const res = await cachedGet("/sessions");
+      const data = res.data?.data || res.data?.result || res.data || [];
+      setSessions(Array.isArray(data) ? data : []);
+    } catch (err) {
+      logger.error("Session load error:", err);
+      setSessionsError(true);
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isEditMode) loadSessions();
+  }, [isEditMode, loadSessions]);
+
+  const divisionId = student.division_id || student.academicDivision;
+  const availableSessions = sessions.filter(
+    (session) => session.divisionId == null || String(session.divisionId) === String(divisionId),
+  );
+  const selectedSessionId = student.session_id ?? availableSessions.find(
+    (session) => session.name === student.academic_year,
+  )?.id ?? "";
 
   useEffect(() => {
     const fetchDivisions = async () => {
@@ -163,7 +193,11 @@ const StudentInfoProfile = ({
           label={pt.rollAuto}
           name="roll"
           value={student.roll || ""}
-          isEditMode={false}
+          onChange={handleChange}
+          editableField={editableField}
+          setEditableField={setEditableField}
+          isEditMode={isEditMode && student.roll != null}
+          numeric
         />
 
         {isMadrasa && (
@@ -261,6 +295,37 @@ const StudentInfoProfile = ({
               {getDivisionName(student.division_id || student.academicDivision)}
             </p>
           )}
+        </div>
+
+        <div>
+          <label htmlFor="student-academic-session" className="text-sm text-gray-500 dark:text-slate-400">{pt.academicYear}</label>
+          {isEditMode ? (
+            <>
+              <select
+                id="student-academic-session"
+                name="session_id"
+                value={selectedSessionId}
+                disabled={sessionsLoading || sessionsError}
+                onChange={(event) => {
+                  const session = availableSessions.find((item) => String(item.id) === event.target.value);
+                  if (!session) return;
+                  setStudent((previous: any) => ({ ...previous, session_id: session.id, academic_year: session.name }));
+                }}
+                className="border p-2 rounded w-full disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              >
+                <option value="" disabled>{sessionsLoading ? c.loading : pt.selectAcademicYear}</option>
+                {selectedSessionId !== "" && !availableSessions.some((session) => String(session.id) === String(selectedSessionId)) && (
+                  <option value={selectedSessionId} disabled>{student.academic_year || pt.notAvailable}</option>
+                )}
+                {availableSessions.map((session) => <option key={session.id} value={session.id}>{session.name}</option>)}
+              </select>
+              {sessionsError ? (
+                <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {pt.sessionsFailed}{" "}<button type="button" onClick={loadSessions} className="underline">{pt.retrySessions}</button>
+                </p>
+              ) : <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">{pt.academicYearHelp}</p>}
+            </>
+          ) : <p className={profileValueClass}>{student.academic_year || pt.notAvailable}</p>}
         </div>
 
         {/* PREVIOUS CLASS */}

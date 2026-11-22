@@ -4,13 +4,20 @@ import { dashboardService } from "./dashboard.service";
 
 export const getDashboard = asyncHandler(async (req: Request, res: Response) => {
   const madrasa_id = req.tenant!.madrasa_id;
-  const summary = await dashboardService.getSummary(madrasa_id);
+  const summary = await dashboardService.getSummary(
+    madrasa_id,
+    req.query.session === undefined ? "active" : String(req.query.session),
+  );
   res.json(summary);
 });
 
 export const getDashboardTrends = asyncHandler(async (req: Request, res: Response) => {
   const madrasa_id = req.tenant!.madrasa_id;
   const groupBy = String(req.query.groupBy || "monthly");
-  const trends = await dashboardService.getTrends(madrasa_id, groupBy);
+  const trends = await dashboardService.getTrends(
+    madrasa_id,
+    groupBy,
+    req.query.session === undefined ? "active" : String(req.query.session),
+  );
   res.json(trends);
 });

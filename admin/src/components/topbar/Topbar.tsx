@@ -45,15 +45,15 @@ export default function Topbar({ openSidebar }: TopbarProps) {
               className="h-11 w-11 shrink-0 rounded-full border border-teal-200 bg-white object-cover dark:border-teal-800"
             />
           )}
-          <div className="min-w-0 flex-1 whitespace-normal break-words px-1 pt-1 text-center text-lg font-bold leading-snug text-slate-800 dark:text-slate-100">
+          <div className="min-w-0 flex-1 whitespace-normal break-words px-1 pt-1 text-center text-lg font-bold leading-snug text-teal-700 dark:text-teal-300">
             {branding?.name}
             {branding?.address && (
-              <span className="mt-0.5 block text-xs font-normal leading-normal text-slate-500 dark:text-slate-400">
+              <span className="mt-0.5 block text-xs font-normal leading-normal text-teal-700 dark:text-teal-300">
                 {branding.address}
               </span>
             )}
           </div>
-          <button onClick={openSidebar} className={iconButtonClass} aria-label={t.openMenu}>
+          <button onClick={openSidebar} className={`${iconButtonClass} mt-0.5 self-start`} aria-label={t.openMenu}>
             <Menu size={17} strokeWidth={1.5} />
           </button>
         </div>

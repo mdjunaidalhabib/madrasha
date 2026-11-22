@@ -134,8 +134,7 @@ const StudentProfilePage = () => {
 
     const changed = getChangedData();
 
-    // Roll and registration numbers are immutable, server-managed identifiers.
-    delete changed.roll;
+    // Registration numbers are managed by the server; admins may adjust rolls.
     delete changed.registration_no;
 
     try {
@@ -150,7 +149,7 @@ const StudentProfilePage = () => {
       useToastStore.getState().show(getText(studentProfilePageText).updated, "success");
     } catch (error) {
       logger.error("UPDATE ERROR:", error);
-      useToastStore.getState().show(getText(studentProfilePageText).updateFailed, "error");
+      useToastStore.getState().show((error as any)?.response?.data?.message || getText(studentProfilePageText).updateFailed, "error");
     } finally {
       setSaving(false);
     }

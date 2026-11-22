@@ -296,6 +296,7 @@ export class AccountService {
     const fund = clean(body.fund);
     const category = clean(body.category);
     const receiver_name = clean(body.receiver_name);
+    const address = clean(body.address);
     const mobile = clean(body.mobile);
     const payment_method = clean(body.payment_method);
     const note = clean(body.note);
@@ -316,6 +317,7 @@ export class AccountService {
       voucherNo: voucher_no,
       fund,
       receiverName: receiver_name,
+      address,
       mobile,
       paymentMethod: payment_method,
       note,
@@ -404,9 +406,9 @@ export class AccountService {
       if (entry_time) data.entryTime = new Date(`1970-01-01T${entry_time}`);
     }
 
+    if (body.address !== undefined) data.address = clean(body.address);
     if (existing.type === "income") {
       if (body.receipt_no !== undefined) data.receiptNo = clean(body.receipt_no);
-      if (body.address !== undefined) data.address = clean(body.address);
       if (body.donor_name !== undefined) {
         const donor_name = clean(body.donor_name);
         data.donorName = donor_name;

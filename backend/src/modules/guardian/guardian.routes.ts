@@ -12,6 +12,7 @@ import {
   getChildLibrary,
   getChildPromotion,
   getChildProfile360,
+  getChildPersonalProfile,
   getNotices,
   getLeaves,
   createLeave,
@@ -33,7 +34,14 @@ const loginLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  message: () => ({ message: t({ bn: "অনেকবার লগইনের চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many login attempts. Please try again later." }) }),
+  handler: (req, res) => {
+    const resetTime = (req as any).rateLimit?.resetTime;
+    const retryAfterSeconds = Math.max(1, Math.ceil(((resetTime?.getTime() || Date.now() + 15 * 60_000) - Date.now()) / 1000));
+    res.status(429).json({
+      message: t({ bn: "অনেকবার লগইনের চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।", en: "Too many login attempts. Please try again later." }),
+      code: "GUARDIAN_LOGIN_RATE_LIMITED", retryAfterSeconds,
+    });
+  },
 });
 
 router.post("/login", loginLimiter, tenantMiddleware, validate(guardianLoginSchema), guardianLogin);
@@ -65,6 +73,7 @@ router.get("/students/:studentId/fees", tenantMiddleware, guardianAuthMiddleware
 router.get("/students/:studentId/library", tenantMiddleware, guardianAuthMiddleware, getChildLibrary);
 router.get("/students/:studentId/promotion", tenantMiddleware, guardianAuthMiddleware, getChildPromotion);
 router.get("/students/:studentId/profile-360", tenantMiddleware, guardianAuthMiddleware, getChildProfile360);
+router.get("/students/:studentId/profile", tenantMiddleware, guardianAuthMiddleware, getChildPersonalProfile);
 router.get("/notices", tenantMiddleware, guardianAuthMiddleware, getNotices);
 
 // Leave requests for own children (attendance/ATTENDANCE_V3_API.md section 2).

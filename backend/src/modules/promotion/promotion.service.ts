@@ -1,13 +1,14 @@
 import { ApiError, BadRequestError } from "../../shared/errors";
 import { logger } from "../../shared/logger/logger";
 import { promotionRepository, PromotionRepository } from "./promotion.repository";
-import { sessionRepository, SessionRepository } from "../session/session.repository";
-import {
-  PromotionExecuteRequestDto,
-  PromotionPreviewRequestDto,
-} from "./promotion.dto";
+import { PromotionExecuteRequestDto, PromotionPreviewRequestDto } from "./promotion.dto";
 import { PROMOTION_STATUSES } from "./promotion.constants";
 import { t } from "../../shared/i18n";
+import { TransactionClient } from "../../shared/database/transaction";
+import { createRegistrationNoBatchOnTx } from "../students/registration-no.allocator";
+import { studentRepository } from "../students/student.repository";
+import { tenantClassName, tenantClassNameSelect } from "../../shared/utils/tenant-name.util";
+import { getReservedPersonnelNumbers } from "../../shared/utils/personnel-number.util";
 
 const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string): never => {
   logger.error(logTag, err);
@@ -15,10 +16,7 @@ const friendlyFailure = (logTag: string, err: unknown, friendlyMessage: string):
 };
 
 export class PromotionService {
-  constructor(
-    private readonly repository: PromotionRepository = promotionRepository,
-    private readonly sessions: SessionRepository = sessionRepository,
-  ) {}
+  constructor(private readonly repository: PromotionRepository = promotionRepository) {}
 
   /**
    * Lists every active student in a class/year alongside a suggested
@@ -29,7 +27,12 @@ export class PromotionService {
    */
   async preview(madrasaId: number, dto: PromotionPreviewRequestDto) {
     if (!dto.from_class_id || !dto.from_year) {
-      throw new BadRequestError(t({ bn: "from_class_id ও from_year আবশ্যক", en: "from_class_id and from_year are required" }));
+      throw new BadRequestError(
+        t({
+          bn: "from_class_id ও from_year আবশ্যক",
+          en: "from_class_id and from_year are required",
+        }),
+      );
     }
 
     const classId = Number(dto.from_class_id);
@@ -52,6 +55,8 @@ export class PromotionService {
           student_id: student.id,
           name_bn: student.nameBn,
           roll: student.roll,
+          registration_no: student.registrationNo,
+          class_id: student.classId,
           result_status: resultStatus || "NO_RESULT",
           // A student absent from every subject (status ABSENT) is treated
           // the same as FAIL here — they never actually completed the exam,
@@ -61,122 +66,250 @@ export class PromotionService {
         };
       });
     } catch (err) {
-      return friendlyFailure("promotionPreview error:", err, t({ bn: "প্রমোশনের প্রিভিউ তৈরি করা যায়নি", en: "Failed to build promotion preview" }));
+      return friendlyFailure(
+        "promotionPreview error:",
+        err,
+        t({ bn: "প্রমোশনের প্রিভিউ তৈরি করা যায়নি", en: "Failed to build promotion preview" }),
+      );
     }
   }
 
   /**
-   * Bulk-promotes/retains/transfers a class in one transaction. New rolls
-   * for promoted students are assigned sequentially starting after the
-   * current highest roll already used in the destination class/year, so
-   * this is safe to re-run for a second batch of the same target class.
+   * Read-only allocation shared by destination preview and execution.
+   * Registration counters are only flushed by execute, under the same
+   * locks used for admission and student updates.
    */
-  async execute(madrasaId: number, promotedById: number | undefined, dto: PromotionExecuteRequestDto) {
-    if (!dto.from_class_id || !dto.to_class_id || !dto.from_year || !dto.to_year) {
-      throw new BadRequestError(t({ bn: "from_class_id, to_class_id, from_year ও to_year আবশ্যক", en: "from_class_id, to_class_id, from_year and to_year are required" }));
-    }
-    if (!Array.isArray(dto.decisions) || dto.decisions.length === 0) {
-      throw new BadRequestError(t({ bn: "decisions একটি খালি নয় এমন তালিকা হতে হবে", en: "decisions must be a non-empty array" }));
-    }
-    for (const decision of dto.decisions) {
-      if (!PROMOTION_STATUSES.includes(decision.status)) {
-        throw new BadRequestError(t({ bn: `শিক্ষার্থী ${decision.student_id}-এর জন্য "${decision.status}" স্ট্যাটাসটি সঠিক নয়`, en: `Invalid status "${decision.status}" for student ${decision.student_id}` }));
-      }
-    }
-
+  private async prepare(tx: TransactionClient, madrasaId: number, dto: PromotionExecuteRequestDto) {
     const fromClassId = Number(dto.from_class_id);
     const toClassId = Number(dto.to_class_id);
-    const fromYear = String(dto.from_year);
-    const toYear = String(dto.to_year);
-
-    // Resolve the destination Session once for the whole batch (same
-    // toClassId/toYear for every student). Sessions are now scoped per
-    // বিভাগ, so we resolve via the destination class's division. If no
-    // Session row matches (e.g. the operator typed a to_year nobody has
-    // set up as a real Session yet for that division), toSession stays
-    // undefined and we fall back to the legacy academicYear-only behavior
-    // rather than blocking the promotion.
-    const toClassDivision = await this.repository.getClassDivisionId(madrasaId, toClassId);
-    const toSession = await this.sessions.findByNameForTenant(madrasaId, toYear, toClassDivision?.divisionId ?? undefined);
-    const toSessionId = toSession?.id;
-
-    try {
-      return await this.repository.runTransaction(async (tx) => {
-        const batch = await this.repository.createBatchOnTx(tx, {
-          madrasaId,
-          fromClassId,
-          toClassId,
-          fromYear,
-          toYear,
-          promotedById: promotedById ?? 0,
-        });
-
-        let nextRoll = (await this.repository.getMaxRollOnTx(tx, madrasaId, toClassId, toYear)) + 1;
-        // Each class has its own registration-number block - a promoted
-        // student gets the next number of the destination class's block.
-        await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
-        const summary = { promoted: 0, retained: 0, transferred: 0 };
-
-        for (const decision of dto.decisions) {
-          const studentId = Number(decision.student_id);
-          const student = await tx.student.findFirst({
-            where: { id: studentId, madrasaId, deletedAt: null },
-          });
-          if (!student) continue; // silently skip students no longer valid for this tenant
-          if (student.roll == null) continue; // still-PENDING/REJECTED applicant (see approveAdmission) - not a real enrolled student to promote/retain/transfer
-
-          if (decision.status === "PROMOTED") {
-            const assignedRoll = nextRoll++;
-            await this.repository.promoteStudentOnTx(tx, studentId, {
-              classId: toClassId,
-              previousClassId: fromClassId,
-              academicYear: toYear,
-              roll: assignedRoll,
-              ...(student.classId !== toClassId && student.registrationNo
-                ? { registrationNo: await this.repository.allocateRegistrationNoOnTx(tx, madrasaId, toClassId) }
-                : {}),
-              ...(toSessionId !== undefined ? { sessionId: toSessionId } : {}),
-            });
-            await this.repository.createRecordOnTx(tx, {
-              batchId: batch.id,
-              studentId,
-              oldRoll: student.roll,
-              newRoll: assignedRoll,
-              status: "PROMOTED",
-            });
-            summary.promoted += 1;
-          } else if (decision.status === "RETAINED") {
-            await this.repository.retainStudentOnTx(tx, studentId, toYear, toSessionId);
-            await this.repository.createRecordOnTx(tx, {
-              batchId: batch.id,
-              studentId,
-              oldRoll: student.roll,
-              newRoll: student.roll,
-              status: "RETAINED",
-            });
-            summary.retained += 1;
-          } else {
-            // TRANSFERRED: recorded for history; deactivating/removing the
-            // student from active rolls is left to the existing student
-            // delete/deactivate flow so this stays a pure audit record here.
-            await this.repository.createRecordOnTx(tx, {
-              batchId: batch.id,
-              studentId,
-              oldRoll: student.roll,
-              newRoll: null,
-              status: "TRANSFERRED",
-            });
-            summary.transferred += 1;
-          }
-        }
-
-        return { batchId: batch.id, ...summary };
-      });
-    } catch (err) {
-      // e.g. RegistrationBlockFullError - the admin needs its actual message.
-      if (err instanceof BadRequestError) throw err;
-      return friendlyFailure("promotionExecute error:", err, t({ bn: "প্রমোশন সম্পন্ন করা যায়নি", en: "Failed to execute promotion" }));
+    if (
+      !Number.isInteger(fromClassId) ||
+      !Number.isInteger(toClassId) ||
+      !fromClassId ||
+      !toClassId ||
+      !dto.from_year ||
+      !dto.to_year ||
+      !Array.isArray(dto.decisions) ||
+      !dto.decisions.length
+    ) {
+      throw new BadRequestError(
+        t({
+          bn: "জামাত, সেশন ও শিক্ষার্থী নির্বাচন করুন",
+          en: "Select classes, sessions and students",
+        }),
+      );
     }
+    if (fromClassId === toClassId && dto.from_year === dto.to_year) {
+      throw new BadRequestError(
+        t({
+          bn: "নতুন জামাত অথবা নতুন সেশন নির্বাচন করুন",
+          en: "Select a different class or session",
+        }),
+      );
+    }
+    const ids = dto.decisions.map((d) => Number(d.student_id));
+    if (
+      new Set(ids).size !== ids.length ||
+      ids.some((id) => !Number.isInteger(id) || id <= 0) ||
+      dto.decisions.some((d) => !PROMOTION_STATUSES.includes(d.status))
+    ) {
+      throw new BadRequestError(
+        t({ bn: "শিক্ষার্থী বা সিদ্ধান্তের তালিকা সঠিক নয়", en: "Invalid students or decisions" }),
+      );
+    }
+    const classes = await tx.class.findMany({
+      where: { id: { in: [fromClassId, toClassId] }, madrasaClasses: { some: { madrasaId } } },
+      select: { id: true, divisionId: true, ...tenantClassNameSelect(madrasaId) },
+    });
+    if (![fromClassId, toClassId].every((id) => classes.some((c) => c.id === id))) {
+      throw new BadRequestError(
+        t({ bn: "নির্বাচিত জামাত পাওয়া যায়নি", en: "Selected class not found" }),
+      );
+    }
+    const students = await tx.student.findMany({
+      where: {
+        id: { in: ids },
+        madrasaId,
+        classId: fromClassId,
+        academicYear: String(dto.from_year),
+        isActive: 1,
+        deletedAt: null,
+        admissionStatus: "APPROVED",
+        roll: { not: null },
+      },
+    });
+    if (students.length !== ids.length) {
+      throw new BadRequestError(
+        t({
+          bn: "শিক্ষার্থীর তথ্য পরিবর্তিত হয়েছে। আবার প্রিভিউ দেখুন",
+          en: "Student details changed. Reload the preview",
+        }),
+      );
+    }
+    const registrations = createRegistrationNoBatchOnTx(tx, madrasaId);
+    const studentsById = new Map(students.map((student) => [student.id, student]));
+    const order = new Map(ids.map((id, index) => [id, index]));
+    const sessionIds = new Map<number, number>();
+    const occupied = new Map<number, Map<number, number>>();
+    const retainedRolls = dto.decisions
+      .filter((decision) => decision.status === "RETAINED")
+      .map((decision) => studentsById.get(Number(decision.student_id))!.roll!);
+    const plans = [];
+    // Retained students reserve their existing rolls before promoted students receive new rolls.
+    const decisions = [...dto.decisions].sort(
+      (a, b) => Number(a.status !== "RETAINED") - Number(b.status !== "RETAINED"),
+    );
+    for (const decision of decisions) {
+      const student = studentsById.get(Number(decision.student_id))!;
+      const targetClassId = decision.status === "PROMOTED" ? toClassId : fromClassId;
+      const targetClass = classes.find((c) => c.id === targetClassId)!;
+      const year = decision.status === "TRANSFERRED" ? student.academicYear : String(dto.to_year);
+      let roll = student.roll!;
+      let registrationNo = student.registrationNo;
+      let sessionId = student.sessionId;
+      if (decision.status !== "TRANSFERRED") {
+        if (!sessionIds.has(targetClassId)) {
+          const session =
+            (await tx.session.findFirst({
+              where: { madrasaId, name: year, divisionId: targetClass.divisionId },
+            })) ??
+            (await tx.session.findFirst({ where: { madrasaId, name: year, divisionId: null } }));
+          if (!session)
+            throw new BadRequestError(
+              t({
+                bn: "এই জামাতের বিভাগে নির্বাচিত সেশন তৈরি করুন",
+                en: "Create the selected session in this class's division first",
+              }),
+            );
+          sessionIds.set(targetClassId, session.id);
+        }
+        sessionId = sessionIds.get(targetClassId)!;
+        if (!occupied.has(targetClassId)) {
+          const roster = await tx.student.findMany({
+            where: { madrasaId, classId: targetClassId, academicYear: year, roll: { not: null } },
+            select: { id: true, roll: true },
+          });
+          occupied.set(targetClassId, new Map(roster.map((s) => [s.roll!, s.id])));
+          const history = await getReservedPersonnelNumbers(tx, madrasaId, "student-roll", `${targetClassId}:${year}`);
+          const used = occupied.get(targetClassId)!;
+          for (const number of history) if (!used.has(number)) used.set(number, 0);
+        }
+        const used = occupied.get(targetClassId)!;
+        if (decision.status === "PROMOTED" || (used.has(roll) && used.get(roll) !== student.id)) {
+          roll =
+            Math.max(0, ...used.keys(), ...(decision.status === "RETAINED" ? retainedRolls : [])) +
+            1;
+        }
+        used.set(roll, student.id);
+        if (
+          decision.status === "PROMOTED" &&
+          student.classId !== targetClassId &&
+          registrationNo != null
+        ) {
+          registrationNo = await registrations.next(targetClassId);
+        }
+      }
+      plans.push({
+        student_id: student.id,
+        name_bn: student.nameBn,
+        status: decision.status,
+        old_roll: student.roll,
+        old_registration_no: student.registrationNo,
+        from_class_id: student.classId,
+        from_class_name: tenantClassName(classes.find((c) => c.id === fromClassId)),
+        class_id: targetClassId,
+        class_name: tenantClassName(targetClass),
+        academic_year: year,
+        roll,
+        registration_no: registrationNo,
+        session_id: sessionId,
+        division_id: targetClass.divisionId,
+      });
+    }
+    plans.sort((a, b) => order.get(a.student_id)! - order.get(b.student_id)!);
+    return { plans, registrations };
+  }
+
+  async targetPreview(madrasaId: number, dto: PromotionExecuteRequestDto) {
+    return this.repository.runTransaction(async (tx) => {
+      const { plans } = await this.prepare(tx, madrasaId, dto);
+      return { rows: plans, preview_token: JSON.stringify(plans) };
+    });
+  }
+
+  async execute(
+    madrasaId: number,
+    promotedById: number | undefined,
+    dto: PromotionExecuteRequestDto,
+  ) {
+    if (!Array.isArray(dto.decisions) || !dto.decisions.length) {
+      throw new BadRequestError(t({ bn: "শিক্ষার্থী নির্বাচন করুন", en: "Select students" }));
+    }
+    return this.repository.runTransaction(async (tx) => {
+      const ids = [...new Set((dto.decisions || []).map((d) => Number(d.student_id)))].sort(
+        (a, b) => a - b,
+      );
+      for (const id of ids) {
+        if (!Number.isInteger(id) || id <= 0) throw new BadRequestError("Invalid student ID");
+        await studentRepository.lockStudentRecordOnTx(tx, madrasaId, id);
+      }
+      for (const classId of [...new Set([Number(dto.from_class_id), Number(dto.to_class_id)])].sort(
+        (a, b) => a - b,
+      )) {
+        await studentRepository.lockRollScopeOnTx(tx, madrasaId, classId, String(dto.to_year));
+      }
+      await this.repository.lockRegistrationScopeOnTx(tx, madrasaId);
+      const { plans, registrations } = await this.prepare(tx, madrasaId, dto);
+      if (dto.preview_token && dto.preview_token !== JSON.stringify(plans)) {
+        throw new BadRequestError(
+          t({
+            bn: "রোল বা শিক্ষার্থীর তথ্য পরিবর্তিত হয়েছে। গন্তব্য প্রিভিউ আবার দেখুন",
+            en: "Rolls or student details changed. Refresh the destination preview",
+          }),
+        );
+      }
+      const batch = await this.repository.createBatchOnTx(tx, {
+        madrasaId,
+        fromClassId: Number(dto.from_class_id),
+        toClassId: Number(dto.to_class_id),
+        fromYear: String(dto.from_year),
+        toYear: String(dto.to_year),
+        promotedById: promotedById ?? 0,
+      });
+      const summary = { promoted: 0, retained: 0, transferred: 0 };
+      for (const plan of plans) {
+        if (plan.status !== "TRANSFERRED") {
+          await tx.student.update({
+            where: { id: plan.student_id },
+            data: {
+              classId: plan.class_id,
+              academicYear: plan.academic_year,
+              ...(plan.division_id != null ? { divisionId: plan.division_id } : {}),
+              sessionId: plan.session_id,
+              roll: plan.roll,
+              registrationNo: plan.registration_no,
+              ...(plan.status === "PROMOTED" ? { previousClassId: Number(dto.from_class_id) } : {}),
+            },
+          });
+        }
+        await this.repository.createRecordOnTx(tx, {
+          batchId: batch.id,
+          studentId: plan.student_id,
+          oldRoll: plan.old_roll!,
+          newRoll: plan.status === "TRANSFERRED" ? null : plan.roll,
+          status: plan.status,
+        });
+        summary[
+          plan.status === "PROMOTED"
+            ? "promoted"
+            : plan.status === "RETAINED"
+              ? "retained"
+              : "transferred"
+        ]++;
+      }
+      await registrations.flush();
+      return { batchId: batch.id, ...summary };
+    });
   }
 }
 

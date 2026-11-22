@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { getNextReservedRoll } from "../../shared/utils/personnel-number.util";
 import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
 import {
@@ -7,19 +8,6 @@ import {
   lockStudentRegistrationScopeOnTx,
 } from "./registration-no.allocator";
 import { tenantClassNameSelect, withTenantClassName, tenantClassName } from "../../shared/utils/tenant-name.util";
-
-/** Smallest positive integer missing from a sorted (ascending) list of used
- * roll numbers - i.e. the first reusable gap, or one past the current max
- * if there's no gap. `rolls` is expected sorted by the caller's query. */
-const firstAvailableRoll = (rolls: (number | null)[]): number => {
-  let expected = 1;
-  for (const roll of rolls) {
-    if (roll == null || roll < expected) continue; // stale/duplicate data - ignore
-    if (roll > expected) break; // gap found at `expected`
-    expected++;
-  }
-  return expected;
-};
 
 /** Student row with its classRef name resolved to this madrasa's own name. */
 type TenantClassRow = { nameBn: string | null; name: string | null; madrasaClasses: { nameBn: string | null }[] };
@@ -107,13 +95,7 @@ export class StudentRepository {
     return prisma.student.create({ data });
   }
 
-  /** Highest roll currently assigned within a class for an academic year,
-   * used to auto-assign the next roll when the admin doesn't specify one.
-   * @deprecated for "assign a brand-new roll" call sites - prefer
-   * getNextAvailableRoll, which reclaims a permanently-deleted student's
-   * number instead of leaving it as a permanent gap. Kept only for the
-   * (unrelated) bulk-admission batch counter, which intentionally hands out
-   * a clean run of consecutive numbers to a freshly-imported class list. */
+  /** Current roster maximum; automatic allocation uses permanent number history. */
   async getMaxRoll(madrasaId: number, classId: number, academicYear: string): Promise<number> {
     const result = await prisma.student.aggregate({
       where: { madrasaId, classId, academicYear, deletedAt: null },
@@ -122,25 +104,9 @@ export class StudentRepository {
     return result._max.roll ?? 0;
   }
 
-  /** Smallest positive roll number not currently held by ANY row - active
-   * OR trashed - in this class/year. A student in Trash still "holds" its
-   * roll (so restoring it later can never clash with someone else who took
-   * "its" number - see the doc-comment on the unique_roll_per_class_session
-   * constraint), so trashed rows are deliberately NOT excluded here. Only a
-   * genuinely gone row (permanently deleted from Trash, or never existed)
-   * counts as free. This is what lets a permanent-delete actually free up
-   * its roll for reuse instead of every deletion leaving a permanent gap.
-   * PENDING/REJECTED applicants hold no roll at all (roll is null - see the
-   * field's doc-comment and StudentService.approveAdmission), so filtering
-   * those out here is what lets a rejected/cancelled application's number
-   * become available again immediately. */
+  /** Next roll after every roll ever issued in this class/year. */
   async getNextAvailableRoll(madrasaId: number, classId: number, academicYear: string): Promise<number> {
-    const rows = await prisma.student.findMany({
-      where: { madrasaId, classId, academicYear, roll: { not: null } },
-      select: { roll: true },
-      orderBy: { roll: "asc" },
-    });
-    return firstAvailableRoll(rows.map((row) => row.roll));
+    return getNextReservedRoll(prisma, madrasaId, classId, academicYear);
   }
 
   updateManyForTenant(id: number, madrasaId: number, data: Record<string, unknown>) {
@@ -414,19 +380,14 @@ export class StudentRepository {
 
   /** Transaction-scoped twin of getNextAvailableRoll - see that method's
    * doc-comment. Always call after lockRollScopeOnTx so concurrent requests
-   * for the same class/year can't both land on the same gap. */
+   * for the same class/year cannot receive the same number. */
   async getNextAvailableRollOnTx(
     tx: TransactionClient,
     madrasaId: number,
     classId: number,
     academicYear: string,
   ): Promise<number> {
-    const rows = await tx.student.findMany({
-      where: { madrasaId, classId, academicYear, roll: { not: null } },
-      select: { roll: true },
-      orderBy: { roll: "asc" },
-    });
-    return firstAvailableRoll(rows.map((row) => row.roll));
+    return getNextReservedRoll(tx, madrasaId, classId, academicYear);
   }
 
   updateOnTx(tx: TransactionClient, id: number, data: Record<string, unknown>) {

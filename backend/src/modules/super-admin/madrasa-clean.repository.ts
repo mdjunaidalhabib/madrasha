@@ -94,10 +94,8 @@ export class MadrasaCleanRepository {
       await tx.notificationLog.deleteMany({ where: { madrasaId: id } });
       await tx.activityLog.deleteMany({ where: { madrasaId: id } });
 
-      // Reset the historical high-water marks along with the removed roster.
-      // The configured class ranges stay in place and allocation starts at
-      // each block's first available number.
-      await tx.madrasaClass.updateMany({ where: { madrasaId: id }, data: { regNoLastIssued: null } });
+      // Keep issued-number history and class high-water marks so cleared
+      // personnel records can never give their registration numbers to others.
     })();
   }
 

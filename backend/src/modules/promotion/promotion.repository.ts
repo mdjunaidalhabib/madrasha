@@ -8,7 +8,7 @@ import {
 export class PromotionRepository {
   findStudentsInClass(madrasaId: number, classId: number, academicYear: string) {
     return prisma.student.findMany({
-      where: { madrasaId, classId, academicYear, isActive: 1, deletedAt: null },
+      where: { madrasaId, classId, academicYear, isActive: 1, deletedAt: null, admissionStatus: "APPROVED", roll: { not: null } },
       orderBy: { roll: "asc" },
     });
   }
@@ -119,7 +119,7 @@ export class PromotionRepository {
   }
 
   runTransaction<T>(fn: (tx: TransactionClient) => Promise<T>): Promise<T> {
-    return prisma.$transaction(fn);
+    return prisma.$transaction(fn, { timeout: 30_000, maxWait: 10_000 });
   }
 }
 

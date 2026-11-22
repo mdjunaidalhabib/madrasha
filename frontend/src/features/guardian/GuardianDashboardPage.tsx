@@ -5,6 +5,9 @@ import {
   CalendarCheck,
   CalendarDays,
   ClipboardList,
+  CheckCircle2,
+  CircleAlert,
+  Clock3,
   GraduationCap,
   Megaphone,
   RefreshCw,
@@ -57,7 +60,6 @@ export default function GuardianDashboardPage() {
   const lang = useLang();
   const selectedStudentId = useGuardianAuthStore((s) => s.selectedStudentId);
   const children = useGuardianAuthStore((s) => s.children);
-  const guardian = useGuardianAuthStore((s) => s.guardian);
   const base = getTenantGuardianBase(useTenantSlug());
   const [data, setData] = useState<Overview>({});
   const [loading, setLoading] = useState(true);
@@ -165,20 +167,6 @@ export default function GuardianDashboardPage() {
   );
   return (
     <div className="guardian-dashboard" aria-busy={loading}>
-      <div className="guardian-page-heading">
-        <div>
-          <p className="guardian-eyebrow">
-            {t.welcome}
-            {guardian?.name ? `, ${guardian.name}` : ""}
-          </p>
-          <h1>{t.dashboard}</h1>
-          <p>{t.overviewHint}</p>
-        </div>
-        <span className="guardian-date">
-          <CalendarDays size={17} />
-          {formatDate(new Date(), lang, { day: "numeric", month: "long", year: "numeric" })}
-        </span>
-      </div>
       <section className="guardian-welcome">
         <div className="guardian-welcome-copy">
           <span className="guardian-welcome-label">
@@ -195,18 +183,34 @@ export default function GuardianDashboardPage() {
               {t.regShort} {n(child?.registrationNo ?? "—")}
             </span>
           </div>
+          <div className="guardian-summary-statuses">
+            {[
+              {
+                label: t.studentStatus,
+                value: child?.isActive === 1 ? t.studentActive : child?.isActive === 0 ? t.studentInactive : "—",
+                tone: child?.isActive === 1 ? "positive" : child?.isActive === 0 ? "negative" : "unknown",
+              },
+              {
+                label: t.admissionStatus,
+                value: child?.admissionStatus === "APPROVED" ? t.admissionApproved : child?.admissionStatus === "PENDING" ? t.admissionPending : child?.admissionStatus === "REJECTED" ? t.admissionRejected : "—",
+                tone: child?.admissionStatus === "APPROVED" ? "positive" : child?.admissionStatus === "PENDING" ? "pending" : child?.admissionStatus === "REJECTED" ? "negative" : "unknown",
+              },
+            ].map(({ label, value, tone }) => {
+              const Icon = tone === "positive" ? CheckCircle2 : tone === "pending" ? Clock3 : CircleAlert;
+              return <span key={label} className={`guardian-summary-status is-${tone}`}>
+                <span>{label}</span><strong><Icon size={17} aria-hidden="true" />{value}</strong>
+              </span>;
+            })}
+          </div>
           <Link className="guardian-light-button" to={`${base}/profile`}>
             <UserRound size={16} />
             {t.viewProfile}
           </Link>
         </div>
         <div className="guardian-welcome-art" aria-hidden="true">
-          <div className="guardian-art-orbit" />
-          <div className="guardian-art-book">
-            <GraduationCap size={62} strokeWidth={1.1} />
-            <BookOpen size={46} strokeWidth={1.2} />
+          <div className="guardian-student-portrait">
+            {child?.image ? <img src={child.image} alt="" /> : <UserRound size={64} strokeWidth={1.3} />}
           </div>
-          <span className="guardian-art-star">✦</span>
         </div>
       </section>
       {failed && (

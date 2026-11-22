@@ -67,6 +67,14 @@ router.get("/public/:slug/share", async (req, res, next) => {
 // slug can never collide with this literal route.
 router.get("/resolve-domain", resolveDomain);
 router.get("/resolve-admin-domain", resolveAdminDomain);
+router.get("/public/:slug/brand", async (req, res, next) => {
+  try {
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ data: await websiteService.getPublicBrand(req.params.slug) });
+  } catch (error) {
+    next(error);
+  }
+});
 router.get("/public/:slug", getPublicWebsite);
 router.get("/public/:slug/icon/:file", getPublicBrandIcon);
 router.post("/public/:slug/admission", submitAdmissionApplication);
