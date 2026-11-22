@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { studentPath } from "./studentRoute";
 import { admissionApi } from "../../services/phase1Api";
@@ -10,12 +10,14 @@ import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { SkeletonTable, SkeletonText } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import AdmissionFormPrintButton from "../../components/admission/AdmissionFormPrintButton";
+import AdmissionSourceBadge, { useAdmissionSourceLabel } from "../../components/admission/AdmissionSourceBadge";
 import { normalizeBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
-import { useText, getText, commonText, useIsMadrasa } from "@madrasha/shared-ui/src/i18n";
+import { useText, getText, commonText, useIsMadrasa, useLang, localizeDigits } from "@madrasha/shared-ui/src/i18n";
 import { admissionReviewText } from "./admissionReview.text";
 import { admissionProgressText } from "./admissionReview.progress.text";
 import ProgressOverlay from "@madrasha/shared-ui/src/components/ui/ProgressOverlay";
 import { useProgressTask } from "@madrasha/shared-ui/src/components/ui/useProgressTask";
+import { ADMISSION_CHANGED_EVENT } from "../../hooks/useLiveSidebarCounts";
 
 type FeeStatus = "NONE" | "DUE" | "WAIVED" | "PAID";
 
@@ -68,6 +70,7 @@ type PendingStudent = {
   current_class?: string | null;
   admission_status?: string;
   admission_type?: "NEW" | "RE_ADMISSION";
+  admission_source?: "WEBSITE" | "ADMIN" | null;
   fee_due?: number;
   fee_status?: FeeStatus;
 };
@@ -88,6 +91,9 @@ const normalizeArray = (payload: any) => {
 
 const PendingAdmissionsPage = () => {
   const t = useText(admissionReviewText);
+  const lang = useLang();
+  const countText = (count: number) => localizeDigits(count, lang);
+  const sourceLabel = useAdmissionSourceLabel();
   const pt = useText(admissionProgressText);
   const progressTask = useProgressTask();
   const c = useText(commonText);
@@ -95,6 +101,8 @@ const PendingAdmissionsPage = () => {
   const navigate = useNavigate();
 
   const [rows, setRows] = useState<PendingStudent[]>([]);
+  const [sourceFilter, setSourceFilter] = useState<"ALL" | "ADMIN" | "WEBSITE">("ALL");
+  const visibleRows = useMemo(() => rows.filter((row) => sourceFilter === "ALL" || row.admission_source === sourceFilter), [rows, sourceFilter]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -102,6 +110,7 @@ const PendingAdmissionsPage = () => {
   const [busyId, setBusyId] = useState<string | number | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
+  const selectedRows = visibleRows.filter((row) => selectedIds.has(row.id));
 
   // reject modal - holds one target for a single-row reject, or several for
   // a bulk reject; either way one reason is collected and applied to all.
@@ -138,9 +147,9 @@ const PendingAdmissionsPage = () => {
     setDetailTarget(student);
   };
 
-  const loadPending = useCallback(async () => {
+  const loadPending = useCallback(async (background = false) => {
     try {
-      setLoading(true);
+      if (!background) setLoading(true);
       setError("");
       const res = await admissionApi.listPending();
       // Oldest application (lowest serial) on top, regardless of the order
@@ -148,15 +157,20 @@ const PendingAdmissionsPage = () => {
       setRows(normalizeArray(res).sort((a: PendingStudent, b: PendingStudent) => Number(a.id) - Number(b.id)));
     } catch (err) {
       logger.error("LOAD PENDING ADMISSIONS ERROR:", err);
-      setRows([]);
-      setError(getText(admissionReviewText).pendingLoadFailed);
+      if (!background) {
+        setRows([]);
+        setError(getText(admissionReviewText).pendingLoadFailed);
+      }
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     loadPending();
+    const refresh = () => { void loadPending(true); };
+    window.addEventListener(ADMISSION_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(ADMISSION_CHANGED_EVENT, refresh);
   }, [loadPending]);
 
   const loadFeePreview = useCallback(async (studentId: string | number) => {
@@ -302,7 +316,7 @@ const PendingAdmissionsPage = () => {
     if (students.length === 0) return;
     useConfirmStore.getState().show({
       title: t.approveTitle,
-      message: t.approveMessage(String(students.length)),
+      message: t.approveMessage(countText(students.length)),
       confirmText: t.approveConfirm,
       onConfirm: async () => {
         setBulkBusy(true);
@@ -329,7 +343,7 @@ const PendingAdmissionsPage = () => {
           } else {
             useToastStore
               .getState()
-              .show(getText(admissionReviewText).approvePartial(String(succeededIds.length), String(failedCount)), "error");
+              .show(getText(admissionReviewText).approvePartial(countText(succeededIds.length), countText(failedCount)), "error");
           }
         } finally {
           setBulkBusy(false);
@@ -412,7 +426,7 @@ const PendingAdmissionsPage = () => {
       } else {
         useToastStore
           .getState()
-          .show(t.rejectPartial(String(succeededIds.length), String(failedCount)), "error");
+          .show(t.rejectPartial(countText(succeededIds.length), countText(failedCount)), "error");
         setRejectTargets(null);
       }
     } finally {
@@ -432,7 +446,7 @@ const PendingAdmissionsPage = () => {
               {t.pendingTitle}
             </h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              {t.awaitingReview(String(rows.length))}
+              {t.awaitingReview(countText(rows.length))}
             </p>
           </div>
 
@@ -454,16 +468,35 @@ const PendingAdmissionsPage = () => {
           </div>
         </div>
 
-        {selectedIds.size > 0 && (
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div role="group" aria-label={t.colSource} className="flex flex-wrap gap-1.5">
+            {(["ALL", "ADMIN", "WEBSITE"] as const).map((source) => (
+              <button
+                key={source}
+                type="button"
+                aria-pressed={sourceFilter === source}
+                disabled={bulkBusy}
+                onClick={() => { setSourceFilter(source); setSelectedIds(new Set()); }}
+                className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md border px-2.5 py-1 text-sm font-medium leading-5 transition disabled:opacity-60 sm:flex-none ${sourceFilter === source ? "border-blue-600 bg-blue-600 text-white dark:border-blue-500 dark:bg-blue-600" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"}`}
+              >
+                <span>{source === "ALL" ? t.sourceAll : source === "ADMIN" ? t.sourceAdmin : t.sourceWebsite}</span>
+                <span className={`rounded-full px-1.5 text-xs leading-5 ${sourceFilter === source ? "bg-white/20" : "bg-gray-100 dark:bg-slate-800"}`}>{countText(source === "ALL" ? rows.length : rows.filter((row) => row.admission_source === source).length)}</span>
+              </button>
+            ))}
+          </div>
+          <p aria-live="polite" className="text-sm text-gray-500 dark:text-slate-400">{t.showingApplications(countText(visibleRows.length), countText(rows.length))}</p>
+        </div>
+
+        {selectedRows.length > 0 && (
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-900 dark:bg-blue-950/30">
             <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
-              {t.selectedN(String(selectedIds.size))}
+              {t.selectedN(countText(selectedRows.length))}
             </span>
             <div className="flex gap-2">
               <button
                 type="button"
                 disabled={bulkBusy}
-                onClick={() => handleBulkApprove(rows.filter((row) => selectedIds.has(row.id)))}
+                onClick={() => handleBulkApprove(selectedRows)}
                 className="h-8 rounded-md bg-green-600 px-3 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
               >
                 {t.approveSelected}
@@ -471,7 +504,7 @@ const PendingAdmissionsPage = () => {
               <button
                 type="button"
                 disabled={bulkBusy}
-                onClick={() => openBulkRejectModal(rows.filter((row) => selectedIds.has(row.id)))}
+                onClick={() => openBulkRejectModal(selectedRows)}
                 className="h-8 rounded-md bg-red-600 px-3 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
               >
                 {t.rejectSelected}
@@ -483,18 +516,18 @@ const PendingAdmissionsPage = () => {
         {/* Content */}
         <div className="rounded-xl bg-white p-3 shadow-sm dark:bg-slate-900 sm:p-4">
           {loading ? (
-            <SkeletonTable rows={6} columns={7} />
+            <SkeletonTable rows={6} columns={8} />
           ) : error ? (
             <div className="py-10 text-center text-sm text-red-600 dark:text-red-400">{error}</div>
-          ) : rows.length === 0 ? (
+          ) : visibleRows.length === 0 ? (
             <div className="py-10 text-center text-sm text-gray-500 dark:text-slate-400">
-              {t.noPending}
+              {rows.length === 0 ? t.noPending : t.noSourceApplications}
             </div>
           ) : (
             <>
               {/* Mobile cards */}
               <div className="flex flex-col gap-3 sm:hidden">
-                {rows.map((student) => (
+                {visibleRows.map((student) => (
                   <div
                     key={student.id}
                     className="rounded-lg border border-gray-200 p-3 text-center shadow-sm dark:border-slate-700"
@@ -520,6 +553,7 @@ const PendingAdmissionsPage = () => {
                       {t.classLabel} {student.current_class || t.none}
                     </div>
                     <div className="mt-2 flex flex-wrap justify-center gap-1.5">
+                      <AdmissionSourceBadge source={student.admission_source} />
                       <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
                         {admissionTypeLabel(student.admission_type)}
                       </span>
@@ -566,8 +600,8 @@ const PendingAdmissionsPage = () => {
                       <th className="px-3 py-2 w-8">
                         <input
                           type="checkbox"
-                          checked={rows.length > 0 && rows.every((row) => selectedIds.has(row.id))}
-                          onChange={() => toggleSelectAll(rows.map((row) => row.id))}
+                          checked={visibleRows.length > 0 && visibleRows.every((row) => selectedIds.has(row.id))}
+                          onChange={() => toggleSelectAll(visibleRows.map((row) => row.id))}
                           className="h-4 w-4 rounded border-gray-300"
                         />
                       </th>
@@ -576,11 +610,12 @@ const PendingAdmissionsPage = () => {
                       <th className="px-3 py-2">{t.colPhone}</th>
                       <th className="px-3 py-2">{t.colClass}</th>
                       <th className="px-3 py-2">{t.colAdmissionType}</th>
+                      <th className="px-3 py-2">{t.colSource}</th>
                       <th className="px-3 py-2">{t.colActions}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((student) => (
+                    {visibleRows.map((student) => (
                       <tr key={student.id} className="border-b border-gray-100 dark:border-slate-800">
                         <td className="px-3 py-2">
                           <input
@@ -597,6 +632,7 @@ const PendingAdmissionsPage = () => {
                         <td className="px-3 py-2">{student.guardian_phone || t.none}</td>
                         <td className="px-3 py-2">{student.current_class || t.none}</td>
                         <td className="px-3 py-2">{admissionTypeLabel(student.admission_type)}</td>
+                        <td className="px-3 py-2"><AdmissionSourceBadge source={student.admission_source} /></td>
                         <td className="px-3 py-2">
                           <div className="flex justify-center gap-2">
                             <button
@@ -639,7 +675,7 @@ const PendingAdmissionsPage = () => {
         open={!!rejectTargets}
         title={
           rejectTargets && rejectTargets.length > 1
-            ? t.rejectReasonBulk(String(rejectTargets.length))
+            ? t.rejectReasonBulk(countText(rejectTargets.length))
             : t.rejectReasonOne(rejectTargets ? ` — ${rejectTargets[0].name_bn || ""}` : "")
         }
         onClose={() => setRejectTargets(null)}
@@ -700,6 +736,7 @@ const PendingAdmissionsPage = () => {
               <DetailRow label={t.residency} value={residencyLabel(detailTarget.residency_type)} />
               <DetailRow label={t.orphan} value={detailTarget.is_orphan === 1 ? c.yes : c.no} />
               <DetailRow label={t.colAdmissionType} value={admissionTypeLabel(detailTarget.admission_type)} />
+              <DetailRow label={t.colSource} value={sourceLabel(detailTarget.admission_source)} />
               <DetailRow label={t.previousInstitution} value={detailTarget.previous_institution} />
               <DetailRow label={t.previousResult} value={detailTarget.previous_result} />
             </DetailSection>

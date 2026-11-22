@@ -3,6 +3,13 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 /** Shared by PendingAdmissionsPage + RejectedAdmissionsPage. */
 export const admissionReviewText = defineText({
   bn: {
+    sourceAll: "সব",
+    noSourceApplications: "এই উৎস থেকে কোনো পেন্ডিং আবেদন নেই",
+    showingApplications: (shown: string, total: string) => `মোট ${total}টির মধ্যে ${shown}টি দেখানো হচ্ছে`,
+    colSource: "আবেদনের উৎস",
+    sourceWebsite: "ওয়েবসাইট",
+    sourceAdmin: "অ্যাডমিন প্যানেল",
+    sourceUnknown: "উৎস জানা নেই",
     // shared labels
     residential: "আবাসিক",
     nonResidential: "অনাবাসিক",
@@ -139,6 +146,13 @@ export const admissionReviewText = defineText({
       "পুনরায় অনুমোদন করলে এই ফিগুলো বিল হবে। ছাড়/মওকুফ এখান থেকে সেট করা যাবে না - অনুমোদনের পর প্রয়োজনে {{student}} তালিকা থেকে ইনভয়েসে মওকুফ প্রয়োগ করুন।",
   },
   en: {
+    sourceAll: "All",
+    noSourceApplications: "No pending applications from this source",
+    showingApplications: (shown, total) => `Showing ${shown} of ${total} applications`,
+    colSource: "Application source",
+    sourceWebsite: "Website",
+    sourceAdmin: "Admin panel",
+    sourceUnknown: "Source unknown",
     residential: "Residential",
     nonResidential: "Non-residential",
     none: "N/A",

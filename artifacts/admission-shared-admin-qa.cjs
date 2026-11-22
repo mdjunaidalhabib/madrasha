@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const { chromium } = require('../backend/node_modules/playwright');
+const baseUrl = process.env.ADMIN_ADMISSION_QA_URL || 'http://127.0.0.1:5198';
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
@@ -36,20 +37,24 @@ const { chromium } = require('../backend/node_modules/playwright');
         if (path.endsWith('/sessions')) return route.fulfill({ json: { data: [{ id: 3, name: '2026', divisionId: 1, isActive: true }] } });
         return route.fulfill({ json: { data: [] } });
       });
-      await page.goto('http://127.0.0.1:5198/students/new');
+      await page.goto(`${baseUrl}/students/new`);
       await page.getByRole('radio', { name: 'Existing student', exact: true }).check();
       assert.equal(await page.locator('input[name="name"]').isDisabled(), true);
       await page.getByRole('searchbox').fill('5');
       await page.getByRole('button').filter({ hasText: 'Returning Student' }).click();
       assert.equal(await page.locator('input[name="name"]').inputValue(), 'Returning Student');
       assert.equal(await page.locator('input[name="nid"]').inputValue(), '');
+      assert.equal(await page.locator('label[for="parentPhone"]').innerText().then(text => text.includes('*')), false);
+      assert.equal(await page.locator('input[name="parentPhone"]').getAttribute('required'), null);
       await page.locator('select[name="currentClass"]').selectOption('4');
       await page.waitForFunction(() => [...document.querySelectorAll('input[readonly]')].some(input => input.value === '2026'));
       await page.screenshot({ path: `artifacts/admission-shared-admin-${width}.png`, fullPage: true });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      await page.locator('input[name="parentPhone"]').fill('');
       await page.getByRole('button', { name: 'Update Session (Re-admission)', exact: true }).click();
       await page.getByRole('button', { name: 'New Admission Form', exact: true }).waitFor();
       assert.equal(admissions.length, 1);
+      assert.equal(admissions[0].guardian_phone, '');
       assert.equal(admissions[0].existing_student_id, 11);
       assert.equal(admissions[0].admission_mode, 'existing');
       assert.equal(admissions[0].class_id, 4);

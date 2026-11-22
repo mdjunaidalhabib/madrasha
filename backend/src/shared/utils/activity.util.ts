@@ -1,4 +1,5 @@
 import { prisma } from "../database/prisma";
+import { activityContext } from "./activityContext";
 
 export const logActivity = async (args: {
   // Nullable so platform-level (non-tenant) actions - e.g. Super Admin
@@ -25,4 +26,5 @@ export const logActivity = async (args: {
       details,
     },
   });
+  activityContext.getStore()?.logged.push({ madrasaId: madrasa_id, userId: user_id, entity });
 };

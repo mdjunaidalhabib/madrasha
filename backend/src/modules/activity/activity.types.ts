@@ -11,7 +11,7 @@ export interface ActivityLogRow {
   // repository now LEFT JOINs users so system-triggered rows (no acting user)
   // still show up instead of silently disappearing from the list.
   name: string | null;
-  // The acting user's role (roles.name_bn) - the log shows this, not the name.
+  // The acting user's role, displayed alongside their name.
   role_name: string | null;
 }
 
@@ -26,6 +26,8 @@ export interface ActivityLogQuery {
   limit?: number;
   /** Only rows of this entity, e.g. "security" (login/logout history). */
   entity?: string;
+  action?: string;
+  search?: string;
 }
 
 export interface ActivityLogListResult {

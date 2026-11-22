@@ -1,79 +1,23 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, ChevronLeft, GraduationCap, Loader2 } from "lucide-react";
-import { getPublicWebsite, submitFullAdmissionApplication } from "../../services/publicWebsiteApi";
-import { useCustomDomainRedirect } from "../../utils/useCustomDomainRedirect";
-import { useTenantSlug } from "../../utils/useTenantSlug";
-import { accentStrong, accentText, initials, pickTextOn } from "./colorUtils";
+import { CheckCircle2, GraduationCap } from "lucide-react";
+import { submitFullAdmissionApplication } from "../../services/publicWebsiteApi";
+import { accentStrong, accentText, pickTextOn } from "./colorUtils";
 import { resolveTheme } from "./themes";
 import { formatCurrency, getText, useLang, useText } from "@madrasha/shared-ui/src/i18n";
+import { createAdmissionFormData } from "@madrasha/shared-ui/src/components/admission/defaults";
+import AdmissionFormFields from "@madrasha/shared-ui/src/components/admission/AdmissionFormFields";
+import { validateAdmissionForm } from "@madrasha/shared-ui/src/components/admission/validation";
+import { buildAdmissionPayload } from "@madrasha/shared-ui/src/components/admission/payload";
 import { admissionApplyText } from "./admissionApply.text";
+import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 
-import StudentInfo from "@madrasha/shared-ui/src/components/admission/StudentInfo";
-import ParentInfo from "@madrasha/shared-ui/src/components/admission/ParentInfo";
-import AlternateGuardianInfo from "@madrasha/shared-ui/src/components/admission/AlternateGuardianInfo";
-import OtherInfo from "@madrasha/shared-ui/src/components/admission/OtherInfo";
-import AddressInfo from "@madrasha/shared-ui/src/components/admission/AddressInfo";
-import SubmitButton from "@madrasha/shared-ui/src/components/admission/SubmitButton";
-import PhotoPicker from "@madrasha/shared-ui/src/components/photo/PhotoPicker";
-import { admissionText } from "@madrasha/shared-ui/src/components/admission/admission.text";
-import type { AdmissionFormData, AdmissionFormErrors } from "@madrasha/shared-ui/src/components/admission/types";
+import type { AdmissionFormErrors } from "@madrasha/shared-ui/src/components/admission/types";
 
-const emptyForm: AdmissionFormData = {
-  age: null,
-  roll: "",
-  admissionDate: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dhaka" }),
-  academicYear: "",
-  name: "",
-  arabicName: "",
-  nameEn: "",
-  nid: "",
-  gender: null,
-  dob: "",
-  bloodGroup: "",
-  residencyType: null,
-  isOrphan: false,
-  academicDivision: "",
-  currentClass: "",
-  previousClass: "",
-  previousInstitution: "",
-  previousResult: "",
-  fatherName: "",
-  fatherArabicName: "",
-  fatherNameEn: "",
-  fatherNid: "",
-  fatherOccupation: "",
-  motherName: "",
-  motherArabicName: "",
-  motherNameEn: "",
-  motherNid: "",
-  motherOccupation: "",
-  parentPhone: "",
-  parentPhone2: "",
-  hasAltGuardian: false,
-  altGuardianName: "",
-  altGuardianArabicName: "",
-  altGuardianNameEn: "",
-  altGuardianRelation: "",
-  altGuardianAddress: "",
-  altGuardianPhone: "",
-  division: "",
-  district: "",
-  thana: "",
-  village: "",
-  image: "",
-};
-
-const cleanPhone = (phone: string) => phone.replace(/[^0-9]/g, "");
-
-export default function AdmissionApplyPage() {
+export default function AdmissionApplyPage({ data, slug, homePath }: { data: any; slug: string; homePath: string }) {
   const t = useText(admissionApplyText);
   const lang = useLang();
-  const at = useText(admissionText);
-  const slug = useTenantSlug();
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(createAdmissionFormData);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -83,16 +27,6 @@ export default function AdmissionApplyPage() {
   // gateway here; the applicant pays in person at the madrasa office.
   const [submittedInvoices, setSubmittedInvoices] = useState<Array<{ title: string; amount: number }>>([]);
 
-  useEffect(() => {
-    setLoading(true);
-    getPublicWebsite(slug)
-      .then(setData)
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  }, [slug]);
-
-  const madrasa = data?.madrasa;
-  useCustomDomainRedirect(madrasa?.custom_domain);
   const settings = data?.settings || {};
   const themeColor = settings.theme_color || "#2563eb";
   const accentSolid = useMemo(() => accentStrong(themeColor), [themeColor]);
@@ -111,110 +45,35 @@ export default function AdmissionApplyPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     setError("");
 
-    const nextFieldErrors: AdmissionFormErrors = {};
-    if (!form.name.trim()) nextFieldErrors.name = t.requiredError;
-    if (!form.academicDivision) nextFieldErrors.academicDivision = t.requiredError;
-    if (!form.currentClass) nextFieldErrors.currentClass = t.requiredError;
-    if (!form.academicYear) nextFieldErrors.academicYear = t.requiredError;
-    if (!(form.hasAltGuardian ? form.altGuardianPhone : form.parentPhone).trim()) {
-      if (form.hasAltGuardian) setError(t.requiredError);
-      else nextFieldErrors.parentPhone = t.requiredError;
-    }
+    const nextFieldErrors = validateAdmissionForm(form, t.requiredError);
     setFieldErrors(nextFieldErrors);
-    if (Object.keys(nextFieldErrors).length || (form.hasAltGuardian && !form.altGuardianPhone.trim())) {
+    if (Object.keys(nextFieldErrors).length) {
       setError(t.requiredError);
+      useToastStore.getState().show(t.requiredError, "error");
       return;
     }
 
     setSubmitting(true);
     try {
-      const res = await submitFullAdmissionApplication(slug, {
-        name_bn: form.name.trim(),
-        arabic_name: form.arabicName || null,
-        name_en: form.nameEn || null,
-        nid: form.nid || null,
-        gender: form.gender === null ? null : Number(form.gender),
-        dob: form.dob || null,
-        blood_group: form.bloodGroup || null,
-        residency_type: form.residencyType === null ? null : Number(form.residencyType),
-        is_orphan: form.isOrphan ? 1 : 0,
-        division_id: Number(form.academicDivision),
-        class_id: Number(form.currentClass),
-        academic_year: form.academicYear,
-        admission_date: form.admissionDate,
-        previous_class_id: form.previousClass ? Number(form.previousClass) : null,
-        previous_institution: form.previousInstitution || null,
-        previous_result: form.previousResult || null,
-        father_name: form.fatherName || null,
-        father_arabic_name: form.fatherArabicName || null,
-        father_name_en: form.fatherNameEn || null,
-        father_nid: form.fatherNid || null,
-        father_occupation: form.fatherOccupation || null,
-        mother_name: form.motherName || null,
-        mother_arabic_name: form.motherArabicName || null,
-        mother_name_en: form.motherNameEn || null,
-        mother_nid: form.motherNid || null,
-        mother_occupation: form.motherOccupation || null,
-        guardian_phone: cleanPhone(form.hasAltGuardian ? form.altGuardianPhone : form.parentPhone),
-        guardian_phone_2: form.parentPhone2 ? cleanPhone(form.parentPhone2) : null,
-        alt_guardian_name: form.hasAltGuardian ? form.altGuardianName || null : null,
-        alt_guardian_arabic_name: form.hasAltGuardian ? form.altGuardianArabicName || null : null,
-        alt_guardian_name_en: form.hasAltGuardian ? form.altGuardianNameEn || null : null,
-        alt_guardian_relation: form.hasAltGuardian ? form.altGuardianRelation || null : null,
-        alt_guardian_address: form.hasAltGuardian ? form.altGuardianAddress || null : null,
-        alt_guardian_phone: form.hasAltGuardian
-          ? cleanPhone(form.altGuardianPhone) || null
-          : null,
-        division: form.division || null,
-        district: form.district || null,
-        thana: form.thana || null,
-        village: form.village || null,
-        image: form.image || null,
-      });
+      const res = await submitFullAdmissionApplication(slug, buildAdmissionPayload(form));
       const invoices = res?.data?.invoices || [];
       setSubmittedInvoices(invoices.map((inv: any) => ({ title: inv.title, amount: Number(inv.amount) })));
       setSuccess(true);
+      useToastStore.getState().show(getText(admissionApplyText).successTitle, "success");
     } catch (err: any) {
-      setError(err?.response?.data?.message || getText(admissionApplyText).submitFailed);
+      const message = err?.response?.data?.message || getText(admissionApplyText).submitFailed;
+      setError(message);
+      useToastStore.getState().show(message, "error");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Loader2 size={32} className="animate-spin text-blue-600" />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-100 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-4">
-          <Link to=".." relative="path" className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-800">
-            <ChevronLeft size={16} className="rtl:rotate-180" />
-            {t.goBack}
-          </Link>
-          <div className="ms-auto flex items-center gap-2">
-            {madrasa?.logo_url ? (
-              <img src={madrasa.logo_url} alt={t.logo} className="h-8 w-8 rounded-full object-cover" />
-            ) : (
-              <div
-                className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold"
-                style={{ backgroundColor: accentSolid, color: onAccent }}
-              >
-                {initials(madrasa?.name)}
-              </div>
-            )}
-            <span className="text-sm font-bold text-slate-800">{madrasa?.name}</span>
-          </div>
-        </div>
-      </header>
-
+    <section id="admission" className="bg-slate-50 text-slate-900">
       <main className="mx-auto max-w-6xl px-4 py-10">
         <div className="mb-8 text-center">
           <div
@@ -259,8 +118,7 @@ export default function AdmissionApplyPage() {
             )}
 
             <Link
-              to=".."
-              relative="path"
+              to={homePath}
               className={`mt-6 inline-flex items-center gap-1.5 ${theme.button} px-5 py-2.5 text-sm font-bold ${theme.shadowSm} transition hover:opacity-90`}
               style={{ backgroundColor: accentSolid, color: onAccent }}
             >
@@ -270,21 +128,11 @@ export default function AdmissionApplyPage() {
         ) : (
           <form onSubmit={submit} noValidate className="space-y-4 sm:space-y-6">
             {error && <div role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
-            <fieldset disabled={submitting} className="min-w-0 space-y-4 sm:space-y-6">
-              <div className="bg-white shadow-lg px-6 py-4 rounded-xl border border-gray-200 dark:bg-slate-900 dark:border-slate-700">
-                <PhotoPicker label={at.studentPhoto} value={form.image} onChange={(image) => setForm((prev) => ({ ...prev, image }))} layout="row" />
-              </div>
-              <StudentInfo formData={form} setFormData={setForm} errors={fieldErrors} setErrors={setFieldErrors} loadData={loadAdmissionData} />
-              <ParentInfo formData={form} setFormData={setForm} errors={fieldErrors} setErrors={setFieldErrors} />
-              <AlternateGuardianInfo formData={form} setFormData={setForm} />
-              <OtherInfo formData={form} setFormData={setForm} />
-              <AddressInfo formData={form} setFormData={setForm} />
-              <SubmitButton loading={submitting} />
-            </fieldset>
+            <AdmissionFormFields formData={form} setFormData={setForm} errors={fieldErrors} setErrors={setFieldErrors} loadData={loadAdmissionData} loading={submitting} />
             <p className="text-center text-xs text-slate-400" style={{ color: accentLabel }}>{t.requiredNote}</p>
           </form>
         )}
       </main>
-    </div>
+    </section>
   );
 }

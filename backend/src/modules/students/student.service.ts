@@ -26,6 +26,7 @@ import { logger } from "../../shared/logger/logger";
 import { logActivity } from "../../shared/utils/activity.util";
 import { describeStudentsByClass } from "../../shared/utils/activityDetails";
 import { t } from "../../shared/i18n";
+import { publishSidebarChange } from "../sidebar/sidebar.events";
 
 /** API key -> Prisma column for every name the নাম (৩ ভাষা) page may edit. */
 /** Bulk admission writes every row in one all-or-nothing transaction; Prisma's
@@ -247,6 +248,7 @@ export class StudentService {
     body: StudentAdmissionRequestDto,
     madrasaId: number | undefined,
     createdById?: number,
+    admissionSource: "ADMIN" | "WEBSITE" = "ADMIN",
   ): Promise<AdmissionResult> {
     if (!madrasaId) throw new TenantNotResolvedError();
 
@@ -317,6 +319,7 @@ export class StudentService {
       // Every admission - admin panel or public site - lands PENDING and
       // waits on a Muhtamim to review the fee + approve (see approveAdmission).
       data.admissionStatus = "PENDING";
+      data.admissionSource = admissionSource;
 
       if (
         existing &&
@@ -376,6 +379,7 @@ export class StudentService {
       };
     });
 
+    publishSidebarChange(madrasaId);
     // Hand-logged (not the generic body-field auto-logger - see
     // SELF_LOGGED_ENTITY_PATHS in activityLogger.middleware.ts) so the
     // details column carries the student's id/name/class instead of just
@@ -498,6 +502,7 @@ export class StudentService {
         // a Muhtamim. Roll, registration number, guardian, invoices and the
         // admission SMS all happen in approveAdmission, never here.
         data.admissionStatus = "PENDING";
+        data.admissionSource = "ADMIN";
 
         data.roll =
           existing &&
@@ -568,6 +573,7 @@ export class StudentService {
       return { inserted, updated, preview };
     }, BULK_ADMISSION_TX_OPTIONS);
 
+    publishSidebarChange(madrasaId);
     // One activity row for the whole upload - every applicant listed
     // class-wise (the route is self-logged - see SELF_LOGGED_ENTITY_PATHS).
     // Non-fatal: the admissions already committed above.
@@ -1234,6 +1240,7 @@ export class StudentService {
       return { roll, registrationNo };
     });
 
+    publishSidebarChange(madrasaId);
     await guardianService.ensureGuardianForStudent(
       madrasaId,
       id,
@@ -1318,6 +1325,7 @@ export class StudentService {
       rejectionReason: reason.trim(),
     });
     if (!result.count) throw new StudentNotFoundError();
+    publishSidebarChange(madrasaId);
 
     // Hand-logged (not the generic body-field auto-logger - see
     // SELF_LOGGED_ENTITY_PATHS in activityLogger.middleware.ts) so the

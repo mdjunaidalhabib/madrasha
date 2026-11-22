@@ -7,7 +7,6 @@ const GuardianRoute = lazy(() => import("../layouts/GuardianRoute"));
 const RootRoute = lazy(() => import("../features/landing/RootRoute"));
 const CustomDomainTenantGate = lazy(() => import("../features/landing/CustomDomainTenantGate"));
 const PublicWebsitePage = lazy(() => import("../features/website/PublicWebsitePage"));
-const AdmissionApplyPage = lazy(() => import("../features/website/AdmissionApplyPage"));
 
 const GuardianLoginPage = lazy(() => import("../features/guardian/GuardianLoginPage"));
 const GuardianChangePasswordPage = lazy(
@@ -37,7 +36,7 @@ export const router = createBrowserRouter([
   { path: "/demo", element: <Navigate to="/" replace /> },
 
   { path: "/m/:madrasaSlug", element: withSuspense(<PublicWebsitePage />) },
-  { path: "/m/:madrasaSlug/admission", element: withSuspense(<AdmissionApplyPage />) },
+  { path: "/m/:madrasaSlug/admission", element: withSuspense(<PublicWebsitePage view="admission" />) },
   { path: "/m/:madrasaSlug/contact", element: withSuspense(<PublicWebsitePage view="contact" />) },
 
   { path: "/:madrasaSlug/guardian/login", element: withSuspense(<GuardianLoginPage />) },
@@ -63,7 +62,7 @@ export const router = createBrowserRouter([
     element: withSuspense(<GuardianChangePasswordPage />),
   },
 
-  { path: "/:madrasaSlug/admission", element: withSuspense(<AdmissionApplyPage />) },
+  { path: "/:madrasaSlug/admission", element: withSuspense(<PublicWebsitePage view="admission" />) },
   { path: "/:madrasaSlug/contact", element: withSuspense(<PublicWebsitePage view="contact" />) },
 
   // Bare (no-slug) equivalents of the routes above, reachable only on a
@@ -78,7 +77,7 @@ export const router = createBrowserRouter([
   {
     element: withSuspense(<CustomDomainTenantGate />),
     children: [
-      { path: "admission", element: withSuspense(<AdmissionApplyPage />) },
+      { path: "admission", element: withSuspense(<PublicWebsitePage view="admission" />) },
       { path: "contact", element: withSuspense(<PublicWebsitePage view="contact" />) },
       { path: "guardian/login", element: withSuspense(<GuardianLoginPage />) },
       {

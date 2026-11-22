@@ -445,7 +445,7 @@ export class DocumentTemplateService {
     }
 
     await this.repository.deleteById(id);
-    await this.logActorActivity(context, actor, "document_template.delete", id);
+    await this.logActorActivity(context, actor, "document_template.delete", id, template);
   }
 
   async setSystemDefault(id: number, superAdminId: number): Promise<TemplateDetail> {
@@ -618,13 +618,20 @@ export class DocumentTemplateService {
     actor: TemplateActor,
     action: string,
     entityId: number,
+    deletedTemplate?: { name: string; type: string },
   ) {
+    const template = deletedTemplate ?? await this.repository.findById(entityId);
     await logActivity({
       madrasa_id: context.kind === "tenant" ? context.tenantId : null,
       user_id: actor.role === "TENANT_USER" ? actor.userId : actor.superAdminId,
       action,
       entity: "DocumentTemplate",
       entity_id: entityId,
+      details: [
+        `টেমপ্লেট: ${template?.name ?? `#${entityId}`}`,
+        ...(template ? [`ধরন: ${template.type}`] : []),
+        `রেকর্ড আইডি: ${entityId}`,
+      ].join("\n"),
     });
   }
 }

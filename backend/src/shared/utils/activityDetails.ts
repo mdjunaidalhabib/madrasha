@@ -1,4 +1,5 @@
 import { prisma } from "../database/prisma";
+import { extendedSnapshotLoaders } from "./activityExtendedSnapshots";
 import { tenantClassNameSelect, tenantDivisionNameSelect, tenantClassName, tenantDivisionName, linkName } from "./tenant-name.util";
 
 /**
@@ -471,6 +472,8 @@ const loadResultMaster: SnapshotLoader = async (id) => {
 /* ================= REGISTRY ================= */
 
 const LOADERS_BY_ENTITY: Record<string, SnapshotLoader> = {
+  ...extendedSnapshotLoaders,
+  teachers: loadTeacher,
   "trash/students": loadStudent,
   "trash/students/restore": loadStudent,
   "trash/teachers": loadTeacher,
@@ -498,6 +501,12 @@ const LOADERS_BY_ENTITY: Record<string, SnapshotLoader> = {
 export const findSnapshotLoader = (entity: string): SnapshotLoader | null => {
   if (LOADERS_BY_ENTITY[entity]) return LOADERS_BY_ENTITY[entity];
   if (entity === "students" || entity.startsWith("students/")) return loadStudent;
+  if (entity.startsWith("attendance-leaves/")) return extendedSnapshotLoaders["attendance-leaves"];
+  if (entity === "sessions/set-current") return extendedSnapshotLoaders.sessions;
+  if (entity === "payroll/pay") return extendedSnapshotLoaders.payroll;
+  if (entity.startsWith("library/borrow-records/")) return extendedSnapshotLoaders["library/borrow-records"];
+  if (entity.startsWith("attendance-devices/devices/")) return extendedSnapshotLoaders["attendance-devices/devices"];
+  if (entity === "roles/permissions") return extendedSnapshotLoaders.roles;
   return null;
 };
 

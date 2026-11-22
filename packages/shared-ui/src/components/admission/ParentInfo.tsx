@@ -198,8 +198,11 @@ const ParentInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors 
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5 mt-5">
         <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">{t.guardianMobile}</label>
+          <label htmlFor="parentPhone" className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
+            {t.guardianMobile}
+          </label>
           <NumericInput
+            id="parentPhone"
             name="parentPhone"
             value={formData.parentPhone || ""}
             onChange={handleChange}

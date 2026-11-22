@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties, type ReactNode } from "react";
+import { lazy, Suspense, useLayoutEffect, useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties, type ReactNode } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import {
   ArrowRight,
@@ -73,6 +73,7 @@ function NavItem({
 // Last fetched website per slug, so moving between home and যোগাযোগ renders
 // instantly (navbar/notice bar/footer never flash a loader).
 const websiteCache = new Map<string, any>();
+const AdmissionApplyPage = lazy(() => import("./AdmissionApplyPage"));
 
 function youtubeId(url?: string | null): string | null {
   if (!url) return null;
@@ -276,10 +277,23 @@ function PersonCard({
 export default function PublicWebsitePage({
   slug: slugProp,
   view = "home",
-}: { slug?: string; view?: "home" | "contact" } = {}) {
+}: { slug?: string; view?: "home" | "contact" | "admission" } = {}) {
   const t = useText(websiteText);
   const lang = useLang();
   const isMadrasa = useIsMadrasa();
+  // The public website always uses its light palette. Keep the saved panel
+  // preference available again when the visitor leaves the public website.
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const wasDark = root.classList.contains("dark");
+    const previousScheme = root.style.colorScheme;
+    root.classList.remove("dark");
+    root.style.colorScheme = "light";
+    return () => {
+      root.classList.toggle("dark", wasDark);
+      root.style.colorScheme = previousScheme;
+    };
+  }, []);
   const params = useParams();
   const { pathname, hash, key: navigationKey } = useLocation();
   const slug = slugProp || params.madrasaSlug || params.slug || getResolvedDomainSlugSync();
@@ -350,7 +364,7 @@ export default function PublicWebsitePage({
   // Site root for this tenant ("/slug", "/m/slug" or "/" on a custom domain);
   // every internal link is built from it so it resolves the same on any view.
   const homePath =
-    (view === "contact" ? pathname.replace(/\/contact\/?$/, "") : pathname.replace(/\/$/, "")) || "/";
+    (view !== "home" ? pathname.replace(/\/(contact|admission)\/?$/, "") : pathname.replace(/\/$/, "")) || "/";
   const sitePath = (sub: string) => (homePath === "/" ? `/${sub}` : `${homePath}/${sub}`);
   const admissionUrl = sitePath("admission");
   const contactUrl = sitePath("contact");
@@ -399,7 +413,7 @@ export default function PublicWebsitePage({
     const onScroll = () => {
       setScrolled(window.scrollY > 8);
       setShowTop(window.scrollY > 560);
-      let current = view === "contact" ? "contact" : "home";
+      let current = view === "home" ? "home" : view;
       for (const key of visibleSections) {
         const el = document.getElementById(key);
         if (el && el.getBoundingClientRect().top - 140 <= 0) current = key;
@@ -672,7 +686,11 @@ export default function PublicWebsitePage({
         })}
       </PublicMobileMenu>
 
-      {view === "contact" ? (
+      {view === "admission" ? (
+        <Suspense fallback={<div className="flex justify-center py-16"><Loader2 className="animate-spin" /></div>}>
+          <AdmissionApplyPage key={slug} data={data} slug={slug} homePath={homePath} />
+        </Suspense>
+      ) : view === "contact" ? (
         <ContactSection
           madrasa={madrasa}
           settings={settings}

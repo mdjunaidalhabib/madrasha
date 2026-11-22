@@ -1,10 +1,12 @@
-import type { AdmissionFormData } from "./types";
+import type { AdmissionFormData, AdmissionFormErrors } from "./types";
 import { useText, useIsMadrasa } from "@madrasha/shared-ui/src/i18n";
 import { admissionText } from "./admission.text";
 import ScriptInput from "@madrasha/shared-ui/src/components/ui/ScriptInput";
 import NumericInput from "@madrasha/shared-ui/src/components/ui/NumericInput";
 
 interface Props {
+  errors: AdmissionFormErrors;
+  setErrors: React.Dispatch<React.SetStateAction<AdmissionFormErrors>>;
   formData: AdmissionFormData;
   setFormData: React.Dispatch<React.SetStateAction<AdmissionFormData>>;
 }
@@ -12,11 +14,13 @@ interface Props {
 const inputClass =
   "border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-500 border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
-const AlternateGuardianInfo: React.FC<Props> = ({ formData, setFormData }) => {
+const AlternateGuardianInfo: React.FC<Props> = ({ formData, setFormData, errors, setErrors }) => {
   const t = useText(admissionText);
   const isMadrasa = useIsMadrasa();
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const field = e.target.name as keyof AdmissionFormData;
+    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+    setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
   return (
@@ -79,14 +83,20 @@ const AlternateGuardianInfo: React.FC<Props> = ({ formData, setFormData }) => {
           </div>
 
           <div className="flex flex-col">
-            <label className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">{t.mobileNo}</label>
+            <label htmlFor="altGuardianPhone" className="text-sm font-medium text-gray-600 mb-1 dark:text-slate-400">
+              {t.mobileNo}
+            </label>
             <NumericInput
+              id="altGuardianPhone"
               name="altGuardianPhone"
+              aria-invalid={Boolean(errors.altGuardianPhone)}
+              aria-describedby={errors.altGuardianPhone ? "altGuardianPhone-error" : undefined}
               value={formData.altGuardianPhone || ""}
               onChange={handleChange}
               placeholder={t.mobileNo}
-              className={inputClass}
+              className={`${inputClass} ${errors.altGuardianPhone ? "border-red-500 focus:ring-red-500 dark:border-red-600" : ""}`}
             />
+            {errors.altGuardianPhone && <p id="altGuardianPhone-error" className="text-red-500 text-xs mt-1 dark:text-red-400">{errors.altGuardianPhone}</p>}
           </div>
         </div>
       )}

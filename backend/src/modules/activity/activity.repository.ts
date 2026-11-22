@@ -17,12 +17,32 @@ export class ActivityRepository {
     page: number;
     limit: number;
     entity?: string;
+    action?: string;
+    search?: string;
   }): Promise<{ rows: ActivityLogRow[]; total: number }> {
-    const { madrasaId, from, to, page, limit, entity } = params;
+    const { madrasaId, from, to, page, limit, entity, action, search } = params;
     const offset = (page - 1) * limit;
-    const entityFilter = entity === "website"
-      ? Prisma.sql`AND (a.entity = 'website' OR a.entity LIKE 'website/%')`
-      : entity ? Prisma.sql`AND a.entity = ${entity}` : Prisma.empty;
+    const aliases: Record<string, string[]> = {
+      users: ["users", "user"],
+      accounts: ["accounts", "account", "income", "expense", "fund_settings", "category_settings"],
+      "document-templates": ["document-templates", "documenttemplate"],
+    };
+    const entityNames = entity ? (aliases[entity] ?? [entity.toLowerCase()]) : [];
+    const entityFilter = entityNames.length
+      ? Prisma.sql`AND LOWER(SPLIT_PART(a.entity, '/', 1)) IN (${Prisma.join(entityNames)})`
+      : Prisma.empty;
+    const actionFilter = action
+      ? Prisma.sql`AND UPPER(a.action) = ${action.toUpperCase()}`
+      : Prisma.empty;
+    // POSITION treats user input literally, including SQL LIKE wildcard characters.
+    const searchFilter = search
+      ? Prisma.sql`AND (
+      POSITION(LOWER(${search}) IN LOWER(COALESCE(a.details, ''))) > 0 OR
+      POSITION(LOWER(${search}) IN LOWER(COALESCE(u.name, ''))) > 0 OR
+      POSITION(LOWER(${search}) IN LOWER(a.entity)) > 0 OR
+      POSITION(LOWER(${search}) IN LOWER(a.action)) > 0
+    )`
+      : Prisma.empty;
 
     const [rows, totalRows] = await Promise.all([
       prisma.$queryRaw<ActivityLogRow[]>`
@@ -30,14 +50,15 @@ export class ActivityRepository {
         FROM activity_logs a
         LEFT JOIN users u ON u.id = a.user_id
         LEFT JOIN roles r ON r.id = u.role_id
-        WHERE a.madrasa_id = ${madrasaId} AND a.created_at >= ${from} AND a.created_at <= ${to} ${entityFilter}
-        ORDER BY a.created_at DESC
+        WHERE a.madrasa_id = ${madrasaId} AND a.created_at >= ${from} AND a.created_at <= ${to} ${entityFilter} ${actionFilter} ${searchFilter}
+        ORDER BY a.created_at DESC, a.id DESC
         LIMIT ${limit} OFFSET ${offset}
       `,
       prisma.$queryRaw<{ count: bigint }[]>`
         SELECT COUNT(*)::bigint AS count
         FROM activity_logs a
-        WHERE a.madrasa_id = ${madrasaId} AND a.created_at >= ${from} AND a.created_at <= ${to} ${entityFilter}
+        LEFT JOIN users u ON u.id = a.user_id
+        WHERE a.madrasa_id = ${madrasaId} AND a.created_at >= ${from} AND a.created_at <= ${to} ${entityFilter} ${actionFilter} ${searchFilter}
       `,
     ]);
 
@@ -45,7 +66,10 @@ export class ActivityRepository {
   }
 
   findUserNames(madrasaId: number, ids: number[]) {
-    return prisma.user.findMany({ where: { madrasaId, id: { in: ids } }, select: { id: true, name: true } });
+    return prisma.user.findMany({
+      where: { madrasaId, id: { in: ids } },
+      select: { id: true, name: true },
+    });
   }
 
   purgeOlderThan(cutoff: Date) {

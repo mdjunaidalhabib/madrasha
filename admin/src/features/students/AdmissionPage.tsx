@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useUnsavedChangesGuard } from "@madrasha/shared-ui/src/navigation/unsavedChanges";
-import StudentInfo from "../../components/admission/StudentInfo";
-import ParentInfo from "../../components/admission/ParentInfo";
-import OtherInfo from "../../components/admission/OtherInfo";
-import AlternateGuardianInfo from "../../components/admission/AlternateGuardianInfo";
-import AddressInfo from "../../components/admission/AddressInfo";
-import ImageUpload from "../../components/admission/ImageUpload";
-import SubmitButton from "../../components/admission/SubmitButton";
+import { createAdmissionFormData } from "@madrasha/shared-ui/src/components/admission/defaults";
+import AdmissionFormFields from "@madrasha/shared-ui/src/components/admission/AdmissionFormFields";
+import { validateAdmissionForm } from "@madrasha/shared-ui/src/components/admission/validation";
+import { buildAdmissionPayload } from "@madrasha/shared-ui/src/components/admission/payload";
+import { uploadPhoto } from "../../components/photo/PhotoPicker";
 import PreviousStudentBanner from "../../components/admission/PreviousStudentBanner";
 import BulkAdmissionModal, {
   BulkAdmissionResultData,
@@ -93,53 +91,7 @@ interface AdmissionSuccessInfo {
   academicYear: string;
 }
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
-
-const initialState: AdmissionFormData = {
-  name: "",
-  arabicName: "",
-  nameEn: "",
-  nid: "",
-  gender: 1,
-  dob: "",
-  age: null,
-  bloodGroup: "",
-  residencyType: 1,
-  isOrphan: false,
-  roll: "",
-  admissionDate: todayIso(),
-  academicYear: "",
-  academicDivision: "",
-  previousClass: "",
-  previousInstitution: "",
-  previousResult: "",
-  currentClass: "",
-  fatherName: "",
-  fatherArabicName: "",
-  fatherNameEn: "",
-  fatherNid: "",
-  fatherOccupation: "",
-  motherName: "",
-  motherArabicName: "",
-  motherNameEn: "",
-  motherNid: "",
-  motherOccupation: "",
-  parentPhone: "",
-  parentPhone2: "",
-  hasAltGuardian: false,
-  altGuardianName: "",
-  altGuardianArabicName: "",
-  altGuardianNameEn: "",
-  altGuardianRelation: "",
-  altGuardianAddress: "",
-  altGuardianPhone: "",
-  division: "",
-  district: "",
-  thana: "",
-  village: "",
-  image: "",
-};
-
+const initialState = createAdmissionFormData();
 const cleanPhone = (phone: string | number) => String(phone || "").replace(/[^0-9]/g, "");
 
 const toGenderNumber = (value: any) => {
@@ -147,6 +99,8 @@ const toGenderNumber = (value: any) => {
   const num = Number(value);
   return num === 1 || num === 2 ? num : null;
 };
+
+const uploadAdmissionPhoto = (dataUrl: string) => uploadPhoto(dataUrl, "students");
 
 const requiredColumns = ["name_bn", "academic_division", "current_class", "academic_year"];
 
@@ -404,12 +358,9 @@ const AdmissionPage = () => {
   };
 
   const validateForm = () => {
-    const newErrors: AdmissionFormErrors = {};
-
-    if (!formData.name.trim()) newErrors.name = t.errName;
-    if (!formData.academicYear) newErrors.academicYear = t.errSession;
-    if (!formData.academicDivision) newErrors.academicDivision = t.errDivision;
-    if (!formData.currentClass) newErrors.currentClass = t.errClass;
+    const newErrors = validateAdmissionForm(formData, t.fillRequired, {
+      name: t.errName, academicYear: t.errSession, academicDivision: t.errDivision, currentClass: t.errClass,
+    });
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -646,50 +597,10 @@ const AdmissionPage = () => {
     }
 
     const payload = {
+      ...buildAdmissionPayload(formData),
       admission_mode: admissionMode,
       existing_student_id: previousStudent?.id,
-      name_bn: formData.name,
-      gender: toGenderNumber(formData.gender),
-      dob: formData.dob || null,
-      blood_group: formData.bloodGroup || null,
-      residency_type: formData.residencyType,
-      is_orphan: formData.isOrphan ? 1 : 0,
-      class_id: Number(formData.currentClass),
-      academic_year: formData.academicYear,
-      admission_date: formData.admissionDate || null,
-      previous_class_id: Number(formData.previousClass) || null,
-      previous_institution: formData.previousInstitution || null,
-      previous_result: formData.previousResult || null,
-      division_id: Number(formData.academicDivision),
-      guardian_phone: cleanPhone(formData.parentPhone),
-      guardian_phone_2: formData.parentPhone2 ? cleanPhone(formData.parentPhone2) : null,
-      alt_guardian_name: formData.hasAltGuardian ? formData.altGuardianName || null : null,
-      alt_guardian_arabic_name: formData.hasAltGuardian ? formData.altGuardianArabicName || null : null,
-      alt_guardian_name_en: formData.hasAltGuardian ? formData.altGuardianNameEn || null : null,
-      alt_guardian_relation: formData.hasAltGuardian ? formData.altGuardianRelation || null : null,
-      alt_guardian_address: formData.hasAltGuardian ? formData.altGuardianAddress || null : null,
-      alt_guardian_phone: formData.hasAltGuardian
-        ? cleanPhone(formData.altGuardianPhone) || null
-        : null,
-      arabic_name: formData.arabicName || null,
-      name_en: formData.nameEn || null,
-      nid: formData.nid || null,
       age: calculateAge(formData.dob),
-      father_name: formData.fatherName || null,
-      father_arabic_name: formData.fatherArabicName || null,
-      father_name_en: formData.fatherNameEn || null,
-      father_nid: formData.fatherNid || null,
-      father_occupation: formData.fatherOccupation || null,
-      mother_name: formData.motherName || null,
-      mother_arabic_name: formData.motherArabicName || null,
-      mother_name_en: formData.motherNameEn || null,
-      mother_nid: formData.motherNid || null,
-      mother_occupation: formData.motherOccupation || null,
-      division: formData.division || null,
-      district: formData.district || null,
-      thana: formData.thana || null,
-      village: formData.village || null,
-      image: formData.image || null,
     };
 
     try {
@@ -740,7 +651,7 @@ const AdmissionPage = () => {
         </h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4 sm:space-y-6">
         <fieldset disabled={loading} className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
           <legend className="px-2 font-semibold">{t.studentType}</legend>
           <div className="grid grid-cols-2 gap-2 sm:flex">
@@ -790,31 +701,17 @@ const AdmissionPage = () => {
           />
         )}
 
-        <fieldset disabled={loading || (admissionMode === "existing" && !previousStudent)} className="min-w-0 space-y-4 disabled:opacity-60 sm:space-y-6">
-          <ImageUpload formData={formData} setFormData={setFormData} />
-
-          <StudentInfo
-            formData={formData}
-            setFormData={setFormData}
-            errors={errors}
-            setErrors={setErrors}
-            isReturning={Boolean(previousStudent)}
-          />
-
-          <ParentInfo
-            formData={formData}
-            setFormData={setFormData}
-            errors={errors}
-            setErrors={setErrors}
-          />
-
-          <AlternateGuardianInfo formData={formData} setFormData={setFormData} />
-
-          <OtherInfo formData={formData} setFormData={setFormData} />
-
-          <AddressInfo formData={formData} setFormData={setFormData} />
-          <SubmitButton loading={loading || nidLookupLoading} isReAdmission={Boolean(previousStudent)} />
-        </fieldset>
+        <AdmissionFormFields
+          formData={formData}
+          setFormData={setFormData}
+          errors={errors}
+          setErrors={setErrors}
+          loadData={cachedGet}
+          uploadPhoto={uploadAdmissionPhoto}
+          isReturning={Boolean(previousStudent)}
+          loading={loading || nidLookupLoading}
+          disabled={admissionMode === "existing" && !previousStudent}
+        />
       </form>
 
       <BulkAdmissionModal

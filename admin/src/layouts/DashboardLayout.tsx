@@ -16,7 +16,8 @@ import { Calendar, Clock } from "lucide-react";
 
 import { clearGetCache } from "../services/api";
 import { useBrandingStore } from "../store/brandingStore";
-import { loadSidebar } from "../services/sidebarApi";
+import { refreshSidebarCounts } from "../services/sidebarApi";
+import { useLiveSidebarCounts } from "../hooks/useLiveSidebarCounts";
 import { getMyProfile } from "../services/profileApi";
 import { useSidebarStore } from "../store/sidebarStore";
 import { useAuthStore } from "../store/authStore";
@@ -34,7 +35,7 @@ export default function DashboardLayout() {
 }
 
 function DashboardShell() {
-  const setItems = useSidebarStore((s) => s.setItems);
+  useLiveSidebarCounts();
   const setAccess = useAuthStore((s) => s.setAccess);
   const updateUser = useAuthStore((s) => s.updateUser);
   const [mobileSidebar, setMobileSidebar] = useState(false);
@@ -49,14 +50,9 @@ function DashboardShell() {
   }, [mobileSidebar]);
 
   const loadSidebarData = useCallback(async () => {
-    try {
-      const data = await loadSidebar();
-      setItems(data);
-    } catch (err) {
-      logger.error("Sidebar load failed:", err);
-      setItems([]);
-    }
-  }, [setItems]);
+    await refreshSidebarCounts();
+    if (!useSidebarStore.getState().loaded) useSidebarStore.getState().setItems([]);
+  }, []);
 
   // Re-syncs permissions/modules against the backend on every app load, not
   // just at login - so a sidebar module split (see the ফি ব্যবস্থাপনা split)

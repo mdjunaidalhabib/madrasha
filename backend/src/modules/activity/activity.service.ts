@@ -45,6 +45,8 @@ export class ActivityService {
       page,
       limit,
       entity: query.entity,
+      action: query.action,
+      search: query.search,
     });
     return { rows: await this.withNames(madrasaId, rows), total, page, limit };
   }

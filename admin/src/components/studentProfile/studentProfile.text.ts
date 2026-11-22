@@ -3,6 +3,7 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 /** Profile-only labels; shared form labels come from admission/admission.text. */
 export const studentProfileText = defineText({
   bn: {
+    finishEditing: "সম্পাদনা শেষ করুন",
     altGuardianInfo: "বিকল্প অভিভাবকের তথ্য (পিতা-মাতা ছাড়া)",
     addrDivision: "বিভাগ",
     district: "জেলা",
@@ -17,6 +18,7 @@ export const studentProfileText = defineText({
     scriptHint: { bn: "শুধু বাংলায় লিখুন", ar: "শুধু আরবিতে লিখুন", en: "শুধু ইংরেজিতে লিখুন" },
   },
   en: {
+    finishEditing: "Finish editing",
     altGuardianInfo: "Alternate Guardian (other than parents)",
     addrDivision: "Division",
     district: "District",

@@ -528,7 +528,7 @@ export class WebsiteService {
     if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found" }));
     await this.assertWebsiteAvailable(madrasa);
 
-    return studentService.admitStudent(body as any, madrasa.id);
+    return studentService.admitStudent(body as any, madrasa.id, undefined, "WEBSITE");
   }
 
   async updateAdmissionApplicationStatus(madrasaId: number, id: number, status: string) {

@@ -6,6 +6,7 @@ import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import SectionCard from "../../../components/settings/SectionCard";
 import EmptyState from "@madrasha/shared-ui/src/components/ui/EmptyState";
+import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { commonText, getText, LOCALE_MAP, useLang, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
 import { talimatSettingsText } from "./talimatSettings.text";
 
@@ -104,11 +105,39 @@ export default function RegistrationBlockSettingsPage() {
         subtitle={t.regSubtitle}
       />
 
+      {loading && (
+        <div role="status" aria-label={t.loadingList} className="space-y-5">
+          {[0, 1].map((section) => (
+            <div key={section} aria-hidden="true" className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+              <div className="mb-4 flex items-center gap-3">
+                <Skeleton className="h-5 w-36" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+              <div className="space-y-2">
+                {[0, 1, 2].map((row) => (
+                  <div key={row} className="flex flex-col gap-3 rounded-xl border border-gray-100 px-4 py-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-7 w-7 rounded-lg" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {!loading && divisions.every((d) => d.classes.length === 0) && (
         <EmptyState title={t.noClasses} />
       )}
 
-      {divisions
+      {!loading && divisions
         .filter((d) => d.classes.length > 0)
         .map((division) => (
           <SectionCard key={division.division_id} title={division.division_name_bn} badge={t.classCount(bn(division.classes.length))}>

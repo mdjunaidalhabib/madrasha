@@ -122,6 +122,8 @@ model Student {
   /// admin-created admission keeps behaving exactly as before.
   admissionStatus AdmissionStatus @default(APPROVED) @map("admission_status")
   admissionType   AdmissionType   @default(NEW) @map("admission_type")
+  /// Server-assigned source of the latest admission submission; null for unknown legacy records.
+  admissionSource String?         @map("admission_source") @db.VarChar(20)
   rejectionReason String?         @map("rejection_reason") @db.VarChar(255)
   reviewedBy      Int?            @map("reviewed_by")
   reviewedAt      DateTime?       @map("reviewed_at")

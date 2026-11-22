@@ -67,6 +67,7 @@ export interface StudentApiDto {
   image: string | null;
   admission_status: "PENDING" | "APPROVED" | "REJECTED";
   admission_type: "NEW" | "RE_ADMISSION";
+  admission_source: "WEBSITE" | "ADMIN" | null;
   rejection_reason: string | null;
   /** 1 = সক্রিয় (active), 0 = বহিষ্কৃত (expelled), 2 = নিষ্ক্রিয় (inactive). */
   is_active: number;

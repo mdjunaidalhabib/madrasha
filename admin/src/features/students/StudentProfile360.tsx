@@ -6,6 +6,7 @@ import { useText, getText, useLang, localizeDigits, formatCurrency, formatDate }
 import { profile360Text } from "./StudentProfile360.text";
 import { BookOpen, CalendarCheck, GraduationCap, Wallet } from "lucide-react";
 import StudentProfileHeader from "../../components/studentProfile/StudentProfileHeader";
+import StudentProfileActions from "./StudentProfileActions";
 import StudentProfileOverview from "../../components/studentProfile/StudentProfileOverview";
 import { studentProfilePageClass } from "../../components/studentProfile/profileStyles";
 import StatTile from "@madrasha/shared-ui/src/components/ui/StatTile";
@@ -54,6 +55,7 @@ export default function StudentProfile360() {
   // পূর্ণাঙ্গ (বিস্তারিত) তথ্য — ছাত্র/অভিভাবক/ঠিকানার সব ফিল্ড, শুধু দেখার জন্য (রিড-অনলি)
   const [fullStudent, setFullStudent] = useState<any>(null);
   const [detailsLoading, setDetailsLoading] = useState(true);
+  const [actionRevision, setActionRevision] = useState(0);
 
   useEffect(() => {
     let current = true;
@@ -80,7 +82,7 @@ export default function StudentProfile360() {
       }
     })();
     return () => { current = false; };
-  }, [id]);
+  }, [id, actionRevision]);
 
   useEffect(() => {
     let current = true;
@@ -101,7 +103,7 @@ export default function StudentProfile360() {
       }
     })();
     return () => { current = false; };
-  }, [id]);
+  }, [id, actionRevision]);
 
   const student = data?.student;
   const results = data?.results || [];
@@ -139,10 +141,24 @@ export default function StudentProfile360() {
         student={student}
         details={fullStudent}
         onEdit={() => navigate(`/students/${ref}/edit`, { state: { autoEdit: true } })}
+        onCollectFee={() => navigate(`/fee-collection?student_id=${student.id}`)}
+        additionalActions={
+          <StudentProfileActions
         onPrint={() => navigate(documentsLink("student-id-cards"))}
         onMarksheet={() => navigate(documentsLink("student-marksheets", latestPublishedExamId))}
-        onCollectFee={() => navigate(`/fee-collection?student_id=${student.id}`)}
+        key={id}
+        student={fullStudent || { id: student.id, registration_no: student.registrationNo, name_bn: student.nameBn, name_en: student.nameEn, roll: student.roll, is_active: student.isActive }}
+        detailsReady={Boolean(fullStudent) && !detailsLoading}
+        onStatusChange={(next) => {
+          setFullStudent((previous: any) => ({ ...previous, is_active: next }));
+          setData((previous: any) => ({ ...previous, student: { ...previous.student, isActive: next } }));
+        }}
+        onRefresh={async () => { setActionRevision((revision) => revision + 1); }}
       />
+        }
+      />
+
+
 
       <div className="flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800">
         {TABS.map((t) => (

@@ -9,7 +9,7 @@ import { prefetchAdminRoute } from "../../app/routePrefetch";
 import AdminSidebarShell from "@madrasha/shared-ui/src/components/shell/AdminSidebarShell";
 import { Skeleton } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import ThemeToggle from "@madrasha/shared-ui/src/components/ui/ThemeToggle";
-import { LanguageSwitcher, commonText, useText } from "@madrasha/shared-ui/src/i18n";
+import { LanguageSwitcher, commonText, useText, useLang, localizeDigits } from "@madrasha/shared-ui/src/i18n";
 import { sidebarText, sidebarModuleLabel, sidebarChildLabel } from "./sidebar.text";
 import { modulePath, childPath, matchSidebarPath } from "./sidebarPaths";
 import PlanBadge from "../topbar/PlanBadge";
@@ -73,6 +73,7 @@ function moduleHeaderClass(isActive: boolean) {
   return `admin-nav-item flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-base ${SEMIBOLD} transition-colors ${isActive ? "admin-nav-active" : "text-slate-700 hover:bg-teal-50 hover:text-teal-800 dark:text-slate-300 dark:hover:bg-teal-950/50 dark:hover:text-teal-200"}`;
 }
 export default function Sidebar({ closeSidebar }: SidebarProps) {
+  const lang = useLang();
   // এই ইউজারের রোলে যে মডিউল/আইটেমের অনুমতি নেই, সেগুলো ধূসর করে দেখানোর
   // বদলে সম্পূর্ণ বাদ দেওয়া হয় - অনুমতি না থাকা জিনিস মেনুতেই দেখাবে না।
   const sidebarItems = useSidebarStore((s) => s.items);
@@ -147,7 +148,7 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
           )}
           {!collapsed && (
             <span className="whitespace-nowrap text-2xl font-bold leading-snug text-teal-700 dark:text-teal-300">
-              Admin Panel
+              {t.panelTitle}
             </span>
           )}
         </div>
@@ -278,8 +279,8 @@ export default function Sidebar({ closeSidebar }: SidebarProps) {
                     >
                       <span className="min-w-0 flex-1 truncate whitespace-nowrap" title={sidebarChildLabel(t, module.key, child.key, child.label)}>{sidebarChildLabel(t, module.key, child.key, child.label)}</span>
                       {Boolean(child.count) && (
-                        <span aria-live="polite" aria-atomic="true" className="inline-flex h-5 min-w-6 shrink-0 items-center justify-center rounded-md bg-amber-50 px-1.5 font-sans text-[11px] font-semibold tabular-nums text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-800">
-                          {child.count}
+                        <span aria-live="polite" aria-atomic="true" className="inline-flex h-5 min-w-6 shrink-0 items-center justify-center rounded-md bg-amber-50 px-1.5 text-sm font-normal leading-none text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-800">
+                          {localizeDigits(child.count!, lang)}
                         </span>
                       )}
                     </NavLink>

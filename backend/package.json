@@ -5,7 +5,7 @@
   "type": "commonjs",
   "scripts": {
     "predev": "node scripts/free-port.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/core/server.ts",
+    "dev": "ts-node-dev --respawn --transpile-only --watch node_modules/.prisma/client/index.js src/core/server.ts",
     "build": "tsc",
     "start": "node dist/core/server.js",
     "lint": "eslint \"src/**/*.ts\"",

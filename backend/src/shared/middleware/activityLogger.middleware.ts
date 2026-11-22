@@ -1,10 +1,18 @@
 import { Request, Response, NextFunction } from "express";
 import { logActivity } from "../utils/activity.util";
 import { logger } from "../logger/logger";
-import { prisma } from "../database/prisma";
-import { ActivitySnapshot, buildSnapshotDetails, findSnapshotLoader, studentHeadline } from "../utils/activityDetails";
-import { tenantClassNameSelect, tenantClassName } from "../utils/tenant-name.util";
+import {
+  ActivitySnapshot,
+  buildSnapshotDetails,
+  findSnapshotLoader,
+} from "../utils/activityDetails";
 import { findBulkDescriber } from "../utils/activityBulkDetails";
+import {
+  activityContext,
+  sameActivityModule,
+  type ActivityRequestContext,
+} from "../utils/activityContext";
+import { describeActivityRequest, responseEntityId } from "../utils/activityRequestDetails";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const ACTION_BY_METHOD: Record<string, string> = {
@@ -14,74 +22,8 @@ const ACTION_BY_METHOD: Record<string, string> = {
   DELETE: "DELETE",
 };
 
-// These modules already call logActivity() themselves with hand-written,
-// more specific details (see account.service.ts, user.service.ts,
-// document-templates.service.ts) - auto-logging them again here would create
-// duplicate rows for the same action.
-const SELF_LOGGED_ENTITIES = new Set(["users", "accounts", "document-templates", "activity"]);
-
-// Same idea as SELF_LOGGED_ENTITIES, but for individual sub-routes rather
-// than a whole top-level module - these hand-log a detailed, student-aware
-// message (student id/name/class + what happened) in FeeService/
-// StudentService, so letting the generic body-field fallback below log a
-// second, shallower row for the same request would just create a duplicate.
-const SELF_LOGGED_ENTITY_PATHS = new Set([
-  "invoices/pay",
-  "invoices/waive",
-  // পরীক্ষার ফি একসাথে গ্রহণ - FeeService.bulkPayExamFee writes one summary
-  // row itself, class-wise (the per-invoice "invoices/pay" rows are skipped).
-  "invoices/exam-fee/bulk-pay",
-  "students/admission",
-  // StudentService.admitStudentsBulk logs one class-wise row for the upload.
-  "students/admission/bulk",
-  "students/approve",
-  "students/reject",
-  // StudentService.reviewAdmissionsBulk logs one class-wise row per batch.
-  "students/admission/approve-bulk",
-  "students/admission/reject-bulk",
-  // StudentController.updateStudentsBulk logs the result itself - every
-  // updated student with its field-by-field changes.
-  "students/bulk-update",
-  // Marks/Result workflow (result-panel/result-workflow/result-correction/
-  // mark-component services) - each of these calls logActivity() itself
-  // with a richer, action-specific detail payload (see each service file),
-  // so letting the generic fallback log a second shallow row would create
-  // duplicates. "results/process" and "results/publish" are on the
-  // pre-existing result-panel.routes.ts routes, which only started
-  // self-logging once the process/publish status-transition rules were
-  // added here.
-  "results/process",
-  "results/publish",
-  "results/books/submit",
-  "results/books/verify",
-  "results/books/reject",
-  "results/corrections",
-  "results/corrections/batch",
-  "results/corrections/decide",
-  "results/recalculate",
-  "results/mark-components",
-  // Branding settings (see SettingsService.updateBranding/deleteBrandingImage)
-  // self-log a field-by-field before→after diff - letting the generic
-  // fallback log a second shallow row (or none at all, since PUT /branding
-  // has no numeric id and its body rarely matches DETAIL_FIELD_CANDIDATES)
-  // would just create a duplicate/less useful entry.
-  "settings/branding",
-  "settings/branding/report_logo",
-  "settings/branding/report_banner",
-  "settings/branding/report_watermark",
-  "settings/branding/report_header_image",
-  "settings/branding/report_footer_image",
-  // AuthService.updateMe/changeMyPassword log the name "old → new" /
-  // password change themselves.
-  "auth/me",
-  "auth/change-password",
-  // Login/logout history is logged by AuthService itself as "security"
-  // events (device, location, IP) - see modules/auth/auth.activity.ts.
-  "auth/login",
-  "auth/logout",
-  "auth/logout-all",
-  "auth/sessions",
-]);
+// Background refresh and activity queries do not generate audit events.
+const IGNORED_PATHS = new Set(["auth/refresh", "activity"]);
 
 function deriveEntity(originalUrl: string): { entity: string; entityId: number | null } {
   const pathOnly = originalUrl.split("?")[0].replace(/^\/api\//, "");
@@ -100,74 +42,22 @@ function deriveEntity(originalUrl: string): { entity: string; entityId: number |
   return { entity: nameSegments.join("/") || segments[0] || "unknown", entityId };
 }
 
-// Only ever read from this allow-list of known identifying fields - never a
-// generic dump of req.body - so sensitive fields (password, token, base64
-// file data, etc.) can never end up in the details column.
-const DETAIL_FIELD_CANDIDATES = ["name_bn", "name", "title", "designation"];
-const MAX_DETAIL_LENGTH = 190;
-
-function deriveBodyDetails(body: unknown): string | null {
-  if (body && typeof body === "object" && !Array.isArray(body)) {
-    const record = body as Record<string, unknown>;
-    for (const key of DETAIL_FIELD_CANDIDATES) {
-      const value = record[key];
-      if (typeof value === "string" && value.trim()) {
-        const trimmed = value.trim();
-        return trimmed.length > MAX_DETAIL_LENGTH ? `${trimmed.slice(0, MAX_DETAIL_LENGTH)}…` : trimmed;
-      }
-    }
-  }
-  return null;
-}
-
-// The raw DB primary key means nothing to madrasa staff reading the log -
-// for a student row it's the name, class, roll and registration number they
-// actually recognize, so this looks those up instead of falling back to a bare
-// "আইডি: <id>" line for any student sub-route without a name-bearing body
-// (expel, transfer-session, delete, etc - see student.routes.ts).
-async function deriveStudentDetails(entityId: number, madrasaId: number): Promise<string | null> {
-  try {
-    const student = await prisma.student.findFirst({
-      where: { id: entityId, madrasaId },
-      select: { nameBn: true, roll: true, registrationNo: true, classRef: { select: tenantClassNameSelect(madrasaId) } },
-    });
-    if (!student) return null;
-    return studentHeadline({ ...student, className: tenantClassName(student.classRef) });
-  } catch (error) {
-    logger.error("Activity log student detail lookup failed", error);
-    return null;
-  }
-}
-
-async function deriveDetails(
-  body: unknown,
-  entity: string,
-  entityId: number | null,
-  madrasaId: number,
-): Promise<string | null> {
-  const bodyDetails = deriveBodyDetails(body);
-  if (bodyDetails) return bodyDetails;
-
-  if (entityId !== null && entity.split("/")[0] === "students") {
-    const studentDetails = await deriveStudentDetails(entityId, madrasaId);
-    if (studentDetails) return studentDetails;
-  }
-
-  return entityId !== null ? `আইডি: ${entityId}` : null;
-}
-
 // DELETE on these only soft-deletes (moves to ট্র্যাশ) - see each repository.
-const SOFT_DELETE_ENTITIES = new Set(["students", "teachers", "exams"]);
+const SOFT_DELETE_ENTITIES = new Set(["students", "teachers", "staff", "exams"]);
 
 /** A plain "what was done" line for delete/trash actions, so the details say
  * whether the record went to trash, was wiped for good, or came back -
  * the record summary alone doesn't tell them apart. */
 function actionNote(method: string, entity: string): string | null {
-  if (entity.startsWith("trash/") && entity.endsWith("/restore")) return "কাজ: ট্র্যাশ থেকে পুনরুদ্ধার করা হয়েছে";
+  if (entity.startsWith("trash/") && entity.endsWith("/restore"))
+    return "কাজ: ট্র্যাশ থেকে পুনরুদ্ধার করা হয়েছে";
   if (method !== "DELETE") return null;
-  if (SOFT_DELETE_ENTITIES.has(entity)) return "কাজ: ট্র্যাশে সরানো হয়েছে — চাইলে ট্র্যাশ থেকে পুনরুদ্ধার করা যাবে";
-  if (entity.startsWith("trash/")) return "কাজ: ট্র্যাশ থেকে স্থায়ীভাবে মুছে ফেলা হয়েছে — আর ফেরত আনা যাবে না";
-  if (entity === "students/rejected-application") return "কাজ: বাতিল হওয়া ভর্তি আবেদন স্থায়ীভাবে মুছে ফেলা হয়েছে";
+  if (SOFT_DELETE_ENTITIES.has(entity))
+    return "কাজ: ট্র্যাশে সরানো হয়েছে — চাইলে ট্র্যাশ থেকে পুনরুদ্ধার করা যাবে";
+  if (entity.startsWith("trash/"))
+    return "কাজ: ট্র্যাশ থেকে স্থায়ীভাবে মুছে ফেলা হয়েছে — আর ফেরত আনা যাবে না";
+  if (entity === "students/rejected-application")
+    return "কাজ: বাতিল হওয়া ভর্তি আবেদন স্থায়ীভাবে মুছে ফেলা হয়েছে";
   return null;
 }
 
@@ -183,7 +73,10 @@ function withActionNote(details: string | null, note: string | null): string | n
 // "field: old → new" instead of a bare id. Taken before the handler runs, when
 // the request isn't tenant-resolved yet - so the lookup is by id alone and the
 // snapshot's own madrasaId is checked against the tenant on "finish".
-async function loadSnapshot(entity: string, entityId: number | null): Promise<ActivitySnapshot | null> {
+async function loadSnapshot(
+  entity: string,
+  entityId: number | null,
+): Promise<ActivitySnapshot | null> {
   if (entityId === null) return null;
   const loader = findSnapshotLoader(entity);
   if (!loader) return null;
@@ -204,70 +97,94 @@ async function loadSnapshot(entity: string, entityId: number | null): Promise<Ac
  * already populated if the matched route set them.
  */
 export const activityLoggerMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  if (!MUTATING_METHODS.has(req.method)) return next();
+  const context: ActivityRequestContext = { logged: [] };
+  return activityContext.run(context, () => {
+    if (!MUTATING_METHODS.has(req.method)) return next();
 
-  const { entity, entityId } = deriveEntity(req.originalUrl);
-  if (SELF_LOGGED_ENTITIES.has(entity.split("/")[0]) || SELF_LOGGED_ENTITY_PATHS.has(entity)) return next();
+    const { entity, entityId } = deriveEntity(req.originalUrl);
+    if (IGNORED_PATHS.has(entity)) return next();
 
-  const bulk = findBulkDescriber(entity);
-  const beforePromise = loadSnapshot(entity, entityId);
-  const bulkBeforePromise: Promise<unknown> = bulk?.before
-    ? bulk.before(req.body).catch((error) => {
-        logger.error("Activity log bulk snapshot failed", error);
-        return null;
-      })
-    : Promise.resolve(null);
+    const bulk = findBulkDescriber(entity);
+    const beforePromise = loadSnapshot(entity, entityId);
+    const bulkBeforePromise: Promise<unknown> = bulk?.before
+      ? bulk.before(req.body).catch((error) => {
+          logger.error("Activity log bulk snapshot failed", error);
+          return null;
+        })
+      : Promise.resolve(null);
 
-  // Bulk describers read the handler's reply (counts, per-row preview).
-  let responseBody: unknown = null;
-  if (bulk) {
-    const originalJson = res.json.bind(res);
-    res.json = (payload: unknown) => {
-      responseBody = payload;
-      return originalJson(payload);
-    };
-  }
+    // Bulk describers read the handler's reply (counts, per-row preview).
+    let responseBody: unknown = null;
+    {
+      const originalJson = res.json.bind(res);
+      res.json = (payload: unknown) => {
+        responseBody = payload;
+        return originalJson(payload);
+      };
+    }
 
-  res.on("finish", () => {
-    if (res.locals.websiteActivityHandled) return;
-    if (res.statusCode < 200 || res.statusCode >= 300) return;
+    res.on("finish", () => {
+      if (res.locals.websiteActivityHandled) return;
+      if (res.statusCode < 200 || res.statusCode >= 300) return;
 
-    const madrasaId = req.tenant?.madrasa_id;
-    const userId = req.user?.id;
-    if (!madrasaId || !userId) return;
+      const madrasaId = req.tenant?.madrasa_id;
+      const userId = req.user?.id;
+      if (!madrasaId || !userId) return;
+      // Detailed service events take precedence. New routes still get a fallback.
+      if (
+        context.logged.some(
+          (entry) =>
+            entry.madrasaId === madrasaId &&
+            entry.userId === userId &&
+            sameActivityModule(entity, entry.entity),
+        )
+      )
+        return;
 
-    (async () => {
-      const own = (s: ActivitySnapshot | null) => (s && s.madrasaId === madrasaId ? s : null);
-      const before = own(await beforePromise);
-      // Restore only flips deletedAt, so a before/after diff would read "no
-      // change" - log the restored record's summary instead, like a delete.
-      const after =
-        req.method === "DELETE" || entity.endsWith("/restore") ? null : own(await loadSnapshot(entity, entityId));
-      const bulkDetails = bulk
-        ? await bulk
-            .describe({ madrasaId, body: req.body, response: responseBody, before: await bulkBeforePromise })
-            .catch((error) => {
-              logger.error("Activity log bulk details failed", error);
-              return null;
-            })
-        : null;
-      const details = withActionNote(
-        bulkDetails ?? buildSnapshotDetails(before, after) ?? (await deriveDetails(req.body, entity, entityId, madrasaId)),
-        actionNote(req.method, entity),
-      );
+      (async () => {
+        const resolvedId =
+          entityId ?? (req.method === "POST" ? responseEntityId(responseBody) : null);
+        const own = (s: ActivitySnapshot | null) => (s && s.madrasaId === madrasaId ? s : null);
+        const before = own(await beforePromise);
+        // Restore only flips deletedAt, so a before/after diff would read "no
+        // change" - log the restored record's summary instead, like a delete.
+        const after =
+          req.method === "DELETE" || entity.endsWith("/restore")
+            ? null
+            : own(await loadSnapshot(entity, resolvedId));
+        const bulkDetails = bulk
+          ? await bulk
+              .describe({
+                madrasaId,
+                body: req.body,
+                response: responseBody,
+                before: await bulkBeforePromise,
+              })
+              .catch((error) => {
+                logger.error("Activity log bulk details failed", error);
+                return null;
+              })
+          : null;
+        const details = withActionNote(
+          bulkDetails ??
+            buildSnapshotDetails(before, after) ??
+            describeActivityRequest(req.body, responseBody, resolvedId),
+          actionNote(req.method, entity),
+        );
 
-      await logActivity({
-        madrasa_id: madrasaId,
-        user_id: userId,
-        action: ACTION_BY_METHOD[req.method] ?? req.method,
-        entity,
-        entity_id: entityId,
-        details,
-      });
-    })().catch((error) => logger.error("Auto activity log failed", error));
+        await logActivity({
+          madrasa_id: madrasaId,
+          user_id: userId,
+          action: ACTION_BY_METHOD[req.method] ?? req.method,
+          entity,
+          entity_id: resolvedId,
+          details,
+        });
+      })().catch((error) => logger.error("Auto activity log failed", error));
+    });
+
+    // Hold the handler until the "before" snapshots are read - otherwise the
+    // update could land first and the diff would show no change.
+    Promise.allSettled([beforePromise, bulkBeforePromise]).finally(() => next());
   });
-
-  // Hold the handler until the "before" snapshots are read - otherwise the
-  // update could land first and the diff would show no change.
-  Promise.allSettled([beforePromise, bulkBeforePromise]).finally(() => next());
 };

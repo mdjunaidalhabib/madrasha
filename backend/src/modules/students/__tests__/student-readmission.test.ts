@@ -9,6 +9,7 @@ vi.mock("../../../shared/utils/activity.util", () => ({ logActivity: vi.fn() }))
 import { StudentService } from "../student.service";
 import { StudentNotFoundError, TenantNotResolvedError } from "../student.types";
 import { BadRequestError } from "../../../shared/errors";
+import { subscribeSidebarChanges } from "../../sidebar/sidebar.events";
 
 const setup = () => {
   const existing = { id: 11, nameBn: "Returning student", nid: null, classId: 2, academicYear: "2025", registrationNo: 55 };
@@ -30,6 +31,18 @@ const setup = () => {
 };
 
 describe("admission student selection", () => {
+  it("publishes new admissions only after a successful transaction", async () => {
+    const { service, repo, body } = setup();
+    const listener = vi.fn();
+    const unsubscribe = subscribeSidebarChanges(9, listener);
+    try {
+      repo.runTransaction.mockRejectedValueOnce(new Error("Transaction failed"));
+      await expect(service.admitStudent(body, 9, 7)).rejects.toThrow("Transaction failed");
+      expect(listener).not.toHaveBeenCalled();
+      await service.admitStudent(body, 9, 7);
+      expect(listener).toHaveBeenCalledOnce();
+    } finally { unsubscribe(); }
+  });
   it("re-admits a selected student without NID using the same record and approval workflow", async () => {
     const { service, repo, tx, body } = setup();
     const result = await service.admitStudent(body, 9, 7);
@@ -74,7 +87,20 @@ describe("admission student selection", () => {
     const result = await service.admitStudent({ ...body, admission_mode: "new", existing_student_id: undefined }, 9, 7);
     expect(result).toMatchObject({ studentId: 99, action: "created", admissionStatus: "PENDING" });
     expect(repo.createOnTx).toHaveBeenCalled();
+    expect(repo.createOnTx).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ admissionSource: "ADMIN" }));
     expect(repo.updateManyForTenantOnTx).not.toHaveBeenCalled();
+  });
+
+  it("records website origin from the server argument rather than client payload", async () => {
+    const { service, repo, body } = setup();
+    await service.admitStudent({ ...body, admission_mode: "new", existing_student_id: undefined, admission_source: "ADMIN" } as any, 9, undefined, "WEBSITE");
+    expect(repo.createOnTx).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ admissionSource: "WEBSITE" }));
+  });
+
+  it("replaces website origin when staff re-submits an existing admission", async () => {
+    const { service, repo, body } = setup();
+    await service.admitStudent({ ...body, admission_source: "WEBSITE" } as any, 9, 7);
+    expect(repo.updateManyForTenantOnTx).toHaveBeenCalledWith(expect.anything(), 11, 9, expect.objectContaining({ admissionSource: "ADMIN" }));
   });
 
   it("searches within the tenant, normalizes Bengali numbers, and allows single-digit registration", async () => {

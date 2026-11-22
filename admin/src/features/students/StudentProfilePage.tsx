@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Check, Save } from "lucide-react";
 import { useText, getText, useLang, localizeDigits, commonText } from "@madrasha/shared-ui/src/i18n";
 import { studentProfilePageText } from "./StudentProfilePage.text";
 import { useNavigate } from "react-router-dom";
+import { useUnsavedChangesGuard } from "@madrasha/shared-ui/src/navigation/unsavedChanges";
 import { studentPath, useStudentRoute } from "./studentRoute";
 import api, { cachedGet } from "../../services/api";
 
@@ -11,25 +13,15 @@ import ParentInfoProfile from "../../components/studentProfile/ParentInfoProfile
 import AlternateGuardianInfoProfile from "../../components/studentProfile/AlternateGuardianInfoProfile";
 import AddressInfoProfile from "../../components/studentProfile/AddressInfoProfile";
 import ProfileQuickNav, { type QuickNavRecord } from "../../components/common/ProfileQuickNav";
-import {
-  profileActionButtonClass as actionButtonClass,
-  profileOutlineButtonClass as outlineButtonClass,
-} from "../../components/common/profileActionStyles";
+import "../../components/studentProfile/studentEdit.css";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import StudentProfileSkeleton from "../../components/studentProfile/StudentProfileSkeleton";
 import { studentProfilePageClass } from "../../components/studentProfile/profileStyles";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
-import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
-import AdmissionFormPrintButton from "../../components/admission/AdmissionFormPrintButton";
-import Modal from "@madrasha/shared-ui/src/components/ui/Modal";
-import { sessionApi, type Session } from "../../services/sessionApi";
 import { STUDENT_STATUS_BADGE_CLASS, studentStatus, studentStatusLabel } from "../../utils/studentStatus";
-import { useAuthStore } from "../../store/authStore";
-import { hasPermission } from "../../utils/permissions";
-import EnrollCardModal from "../attendance-device/cards/EnrollCardModal";
-import type { CardPerson } from "../attendance-device/types";
 
 const deepCopy = (data: any) => JSON.parse(JSON.stringify(data));
+const saveButtonClass = "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-teal-700 px-5 text-sm font-semibold text-white transition-colors hover:bg-teal-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-500";
 
 // StudentInfoProfile-এর ভেতরে dob থেকে age এবং division/class ফিল্ড
 // অটো-নরমালাইজ করার useEffect আছে — সেগুলো user edit না, কিন্তু student
@@ -76,24 +68,6 @@ const StudentProfilePage = () => {
   const [loadedId, setLoadedId] = useState<string>();
   const fetchSequence = useRef(0);
   const [saving, setSaving] = useState(false);
-  const [expelBusy, setExpelBusy] = useState(false);
-
-  const [transferModalOpen, setTransferModalOpen] = useState(false);
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [transferSessionId, setTransferSessionId] = useState("");
-  const [transferRoll, setTransferRoll] = useState("");
-  const [transferReason, setTransferReason] = useState("");
-  const [transferBusy, setTransferBusy] = useState(false);
-
-  // K40 RFID card (attendance device) - only with the attendance module + device permission.
-  const authUser = useAuthStore((s) => s.user);
-  const permissions = useAuthStore((s) => s.permissions);
-  const modules = useAuthStore((s) => s.modules);
-  const canManageDeviceCard =
-    hasPermission(authUser, permissions, "attendance_device.manage") &&
-    modules.some((m: any) => (typeof m === "string" ? m : m?.key ?? m?.key_name) === "attendance");
-  const [deviceCardPerson, setDeviceCardPerson] = useState<CardPerson | null>(null);
-
   const fetchStudent = useCallback(async () => {
     const sequence = ++fetchSequence.current;
     if (!id) {
@@ -153,6 +127,7 @@ const StudentProfilePage = () => {
   };
 
   const isChanged = () => Object.keys(getChangedData()).length > 0;
+  useUnsavedChangesGuard(Boolean(id && loadedId === id && isChanged()));
 
   const handleUpdate = async () => {
     if (!isChanged()) return;
@@ -179,149 +154,6 @@ const StudentProfilePage = () => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleDelete = () => {
-    useConfirmStore.getState().show({
-      title: t.deleteTitle,
-      message: t.deleteMessage,
-      confirmText: t.moveToTrash,
-      danger: true,
-      onConfirm: async () => {
-        try {
-          await api.delete(`/students/${id}`);
-          useToastStore.getState().show(getText(studentProfilePageText).movedToTrash, "success");
-          navigate(`/students`);
-        } catch (error) {
-          logger.error("DELETE ERROR:", error);
-          useToastStore.getState().show(getText(commonText).deleteFailed, "error");
-        }
-      },
-    });
-  };
-
-  const status = studentStatus(student?.is_active);
-  const isExpelled = status === "EXPELLED";
-  const isInactive = status === "INACTIVE";
-
-  const handleInactiveToggle = () => {
-    const deactivating = !isInactive;
-
-    useConfirmStore.getState().show({
-      title: deactivating ? t.deactivateTitle : t.activateTitle,
-      message: deactivating
-        ? t.deactivateMessage
-        : t.activateMessage,
-      confirmText: deactivating ? t.deactivate : t.activate,
-      onConfirm: async () => {
-        try {
-          setExpelBusy(true);
-          await api.patch(`/students/${id}/inactive`, { inactive: deactivating });
-          const next = deactivating ? 2 : 1;
-          setStudent((prev: any) => ({ ...prev, is_active: next }));
-          setOriginal((prev: any) => ({ ...prev, is_active: next }));
-          useToastStore
-            .getState()
-            .show(deactivating ? getText(studentProfilePageText).deactivated : getText(studentProfilePageText).activated, "success");
-        } catch (error) {
-          logger.error("SET STUDENT INACTIVE ERROR:", error);
-          useToastStore.getState().show(getText(studentProfilePageText).actionFailed, "error");
-        } finally {
-          setExpelBusy(false);
-        }
-      },
-    });
-  };
-
-  const handleExpelToggle = () => {
-    const expelling = !isExpelled;
-
-    useConfirmStore.getState().show({
-      title: expelling ? t.expelTitle : t.unexpelTitle,
-      message: expelling
-        ? t.expelMessage
-        : t.unexpelMessage,
-      confirmText: expelling ? t.expel : t.activate,
-      danger: expelling,
-      onConfirm: async () => {
-        try {
-          setExpelBusy(true);
-          await api.patch(`/students/${id}/expel`, { expelled: expelling });
-          setStudent((prev: any) => ({ ...prev, is_active: expelling ? 0 : 1 }));
-          setOriginal((prev: any) => ({ ...prev, is_active: expelling ? 0 : 1 }));
-          useToastStore
-            .getState()
-            .show(expelling ? getText(studentProfilePageText).expelled : getText(studentProfilePageText).unexpelled, "success");
-        } catch (error) {
-          logger.error("EXPEL STUDENT ERROR:", error);
-          useToastStore.getState().show(getText(studentProfilePageText).actionFailed, "error");
-        } finally {
-          setExpelBusy(false);
-        }
-      },
-    });
-  };
-
-  const openTransferModal = async () => {
-    setTransferSessionId("");
-    setTransferRoll("");
-    setTransferReason("");
-    setTransferModalOpen(true);
-    try {
-      const res = await sessionApi.list({ activeOnly: true });
-      const data = (res.data as any)?.data || [];
-      setSessions(
-        (Array.isArray(data) ? data : []).filter((s: Session) => s.id !== student?.session_id),
-      );
-    } catch (error) {
-      logger.error("LOAD SESSIONS ERROR:", error);
-      setSessions([]);
-    }
-  };
-
-  const handleTransferSession = async () => {
-    if (!transferSessionId) {
-      useToastStore.getState().show(getText(studentProfilePageText).selectSession, "error");
-      return;
-    }
-    try {
-      setTransferBusy(true);
-      const res = await api.patch(`/students/${id}/transfer-session`, {
-        session_id: Number(transferSessionId),
-        roll: transferRoll ? Number(transferRoll) : undefined,
-        reason: transferReason.trim() || undefined,
-      });
-      const newRoll = (res.data as any)?.data?.roll;
-      useToastStore
-        .getState()
-        .show(getText(studentProfilePageText).transferDone(String(newRoll ?? "-")), "success");
-      setTransferModalOpen(false);
-      fetchStudent();
-    } catch (error: any) {
-      const msg = error?.response?.data?.message || getText(studentProfilePageText).transferFailed;
-      useToastStore.getState().show(msg, "error");
-    } finally {
-      setTransferBusy(false);
-    }
-  };
-
-  const openDeviceCard = () => {
-    if (!student) return;
-    setDeviceCardPerson({
-      attendee_type: "STUDENT",
-      attendee_id: Number(student.id ?? id),
-      name: student.name_bn || student.name_en || "",
-      name_en: student.name_en ?? null,
-      image: student.image || null,
-      roll: student.roll ?? null,
-      registration_no: student.registration_no ?? null,
-      class_id: student.class_id != null ? Number(student.class_id) : null,
-      class_name: student.current_class || student.class_name || null,
-      designation: null,
-      device_user_id: null,
-      card_number: null,
-      auto_assigned: false,
-    });
   };
 
   const quickNavPath = useCallback(
@@ -378,63 +210,38 @@ const StudentProfilePage = () => {
 
   if (!resolved || loading || (id && loadedId !== id)) return <StudentProfileSkeleton edit />;
   if (!student) return <p className="p-6">{t.notFound}</p>;
+  const status = studentStatus(student.is_active);
 
   return (
-    <div className={studentProfilePageClass}>
+    <div className={`${studentProfilePageClass} student-edit-page`}>
       {quickNav}
 
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold sm:text-2xl">{t.title}</h1>
+      <div className="mb-6 mt-4 flex flex-col gap-5 border-b border-slate-200 pb-6 sm:flex-row sm:items-start sm:justify-between dark:border-slate-700">
+        <div className="min-w-0">
+          <p className="mb-2 text-sm font-medium text-slate-500 dark:text-slate-400">{t.editTitle}</p>
+          <div className="flex flex-wrap items-center gap-3">
+          <h1 className="break-words text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{(lang === "en" ? student.name_en || student.name_bn : student.name_bn || student.name_en) || t.title}</h1>
           <span
             className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-semibold ${STUDENT_STATUS_BADGE_CLASS[status]}`}
           >
             {studentStatusLabel(student.is_active)}
           </span>
+          </div>
+          <p className="mt-2 max-w-lg text-sm leading-6 text-slate-500 dark:text-slate-400">{t.editHint}</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-2">
+          <button onClick={() => navigate(studentPath(student))} disabled={saving} className="min-h-11 rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">{c.cancel}</button>
           <button
             onClick={handleUpdate}
             disabled={!isChanged() || saving}
-            className={`${actionButtonClass} ${isChanged() && !saving ? "bg-green-500" : "bg-gray-400"}`}
+            className={saveButtonClass}
           >
+            <Save size={16} aria-hidden="true" />
             {saving ? c.saving : c.update}
           </button>
 
-          <AdmissionFormPrintButton row={student} className={outlineButtonClass} />
 
-          <button onClick={openTransferModal} className={`${actionButtonClass} bg-indigo-600`}>
-            {t.sessionTransfer}
-          </button>
-
-          {canManageDeviceCard && (
-            <button onClick={openDeviceCard} className={`${actionButtonClass} bg-teal-600`}>
-              {t.deviceCard}
-            </button>
-          )}
-
-          {!isExpelled && (
-            <button
-              onClick={handleInactiveToggle}
-              disabled={expelBusy}
-              className={`${actionButtonClass} ${isInactive ? "bg-green-600" : "bg-slate-500"}`}
-            >
-              {isInactive ? t.activate : t.inactive}
-            </button>
-          )}
-
-          <button
-            onClick={handleExpelToggle}
-            disabled={expelBusy}
-            className={`${actionButtonClass} ${isExpelled ? "bg-amber-500" : "bg-orange-600"}`}
-          >
-            {isExpelled ? t.unexpel : t.expelShort}
-          </button>
-
-          <button onClick={handleDelete} className={`${actionButtonClass} bg-red-500`}>
-            {c.delete}
-          </button>
         </div>
       </div>
 
@@ -473,86 +280,17 @@ const StudentProfilePage = () => {
         isEditMode={isEditMode}
       />
 
-      <Modal
-        open={transferModalOpen}
-        title={t.sessionTransfer}
-        onClose={() => setTransferModalOpen(false)}
-      >
-        <div className="flex flex-col gap-3">
-          <p className="text-xs text-gray-500 dark:text-slate-400">
-            {t.currentSession}{" "}
-            <span className="font-medium text-gray-700 dark:text-slate-300">
-              {student.academic_year}
-            </span>{" "}
-            {t.transferNote}
-          </p>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-              {t.newSession}
-            </label>
-            <select
-              value={transferSessionId}
-              onChange={(e) => setTransferSessionId(e.target.value)}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            >
-              <option value="">{c.select}</option>
-              {sessions.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                  {s.isActive ? t.activeSuffix : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-              {t.rollOptional}
-            </label>
-            <input
-              type="number"
-              placeholder={t.rollPlaceholder}
-              value={transferRoll}
-              onChange={(e) => setTransferRoll(e.target.value)}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-              {t.reasonOptional}
-            </label>
-            <input
-              type="text"
-              value={transferReason}
-              onChange={(e) => setTransferReason(e.target.value)}
-              className="h-9 w-full rounded-md border border-gray-300 px-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            />
-          </div>
+      <div className={`${isChanged() ? "sticky bottom-3" : ""} z-20 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg shadow-slate-900/5 backdrop-blur sm:p-4 dark:border-slate-700 dark:bg-slate-900/95`}>
+        <p className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400" role="status">
+          {isChanged() ? <span className="h-2 w-2 rounded-full bg-amber-500" /> : <Check size={16} className="text-teal-600" aria-hidden="true" />}
+          {isChanged() ? t.unsavedChanges : t.noChanges}
+        </p>
+        <div className="flex w-full items-center justify-end gap-3 sm:w-auto">
+          {isChanged() && <button disabled={saving} onClick={() => { setStudent(deepCopy(original)); setEditableField(null); }} className="min-h-11 rounded-lg px-3 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800">{t.resetChanges}</button>}
+          <button onClick={handleUpdate} disabled={!isChanged() || saving} className={saveButtonClass}><Save size={16} aria-hidden="true" />{saving ? c.saving : c.update}</button>
         </div>
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => setTransferModalOpen(false)}
-            className="h-9 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            {c.cancel}
-          </button>
-          <button
-            type="button"
-            disabled={transferBusy}
-            onClick={handleTransferSession}
-            className="h-9 rounded-md bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
-          >
-            {transferBusy ? t.transferring : t.transfer}
-          </button>
-        </div>
-      </Modal>
+      </div>
 
-      <EnrollCardModal
-        open={!!deviceCardPerson}
-        person={deviceCardPerson}
-        refresh
-        onClose={() => setDeviceCardPerson(null)}
-      />
     </div>
   );
 };

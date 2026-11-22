@@ -11,6 +11,7 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
  */
 export const sidebarText = defineText({
   bn: {
+    panelTitle: "অ্যাডমিন প্যানেল",
     modules: {
       dashboard: "ড্যাশবোর্ড",
       ihtemam: "{{admin}}",
@@ -124,6 +125,7 @@ export const sidebarText = defineText({
     settingsMenu: "সেটিংস মেনু",
   },
   en: {
+    panelTitle: "Admin Panel",
     modules: {
       dashboard: "Dashboard",
       ihtemam: "{{admin}}",
