@@ -1,9 +1,9 @@
+import { useReportText } from "../useReportText";
 import { Link } from "react-router-dom";
 import LetterDocument from "./engine/LetterDocument";
 import { LETTER_BODY_CLASS, LETTER_HEADING_CLASS, LetterDateLine, LetterSignatureFooter } from "./engine/letterParts";
 import { useNoticeBoardReportStore } from "../../../store/noticeBoardReportStore";
-import { usePrintText, useText } from "@madrasha/shared-ui/src/i18n";
-import { reportText } from "../report.text";
+import { useText } from "@madrasha/shared-ui/src/i18n";
 import { reportUiText } from "../reportUi.text";
 
 type NoticeBoardReportViewProps = {
@@ -24,7 +24,7 @@ const NoticeBoardReportView = ({ rows: _rows }: NoticeBoardReportViewProps) => {
   const notices = useNoticeBoardReportStore((s) => s.notices);
   const selectedId = useNoticeBoardReportStore((s) => s.selectedId);
   const ui = useText(reportUiText);
-  const t = usePrintText(reportText);
+  const t = useReportText();
 
   const selected = notices?.find((n) => n.id === selectedId) || null;
 

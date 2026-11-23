@@ -1,9 +1,9 @@
+import { useReportText } from "../useReportText";
 import { useDocumentTemplate } from "./engine/useDocumentTemplate";
 import LetterDocument from "./engine/LetterDocument";
 import TemplatedLetter from "./engine/TemplatedLetter";
 import { LETTER_BODY_CLASS, LETTER_HEADING_CLASS, LetterDateLine, LetterSignatureFooter } from "./engine/letterParts";
 import { useIsMadrasa, usePrintText } from "@madrasha/shared-ui/src/i18n";
-import { reportText } from "../report.text";
 import { documentDefaultsText } from "./documentDefaults.text";
 
 type SanadListProps = {
@@ -22,7 +22,7 @@ const SanadList = ({ rows, isFirstPage = true, isLastPage = true, bodyTextOverri
   const isMadrasa = useIsMadrasa();
   const defaults = usePrintText(documentDefaultsText);
   const template = useDocumentTemplate("sanad_template", isMadrasa ? defaults.sanad : defaults.certificate);
-  const t = usePrintText(reportText);
+  const t = useReportText();
   const row = rows[0] || {};
 
   return (

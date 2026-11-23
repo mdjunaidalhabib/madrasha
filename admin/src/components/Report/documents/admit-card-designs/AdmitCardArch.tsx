@@ -1,6 +1,5 @@
+import { useReportText } from "../../useReportText";
 import { printCell } from "../../printFormat";
-import { usePrintText } from "@madrasha/shared-ui/src/i18n";
-import { reportText } from "../../report.text";
 import { renderTemplateText } from "@madrasha/shared-ui/src/utils/documentTemplates";
 
 type Props = {
@@ -17,7 +16,7 @@ const Field = ({ label, value }: { label: string; value: string }) => (
 );
 
 const AdmitCardArch = ({ row, madrasaName, rulesTemplate }: Props) => {
-  const t = usePrintText(reportText);
+  const t = useReportText();
   return (
   <div className="print-page-break overflow-hidden rounded-lg border-2 border-[#1e5c3f] bg-[#f3ecd8] p-1.5">
     <div className="overflow-hidden rounded-[4px] border border-[#cdb96f]">

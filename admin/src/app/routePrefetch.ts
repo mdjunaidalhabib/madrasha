@@ -59,6 +59,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   "settings/branding": () => import("../features/admin/settings/BrandingSettingsPage"),
   "settings/report-design": () => import("../features/admin/settings/BrandingSettingsPage"),
   "settings/plan": () => import("../features/admin/settings/PlanSettingsPage"),
+  "settings/app-install": () => import("../features/admin/settings/AppInstallPage"),
   "settings/website": () => import("../features/admin/website-builder/AdminWebsiteSettingsPage"),
   donations: () => import("../features/admin/website-builder/AdminWebsiteSettingsPage"),
   "settings/payment-methods": () => import("../features/fee/PaymentMethodSettingsPage"),

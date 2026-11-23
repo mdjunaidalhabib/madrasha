@@ -1,6 +1,5 @@
+import { useReportText } from "../../useReportText";
 import { printCell } from "../../printFormat";
-import { usePrintText } from "@madrasha/shared-ui/src/i18n";
-import { reportText } from "../../report.text";
 import { renderTemplateText } from "@madrasha/shared-ui/src/utils/documentTemplates";
 
 type Props = {
@@ -17,7 +16,7 @@ const Field = ({ label, value }: { label: string; value: string }) => (
 );
 
 const AdmitCardMinimal = ({ row, madrasaName, rulesTemplate }: Props) => {
-  const t = usePrintText(reportText);
+  const t = useReportText();
   return (
   <div className="print-page-break overflow-hidden rounded-lg border border-[#d7e4df] bg-white">
     <div className="h-1.5 w-full bg-[#1f6f5c]" />

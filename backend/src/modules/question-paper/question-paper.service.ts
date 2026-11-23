@@ -2,13 +2,133 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { BadRequestError, ConflictError, NotFoundError } from "../../shared/errors";
 import { t } from "../../shared/i18n";
-import { paperSchema, type PaperInput } from "./question-paper.schema";
+import { closingTemplateSchema, paperSchema, type PaperInput } from "./question-paper.schema";
+
+type TemplateKind = "closing" | "instruction";
 
 export class QuestionPaperService {
   constructor(private readonly db = prisma) {}
 
+  async listClosingTemplates(madrasaId: number, kind: TemplateKind = "closing") {
+    const defaults =
+      kind === "instruction"
+        ? [
+            {
+              builtinKey: "answer-all",
+              text: t({ bn: "সকল প্রশ্নের উত্তর দাও।", en: "Answer all questions." }),
+            },
+            {
+              builtinKey: "marks",
+              text: t({
+                bn: "প্রশ্নের ডান পাশে পূর্ণমান দেওয়া আছে।",
+                en: "Marks are shown beside each question.",
+              }),
+            },
+            {
+              builtinKey: "clear-writing",
+              text: t({
+                bn: "উত্তর স্পষ্ট ও পরিচ্ছন্নভাবে লিখবে।",
+                en: "Write your answers clearly and neatly.",
+              }),
+            },
+          ]
+        : [
+            {
+              builtinKey: "handwriting",
+              text: t({
+                bn: "সুন্দর হাতের লেখার জন্য ৫ নম্বর।",
+                en: "5 marks for neat handwriting.",
+              }),
+            },
+            {
+              builtinKey: "spelling",
+              text: t({
+                bn: "প্রতি ২টি বানান ভুলের জন্য ১ নম্বর কাটা যাবে।",
+                en: "1 mark will be deducted for every 2 spelling mistakes.",
+              }),
+            },
+            {
+              builtinKey: "next-page",
+              text: t({
+                bn: "বাকি প্রশ্ন অপর পৃষ্ঠায়।",
+                en: "Remaining questions are on the next page.",
+              }),
+            },
+            {
+              builtinKey: "ending",
+              text: t({ bn: "প্রশ্নপত্রের সমাপ্তি", en: "End of question paper" }),
+            },
+          ];
+    // Assign stable keys to matching templates created before defaults were editable.
+    const existing = await this.db.questionPaperClosingTemplate.findMany({
+      where: { madrasaId, kind },
+    });
+    for (const entry of defaults) {
+      if (!existing.some((item) => item.builtinKey === entry.builtinKey)) {
+        await this.db.questionPaperClosingTemplate.updateMany({
+          where: { madrasaId, kind, text: entry.text, builtinKey: null },
+          data: { builtinKey: entry.builtinKey },
+        });
+      }
+    }
+    await this.db.questionPaperClosingTemplate.createMany({
+      data: defaults.map((entry) => ({ madrasaId, kind, ...entry })),
+      skipDuplicates: true,
+    });
+    return this.db.questionPaperClosingTemplate.findMany({
+      where: { madrasaId, kind, deletedAt: null },
+      select: { id: true, text: true },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
+  }
+
+  async createClosingTemplate(madrasaId: number, body: unknown, kind: TemplateKind = "closing") {
+    const { text } = closingTemplateSchema.parse(body);
+    return this.db.questionPaperClosingTemplate.upsert({
+      where: { madrasaId_kind_text: { madrasaId, kind, text } },
+      create: { madrasaId, kind, text },
+      update: { deletedAt: null },
+      select: { id: true, text: true },
+    });
+  }
+
+  async updateClosingTemplate(
+    madrasaId: number,
+    id: string,
+    body: unknown,
+    kind: TemplateKind = "closing",
+  ) {
+    const { text } = closingTemplateSchema.parse(body);
+    try {
+      const result = await this.db.questionPaperClosingTemplate.updateMany({
+        where: { id, madrasaId, kind, deletedAt: null },
+        data: { text },
+      });
+      if (!result.count) throw new NotFoundError();
+      return { id, text };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        throw new ConflictError(
+          t({
+            bn: "এই লেখার টেমপ্লেট আগে থেকেই আছে।",
+            en: "A template with this text already exists.",
+          }),
+        );
+      }
+      throw error;
+    }
+  }
+
+  async removeClosingTemplate(madrasaId: number, id: string, kind: TemplateKind = "closing") {
+    const result = await this.db.questionPaperClosingTemplate.updateMany({
+      where: { id, madrasaId, kind, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    if (!result.count) throw new NotFoundError();
+  }
+
   async references(madrasaId: number) {
-    const [divisions, classes, subjects, branding] = await Promise.all([
+    const [divisions, classes, subjects, branding, exams] = await Promise.all([
       this.db.madrasaDivision.findMany({
         where: { madrasaId, isActive: 1, deletedAt: null },
         include: { division: true },
@@ -28,9 +148,25 @@ export class QuestionPaperService {
         where: { id: madrasaId },
         select: { name: true, address: true },
       }),
+      this.db.exam.findMany({
+        where: { madrasaId, isActive: true, deletedAt: null },
+        select: {
+          id: true,
+          name: true,
+          year: true,
+          startDate: true,
+          endDate: true,
+          divisions: { select: { divisionId: true } },
+        },
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      }),
     ]);
     return {
       branding,
+      exams: exams.map(({ divisions, ...exam }) => ({
+        ...exam,
+        divisionIds: divisions.map((d) => d.divisionId),
+      })),
       divisions: divisions.map((r) => ({
         id: r.divisionId,
         name: r.nameBn || r.division.nameBn || r.division.name || "",
@@ -87,6 +223,7 @@ export class QuestionPaperService {
       subject: subject.name,
       duration: input.duration,
       instructions: input.instructions,
+      ...(input.layout ? { layout: input.layout } : {}),
       questions: input.questions as Prisma.InputJsonValue,
     };
   }

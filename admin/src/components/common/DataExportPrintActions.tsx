@@ -50,8 +50,7 @@ const MIN_MARGIN_MM = 0;
 const MAX_MARGIN_MM = 40;
 
 const getDefaultMargins = (size: PaperSize): PageMargins => {
-  const value = size === "a5" ? 7 : 10;
-  return { top: value, right: value, bottom: value, left: value };
+  return { top: size === "a5" ? 12 : 14, right: 10, bottom: 10, left: 10 };
 };
 
 // Pagination depends on fonts and DOM measurements. A fixed delay can print
@@ -95,6 +94,8 @@ type Props<T> = {
   layout?: "inline" | "split";
   /** split লেআউটে মার্জিন বাটনের পরে বাম গ্রুপে বসে (যেমন কলাম মেনু, টগল)। */
   setupExtras?: ReactNode;
+  /** Additional page controls immediately before the margin button. */
+  beforeMargins?: ReactNode;
   /** split লেআউটে এক্সপোর্ট বাটনের ঠিক আগে ডান গ্রুপে বসে (যেমন পেজিনেশন)। */
   summary?: ReactNode;
 };
@@ -114,6 +115,7 @@ const DataExportPrintActions = <T extends Record<string, any>>({
   serverPdfExport,
   layout = "inline",
   setupExtras,
+  beforeMargins,
   summary,
 }: Props<T>) => {
   const t = useText(commonUiText);
@@ -643,6 +645,8 @@ const DataExportPrintActions = <T extends Record<string, any>>({
         <option value="portrait">{t.portrait}</option>
         <option value="landscape">{t.landscape}</option>
       </select>
+
+      {beforeMargins}
 
       <div ref={marginPanelRef} className="relative w-auto">
         <button

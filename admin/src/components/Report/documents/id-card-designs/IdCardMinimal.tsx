@@ -1,7 +1,6 @@
+import { useReportText } from "../../useReportText";
 import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { printCell } from "../../printFormat";
-import { usePrintText } from "@madrasha/shared-ui/src/i18n";
-import { reportText } from "../../report.text";
 
 type Props = {
   row: Record<string, any>;
@@ -9,7 +8,7 @@ type Props = {
 };
 
 const IdCardMinimal = ({ row, madrasaName }: Props) => {
-  const t = usePrintText(reportText);
+  const t = useReportText();
   return (
   <div className="print-page-break relative flex h-[85.6mm] w-[54mm] flex-col overflow-hidden rounded-lg border border-[#d7e4df] bg-white">
     <div className="h-[2mm] w-full shrink-0 bg-[#1f6f5c]" />

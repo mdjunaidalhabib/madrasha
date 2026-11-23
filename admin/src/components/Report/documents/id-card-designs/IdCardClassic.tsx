@@ -1,7 +1,6 @@
+import { useReportText } from "../../useReportText";
 import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { printCell } from "../../printFormat";
-import { usePrintText } from "@madrasha/shared-ui/src/i18n";
-import { reportText } from "../../report.text";
 
 type Props = {
   row: Record<string, any>;
@@ -12,7 +11,7 @@ const HEADER_PATTERN =
   "repeating-linear-gradient(135deg, rgba(255,255,255,0.06) 0 8px, transparent 8px 16px), linear-gradient(180deg, #8a2632, #6c1d27)";
 
 const IdCardClassic = ({ row, madrasaName }: Props) => {
-  const t = usePrintText(reportText);
+  const t = useReportText();
   return (
   <div className="print-page-break relative flex h-[85.6mm] w-[54mm] flex-col overflow-hidden rounded-xl border border-[#d8cba3] bg-[#f7f2e6]">
     <div

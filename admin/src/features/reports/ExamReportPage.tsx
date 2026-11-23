@@ -8,6 +8,20 @@ const smallCol = "min-w-32";
 
 const buildReports: ReportBuilder = (t, col): ReportMenuItem[] => [
   {
+    key: "exam-fee-collection-sheet",
+    ...t.r["exam-fee-collection-sheet"],
+    endpoint: "/reports/academic/exam-signature-sheet",
+    printable: "exam-fee-collection-sheet",
+    requiresExam: true,
+    requiresDivision: true,
+    columns: [
+      { header: col.roll, key: "roll", className: "w-[16%]" },
+      { header: col.studentName, key: "student_name" },
+      { header: col.feeCollected, key: "collection_amount", className: "w-[22%]" },
+      { header: col.signature, key: "collection_signature", className: "w-[22%]" },
+    ],
+  },
+  {
     key: "exam-signature-sheet",
     ...t.r["exam-signature-sheet"],
     endpoint: "/reports/academic/exam-signature-sheet",
@@ -49,23 +63,6 @@ const buildReports: ReportBuilder = (t, col): ReportMenuItem[] => [
     ...t.r["exam-signature-number-sheet"],
     endpoint: "/reports/academic/exam-number-sheet",
     printable: "exam-signature-number-sheet",
-    requiresExam: true,
-    requiresDivision: true,
-    hasSubjectFilter: true,
-    columns: [
-      { header: col.rollNo, key: "roll", className: smallCol },
-      { header: col.regNoFull, key: "registration_no", className: idCol },
-      { header: col.studentName, key: "student_name", className: nameCol },
-      { header: col.class, key: "class_name", className: smallCol },
-      { header: col.division, key: "division_name", className: midCol },
-      { header: col.exam, key: "exam_name", className: midCol },
-    ],
-  },
-  {
-    key: "exam-signature-number-sheet-2col",
-    ...t.r["exam-signature-number-sheet-2col"],
-    endpoint: "/reports/academic/exam-number-sheet",
-    printable: "exam-signature-number-sheet-2col",
     requiresExam: true,
     requiresDivision: true,
     hasSubjectFilter: true,

@@ -5,6 +5,7 @@ import { reportText } from "../report.text";
 import { ReportColumn } from "../../../features/reports/types";
 
 type ExamNumberSheetProps = {
+  compact?: boolean;
   rows: Record<string, any>[];
   hideRegistrationColumn?: boolean;
   selectedDivisionName?: string;
@@ -26,7 +27,8 @@ type SubjectMark = {
 const value = (row: Record<string, any>, keys: string[], fallback = "") => {
   for (const key of keys) {
     const current = row?.[key];
-    if (current !== null && current !== undefined && current !== "") return printValue(current, key);
+    if (current !== null && current !== undefined && current !== "")
+      return printValue(current, key);
   }
   return fallback;
 };
@@ -46,6 +48,7 @@ const parseSubjects = (row: Record<string, any>): SubjectMark[] => {
 };
 
 const ExamNumberSheet = ({
+  compact = false,
   hideRegistrationColumn = true,
   rows,
   selectedClassName = "",
@@ -70,7 +73,8 @@ const ExamNumberSheet = ({
   rows.forEach((row) => {
     parseSubjects(row).forEach((subject, index) => {
       const key = String(subject.book_id ?? subject.subject_name ?? index);
-      if (!subjectMap.has(key)) subjectMap.set(key, subject.subject_name || t.subjectN(toBanglaDigits(index + 1)));
+      if (!subjectMap.has(key))
+        subjectMap.set(key, subject.subject_name || t.subjectN(toBanglaDigits(index + 1)));
     });
   });
   const subjects = Array.from(subjectMap.entries());
@@ -78,41 +82,57 @@ const ExamNumberSheet = ({
   return (
     <div className="mx-auto w-full bg-white text-black">
       {isFirstPage && (
-      <div className="student-report-heading report-block-heading mb-3 text-center">
-        <h1 className="student-report-title text-xl font-bold">{t.title.examNumberSheet}</h1>
-        <p className="student-report-subtitle mt-1 text-base font-bold text-black">
-          {examName} - {examYear}
-        </p>
-        <p className="student-report-subtitle mt-1 text-base font-bold text-black">
-          {classCaption} {className}
-        </p>
-      </div>
+        <div className="student-report-heading report-block-heading mb-3 text-center">
+          <h1 className="student-report-title text-xl font-bold">{t.title.examNumberSheet}</h1>
+          <p className="student-report-subtitle mt-1 text-base font-bold text-black">
+            {examName} - {examYear}
+          </p>
+          <p className="student-report-subtitle mt-1 text-base font-bold text-black">
+            {classCaption} {className}
+          </p>
+        </div>
       )}
 
       <table
         className={`exam-report-table w-full table-fixed border-collapse border border-black text-center ${isFirstPage ? "" : "mt-6"}`}
       >
         {isFirstPage && (
-        <thead>
-          <tr>
-            <th className="w-10 border border-black px-0.5 py-2 text-base">{label("roll", t.col.roll)}</th>
-            {!hideRegistrationColumn && (<th className="w-24 border border-black px-0.5 py-2 text-base">{label("registration_no", t.col.regAbbr)}</th>)}
-            <th className="w-28 border border-black px-1 py-2 text-base">{label("student_name", t.col.studentName)}</th>
-            {subjects.map(([key, subjectLabel]) => (
-              <th key={key} className="border border-black px-0.5 py-2 text-base leading-tight">
-                {subjectLabel}
+          <thead>
+            <tr>
+              <th
+                className={`${compact ? "w-[12%]" : "w-10"} border border-black px-0.5 py-2 text-base`}
+              >
+                {label("roll", t.col.roll)}
               </th>
-            ))}
-          </tr>
-        </thead>
+              {!hideRegistrationColumn && (
+                <th
+                  className={`${compact ? "w-[18%]" : "w-24"} border border-black px-0.5 py-2 text-base`}
+                >
+                  {label("registration_no", t.col.regAbbr)}
+                </th>
+              )}
+              <th
+                className={`${compact ? "w-[40%]" : "w-28"} border border-black px-1 py-2 text-base`}
+              >
+                {label("student_name", t.col.studentName)}
+              </th>
+              {subjects.map(([key, subjectLabel]) => (
+                <th key={key} className="border border-black px-0.5 py-2 text-base leading-tight">
+                  {subjectLabel}
+                </th>
+              ))}
+            </tr>
+          </thead>
         )}
         <tbody>
           {rows.map((row, index) => (
             <tr key={`exam-number-${startIndex + index}-${row.id || row.student_id || index}`}>
               <td className="h-8 border border-black px-0.5 text-base">{printCell(row, "roll")}</td>
-              {!hideRegistrationColumn && (<td className="h-8 border border-black px-0.5 text-base">
-                {printCell(row, "registration_no")}
-              </td>)}
+              {!hideRegistrationColumn && (
+                <td className="h-8 border border-black px-0.5 text-base">
+                  {printCell(row, "registration_no")}
+                </td>
+              )}
               <td className="h-8 border border-black px-1 text-start text-base font-semibold">
                 {printCell(row, "student_name")}
               </td>
@@ -127,11 +147,11 @@ const ExamNumberSheet = ({
       </table>
 
       {isLastPage && (
-      <div className="exam-report-signature report-block-signature flex justify-end">
-        <div className="w-fit border-t border-black px-4 pt-0.5 text-center text-base font-medium text-black">
-          {t.sign.examController}
+        <div className="exam-report-signature report-block-signature flex justify-end">
+          <div className="w-fit border-t border-black px-4 pt-0.5 text-center text-base font-medium text-black">
+            {t.sign.examController}
+          </div>
         </div>
-      </div>
       )}
     </div>
   );

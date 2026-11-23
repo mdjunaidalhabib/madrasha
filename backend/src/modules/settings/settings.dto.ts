@@ -12,6 +12,7 @@ export interface UpdateBrandLayoutRequestDto {
   logo_offset_y?: number | string;
   header_height?: number | string | null;
   footer_text?: string | null;
+  signature_text?: string | null;
   footer_font_size?: number | string;
   footer_color?: string | null;
   footer_height?: number | string;

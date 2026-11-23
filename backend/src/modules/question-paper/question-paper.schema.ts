@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+export const closingTemplateSchema = z.object({
+  text: z
+    .string()
+    .trim()
+    .min(1)
+    .max(500)
+    .refine((text) => !/[\r\n]/.test(text), "Use one line per template"),
+});
+
 export const questionSchema = z
   .object({
     id: z.string().uuid(),
@@ -8,6 +17,7 @@ export const questionSchema = z
     marks: z.number().finite().positive().max(1000).multipleOf(0.5),
     options: z.array(z.string().trim().max(2000)).length(4),
     answer: z.string().max(10000),
+    bold: z.boolean().optional(),
   })
   .superRefine((q, ctx) => {
     if (q.type === "mcq" && (q.options.some((o) => !o) || !["0", "1", "2", "3"].includes(q.answer)))
@@ -21,6 +31,16 @@ export const paperSchema = z.object({
   subjectId: z.number().int().positive(),
   duration: z.string().trim().max(100),
   instructions: z.string().trim().max(10000),
+  layout: z
+    .object({
+      headerLineStyle: z.enum(["none", "solid", "double", "dashed", "dotted"]).optional(),
+      headerLineThickness: z.number().int().min(1).max(4).optional(),
+      footerText: z.string().max(500),
+      questionSpacing: z.number().int().min(0).max(60),
+      instructionsBold: z.boolean(),
+      footerBold: z.boolean(),
+    })
+    .optional(),
   questions: z
     .array(questionSchema)
     .max(200)

@@ -1,5 +1,5 @@
+import { useReportText } from "../useReportText";
 import { useIsMadrasa, usePrintLang, usePrintText } from "@madrasha/shared-ui/src/i18n";
-import { reportText } from "../report.text";
 import { admissionFormText } from "./admissionForm.text";
 
 type AdmissionFormLabels = typeof admissionFormText.bn;
@@ -32,7 +32,7 @@ const AdmissionFormDocument = ({ row, madrasaName }: Props) => {
   const isApproved = row.admission_status === "APPROVED";
   const isRejected = row.admission_status === "REJECTED";
   const t = usePrintText(admissionFormText);
-  const r = usePrintText(reportText);
+  const r = useReportText();
   const { lang, dir } = usePrintLang();
   const isMadrasa = useIsMadrasa();
 

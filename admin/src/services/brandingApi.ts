@@ -18,6 +18,7 @@ export type BrandLayout = {
   logo_offset_y: number;
   header_height: number | null;
   footer_text: string | null;
+  signature_text: string | null;
   footer_font_size: number;
   footer_color: string;
   footer_height: number;
@@ -39,6 +40,7 @@ export const BRAND_LAYOUT_DEFAULTS: BrandLayout = {
   logo_offset_y: 0,
   header_height: null,
   footer_text: null,
+  signature_text: null,
   footer_font_size: 10,
   footer_color: "#334155",
   footer_height: 12,

@@ -8,6 +8,18 @@ const smallCol = "min-w-32";
 
 const buildReports: ReportBuilder = (t, col): ReportMenuItem[] => [
   {
+    key: "student-list",
+    ...t.r["student-list"],
+    endpoint: "/reports/academic/admissions",
+    printable: "student-list",
+    requiresDivision: true,
+    columns: [
+      { header: col.rollNo, key: "roll", className: "w-16 text-center" },
+      { header: col.regNoFull, key: "registration_no", className: "w-24 text-center" },
+      { header: col.studentName, key: "student_name" },
+    ],
+  },
+  {
     key: "student-admissions",
     ...t.r["student-admissions"],
     endpoint: "/reports/academic/admissions",

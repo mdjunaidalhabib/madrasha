@@ -1,0 +1,9 @@
+.print-page-preview[data-report="exam-fee-collection-sheet"][data-paper-size="a5"] {
+  --report-table-font-size: 16px;
+  --report-meta-font-size: 16px;
+}
+
+.print-page-preview[data-report="exam-fee-collection-sheet"][data-paper-size="a5"] .report-content-body .text-base {
+  font-size: 16px !important;
+  line-height: 1.4;
+}

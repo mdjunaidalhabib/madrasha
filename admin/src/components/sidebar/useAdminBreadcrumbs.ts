@@ -32,6 +32,7 @@ const FALLBACK_LABELS: { test: RegExp; labels: CrumbKey[] }[] = [
   { test: /^settings\/users$/, labels: ["settings", "staffManagement"] },
   { test: /^settings\/roles$/, labels: ["settings", "rolesPermissions"] },
   { test: /^settings\/plan$/, labels: ["settings", "plan"] },
+  { test: /^settings\/app-install$/, labels: ["settings", "appInstaller"] },
   { test: /^settings\/trash$/, labels: ["settings", "trash"] },
   { test: /^settings\/about$/, labels: ["settings", "about"] },
 ];

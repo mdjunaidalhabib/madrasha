@@ -10,7 +10,7 @@ import {
 } from "./ReportBranding";
 import ReportContent from "./ReportContent";
 import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
-import { getPrintText, usePrintLang, usePrintText, useText } from "@madrasha/shared-ui/src/i18n";
+import { getPrintText, usePrintLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { reportText } from "./report.text";
 import { reportUiText } from "./reportUi.text";
 import { MM_TO_CSS_PX, getPaperWidthMm, getPaperHeightMm, getDefaultPageMargins } from "./pagination/pageGeometry";
@@ -35,7 +35,7 @@ type PaginatedReportPreviewProps = {
   selectedClassName?: string;
   /** academic-result only: repeat the column heading (subject names) on every page, not just the first. */
   repeatTableHeader?: boolean;
-  /** exam-signature-number-sheet-2col only: drop the "পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর" line to save space. */
+  /** two-column layout only: drop the "পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর" line to save space. */
   hideSignature?: boolean;
   hideBrandHeader?: boolean;
   paperSize: PaperSize;
@@ -91,7 +91,7 @@ const CONTINUATION_TOP_OFFSET_PX = 24;
 // carries at least this many students (see paginateBlocks.minLastPageBlocks).
 const MIN_LAST_PAGE_RESULT_ROWS = 3;
 // Horizontal space reserved between the two columns of a columnsPerPage:2
-// report (exam-signature-number-sheet-2col) - a thin divider line renders
+// report (two-column layout) - a thin divider line renders
 // centered in this gap so cutting straight down the middle leaves an equal
 // blank margin on both halves instead of shaving one side's content close.
 const TWO_COLUMN_GAP_PX = 48;
@@ -263,7 +263,8 @@ const measureTableGroupContainer = (
   container: HTMLElement,
   paddingTopPx: number,
 ): TableGroupMeasurement => {
-  const footerEl = container.querySelector(".report-block-signature");
+  const footerEl = container.querySelector(".report-signature-hidden")
+    ? null : container.querySelector(".report-block-signature");
   const dataRows = Array.from(container.querySelectorAll("tbody tr"));
   const containerTop = container.getBoundingClientRect().top;
   const firstRow = dataRows[0];
@@ -311,7 +312,7 @@ const paginateTableGroup = (
   return pageIdGroups.map((ids) => ids.map((id) => groupRowsData[Number(id)]));
 };
 
-// ---- columnsPerPage:2 measurement (exam-signature-number-sheet-2col): a
+// ---- columnsPerPage:2 measurement (two-column layout): a
 // continuous top-to-bottom packer across ALL groups combined, not one
 // column per group. A class starts wherever the current column still has
 // room left - several small classes share a column instead of each one
@@ -521,7 +522,8 @@ const measureAndSplitRecord = (
     return [{ isFirstPage: true, isLastPage: true }];
   }
 
-  const footerEl = container.querySelector<HTMLElement>(".report-block-signature");
+  const footerEl = container.querySelector(".report-signature-hidden")
+    ? null : container.querySelector<HTMLElement>(".report-block-signature");
   const bodyEl = container.querySelector<HTMLElement>(".report-block-body");
   const contentOnlyHeightPx = footerEl
     ? footerEl.getBoundingClientRect().top - containerTop - paddingTopPx
@@ -606,7 +608,6 @@ const PaginatedReportPreview = ({
 }: PaginatedReportPreviewProps) => {
   // Printed pages follow the institution default language (and its direction);
   // the "preparing" notice is on-screen chrome in the user UI language.
-  const t = usePrintText(reportText);
   const ui = useText(reportUiText);
   const { lang: printLang, dir: printDir } = usePrintLang();
   // A4 ল্যান্ডস্কেপে মার্কশিট = এক কাগজে ২টি A5 (পোর্ট্রেট) মার্কশিট পাশাপাশি। প্রতিটি মার্কশিট
@@ -626,13 +627,6 @@ const PaginatedReportPreview = ({
           report.printable === "admit-card-with-rules" ||
           (report.printable === "id-card" && idCardSingleMode))));
   const twoUpTile = sheetPaperSize === "a4" ? TWO_UP_TILE_A4 : TWO_UP_TILE_A5;
-  // প্রবেশপত্রে পৃষ্ঠা নম্বর ছাপা হয় না - কাটার পর প্রতিটি কার্ড আলাদা হয়ে যায়।
-  const showPageNumber =
-    report.printable !== "admit-card" &&
-    report.printable !== "admit-card-with-rules" &&
-    report.printable !== "id-card" &&
-    report.printable !== "book-label" &&
-    report.printable !== "exam-signature-number-sheet-2col";
   const paperSize: PaperSize = marksheetTwoUp ? "a5" : sheetPaperSize;
   const orientation: Orientation = marksheetTwoUp ? "portrait" : sheetOrientation;
   // টাইপোগ্রাফি প্রোফাইল (data-paper-size/data-orientation + density): ফন্ট সাইজের CSS এগুলো
@@ -640,7 +634,7 @@ const PaginatedReportPreview = ({
   // A5 ল্যান্ডস্কেপের প্রস্থ (২১০মিমি) A4 পোর্ট্রেটের সমান - তাই প্রতিটি কলাম হুবহু A4 পোর্ট্রেটের
   // মাপের ফন্টে ছাপা হয়; শুধু পাতার উচ্চতা (পেজিনেশন) আসল A5 ল্যান্ডস্কেপের।
   const twoColA4Type =
-    report.printable === "exam-signature-number-sheet-2col" && paperSize === "a5" && orientation === "landscape";
+    report.pageColumns === 2 && paperSize === "a5" && orientation === "landscape";
   const typePaperSize: PaperSize = twoColA4Type ? "a4" : paperSize;
   const typeOrientation: Orientation = twoColA4Type ? "portrait" : orientation;
   // ২-আপ মোডে প্রতিটি অর্ধেকের চার পাশে A5-এর সমান মার্জিন (৭মিমি) - মাঝখানে কাটলে দুই টুকরোর
@@ -690,8 +684,7 @@ const PaginatedReportPreview = ({
   // other printable type passes rows through untouched.
   const rows = useMemo(
     () =>
-      report.printable === "exam-signature-number-sheet" ||
-      report.printable === "exam-signature-number-sheet-2col"
+      report.printable === "exam-signature-number-sheet"
         ? expandRowsBySubject(rawRows)
         : rawRows,
     [rawRows, report.printable],
@@ -1258,14 +1251,6 @@ const PaginatedReportPreview = ({
         )}
         <ReportBrandFooter />
         {showsBrandHeader && <ReportBrandHeader />}
-        {showPageNumber && (
-          <div className="report-page-footer">
-            <span className="report-page-footer-label">{t.pageLabel}</span>
-            <span className="report-page-footer-number">
-              {toBanglaDigits(pageIndex + 1)}/{toBanglaDigits(pages.length)}
-            </span>
-          </div>
-        )}
         <div className="report-content-body">
           <ReportContent
             loading={loading}
@@ -1364,7 +1349,6 @@ const PaginatedReportPreview = ({
             ? Array.from({ length: Math.ceil(twoColColumns.length / 2) }, (_, physicalIndex) => {
                 const left = twoColColumns[physicalIndex * 2];
                 const right = twoColColumns[physicalIndex * 2 + 1];
-                const physicalPageCount = Math.ceil(twoColColumns.length / 2);
 
                 return (
                   <section
@@ -1383,14 +1367,6 @@ const PaginatedReportPreview = ({
                       </>
                     )}
                     <ReportBrandFooter />
-                    {showPageNumber && (
-                      <div className="report-page-footer">
-                        <span className="report-page-footer-label">{t.pageLabel}</span>
-                        <span className="report-page-footer-number">
-                          {toBanglaDigits(physicalIndex + 1)}/{toBanglaDigits(physicalPageCount)}
-                        </span>
-                      </div>
-                    )}
                     <div className="report-content-body flex">
                       <div style={{ width: columnContentWidthPx ?? undefined, flex: "none" }}>
                         {left?.map((chunk, chunkIndex) => (

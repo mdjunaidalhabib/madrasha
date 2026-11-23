@@ -91,6 +91,8 @@ export const reportText = defineText({
       totalMarks: "মোট নম্বর",
       serialShort: "ক্রম",
       signature: "স্বাক্ষর",
+      feeCollected: "পরিমাণ",
+      receiptNo: "রসিদ নম্বর",
       marks: "নম্বর",
       totalPresent: "মোট উপস্থিত",
       photo: "ছবি",
@@ -158,8 +160,8 @@ export const reportText = defineText({
 
     // ---- signature captions ----
     sign: {
-      head: "{{head}}-এর স্বাক্ষর",
-      headSeal: "{{head}}-এর স্বাক্ষর ও সীল",
+      head: "{{head}}ের স্বাক্ষর",
+      headSeal: "{{head}}ের স্বাক্ষর ও সীল",
       examController: "পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর",
       classTeacher: "{{class}} {{teacher}}ের স্বাক্ষর",
     },
@@ -247,6 +249,8 @@ export const reportText = defineText({
       totalMarks: "Total Marks",
       serialShort: "SL",
       signature: "Signature",
+      feeCollected: "Amount Collected",
+      receiptNo: "Receipt No.",
       marks: "Marks",
       totalPresent: "Total Present",
       photo: "Photo",

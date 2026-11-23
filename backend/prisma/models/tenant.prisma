@@ -228,6 +228,7 @@ model Madrasa {
   tenantDocumentDefaults       TenantDocumentDefault[]
   printableNotices             PrintableNotice[]
   questionPapers               QuestionPaper[]
+  questionPaperClosingTemplates QuestionPaperClosingTemplate[]
   attendanceDevices            AttendanceDevice[]
   attendanceDeviceUserMaps     AttendanceDeviceUserMap[]
   attendanceDeviceLogs         AttendanceDeviceLog[]

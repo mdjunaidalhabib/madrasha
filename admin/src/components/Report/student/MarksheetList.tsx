@@ -1,3 +1,4 @@
+import { useReportText } from "../useReportText";
 import { FittedCanvas } from "../documents/engine/CardSheet";
 import { useBrandedRows, useDocumentLayout } from "../documents/engine/useDocumentLayout";
 import { useBrandingStore } from "../../../store/brandingStore";
@@ -5,7 +6,7 @@ import { DEFAULT_MARKSHEET_FIELDS } from "../../../services/brandingApi";
 import { getSignatureSettings, signatureLabel } from "./marksheetSignatures";
 import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { printCell, printMeritRank, printValue } from "../printFormat";
-import { useIsMadrasa, usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { useIsMadrasa } from "@madrasha/shared-ui/src/i18n";
 import { reportText, type ReportText } from "../report.text";
 import { getSubjectResult } from "@madrasha/shared-ui/src/utils/subjectResult";
 
@@ -70,8 +71,7 @@ const INFO_FIELD_DEFS: Record<string, { label: keyof ReportText["col"]; value: (
   madrasa_grade: { label: "resultDivision", value: (row) => printCell(row, "madrasa_grade") },
   general_grade: { label: "grade", value: (row) => printCell(row, "general_grade") },
   status: { label: "status", value: (row) => printCell(row, "status") },
-  rank_no: { label: "meritPosition", value: (row) => printMeritRank(row?.place_no ?? row?.rank_no) },
-};
+  rank_no: { label: "meritPosition", value: (row) => printMeritRank(row?.place_no ?? row?.rank_no) } };
 
 // Applies the tenant's saved visibility + order on top of INFO_FIELD_DEFS -
 // hidden fields are dropped, everything else renders in the saved order.
@@ -90,8 +90,7 @@ const getInfoFields = (
 const SIGNATURE_CELL_CLASS = {
   left: "col-start-1 row-start-1 justify-self-start",
   center: "col-start-2 row-start-1 justify-self-center",
-  right: "col-start-3 row-start-1 justify-self-end",
-} as const;
+  right: "col-start-3 row-start-1 justify-self-end" } as const;
 
 const formatMark = (subject: SubjectMark, absentLabel: string) => {
   if (subject.is_absent) return absentLabel;
@@ -110,7 +109,7 @@ const isSubjectFailed = (subject: SubjectMark) => {
 const MarksheetList = ({ rows, isFirstPage = true, isLastPage = true, templateId }: MarksheetListProps) => {
   const row = rows[0] || {};
   const subjects = getSubjects(row);
-  const t = usePrintText(reportText);
+  const t = useReportText();
   const isMadrasa = useIsMadrasa();
 
   // ডিফল্ট = নিচের সাধারণ মার্কশিট; ব্যবহারকারী ডিজাইন বেছে নিলে তবেই টেমপ্লেট।

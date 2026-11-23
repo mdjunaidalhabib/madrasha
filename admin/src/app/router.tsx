@@ -119,6 +119,7 @@ const BrandingSettingsPage = lazy(() => import("../features/admin/settings/Brand
 const ProfileSettingsPage = lazy(() => import("../features/admin/settings/ProfileSettingsPage"));
 const PlanSettingsPage = lazy(() => import("../features/admin/settings/PlanSettingsPage"));
 const SettingsLayout = lazy(() => import("../features/admin/settings/SettingsLayout"));
+const AppInstallPage = lazy(() => import("../features/admin/settings/AppInstallPage"));
 const TrashPage = lazy(() => import("../features/admin/TrashPage"));
 
 const NotFoundPage = lazy(() => import("../features/common/NotFoundPage"));
@@ -614,6 +615,7 @@ const madrasaAdminChildren = [
     children: [
       { index: true, element: <Navigate to="profile" replace /> },
       { path: "profile", element: withSuspense(<ProfileSettingsPage />) },
+      { path: "app-install", element: withSuspense(<AppInstallPage />) },
       { path: "plan", element: withSuspense(<PlanSettingsPage />) },
       // Not module/permission-gated — every tenant admin can see who
       // built/maintains their system.

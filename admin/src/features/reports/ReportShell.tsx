@@ -8,6 +8,7 @@ import ReportFilterBar from "../../components/Report/ReportFilterBar";
 import { MarksheetSettingsPanel } from "../../components/Report/student/MarksheetSignatureControls";
 import { AdmitCardSettingsPanel } from "../../components/Report/documents/AdmitCardFieldControls";
 import ReportSidebar from "../../components/Report/ReportSidebar";
+import PageColumnSelector from "../../components/Report/PageColumnSelector";
 import FilterSelect from "../../components/common/FilterSelect";
 import ColumnVisibilityMenu from "../../components/common/ColumnVisibilityMenu";
 import { withSubjectColumns } from "../../components/Report/academic/AcademicResultPrint";
@@ -191,11 +192,11 @@ const ReportShell = ({
       // storage unavailable - the choice just lasts for this session
     }
   };
-  const supportsSignatureToggle = activeReport.printable === "exam-signature-number-sheet-2col";
+  const supportsSignatureToggle = true;
   const [hideSignaturePref, setHideSignaturePref] = useState<boolean>(() =>
     printMode ? searchParams.get("hide_signature") === "1" : readHideSignaturePref(madrasaSlug),
   );
-  const hideSignature = supportsSignatureToggle && hideSignaturePref;
+  const hideSignature = hideSignaturePref;
   const toggleSignature = () => {
     const next = !hideSignaturePref;
     setHideSignaturePref(next);
@@ -204,6 +205,21 @@ const ReportShell = ({
     } catch {
       // storage unavailable - the choice just lasts for this session
     }
+  };
+  const supportsPageColumns =
+    activeReport.printable === "exam-fee-collection-sheet" ||
+    activeReport.printable === "student-list" ||
+    activeReport.printable === "exam-signature-sheet" ||
+    activeReport.printable === "exam-number-sheet" ||
+    activeReport.printable === "exam-signature-number-sheet";
+  const [pageColumnPrefs, setPageColumnPrefs] = useState<Record<string, 1 | 2>>({});
+  const pageColumnKey = `${madrasaSlug}:${activeReport.key}`;
+  const savedPageColumns = printMode
+    ? searchParams.get("page_columns")
+    : pageColumnPrefs[pageColumnKey];
+  const pageColumns: 1 | 2 = String(savedPageColumns) === "1" ? 1 : 2;
+  const setPageColumns = (value: 1 | 2) => {
+    setPageColumnPrefs((previous) => ({ ...previous, [pageColumnKey]: value }));
   };
   const columnOptions = activeReport.columnOptions;
   const columnOptionKeys = useMemo(() => columnOptions?.map((c) => c.key) ?? [], [columnOptions]);
@@ -235,6 +251,7 @@ const ReportShell = ({
   };
 
   const effectiveReport = useMemo(() => {
+    if (supportsPageColumns) return { ...activeReport, pageColumns };
     if (!columnOptions) return activeReport;
 
     const byKey = new Map(columnOptions.map((c) => [c.key, c]));
@@ -242,7 +259,7 @@ const ReportShell = ({
     const picked = keys.map((key) => byKey.get(key)).filter((c): c is ReportColumn => !!c);
 
     return picked.length ? { ...activeReport, columns: picked } : activeReport;
-  }, [activeReport, columnOptions, columnPrefs.order, columnPrefs.visible, printColumnKeys]);
+  }, [activeReport, columnOptions, columnPrefs.order, columnPrefs.visible, printColumnKeys, supportsPageColumns, pageColumns]);
 
   // What the printed page shows: same report/columns (the user's pick included) but
   // title, subtitle and column headers in the institution print language.
@@ -818,6 +835,7 @@ const ReportShell = ({
       columns: columnOptions ? effectiveReport.columns.map((c) => c.key).join(",") : undefined,
       repeat_header: repeatTableHeader ? "1" : undefined,
       hide_signature: hideSignature ? "1" : undefined,
+      page_columns: supportsPageColumns ? String(pageColumns) : undefined,
       search: search.trim() || undefined,
       student_id: studentFilter || undefined,
       page: isPaginatedAcademicResult ? String(page) : undefined,
@@ -974,6 +992,9 @@ const ReportShell = ({
               onMarksheetPanelToggle={() => setMarksheetPanelOpen((prev) => !prev)}
               admitCardPanelOpen={admitCardPanelOpen}
               onAdmitCardPanelToggle={() => setAdmitCardPanelOpen((prev) => !prev)}
+              beforeMargins={
+                supportsPageColumns ? <PageColumnSelector value={pageColumns} onChange={setPageColumns} /> : null
+              }
               setupExtras={
                 <>
                 {supportsRepeatHeader && (
@@ -1000,6 +1021,18 @@ const ReportShell = ({
                       {ui.repeatHeader}
                     </button>
                   )}
+                  {columnOptions && !supportsPageColumns && (
+                    <ColumnVisibilityMenu
+                      columns={columnMenuOptions}
+                      visible={columnPrefs.visible}
+                      onToggle={toggleReportColumn}
+                      onReset={columnPrefs.reset}
+                      order={columnPrefs.order}
+                      onMove={columnPrefs.move}
+                      resetLabel={ui.resetColumns}
+                      buttonClassName="flex h-8 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                    />
+                  )}
                   {supportsSignatureToggle && (
                     <button
                       type="button"
@@ -1023,18 +1056,6 @@ const ReportShell = ({
                       </span>
                       {ui.signatureToggle}
                     </button>
-                  )}
-                  {columnOptions && (
-                    <ColumnVisibilityMenu
-                      columns={columnMenuOptions}
-                      visible={columnPrefs.visible}
-                      onToggle={toggleReportColumn}
-                      onReset={columnPrefs.reset}
-                      order={columnPrefs.order}
-                      onMove={columnPrefs.move}
-                      resetLabel={ui.resetColumns}
-                      buttonClassName="flex h-8 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
-                    />
                   )}
                 </>
               }

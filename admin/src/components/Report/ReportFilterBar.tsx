@@ -88,6 +88,7 @@ type ReportFilterBarProps = {
   onAdmitCardPanelToggle?: () => void;
   /** টুলবারের ২য় লাইনে পেজ সেটআপের পাশে বসে (যেমন কলাম মেনু, প্রতি পেজে হেডার টগল)। */
   setupExtras?: ReactNode;
+  beforeMargins?: ReactNode;
   /** টুলবারের ২য় লাইনে এক্সপোর্ট বাটনের আগে বসে (যেমন পেজিনেশন)। */
   summary?: ReactNode;
 };
@@ -152,6 +153,7 @@ const ReportFilterBar = ({
   admitCardPanelOpen = false,
   onAdmitCardPanelToggle,
   setupExtras,
+  beforeMargins,
   summary,
 }: ReportFilterBarProps) => {
   const ui = useText(reportUiText);
@@ -401,6 +403,7 @@ const ReportFilterBar = ({
         <DataExportPrintActions
           layout="split"
           setupExtras={setupExtras}
+          beforeMargins={beforeMargins}
           summary={summary}
           title={activeReport.title}
           columns={exportColumns}

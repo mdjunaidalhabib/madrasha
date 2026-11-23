@@ -11,6 +11,7 @@ model QuestionPaper {
   subject      String   @db.VarChar(200)
   duration     String   @default("") @db.VarChar(100)
   instructions String   @default("")
+  layout       Json     @default("{}")
   questions    Json
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
@@ -18,4 +19,19 @@ model QuestionPaper {
 
   @@index([madrasaId, updatedAt], map: "idx_question_papers_tenant_updated")
   @@map("question_papers")
+}
+
+model QuestionPaperClosingTemplate {
+  id        String   @id @default(uuid()) @db.Uuid
+  madrasaId Int      @map("madrasa_id")
+  kind      String   @default("closing") @db.VarChar(20)
+  text      String   @db.VarChar(500)
+  builtinKey String? @map("builtin_key") @db.VarChar(30)
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  madrasa   Madrasa  @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@unique([madrasaId, kind, text])
+  @@unique([madrasaId, kind, builtinKey])
+  @@map("question_paper_closing_templates")
 }

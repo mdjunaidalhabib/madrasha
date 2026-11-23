@@ -1,3 +1,4 @@
+import { useReportText } from "../useReportText";
 import {
   useContext,
   useEffect,
@@ -12,7 +13,6 @@ import { useDocumentTemplate } from "./engine/useDocumentTemplate";
 import LetterDocument from "./engine/LetterDocument";
 import { useBrandingStore } from "../../../store/brandingStore";
 import { usePrintText } from "@madrasha/shared-ui/src/i18n";
-import { reportText } from "../report.text";
 import { documentDefaultsText } from "./documentDefaults.text";
 import {
   PageGeometryContext,
@@ -198,7 +198,7 @@ const FitToBox = ({
  */
 const AdmitCardRulesPage = ({ rows }: AdmitCardRulesPageProps) => {
   const template = useDocumentTemplate("admit_card_rules", usePrintText(documentDefaultsText).admitCardRules);
-  const t = usePrintText(reportText);
+  const t = useReportText();
   const geometry = useContext(PageGeometryContext);
   const box = usePageContentBoxMm();
   const sheet = usePageSheetMm();

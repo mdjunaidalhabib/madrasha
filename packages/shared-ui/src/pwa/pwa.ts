@@ -207,7 +207,7 @@ export function setPwaManifest({
   applyBrandFavicon(icons);
 
   const iconUrl = icons ? brandIconUrl(icons, "icon-192.png") : null;
-  const nextName = announceName ? name : state.appName;
+  const nextName = announceName ? name : null;
   const identityChanged = state.appId !== manifest.id;
   if (
     identityChanged ||

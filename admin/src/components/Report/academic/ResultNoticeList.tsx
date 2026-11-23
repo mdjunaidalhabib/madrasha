@@ -1,7 +1,8 @@
+import { useReportText } from "../useReportText";
 import type { ReportColumn } from "../../../features/reports/types";
 import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { printCell, printMeritRank } from "../printFormat";
-import { useIsMadrasa, usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { useIsMadrasa } from "@madrasha/shared-ui/src/i18n";
 import { reportText, type ReportText } from "../report.text";
 
 /**
@@ -39,8 +40,7 @@ const COLUMN_WEIGHTS: Record<string, number> = {
   general_grade: 0.75,
   rank_no: 1.0,
   place_no: 1.0,
-  status: 0.9,
-};
+  status: 0.9 };
 
 const getColumnWeight = (key: string) => COLUMN_WEIGHTS[key] || 1;
 
@@ -68,9 +68,8 @@ const ResultNoticeList = ({
   startIndex = 0,
   columns = [],
   isFirstPage = true,
-  isLastPage = true,
-}: ResultNoticeListProps) => {
-  const t = usePrintText(reportText);
+  isLastPage = true }: ResultNoticeListProps) => {
+  const t = useReportText();
   const isMadrasa = useIsMadrasa();
   // মাদরাসা গ্রেড (মুমতাজ...) কলাম শুধু মাদরাসায় - অন্য প্রতিষ্ঠানে শুধু প্রদর্শন থেকে বাদ।
   const configuredColumns = (columns.length ? columns : buildResultNoticeColumns(t)).filter(

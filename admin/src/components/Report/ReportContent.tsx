@@ -1,3 +1,4 @@
+import { useReportText } from "./useReportText";
 import { Inbox } from "lucide-react";
 import { ReportMenuItem } from "../../../src/features/reports/types";
 import { SkeletonTable } from "@madrasha/shared-ui/src/components/ui/Skeleton";
@@ -18,14 +19,18 @@ import TransferLetterList from "./documents/TransferLetterList";
 import ExamNumberSheet from "./exam/ExamNumberSheet";
 import ExamSignatureNumberSheet from "./exam/ExamSignatureNumberSheet";
 import ExamSignatureSheet from "./exam/ExamSignatureSheet";
+import ExamFeeCollectionSheet from "./exam/ExamFeeCollectionSheet";
 import GuardianPhoneListPrint from "./student/GuardianPhoneListPrint";
 import MarksheetList from "./student/MarksheetList";
 import StudentAdmissionListPrint from "./student/StudentAdmissionListPrint";
+import StudentListPrint from "./student/StudentListPrint";
 import TeacherListPrint from "./teacher/TeacherListPrint";
 import TeacherPhoneListPrint from "./teacher/TeacherPhoneListPrint";
 import ReportTable from "./ReportTable";
 import { useSelectedTemplateOverrideStore } from "../../store/selectedTemplateOverrideStore";
 import { useText } from "@madrasha/shared-ui/src/i18n";
+import { getPrintableConfig } from "./pagination/printableConfig";
+import "./report-signature.css";
 import { reportUiText } from "./reportUi.text";
 
 type ReportContentProps = {
@@ -42,7 +47,7 @@ type ReportContentProps = {
   bodyTextOverride?: string;
   // academic-result only: repeat the column heading on every page (see AcademicResultPrint.repeatHeader).
   repeatTableHeader?: boolean;
-  // exam-signature-number-sheet-2col only: drop the bottom signature line (user toggle).
+  // two-column layout only: drop the bottom signature line (user toggle).
   hideSignature?: boolean;
   // academic-result only: the whole class's rows, so every page shares one subject-column set.
   subjectSourceRows?: Record<string, any>[];
@@ -68,7 +73,7 @@ type ReportContentProps = {
   cardsPerSheet?: number | null;
 };
 
-const ReportContent = ({
+const ReportBody = ({
   loading,
   report,
   rows,
@@ -85,8 +90,7 @@ const ReportContent = ({
   resultStats,
   selectedTemplateId,
   cardsPerSheet,
-  emptyMessage,
-}: ReportContentProps) => {
+  emptyMessage }: ReportContentProps) => {
   const ui = useText(reportUiText);
   const overrideTemplateId = useSelectedTemplateOverrideStore((s) => s.templateId);
   const templateId = selectedTemplateId ?? overrideTemplateId;
@@ -241,6 +245,18 @@ const ReportContent = ({
     );
   }
 
+  if (report.printable === "student-list") {
+    return (
+      <StudentListPrint
+        report={report}
+        rows={rows}
+        selectedDivisionName={selectedDivisionName}
+        selectedClassName={selectedClassName}
+        isFirstPage={isFirstPage}
+      />
+    );
+  }
+
   if (report.printable === "student-admission-list") {
     return (
       <StudentAdmissionListPrint
@@ -294,6 +310,7 @@ const ReportContent = ({
   if (report.printable === "exam-signature-sheet") {
     return (
       <ExamSignatureSheet
+        compact={report.pageColumns === 2}
         hideRegistrationColumn={!report.columns.some((column) => column.key === "registration_no")}
         rows={rows}
         selectedDivisionName={selectedDivisionName}
@@ -305,9 +322,23 @@ const ReportContent = ({
     );
   }
 
+  if (report.printable === "exam-fee-collection-sheet") {
+    return (
+      <ExamFeeCollectionSheet
+        report={report}
+        rows={rows}
+        selectedDivisionName={selectedDivisionName}
+        selectedClassName={selectedClassName}
+        startIndex={startIndex}
+        isFirstPage={isFirstPage}
+      />
+    );
+  }
+
   if (report.printable === "exam-number-sheet") {
     return (
       <ExamNumberSheet
+        compact={report.pageColumns === 2}
         hideRegistrationColumn={!report.columns.some((column) => column.key === "registration_no")}
         rows={rows}
         selectedDivisionName={selectedDivisionName}
@@ -320,10 +351,7 @@ const ReportContent = ({
     );
   }
 
-  if (
-    report.printable === "exam-signature-number-sheet" ||
-    report.printable === "exam-signature-number-sheet-2col"
-  ) {
+  if (report.printable === "exam-signature-number-sheet") {
     return (
       <ExamSignatureNumberSheet
         rows={rows}
@@ -333,7 +361,7 @@ const ReportContent = ({
         isFirstPage={isFirstPage}
         isLastPage={isLastPage}
         hideRegistrationColumn={!report.columns.some((column) => column.key === "registration_no")}
-        hideSignature={report.printable === "exam-signature-number-sheet-2col" && hideSignature}
+        hideSignature={hideSignature}
       />
     );
   }
@@ -343,6 +371,27 @@ const ReportContent = ({
       <div className="overflow-x-auto">
         <ReportTable report={report} rows={rows} startIndex={startIndex} isFirstPage={isFirstPage} />
       </div>
+    </div>
+  );
+};
+
+const ReportContent = (props: ReportContentProps) => {
+  const t = useReportText();
+  const config = getPrintableConfig(props.report);
+  const showFooter = !props.loading && !props.hideSignature && props.isLastPage !== false &&
+    config.kind === "table" && !config.hasFooter &&
+    (props.rows.length > 0 || props.isFirstPage === false);
+
+  return (
+    <div className={props.hideSignature ? "report-signature-hidden" : undefined}>
+      <ReportBody {...props} />
+      {showFooter && (
+        <div className="report-block-signature flex justify-end pt-8 text-black">
+          <div className="w-fit border-t border-black px-2 pt-1 text-center text-base font-semibold">
+            {t.sign.head}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

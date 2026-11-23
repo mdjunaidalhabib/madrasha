@@ -20,10 +20,13 @@ export function setupPlatformBrandIcons({
   name: APP_NAME,
   shortName: APP_SHORT_NAME,
   description: APP_DESCRIPTION,
+  shouldApply = () => true,
 }: {
   name: string;
   shortName: string;
   description: string;
+  /** A signed-in tenant may own the page's branding on a shared admin host. */
+  shouldApply?: () => boolean;
 }) {
   // Last version the server reported. Lets the very first paint (and the manifest
   // the browser reads on load) already carry the right icon instead of flashing
@@ -51,6 +54,10 @@ export function setupPlatformBrandIcons({
   let applied = "\u0000";
 
   function render(version: string | null) {
+    if (!shouldApply()) {
+      applied = "\u0000";
+      return;
+    }
     const source: BrandIconSource | null = version
       ? { base: platformIconBase(), version }
       : null;
@@ -115,4 +122,9 @@ export function setupPlatformBrandIcons({
   }
 
   start();
+  return () => {
+    applied = "\u0000";
+    render(readCache());
+    void refresh();
+  };
 }

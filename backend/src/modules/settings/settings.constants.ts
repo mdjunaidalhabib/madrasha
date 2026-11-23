@@ -92,6 +92,7 @@ export const BRAND_LAYOUT_DEFAULTS = {
   logo_offset_y: 0,
   header_height: null as number | null,
   footer_text: null as string | null,
+  signature_text: null as string | null,
   footer_font_size: 10,
   footer_color: "#334155",
   footer_height: 12,

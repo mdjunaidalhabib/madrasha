@@ -36,7 +36,8 @@ import {
 import { useBrandingStore } from "../../../store/brandingStore";
 import BrandIconPreview, { type BrandIconPreviewItem } from "@madrasha/shared-ui/src/components/brand/BrandIconPreview";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
-import { getText, useText } from "@madrasha/shared-ui/src/i18n";
+import { getText, usePrintText, useText } from "@madrasha/shared-ui/src/i18n";
+import { reportText } from "../../../components/Report/report.text";
 import { brandingText } from "./branding.text";
 import WebsiteContactSettings from "./WebsiteContactSettings";
 
@@ -130,6 +131,7 @@ function ColorPickerRow({
 // affects printed reports (background, header/footer, watermark).
 export default function BrandingSettingsPage({ section = "branding" }: { section?: "branding" | "report" }) {
   const t = useText(brandingText);
+  const defaultSignatureText = usePrintText(reportText).sign.head;
   const isReport = section === "report";
   const pageTitle = isReport ? t.reportTitle : t.title;
   const pageSubtitle = isReport ? t.reportSubtitle : t.subtitle;
@@ -707,6 +709,15 @@ export default function BrandingSettingsPage({ section = "branding" }: { section
             />
           </div>
         </div>
+      </SectionCard>
+
+      <SectionCard title={t.signatureText} hint={t.signatureTextHint}>
+        <InlineTextField
+          label={t.signatureText}
+          value={brandLayout.signature_text?.trim() || defaultSignatureText}
+          placeholder={t.signatureTextPlaceholder}
+          onSave={(value) => patchBranding({ report_brand_layout: { signature_text: value.trim() || null } })}
+        />
       </SectionCard>
 
       <SectionCard title={t.watermark} hint={t.watermarkHint}>

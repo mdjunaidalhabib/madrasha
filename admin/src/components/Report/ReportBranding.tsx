@@ -105,14 +105,14 @@ export function ReportBrandHeader({
   hideLogo = false,
 }: {
   // Set only where this header renders twice per physical page at roughly
-  // half the normal page width (exam-signature-number-sheet-2col - each
+  // half the normal page width (two-column layout - each
   // column becomes its own standalone sheet after cutting). The institution
   // name is measured (canvas, same technique AcademicResultPrint uses for
   // subject-name columns) and shrunk until it's guaranteed to fit on one
   // line within this width, instead of wrapping to two/three lines and
   // eating into the column's already-tight row budget.
   compactMaxWidthPx?: number;
-  // exam-signature-number-sheet-2col only: the logo is dropped there to
+  // two-column layout only: the logo is dropped there to
   // leave more room for a bigger institution name at that narrow width.
   hideLogo?: boolean;
 } = {}) {

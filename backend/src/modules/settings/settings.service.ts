@@ -170,6 +170,16 @@ function mergeBrandLayoutPatch(
     next.footer_text = patch.footer_text?.trim() || null;
   }
 
+  if (patch.signature_text !== undefined) {
+    if (patch.signature_text !== null && typeof patch.signature_text !== "string") {
+      throw new BadRequestError(t({ bn: "স্বাক্ষরের লেখা সঠিক নয়", en: "Invalid signature_text" }));
+    }
+    if (typeof patch.signature_text === "string" && patch.signature_text.length > 150) {
+      throw new BadRequestError(t({ bn: "স্বাক্ষরের লেখা সর্বোচ্চ ১৫০ অক্ষরের হতে পারবে", en: "signature_text must be at most 150 characters" }));
+    }
+    next.signature_text = patch.signature_text?.trim() || null;
+  }
+
   const footerFontSize = parseBoundedNumber(
     patch.footer_font_size,
     BRAND_LAYOUT_LIMITS.footer_font_size,
@@ -336,6 +346,7 @@ const BRAND_LAYOUT_LABELS_BN: Record<keyof BrandLayoutData, { label: string; uni
   logo_offset_y: { label: "লোগো উল্লম্ব সরানো (নিচে+/উপরে−)", unit: "px" },
   header_height: { label: "হেডারের উচ্চতা", unit: "mm" },
   footer_text: { label: "ফুটারের লেখা" },
+  signature_text: { label: "স্বাক্ষরের লেখা" },
   footer_font_size: { label: "ফুটারের ফন্ট সাইজ", unit: "px" },
   footer_color: { label: "ফুটারের রং" },
   footer_height: { label: "ফুটারের উচ্চতা", unit: "mm" },

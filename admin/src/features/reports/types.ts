@@ -18,6 +18,7 @@ export type ReportMenuItem = {
   // default-visible set; ReportShell swaps in the user's own pick before
   // handing the report to the preview/export.
   columnOptions?: ReportColumn[];
+  pageColumns?: 1 | 2;
   groupTitle?: string;
   requiresExam?: boolean;
   // Set on report types whose backend query can get heavy without a
@@ -66,13 +67,14 @@ export type ReportMenuItem = {
     | "academic-result"
     | "class-routine"
     | "student-admission-list"
+    | "student-list"
     | "guardian-phone-list"
     | "teacher-list"
     | "teacher-phone-list"
     | "exam-signature-sheet"
+    | "exam-fee-collection-sheet"
     | "exam-number-sheet"
     | "exam-signature-number-sheet"
-    | "exam-signature-number-sheet-2col"
     | "book-label"
     | "notice-board";
 };

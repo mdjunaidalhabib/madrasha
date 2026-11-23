@@ -50,7 +50,11 @@ createServer(async (req, res) => {
           response.pipe(res);
         },
       );
-      upstream.setTimeout(120000, () => upstream.destroy(new Error("API timeout")));
+      // Admission imports/reviews use a five-minute client timeout. Allow
+      // their response through on institution domains as well.
+      const longAdmissionRequest = /^(POST|PATCH)$/.test(req.method || "") &&
+        /^\/api\/students\/(?:admission\/(?:bulk|approve-bulk|reject-bulk)|\d+\/approve)(?:\?|$)/.test(req.url);
+      upstream.setTimeout(longAdmissionRequest ? 310_000 : 120_000, () => upstream.destroy(new Error("API timeout")));
       upstream.on("error", () => {
         if (!res.headersSent) res.writeHead(502);
         res.end();

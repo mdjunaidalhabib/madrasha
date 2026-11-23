@@ -1,3 +1,4 @@
+import { useReportText } from "../useReportText";
 import { useEffect, useState } from "react";
 import type { ReportColumn } from "../../../features/reports/types";
 import { cachedGet } from "../../../services/api";
@@ -5,7 +6,7 @@ import { pickGradeScale, type ScaleGrade } from "../../ResultPanel/useClassGradi
 import { withoutFailGrades } from "../../ExamPanel/failGrade";
 import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { printCell, printMeritRank, printValue } from "../printFormat";
-import { useIsMadrasa, usePrintText } from "@madrasha/shared-ui/src/i18n";
+import { useIsMadrasa } from "@madrasha/shared-ui/src/i18n";
 import { reportText, type ReportText } from "../report.text";
 import { getSubjectResult } from "@madrasha/shared-ui/src/utils/subjectResult";
 
@@ -20,8 +21,7 @@ type GradeItem = {
 
 const getGradeRange = (grade: GradeItem) => ({
   min: grade.minMark ?? grade.min_mark,
-  max: grade.maxMark ?? grade.max_mark,
-});
+  max: grade.maxMark ?? grade.max_mark });
 
 const sortByMinDesc = (grades: GradeItem[]) =>
   [...grades].sort((a, b) => Number(getGradeRange(b).min ?? 0) - Number(getGradeRange(a).min ?? 0));
@@ -193,8 +193,7 @@ const COLUMN_WEIGHTS: Record<string, number> = {
   madrasa_grade: 1.55,
   status: 1.05,
   rank_no: 1.35,
-  place_no: 1.35,
-};
+  place_no: 1.35 };
 
 const NUMERIC_COLUMN_KEYS = new Set(["roll", "registration_no", "total", "average", "rank_no", "place_no"]);
 
@@ -217,10 +216,9 @@ const AcademicResultPrint = ({
   isLastPage = true,
   repeatHeader = false,
   subjectSourceRows,
-  resultStats,
-}: AcademicResultPrintProps) => {
+  resultStats }: AcademicResultPrintProps) => {
   const [madrasaGrades, setMadrasaGrades] = useState<GradeItem[]>([]);
-  const t = usePrintText(reportText);
+  const t = useReportText();
   const isMadrasa = useIsMadrasa();
 
   const configuredColumns = columns.length ? columns : buildAcademicResultColumns(t);
@@ -296,8 +294,7 @@ const AcademicResultPrint = ({
           key,
           name: subject.subject_name || t.subjectN(toBanglaDigits(index + 1)),
           isMiyari: Boolean(subject.is_miyari),
-          fullMark: Number(subject.full_marks ?? 100) || 100,
-        });
+          fullMark: Number(subject.full_marks ?? 100) || 100 });
       }
     });
   });
@@ -311,8 +308,7 @@ const AcademicResultPrint = ({
       subject.fullMark !== 100
         ? `${subject.name} (${toBanglaDigits(subject.fullMark)})`
         : subject.name,
-    subjectKey: subject.key,
-  }));
+    subjectKey: subject.key }));
 
   const printableColumns = withSubjectColumns<PrintableColumn>(configuredColumns, subjectColumns);
 

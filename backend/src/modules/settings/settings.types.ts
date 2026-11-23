@@ -15,6 +15,7 @@ export interface BrandLayoutData {
   logo_offset_y: number; // px, fine nudge, +down/-up
   header_height: number | null; // mm, null = auto (content-driven, old behaviour)
   footer_text: string | null; // default text footer, null/empty = off
+  signature_text: string | null;
   footer_font_size: number; // px
   footer_color: string; // hex
   footer_height: number; // mm

@@ -6,7 +6,7 @@ export const MM_TO_CSS_PX = 96 / 25.4;
 // on-screen page so it fits the viewport) - never for content-height budget
 // math. Content budgets read the real measured `clientHeight` of a
 // `.print-page-preview` element instead, so they can never drift from the
-// `padding: 10mm / 7mm` rules in index.css.
+// default padding rules in index.css.
 export const getPaperWidthMm = (paperSize: PaperSize, orientation: Orientation) => {
   if (paperSize === "a4") return orientation === "portrait" ? 210 : 297;
   return orientation === "portrait" ? 148 : 210;
@@ -17,22 +17,16 @@ export const getPaperHeightMm = (paperSize: PaperSize, orientation: Orientation)
   return orientation === "portrait" ? 210 : 148;
 };
 
-// Default margin (mm) for each side when the user hasn't customized any of
-// them - matches the old uniform `padding: 10mm / 7mm` rule in index.css.
+// Default margins (mm): 14mm (A4) / 12mm (A5) on top, 10mm on other sides.
 // Independently adjustable per side (see DataExportPrintActions' margin
 // panel) so a report with, say, extra room reserved for a binding hole on
 // the left doesn't have to also waste that space on the right.
 export const getDefaultPageMargins = (paperSize: PaperSize): PageMargins => {
-  const value = paperSize === "a5" ? 7 : 10;
-  return { top: value, right: value, bottom: value, left: value };
+  return { top: paperSize === "a5" ? 12 : 14, right: 10, bottom: 10, left: 10 };
 };
 
-// ২ কলামের স্বাক্ষর ও নম্বরপত্র: উপরে ১৬মিমি; বাকি তিন পাশ কাগজের ডিফল্ট।
-const TWO_COL_SHEET_TOP_MARGIN_MM = 16;
-
 // Per-report default margins (what ReportShell starts with and "ডিফল্ট সেট" resets to).
-export const getReportDefaultMargins = (paperSize: PaperSize, printable?: string): PageMargins => {
+export const getReportDefaultMargins = (paperSize: PaperSize, _printable?: string): PageMargins => {
   const margins = getDefaultPageMargins(paperSize);
-  if (printable === "exam-signature-number-sheet-2col") margins.top = TWO_COL_SHEET_TOP_MARGIN_MM;
   return margins;
 };

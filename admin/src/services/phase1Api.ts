@@ -9,16 +9,22 @@ import api, { cachedGet } from "./api";
 
 /* ================= ADMISSION APPROVAL ================= */
 
+// Approval allocates roll/registration numbers and creates guardians/invoices
+// sequentially. Large selections can outlive the default 20-second timeout.
+const ADMISSION_REVIEW_TIMEOUT_MS = 300_000;
+
 export const admissionApi = {
   listPending: () => cachedGet("/students/admission/pending", undefined, 0),
-  approve: (studentId: number) => api.patch(`/students/${studentId}/approve`),
+  approve: (studentId: number) =>
+    api.patch(`/students/${studentId}/approve`, undefined, { timeout: ADMISSION_REVIEW_TIMEOUT_MS }),
   reject: (studentId: number, reason: string) =>
     api.patch(`/students/${studentId}/reject`, { reason }),
   // Bulk review: one request (and one activity-log row) for the whole
   // selection; data = { succeeded: number[], failed: { id, message }[] }.
-  approveBulk: (studentIds: number[]) => api.patch(`/students/admission/approve-bulk`, { ids: studentIds }),
+  approveBulk: (studentIds: number[]) =>
+    api.patch(`/students/admission/approve-bulk`, { ids: studentIds }, { timeout: ADMISSION_REVIEW_TIMEOUT_MS }),
   rejectBulk: (studentIds: number[], reason: string) =>
-    api.patch(`/students/admission/reject-bulk`, { ids: studentIds, reason }),
+    api.patch(`/students/admission/reject-bulk`, { ids: studentIds, reason }, { timeout: ADMISSION_REVIEW_TIMEOUT_MS }),
   listRejected: () => cachedGet("/students/admission/rejected", undefined, 0),
   permanentlyDeleteRejected: (studentId: number) => api.delete(`/students/${studentId}/rejected-application`),
   permanentlyDeleteRejectedBulk: (studentIds: number[]) =>

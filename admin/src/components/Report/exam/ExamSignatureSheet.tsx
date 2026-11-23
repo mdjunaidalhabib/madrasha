@@ -3,6 +3,7 @@ import { useIsMadrasa, usePrintText } from "@madrasha/shared-ui/src/i18n";
 import { reportText } from "../report.text";
 
 type ExamSignatureSheetProps = {
+  compact?: boolean;
   rows: Record<string, any>[];
   hideRegistrationColumn?: boolean;
   selectedDivisionName?: string;
@@ -15,7 +16,8 @@ type ExamSignatureSheetProps = {
 const value = (row: Record<string, any>, keys: string[], fallback = "") => {
   for (const key of keys) {
     const current = row?.[key];
-    if (current !== null && current !== undefined && current !== "") return printValue(current, key);
+    if (current !== null && current !== undefined && current !== "")
+      return printValue(current, key);
   }
   return fallback;
 };
@@ -43,6 +45,7 @@ const getSelectedSubjectName = (row: Record<string, any>): string => {
 };
 
 const ExamSignatureSheet = ({
+  compact = false,
   hideRegistrationColumn = true,
   rows,
   selectedClassName = "",
@@ -63,40 +66,58 @@ const ExamSignatureSheet = ({
   return (
     <div className="mx-auto w-full bg-white text-black">
       {isFirstPage && (
-      <div className="student-report-heading report-block-heading mb-3 text-center">
-        <h1 className="student-report-title text-xl font-bold">{t.title.examSignatureSheet}</h1>
-        <p className="student-report-subtitle mt-1 text-base font-bold text-black">
-          {examName} - {examYear}
-        </p>
-        <p className="student-report-subtitle mt-1 text-base font-bold text-black">
-          {classCaption} {className}
-        </p>
-        {subjectName && (
+        <div className="student-report-heading report-block-heading mb-3 text-center">
+          <h1 className="student-report-title text-xl font-bold">{t.title.examSignatureSheet}</h1>
           <p className="student-report-subtitle mt-1 text-base font-bold text-black">
-            {t.subjectLabel} {subjectName}
+            {examName} - {examYear}
           </p>
-        )}
-      </div>
+          <p className="student-report-subtitle mt-1 text-base font-bold text-black">
+            {classCaption} {className}
+          </p>
+          {subjectName && (
+            <p className="student-report-subtitle mt-1 text-base font-bold text-black">
+              {t.subjectLabel} {subjectName}
+            </p>
+          )}
+        </div>
       )}
 
       <table
         className={`exam-report-table w-full table-fixed border-collapse border border-black text-center ${isFirstPage ? "" : "mt-6"}`}
       >
         {isFirstPage && (
-        <thead>
-          <tr>
-            <th className="w-14 border border-black px-1 py-2 text-base">{t.col.roll}</th>
-            {!hideRegistrationColumn && (<th className="w-24 border border-black px-1 py-2 text-base">{t.col.regNo}</th>)}
-            <th className="border border-black px-1 py-2 text-base">{t.col.studentName}</th>
-            <th className="w-40 border border-black px-1 py-2 text-base">{t.col.signature}</th>
-          </tr>
-        </thead>
+          <thead>
+            <tr>
+              <th
+                className={`${compact ? "w-[12%]" : "w-14"} border border-black px-1 py-2 text-base`}
+              >
+                {t.col.roll}
+              </th>
+              {!hideRegistrationColumn && (
+                <th
+                  className={`${compact ? "w-[18%]" : "w-24"} border border-black px-1 py-2 text-base`}
+                >
+                  {t.col.regNo}
+                </th>
+              )}
+              <th className="border border-black px-1 py-2 text-base">{t.col.studentName}</th>
+              <th
+                className={`${compact ? "w-[28%]" : "w-40"} border border-black px-1 py-2 text-base`}
+              >
+                {t.col.signature}
+              </th>
+            </tr>
+          </thead>
         )}
         <tbody>
           {rows.map((row, index) => (
             <tr key={`exam-sign-${startIndex + index}-${row.id || row.student_id || index}`}>
               <td className="h-9 border border-black px-1 text-base">{printCell(row, "roll")}</td>
-              {!hideRegistrationColumn && (<td className="h-9 border border-black px-1 text-base">{printCell(row, "registration_no")}</td>)}
+              {!hideRegistrationColumn && (
+                <td className="h-9 border border-black px-1 text-base">
+                  {printCell(row, "registration_no")}
+                </td>
+              )}
               <td className="h-9 border border-black px-2 text-start text-base font-semibold">
                 {printCell(row, "student_name")}
               </td>
@@ -107,11 +128,11 @@ const ExamSignatureSheet = ({
       </table>
 
       {isLastPage && (
-      <div className="exam-report-signature report-block-signature flex justify-end">
-        <div className="w-fit border-t border-black px-4 pt-0.5 text-center text-base font-medium text-black">
-          {t.sign.examController}
+        <div className="exam-report-signature report-block-signature flex justify-end">
+          <div className="w-fit border-t border-black px-4 pt-0.5 text-center text-base font-medium text-black">
+            {t.sign.examController}
+          </div>
         </div>
-      </div>
       )}
     </div>
   );

@@ -9,10 +9,10 @@ type ExamSignatureNumberSheetProps = {
   startIndex?: number;
   isFirstPage?: boolean;
   isLastPage?: boolean;
-  // exam-signature-number-sheet-2col only: dropped there to leave more room
+  // two-column layout only: dropped there to leave more room
   // in the already-narrow column.
   hideRegistrationColumn?: boolean;
-  // exam-signature-number-sheet-2col only: the user can drop the bottom
+  // two-column layout only: the user can drop the bottom
   // "পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর" line when space is tight.
   hideSignature?: boolean;
 };
@@ -27,7 +27,7 @@ const value = (row: Record<string, any>, keys: string[], fallback = "") => {
 
 // Percentage (not fixed px) widths so this table degrades gracefully at any
 // container width - the plain single-column report AND the narrower
-// exam-signature-number-sheet-2col column both render off the same
+// two-column layout column both render off the same
 // component, and a fixed-px column set that fits the full page width would
 // overflow a half-width column.
 const COLUMN_WIDTH_PERCENT = {

@@ -1,7 +1,6 @@
+import { useReportText } from "../../useReportText";
 import { toBanglaDigits } from "@madrasha/shared-ui/src/utils/reportUtils";
 import { printCell } from "../../printFormat";
-import { usePrintText } from "@madrasha/shared-ui/src/i18n";
-import { reportText } from "../../report.text";
 
 type Props = {
   row: Record<string, any>;
@@ -9,7 +8,7 @@ type Props = {
 };
 
 const IdCardArch = ({ row, madrasaName }: Props) => {
-  const t = usePrintText(reportText);
+  const t = useReportText();
   return (
   <div className="print-page-break flex h-[85.6mm] w-[54mm] flex-col overflow-hidden rounded-lg border-2 border-[#1e5c3f] bg-[#f3ecd8] p-[1.2mm]">
     <div className="flex flex-1 flex-col overflow-hidden rounded-[4px] border border-[#cdb96f]">

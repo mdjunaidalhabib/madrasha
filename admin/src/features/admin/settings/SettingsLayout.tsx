@@ -12,6 +12,7 @@ import {
   Package,
   Trash2,
   Info,
+  Download,
 } from "lucide-react";
 import { prefetchAdminRoute } from "../../../app/routePrefetch";
 import { useAuthStore } from "../../../store/authStore";
@@ -25,16 +26,17 @@ import { sidebarText } from "../../../components/sidebar/sidebar.text";
 // reach, via its own `disabled` flag from sidebar.service.ts).
 const SETTINGS_NAV_ITEMS: {
   key: string;
-  label: "profileSettings" | "branding" | "reportDesign" | "paymentMethods" | "staffManagement" | "rolesPermissions" | "plan" | "trash" | "about";
+  label: "profileSettings" | "branding" | "reportDesign" | "paymentMethods" | "staffManagement" | "rolesPermissions" | "plan" | "trash" | "about" | "appInstaller";
   icon: typeof Settings2;
   module?: string;
   permission?: string;
   // Absolute override for entries that don't live under /settings/*.
   path?: string;
 }[] = [
-  { key: "profile", label: "profileSettings", icon: UserCog },
   { key: "branding", label: "branding", icon: Paintbrush, module: "settings", permission: "settings.manage" },
+  { key: "app-install", label: "appInstaller", icon: Download },
   { key: "report-design", label: "reportDesign", icon: FileText, module: "settings", permission: "settings.manage" },
+  { key: "profile", label: "profileSettings", icon: UserCog },
   { key: "payment-methods", label: "paymentMethods", icon: CreditCard, module: "settings" },
   { key: "users", label: "staffManagement", icon: Users, module: "settings", permission: "users.read" },
   { key: "roles", label: "rolesPermissions", icon: ShieldCheck, module: "settings", permission: "roles.manage" },
