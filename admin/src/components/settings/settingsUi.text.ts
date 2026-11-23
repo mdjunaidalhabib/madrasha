@@ -3,11 +3,13 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 /** Shared settings building blocks (inline fields, image boxes, toggles). */
 export const settingsUiText = defineText({
   bn: {
+    uploadFailed: "ছবি আপলোড হয়নি। আবার চেষ্টা করুন।",
+    fileLimits: (kb: string) => `ইনপুট সর্বোচ্চ ১০ MB · সেভ হওয়ার পরে সর্বোচ্চ ${kb} KB`,
     notAdded: "যোগ করা হয়নি",
     editTitle: "সম্পাদনা",
     addAnother: "আরেকটি যোগ করুন",
     cannotBeEmpty: (label: string) => `${label} খালি রাখা যাবে না।`,
-    onlyPngJpg: "শুধু PNG, JPG বা JPEG ছবি আপলোড করা যাবে",
+    onlyPngJpg: "শুধু PNG, JPG, JPEG বা WebP ছবি আপলোড করা যাবে",
     maxImageSize: (mb: string) => `ছবির সাইজ ${mb}MB এর কম হতে হবে`,
     ratioWide: "অনুপাত ১৬:৯",
     ratioSquare: "অনুপাত ১:১",
@@ -38,11 +40,13 @@ export const settingsUiText = defineText({
     anyLink: "যেকোনো লিংক (https://...)",
   },
   en: {
+    uploadFailed: "Image upload failed. Please try again.",
+    fileLimits: (kb) => `Input up to 10 MB · Stored image up to ${kb} KB`,
     notAdded: "Not added",
     editTitle: "Edit",
     addAnother: "Add another",
     cannotBeEmpty: (label) => `${label} cannot be empty.`,
-    onlyPngJpg: "Only PNG, JPG or JPEG images can be uploaded",
+    onlyPngJpg: "Only PNG, JPG, JPEG or WebP images can be uploaded",
     maxImageSize: (mb) => `Image size must be under ${mb}MB`,
     ratioWide: "Ratio 16:9",
     ratioSquare: "Ratio 1:1",

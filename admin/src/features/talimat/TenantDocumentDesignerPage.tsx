@@ -11,12 +11,20 @@ import { FIELD_BINDINGS } from "@madrasha/shared-ui/src/components/DocumentDesig
 import { urlSlugToDocumentType, DOCUMENT_TYPE_LABELS_BN } from "@madrasha/shared-ui/src/components/DocumentDesigner/documentTypeMap";
 import { getTemplate, getPreviewData, saveDraft, publishTemplate } from "../../services/documentTemplateLibraryApi";
 import { uploadApi } from "../../services/phase4Api";
+import { readImageUploadFile } from "@madrasha/shared-ui/src/utils/imageUpload";
+
 import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
 import type { TemplateVersionDto } from "../../services/documentTemplateLibraryApi";
 import { useText } from "@madrasha/shared-ui/src/i18n";
 import { documentTemplatesText } from "./documentTemplates.text";
+
+async function uploadDesignerImage(file: File) {
+  const res = await uploadApi.uploadImage(await readImageUploadFile(file), "document-templates");
+  if (!res.data.data.uploaded || !res.data.data.url) throw new Error("Image upload failed");
+  return res.data.data.url;
+}
 
 /** Normalized content fingerprint used to tell whether the live editor
  * state actually differs from a given version - order-independent JSON key
@@ -190,16 +198,7 @@ export default function TenantDocumentDesignerPage() {
         onChangeSize={designer.setCanvasSize}
         background={designer.state.background}
         onChangeBackground={designer.setBackground}
-        onUploadBackgroundImage={async (file) => {
-          const dataUrl: string = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-          const res = await uploadApi.uploadImage(dataUrl, "document-templates");
-          return res.data.data.uploaded ? res.data.data.url! : dataUrl;
-        }}
+        onUploadBackgroundImage={uploadDesignerImage}
         onSaveDraft={handleSaveDraft}
         saving={saving}
         onPublish={handlePublish}
@@ -251,7 +250,7 @@ export default function TenantDocumentDesignerPage() {
           />
         </div>
 
-        <PropertyInspector layer={selectedLayer} fieldBindings={fieldBindings} onChange={(patch) => {
+        <PropertyInspector onUploadImage={uploadDesignerImage} layer={selectedLayer} fieldBindings={fieldBindings} onChange={(patch) => {
           if (selectedLayer) designer.updateLayer(selectedLayer.id, patch);
         }} />
       </div>

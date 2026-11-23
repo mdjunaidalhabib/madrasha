@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
+import { withImageLifecycle } from "../storage/image-lifecycle.middleware";
 
 dotenv.config();
 
@@ -10,11 +11,13 @@ declare global {
   var __prisma: PrismaClient | undefined;
 }
 
-export const prisma =
+// This query-only extension adds no model/result/client methods. Keep the
+// existing PrismaClient/TransactionClient contract used by repositories.
+export const prisma: PrismaClient =
   global.__prisma ||
-  new PrismaClient({
+  withImageLifecycle(new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-  });
+  })) as unknown as PrismaClient;
 
 if (process.env.NODE_ENV !== "production") {
   global.__prisma = prisma;

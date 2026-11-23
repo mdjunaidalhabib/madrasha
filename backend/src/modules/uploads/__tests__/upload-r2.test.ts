@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import sharp from "sharp";
 
 vi.mock("../../../shared/database/prisma", () => ({ prisma: {} }));
+vi.mock("../../../shared/storage/image-references", () => ({ findReferencedImageKeys: vi.fn(async () => new Set<string>()) }));
 
 const { creds, resolveStorageCredentials, putObject, deleteObject } = vi.hoisted(() => {
   const creds = {
@@ -30,6 +31,7 @@ vi.mock("../../../shared/storage/r2.service", async (importOriginal) => {
 import { uploadService } from "../upload.service";
 import { safeSegment, tenantPrefix } from "../../../shared/storage/r2.service";
 import { PROFILE_PHOTO_PRESET } from "../../../shared/storage/image-processing";
+import { findReferencedImageKeys } from "../../../shared/storage/image-references";
 
 const pngDataUri = async (width: number, height: number) => {
   const buf = await sharp({ create: { width, height, channels: 3, background: { r: 200, g: 100, b: 50 } } })
@@ -44,6 +46,7 @@ beforeEach(() => {
   putObject.mockClear();
   deleteObject.mockClear();
   resolveStorageCredentials.mockResolvedValue(creds);
+  vi.mocked(findReferencedImageKeys).mockResolvedValue(new Set());
 });
 
 describe("upload to R2", () => {
@@ -78,10 +81,7 @@ describe("upload to R2", () => {
     expect((putObject.mock.calls[0] as unknown as [unknown, string])[1]).toMatch(/^madrasas\/darul-uloom\/misc\//);
 
     resolveStorageCredentials.mockResolvedValue(null);
-    await expect(uploadService.uploadImage(tenant, { image: await pngDataUri(10, 10) })).resolves.toMatchObject({
-      uploaded: false,
-      configured: false,
-    });
+    await expect(uploadService.uploadImage(tenant, { image: await pngDataUri(10, 10) })).rejects.toThrow();
   });
 
   it("rejects non-images", async () => {
@@ -91,6 +91,18 @@ describe("upload to R2", () => {
 });
 
 describe("delete from R2", () => {
+  it("protects files still used by any saved record or template version", async () => {
+    const key = "madrasas/darul-uloom/students/2026/10/x.webp";
+    vi.mocked(findReferencedImageKeys).mockResolvedValue(new Set([key]));
+    await expect(uploadService.deleteImage(tenant, { public_id: key })).resolves.toEqual({ deleted: false, reason: "in_use" });
+    expect(deleteObject).not.toHaveBeenCalled();
+  });
+
+  it("does not delete if the database reference check fails", async () => {
+    vi.mocked(findReferencedImageKeys).mockRejectedValueOnce(new Error("database unavailable"));
+    await expect(uploadService.deleteImage(tenant, { public_id: "madrasas/darul-uloom/students/x.webp" })).rejects.toThrow("database unavailable");
+    expect(deleteObject).not.toHaveBeenCalled();
+  });
   it("deletes inside the madrasa's own prefix", async () => {
     await expect(
       uploadService.deleteImage(tenant, { public_id: "madrasas/darul-uloom/students/2026/10/x.webp" }),

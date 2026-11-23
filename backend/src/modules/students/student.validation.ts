@@ -48,8 +48,7 @@ export const studentInactiveSchema = z.object({
 
 /**
  * Body shape for the dedicated photo manager (ছবি আপলোড) - sets ONLY the
- * student's photo. `image` is a hosted URL or (when cloud storage isn't
- * configured) a base64 data-URI, so the cap is generous; null/"" removes it.
+ * student's photo. Only hosted HTTPS URLs are stored; null/"" removes it.
  */
 export const studentPhotoSchema = z.object({
   params: z.object({ id: z.coerce.number().int().positive() }),
@@ -57,8 +56,8 @@ export const studentPhotoSchema = z.object({
     image: z
       .string()
       .trim()
-      .max(3_000_000)
-      .refine((v) => v === "" || /^(https?:\/\/|data:image\/)/i.test(v), vmsg({ bn: "ছবি সঠিক নয়", en: "Invalid image" }))
+      .max(2048)
+      .refine((v) => v === "" || /^https:\/\//i.test(v), vmsg({ bn: "ছবি সঠিক নয়", en: "Invalid image" }))
       .nullable(),
   }),
 });

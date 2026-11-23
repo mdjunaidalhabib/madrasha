@@ -12,10 +12,8 @@ type Props = {
   value: string | null | undefined;
   onChange: (dataUrl: string) => void;
   onRemove: () => void;
-  /** Fires once the upload attempt for a newly picked file settles - the
-   * hosted URL on success, or null if cloud storage rejected it / isn't
-   * configured (the base64 set via onChange is kept as a fallback then). */
-  onUploaded?: (url: string | null) => void;
+  /** Hosted URL on success; null on failure. onChange only receives hosted URLs. */
+  onUploaded?: (url: string | null) => void | Promise<void>;
   onUploadingChange?: (uploading: boolean) => void;
   shape?: "square" | "wide";
   imageFit?: "contain" | "cover";
@@ -33,8 +31,7 @@ type Props = {
   resizeTo?: { width: number; height: number };
 };
 
-const MAX_SIZE = 2 * 1024 * 1024; // 2MB
-const RESIZED_MAX_SIZE = 8 * 1024 * 1024; // 8MB - looser cap when resizeTo will shrink it anyway
+const MAX_SIZE = 10 * 1024 * 1024;
 
 /** Center-crops `src` to the target aspect ratio (cover-fit, never
  * stretched) then scales to exactly width x height, returning a JPEG
@@ -89,6 +86,7 @@ export default function BrandImageBox({
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
   const t = useText(settingsUiText);
   const c = useText(commonText);
 
@@ -101,16 +99,16 @@ export default function BrandImageBox({
     const file = e.target.files?.[0];
     if (!file || uploading) return;
 
-    const allowedTypes = ["image/png", "image/jpeg"];
+    const allowedTypes = ["image/png", "image/jpeg", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
       useToastStore.getState().show(getText(settingsUiText).onlyPngJpg, "error");
       return;
     }
 
-    if (file.size > (resizeTo ? RESIZED_MAX_SIZE : MAX_SIZE)) {
+    if (file.size > MAX_SIZE) {
       useToastStore.getState().show(
         getText(settingsUiText).maxImageSize(
-          localizeDigits(resizeTo ? RESIZED_MAX_SIZE / (1024 * 1024) : MAX_SIZE / (1024 * 1024), getLang()),
+          localizeDigits(MAX_SIZE / (1024 * 1024), getLang()),
         ),
         "error"
       );
@@ -120,6 +118,7 @@ export default function BrandImageBox({
     const reader = new FileReader();
     updateUploading(true);
     reader.onerror = () => {
+      useToastStore.getState().show(getText(settingsUiText).uploadFailed, "error");
       onUploaded?.(null);
       updateUploading(false);
     };
@@ -132,22 +131,24 @@ export default function BrandImageBox({
           logger.error("IMAGE RESIZE ERROR:", err);
         }
       }
-      onChange(base64);
+      setPreview(base64);
 
       try {
         const res = await uploadApi.uploadImage(base64, folder);
         const data = res.data?.data;
         if (data?.uploaded && data.url) {
           onChange(data.url);
-          onUploaded?.(data.url);
+          await onUploaded?.(data.url);
         } else {
-          // cloud storage not configured yet - keep the base64 already set.
-          onUploaded?.(null);
+          throw new Error(getText(settingsUiText).uploadFailed);
         }
       } catch (err) {
         logger.error("BRANDING IMAGE UPLOAD ERROR:", err);
-        onUploaded?.(null);
+        const error = err as { response?: { data?: { message?: string } }; message?: string };
+        useToastStore.getState().show(error.response?.data?.message || error.message || getText(settingsUiText).uploadFailed, "error");
+        await onUploaded?.(null);
       } finally {
+        setPreview(null);
         updateUploading(false);
       }
     };
@@ -162,6 +163,9 @@ export default function BrandImageBox({
     <div className={variant === "gallery" ? "min-w-0" : "rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"}>
       <p className="font-semibold text-gray-900 dark:text-slate-100">{label}</p>
       {hint && <p className="mt-0.5 text-xs leading-relaxed text-gray-500 dark:text-slate-400">{hint}</p>}
+      <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+        {t.fileLimits(localizeDigits(["students", "teachers", "staff", "profile"].includes(folder) ? 80 : folder === "branding" ? 300 : ["certificates", "document-templates"].includes(folder) ? 1024 : 250, getLang()))}
+      </p>
 
       <div
         onClick={() => { if (!uploading) fileRef.current?.click(); }}
@@ -175,7 +179,7 @@ export default function BrandImageBox({
           variant === "gallery" ? `${shape === "wide" ? "aspect-[21/9]" : "aspect-square"} w-full rounded-2xl border-indigo-200 bg-white dark:border-indigo-800 dark:bg-slate-900` : shape === "wide" ? "h-28 w-full" : "h-32 w-32"
         }`}
         style={{
-          backgroundImage: value ? `url(${value})` : "none",
+          backgroundImage: preview || value ? `url(${preview || value})` : "none",
           backgroundSize: imageFit,
           backgroundRepeat: "no-repeat",
           backgroundPosition: "center",
@@ -225,7 +229,7 @@ export default function BrandImageBox({
         ref={fileRef}
         hidden
         disabled={uploading}
-        accept="image/png,image/jpeg"
+        accept="image/png,image/jpeg,image/webp"
         onChange={handleFile}
       />
     </div>

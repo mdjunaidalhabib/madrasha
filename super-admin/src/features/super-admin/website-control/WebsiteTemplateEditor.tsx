@@ -206,13 +206,13 @@ function TemplateFieldEditor({
     if (!file) return;
     setUploadError("");
     if (
-      !/^image\/(jpeg|png|webp|gif)$/.test(file.type) ||
+      !/^image\/(jpeg|png|webp)$/.test(file.type) ||
       file.size > 10 * 1024 * 1024
     ) {
       setUploadError(
         bn
-          ? "১০ MB-এর মধ্যে JPG, PNG, WebP অথবা GIF ছবি দিন।"
-          : "Choose a JPG, PNG, WebP or GIF image up to 10 MB.",
+          ? "১০ MB-এর মধ্যে স্থির JPG, PNG বা WebP ছবি দিন।"
+          : "Choose a still JPG, PNG or WebP image up to 10 MB.",
       );
       return;
     }
@@ -290,7 +290,7 @@ function TemplateFieldEditor({
           <input
             ref={fileInput}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
+            accept="image/jpeg,image/png,image/webp"
             className="hidden"
             aria-label={bn ? `${field.bn} আপলোড` : `Upload ${field.en}`}
             onChange={(e) => void upload(e.target.files?.[0])}

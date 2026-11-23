@@ -4,6 +4,7 @@ import { defineText } from "../../i18n";
  * template content is data and lives in the templates themselves. */
 export const designerText = defineText({
   bn: {
+    imageLimits: "ইনপুট সর্বোচ্চ ১০ MB · সেভ হওয়ার পরে সর্বোচ্চ ১ MB",
     // Document types (BackendDocumentType -> label)
     documentTypes: {
       ID_CARD: "আইডি কার্ড",
@@ -131,6 +132,7 @@ export const designerText = defineText({
     resetDemo: "মূল ডেটায় ফিরিয়ে নিন",
   },
   en: {
+    imageLimits: "Input up to 10 MB · Stored image up to 1 MB",
     documentTypes: {
       ID_CARD: "ID Card",
       ADMIT_CARD: "Admit Card",

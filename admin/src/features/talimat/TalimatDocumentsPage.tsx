@@ -5,6 +5,8 @@ import PageHeader from "@madrasha/shared-ui/src/components/ui/PageHeader";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
 import { SkeletonCard } from "@madrasha/shared-ui/src/components/ui/Skeleton";
 import { saveDocumentTemplates } from "../../services/documentTemplateApi";
+import { uploadApi } from "../../services/phase4Api";
+import { readImageUploadFile } from "@madrasha/shared-ui/src/utils/imageUpload";
 import { useDocumentTemplateStore } from "../../store/documentTemplateStore";
 import { useBrandingStore } from "../../store/brandingStore";
 import { useIdCardDesignStore } from "../../store/idCardDesignStore";
@@ -290,6 +292,7 @@ export default function TalimatDocumentsPage() {
   const [designKey, setDesignKey] = useState<IdCardDesignKey>("classic");
   const [customBg, setCustomBg] = useState<string | null>(null);
   const [designSaving, setDesignSaving] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
   const [designMessage, setDesignMessage] = useState("");
   const [designError, setDesignError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -398,23 +401,24 @@ export default function TalimatDocumentsPage() {
     onLoaded: (dataUrl: string) => void,
   ) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    e.target.value = "";
+    if (!file || imageUploading) return;
 
     setError2("");
 
-    if (!["image/png", "image/jpeg"].includes(file.type)) {
-      setError2(tx.onlyPngJpg);
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setError2(tx.maxSize);
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => onLoaded(reader.result as string);
-    reader.readAsDataURL(file);
-    e.target.value = "";
+    setImageUploading(true);
+    void (async () => {
+      try {
+        const result = await uploadApi.uploadImage(await readImageUploadFile(file), "document-templates");
+        if (!result.data.data.url) throw new Error(tx.saveFailed);
+        onLoaded(result.data.data.url);
+      } catch (error) {
+        const detail = error as { response?: { data?: { message?: string } }; message?: string };
+        setError2(detail.response?.data?.message || detail.message || tx.saveFailed);
+      } finally {
+        setImageUploading(false);
+      }
+    })();
   };
 
   const handleBackgroundFile = (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -429,6 +433,7 @@ export default function TalimatDocumentsPage() {
   };
 
   const handleSaveIdCardDesign = async () => {
+    if (imageUploading) return;
     setDesignMessage("");
     setDesignError("");
     setDesignSaving(true);
@@ -468,6 +473,7 @@ export default function TalimatDocumentsPage() {
   };
 
   const handleSaveAdmitCardDesign = async () => {
+    if (imageUploading) return;
     setAdmitDesignMessage("");
     setAdmitDesignError("");
     setAdmitDesignSaving(true);
@@ -508,6 +514,7 @@ export default function TalimatDocumentsPage() {
   };
 
   const handleSaveLetterDesign = async () => {
+    if (imageUploading) return;
     setLetterDesignMessage("");
     setLetterDesignError("");
     setLetterDesignSaving(true);
@@ -761,7 +768,8 @@ export default function TalimatDocumentsPage() {
                     type="file"
                     ref={fileRef}
                     hidden
-                    accept="image/png,image/jpeg"
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={imageUploading}
                     onChange={handleBackgroundFile}
                   />
                 </div>
@@ -771,7 +779,7 @@ export default function TalimatDocumentsPage() {
                 {tx.customDesignHint}
               </p>
 
-              <Button disabled={designSaving} onClick={handleSaveIdCardDesign}>
+              <Button disabled={designSaving || imageUploading} onClick={handleSaveIdCardDesign}>
                 {designSaving ? tx.saving : tx.saveDesign}
               </Button>
             </div>
@@ -846,13 +854,14 @@ export default function TalimatDocumentsPage() {
                     type="file"
                     ref={admitFileRef}
                     hidden
-                    accept="image/png,image/jpeg"
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={imageUploading}
                     onChange={handleAdmitBackgroundFile}
                   />
                 </div>
               </div>
 
-              <Button disabled={admitDesignSaving} onClick={handleSaveAdmitCardDesign}>
+              <Button disabled={admitDesignSaving || imageUploading} onClick={handleSaveAdmitCardDesign}>
                 {admitDesignSaving ? tx.saving : tx.saveDesign}
               </Button>
             </div>
@@ -943,13 +952,14 @@ export default function TalimatDocumentsPage() {
                     type="file"
                     ref={letterFileRef}
                     hidden
-                    accept="image/png,image/jpeg"
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={imageUploading}
                     onChange={handleLetterBackgroundFile}
                   />
                 </div>
               </div>
 
-              <Button disabled={letterDesignSaving} onClick={handleSaveLetterDesign}>
+              <Button disabled={letterDesignSaving || imageUploading} onClick={handleSaveLetterDesign}>
                 {letterDesignSaving ? tx.saving : tx.saveDesign}
               </Button>
             </div>

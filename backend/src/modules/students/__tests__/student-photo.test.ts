@@ -52,14 +52,15 @@ describe("studentPhotoSchema", () => {
   const parse = (image: unknown) =>
     studentPhotoSchema.safeParse({ params: { id: "3" }, body: { image } }).success;
 
-  it("accepts hosted URLs, data-URIs, empty and null", () => {
+  it("accepts hosted URLs, empty and null", () => {
     expect(parse("https://files.example.com/madrasas/x/students/a.webp")).toBe(true);
-    expect(parse("data:image/jpeg;base64,AAAA")).toBe(true);
     expect(parse("")).toBe(true);
     expect(parse(null)).toBe(true);
   });
 
   it("rejects anything else", () => {
+    expect(parse("data:image/jpeg;base64,AAAA")).toBe(false);
+    expect(parse("http://files.example.com/image.webp")).toBe(false);
     expect(parse("javascript:alert(1)")).toBe(false);
     expect(parse(undefined)).toBe(false);
     expect(parse(42)).toBe(false);

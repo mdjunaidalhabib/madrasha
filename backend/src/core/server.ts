@@ -2,6 +2,7 @@ import app from "./app";
 import { config } from "../shared/config";
 import { logger } from "../shared/logger/logger";
 import { syncStartupSuperAdmin } from "./superadmin-bootstrap";
+import { startImageCleanupScheduler } from "../shared/storage/image-cleanup";
 import {
   verifyDatabaseConnection,
   registerGracefulShutdown,
@@ -26,6 +27,7 @@ async function start() {
 
   registerGracefulShutdown(server);
   startTrashPurgeScheduler();
+  startImageCleanupScheduler();
   startActivityLogPurgeScheduler();
   startMessageSubscriptionExpirySync();
   startRefreshTokenPurgeScheduler();

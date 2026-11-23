@@ -1,26 +1,21 @@
 import { IStorageProvider } from "./storage-provider.interface";
-import { uploadConfig } from "../config/upload.config";
 
 /**
- * Current (and only) storage provider: validates base64 `data:image/...`
- * URIs and persists them exactly as received. This is the behavior the
- * settings module (branding logo/banner/watermark) already relies on -
- * extracted here unchanged so it can be swapped for a real object-storage
- * provider later without touching controllers/services.
- *
- * Also accepts `https://` URLs: the shared upload widget (BrandImageBox)
- * uploads to R2 and hands back a hosted URL rather than a base64
- * data URI whenever cloud storage is configured, so a value
- * arriving here can legitimately be either form.
+ * Historical class name retained for imports. New writes accept hosted HTTPS
+ * images only; upload.service processes and stores their binary data in R2.
+ * Existing inline rows remain readable, but must be re-uploaded when changed.
  */
 export class InlineBase64StorageProvider implements IStorageProvider {
   isValidImage(value: unknown): value is string | null {
     if (value === null || value === undefined || value === "") return true;
     if (typeof value !== "string") return false;
-    if (value.startsWith("https://")) return true;
-    if (!value.startsWith(uploadConfig.allowedImagePrefix)) return false;
-    if (value.length > uploadConfig.maxInlineImageLength) return false;
-    return true;
+    if (value.length > 2048) return false;
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && !url.username && !url.password;
+    } catch {
+      return false;
+    }
   }
 
   persistImage(value: string | null): string | null {

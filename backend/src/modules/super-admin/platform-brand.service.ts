@@ -77,10 +77,13 @@ export const platformBrandService = {
       png = await sharp(input, { limitInputPixels: 50_000_000, density: 300 })
         .rotate()
         .resize({ width: MASTER_MAX_SIDE, height: MASTER_MAX_SIDE, fit: "inside", withoutEnlargement: true })
-        .png()
+        .png({ compressionLevel: 9, palette: true, quality: 90 })
         .toBuffer();
     } catch {
       throw new BadRequestError(t({ bn: "ছবিটি পড়া যায়নি, অন্য ছবি দিন", en: "Could not read the image, please try another one" }));
+    }
+    if (png.length > 300 * 1024) {
+      throw new BadRequestError(t({ bn: "লোগোটি ৩০০ KB-এর মধ্যে কমপ্রেস করা যায়নি। ছোট ছবি দিন।", en: "Logo could not be compressed below 300 KB. Choose a smaller image." }));
     }
     const logo = `data:image/png;base64,${png.toString("base64")}`;
 

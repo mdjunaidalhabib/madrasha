@@ -5,6 +5,7 @@ import EditableCanvas from "@madrasha/shared-ui/src/components/DocumentDesigner/
 import LayerPanel from "@madrasha/shared-ui/src/components/DocumentDesigner/panels/LayerPanel";
 import PropertyInspector from "@madrasha/shared-ui/src/components/DocumentDesigner/panels/PropertyInspector";
 import Toolbar from "@madrasha/shared-ui/src/components/DocumentDesigner/Toolbar";
+import { readImageUploadFile } from "@madrasha/shared-ui/src/utils/imageUpload";
 import DemoDataModal from "@madrasha/shared-ui/src/components/DocumentDesigner/DemoDataModal";
 import { useDesignerState } from "@madrasha/shared-ui/src/components/DocumentDesigner/useDesignerState";
 import { FIELD_BINDINGS } from "@madrasha/shared-ui/src/components/DocumentDesigner/fieldBindings";
@@ -178,16 +179,7 @@ export default function SuperAdminDocumentTemplateEditorPage() {
         onChangeSize={designer.setCanvasSize}
         background={designer.state.background}
         onChangeBackground={designer.setBackground}
-        onUploadBackgroundImage={async (file) => {
-          const dataUrl: string = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-          const result = await uploadSystemTemplateBackground(dataUrl);
-          return result.url;
-        }}
+        onUploadBackgroundImage={async (file) => (await uploadSystemTemplateBackground(await readImageUploadFile(file))).url}
         onSaveDraft={handleSaveDraft}
         saving={saving}
         onPublish={handlePublish}
@@ -242,6 +234,7 @@ export default function SuperAdminDocumentTemplateEditorPage() {
         </div>
 
         <PropertyInspector
+          onUploadImage={async (file) => (await uploadSystemTemplateBackground(await readImageUploadFile(file))).url}
           layer={selectedLayer}
           fieldBindings={fieldBindings}
           onChange={(patch) => {

@@ -114,13 +114,14 @@ export interface UploadImageResponse {
   configured: boolean;
   url: string | null;
   public_id: string | null;
+  bytes: number;
+  max_bytes: number;
 }
 
 export const uploadApi = {
   /** Uploads a base64 data-URI image (server resizes it to WebP and stores
-   * it in R2 under this madrasa's folder). If cloud storage
-   * isn't configured yet (`configured: false`), the caller should keep
-   * using the base64 string it already has instead of `url`. */
+   * it in R2 under this madrasa's folder). Failures must never be saved
+   * as inline base64 images. */
   uploadImage: (image: string, folder: UploadFolder = "misc") =>
     api.post<{ success: boolean; data: UploadImageResponse }>("/uploads/image", { image, folder }),
 

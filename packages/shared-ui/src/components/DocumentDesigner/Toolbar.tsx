@@ -175,8 +175,9 @@ const Toolbar = ({
           try {
             const url = await onUploadBackgroundImage(file);
             onChangeBackground({ ...background, image: url, fit: background?.fit || "cover" });
-          } catch {
-            useToastStore.getState().show(getText(designerText).bgUploadFailed, "error");
+          } catch (error) {
+            const detail = error as { response?: { data?: { message?: string } }; message?: string };
+            useToastStore.getState().show(detail.response?.data?.message || detail.message || getText(designerText).bgUploadFailed, "error");
           } finally {
             setUploadingBg(false);
           }
@@ -193,6 +194,7 @@ const Toolbar = ({
           </>
         )}
       </Button>
+      <span className="text-[10px] text-slate-500 dark:text-slate-400">{t.imageLimits}</span>
       {background?.image && (
         <button
           type="button"

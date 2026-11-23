@@ -45,6 +45,10 @@ function cropToPortrait(
 
 /** Reads a picked file and normalizes it to the same 3:4 JPEG. */
 export function fileToPortraitDataUrl(file: File): Promise<string> {
+  if (file.size > 10 * 1024 * 1024) return Promise.reject(new Error(getText(photoText).maxFileSize));
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    return Promise.reject(new Error(getText(photoText).readFailed));
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(reader.error);
@@ -310,13 +314,22 @@ const PhotoPicker: React.FC<PhotoPickerProps> = ({
   const fileRef = useRef<HTMLInputElement>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
 
   const accept = async (dataUrl: string) => {
-    onChange(dataUrl); // instant preview + fallback value
+    if (uploading) return;
+    setPreview(dataUrl);
     setUploading(true);
-    const url = upload ? await upload(dataUrl) : dataUrl;
-    if (url !== dataUrl) onChange(url);
-    setUploading(false);
+    try {
+      const url = upload ? await upload(dataUrl) : dataUrl;
+      onChange(url);
+    } catch (error) {
+      const message = (error as { response?: { data?: { message?: string } }; message?: string });
+      useToastStore.getState().show(message.response?.data?.message || message.message || getText(photoText).uploadFailed, "error");
+    } finally {
+      setPreview(null);
+      setUploading(false);
+    }
   };
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -327,7 +340,7 @@ const PhotoPicker: React.FC<PhotoPickerProps> = ({
       await accept(await fileToPortraitDataUrl(file));
     } catch (err) {
       logger.error("PHOTO READ ERROR:", err);
-      useToastStore.getState().show(getText(photoText).readFailed, "error");
+      useToastStore.getState().show((err as Error).message || getText(photoText).readFailed, "error");
     }
   };
 
@@ -339,8 +352,8 @@ const PhotoPicker: React.FC<PhotoPickerProps> = ({
       className={`flex ${layout === "row" ? "items-center gap-4" : "flex-col items-center gap-3"} ${className}`}
     >
       <div className="relative h-[104px] w-[78px] shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-        {value ? (
-          <img src={value} alt="" className="h-full w-full object-cover" />
+        {preview || value ? (
+          <img src={preview || value || ""} alt="" className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-slate-300 dark:text-slate-600">
             <User className="h-10 w-10" strokeWidth={1.5} />
@@ -358,6 +371,7 @@ const PhotoPicker: React.FC<PhotoPickerProps> = ({
         <div className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">
           {uploading ? pt.uploading : hint ?? pt.hint}
         </div>
+        <div className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">{pt.maxFileSize}</div>
         <div className={`flex flex-wrap gap-2 ${layout === "stack" ? "justify-center" : ""}`}>
           <button
             type="button"
@@ -389,7 +403,7 @@ const PhotoPicker: React.FC<PhotoPickerProps> = ({
         </div>
       </div>
 
-      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} className="hidden" onChange={onFile} />
       <CameraCaptureModal open={cameraOpen} onClose={() => setCameraOpen(false)} onCapture={accept} />
     </div>
   );

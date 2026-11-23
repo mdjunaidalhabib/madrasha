@@ -3,6 +3,8 @@ import Button from "../ui/Button";
 import type { FieldBinding } from "./fieldBindings";
 import { commonText, useText } from "../../i18n";
 import { designerText } from "./designer.text";
+import { readImageUploadFile } from "../../utils/imageUpload";
+import { useToastStore } from "../../store/toastStore";
 
 export interface DemoDataModalProps {
   open: boolean;
@@ -57,12 +59,15 @@ export default function DemoDataModal({
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files?.[0];
+                    e.target.value = "";
                     if (!file) return;
-                    const reader = new FileReader();
-                    reader.onloadend = () => onChangeField(f.field, reader.result as string);
-                    reader.readAsDataURL(file);
+                    try {
+                      onChangeField(f.field, await readImageUploadFile(file));
+                    } catch (error) {
+                      useToastStore.getState().show((error as Error).message, "error");
+                    }
                   }}
                   className="flex-1 text-xs"
                 />

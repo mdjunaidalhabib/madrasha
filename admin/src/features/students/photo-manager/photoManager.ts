@@ -71,8 +71,7 @@ export const toStaffPerson = (t: any): PhotoPerson => ({
 });
 
 /**
- * Uploads a captured/picked data-URI (hosted URL, or the data-URI itself when
- * cloud storage isn't configured) and saves ONLY the photo field. Students
+ * Uploads a captured/picked data-URI and saves its hosted URL only. Students
  * use the dedicated PATCH /students/:id/photo; teachers/staff PUTs are
  * already partial updates, so `{ image }` alone touches nothing else.
  * `null` removes the photo. Returns the stored value.
@@ -99,10 +98,10 @@ export const fileNumberKey = (fileName: string): string | null => {
   return m ? String(Number(m[0])) : null;
 };
 
-/** Center-crops a video frame to the same 3:4 480x640 JPEG PhotoPicker produces. */
+/** Center-crops a video frame to the same 3:4 300x400 JPEG PhotoPicker produces. */
 export function captureVideoFrame(video: HTMLVideoElement, mirror: boolean): string {
-  const OUT_W = 480;
-  const OUT_H = 640;
+  const OUT_W = 300;
+  const OUT_H = 400;
   const srcW = video.videoWidth;
   const srcH = video.videoHeight;
   const ratio = OUT_W / OUT_H;

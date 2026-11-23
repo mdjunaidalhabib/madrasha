@@ -2,6 +2,8 @@ import { defineText } from "@madrasha/shared-ui/src/i18n";
 
 export const photoText = defineText({
   bn: {
+    maxFileSize: "ছবি সর্বোচ্চ ১০ MB হতে পারবে। সেভ হওয়ার পরে সর্বোচ্চ ৮০ KB।",
+    uploadFailed: "ছবি আপলোড হয়নি। আবার চেষ্টা করুন।",
     cameraTitle: "ক্যামেরা দিয়ে ছবি তুলুন",
     noCameraSupport: "এই ব্রাউজারে ক্যামেরা সাপোর্ট নেই (HTTPS বা localhost প্রয়োজন)।",
     cameraDenied: "ক্যামেরা ব্যবহারের অনুমতি দেওয়া হয়নি। ব্রাউজারের ঠিকানা-বারের পাশ থেকে অনুমতি দিন।",
@@ -21,6 +23,8 @@ export const photoText = defineText({
     removePhoto: "ছবি মুছুন",
   },
   en: {
+    maxFileSize: "Image must be 10 MB or smaller. Stored photos are limited to 80 KB.",
+    uploadFailed: "Image upload failed. Please try again.",
     cameraTitle: "Take a photo with the camera",
     noCameraSupport: "This browser doesn't support the camera (HTTPS or localhost required).",
     cameraDenied: "Camera permission was denied. Allow it from beside the browser's address bar.",

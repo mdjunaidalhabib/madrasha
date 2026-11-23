@@ -7,6 +7,7 @@ import { WebsiteAdmissionStatus, WebsiteStatus } from "@prisma/client";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../shared/errors";
 import { websiteRepository, WebsiteRepository } from "./website.repository";
 import { studentService } from "../students/student.service";
+import { uploadService } from "../uploads/upload.service";
 import { classPanelService } from "../classPanal/class-panel.service";
 import {
   SaveWebsiteCommitteeMemberRequestDto,
@@ -538,7 +539,14 @@ export class WebsiteService {
     if (!madrasa) throw new NotFoundError(t({ bn: "প্রতিষ্ঠান পাওয়া যায়নি", en: "Institution not found" }));
     await this.assertWebsiteAvailable(madrasa);
 
-    return studentService.admitStudent(body as any, madrasa.id, undefined, "WEBSITE");
+    const payload = { ...body };
+    // Anonymous applicants submit the photo with the admission form, rather
+    // than receiving access to the authenticated upload endpoint.
+    if (typeof payload.image === "string" && payload.image.startsWith("data:image/")) {
+      const uploaded = await uploadService.uploadImage({ madrasaId: madrasa.id, slug }, { image: payload.image, folder: "students" });
+      payload.image = uploaded.url;
+    }
+    return studentService.admitStudent(payload as any, madrasa.id, undefined, "WEBSITE");
   }
 
   async updateAdmissionApplicationStatus(madrasaId: number, id: number, status: string) {

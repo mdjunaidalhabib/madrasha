@@ -1,12 +1,9 @@
 import { env } from "./env";
 
 /**
- * The app currently stores images (branding logo/banner/watermark,
- * student photos) as base64 data URIs directly on the row - there is
- * no disk/object storage yet. This config centralizes the limits that
- * behavior depends on so they aren't magic numbers scattered across
- * controllers, and gives the future object storage
- * provider (see shared/storage) a single place to read limits from.
+ * HTTP envelope limits. Image binaries are processed and stored in R2;
+ * per-image input/output limits live in storage/image-processing.ts.
+ * Legacy inline settings remain for compatibility with existing configuration.
  */
 export const uploadConfig = {
   jsonBodyLimit: env.jsonBodyLimit,

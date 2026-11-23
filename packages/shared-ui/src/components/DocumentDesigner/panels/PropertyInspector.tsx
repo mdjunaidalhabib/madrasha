@@ -1,4 +1,5 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
+import { useToastStore } from "../../../store/toastStore";
 import type { DocumentLayer } from "../types";
 import type { FieldBinding } from "../fieldBindings";
 import { useText } from "../../../i18n";
@@ -8,6 +9,7 @@ export interface PropertyInspectorProps {
   layer: DocumentLayer | null;
   fieldBindings: FieldBinding[];
   onChange: (patch: Partial<DocumentLayer>) => void;
+  onUploadImage: (file: File) => Promise<string>;
 }
 
 const NumberField = ({
@@ -54,8 +56,9 @@ const FONT_OPTIONS: { value: string; label: string }[] = [
  * picker; image-like layers get a static-src field or a field binding;
  * qrcode gets a field binding; shape gets fill/stroke).
  */
-const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspectorProps) => {
+const PropertyInspector = ({ layer, fieldBindings, onChange, onUploadImage }: PropertyInspectorProps) => {
   const t = useText(designerText);
+  const [uploading, setUploading] = useState(false);
   // Localized display names for the two Bangla fonts; others show as-is.
   const fontLabel = (f: { value: string; label: string }) =>
     f.label === "Kalpurush" ? t.fontKalpurush : f.label === "Hind Siliguri" ? t.fontHind : f.label;
@@ -192,15 +195,24 @@ const PropertyInspector = ({ layer, fieldBindings, onChange }: PropertyInspector
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
-                onChange={(e) => {
+                disabled={uploading}
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
+                  e.target.value = "";
                   if (!file) return;
-                  const reader = new FileReader();
-                  reader.onloadend = () => updateContent({ src: reader.result as string });
-                  reader.readAsDataURL(file);
+                  setUploading(true);
+                  try {
+                    updateContent({ src: await onUploadImage(file) });
+                  } catch (error) {
+                    const detail = error as { response?: { data?: { message?: string } }; message?: string };
+                    useToastStore.getState().show(detail.response?.data?.message || detail.message || t.bgUploadFailed, "error");
+                  } finally {
+                    setUploading(false);
+                  }
                 }}
                 className="w-full text-xs"
               />
+              <span className="mt-1 block text-xs text-slate-500">{uploading ? t.uploading : t.imageLimits}</span>
             </label>
           )}
 

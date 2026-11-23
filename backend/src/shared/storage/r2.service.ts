@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadBucketCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { logger } from "../logger/logger";
 import { env } from "../config/env";
 
@@ -71,6 +71,12 @@ export const CONNECTOR_INSTALLER_KEY = "downloads/attendance-connector/Attendanc
 export const publicUrlFor =(c: R2Credentials, key: string) => `${c.publicUrl.replace(/\/+$/, "")}/${key}`;
 
 export const r2Service = {
+  async listImages(c: R2Credentials, prefix: string, continuationToken?: string) {
+    const page = await clientFor(c).send(new ListObjectsV2Command({
+      Bucket: c.bucket, Prefix: prefix, ContinuationToken: continuationToken, MaxKeys: 100,
+    }));
+    return { objects: page.Contents ?? [], nextToken: page.NextContinuationToken };
+  },
   async putObject(c: R2Credentials, key: string, body: Buffer, contentType: string): Promise<string> {
     await clientFor(c).send(
       new PutObjectCommand({

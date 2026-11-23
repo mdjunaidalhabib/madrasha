@@ -9,8 +9,6 @@ import InlineTextField from "../../../components/settings/InlineTextField";
 import InlineImageField from "../../../components/settings/InlineImageField";
 import Input from "@madrasha/shared-ui/src/components/ui/Input";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
-import { getStoragePublicId } from "../../../utils/cloudUpload";
-import { uploadApi } from "../../../services/phase4Api";
 import {
   getMyProfile,
   updateMyProfile,
@@ -24,7 +22,6 @@ import {
 } from "../../../services/profileApi";
 import { useAuthStore } from "../../../store/authStore";
 import { useToastStore } from "@madrasha/shared-ui/src/store/toastStore";
-import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { commonText, formatDateTime, getText, useLang, useText, type Lang } from "@madrasha/shared-ui/src/i18n";
 import { profileText } from "./settingsPages.text";
 import { servicesText } from "../../../services/services.text";
@@ -180,13 +177,7 @@ export default function ProfileSettingsPage() {
   };
 
   const savePhoto = async (value: string) => {
-    const oldPublicId = getStoragePublicId(profile?.photo_url);
     await patchProfile({ photo_url: value });
-    if (oldPublicId && oldPublicId !== getStoragePublicId(value)) {
-      uploadApi
-        .deleteImage(oldPublicId)
-        .catch((err) => logger.error("OLD PROFILE PHOTO CLEANUP ERROR:", err));
-    }
   };
 
   const submitPasswordChange = async () => {
