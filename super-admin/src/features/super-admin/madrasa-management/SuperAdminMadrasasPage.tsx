@@ -538,6 +538,7 @@ export default function SuperAdminMadrasasPage() {
       ) : <MadrasasTable
         loading={loading}
         items={items}
+        serialOffset={(page - 1) * limit}
         plans={plans}
         busyId={busyId}
         onPlanChange={onPlanChange}

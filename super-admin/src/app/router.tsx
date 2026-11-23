@@ -9,6 +9,7 @@ const SuperAdminDashboardPage = lazy(
   () => import("../features/super-admin/dashboard/SuperAdminDashboardPage"),
 );
 const SuperAdminLeadsPage = lazy(() => import("../features/super-admin/leads/SuperAdminLeadsPage"));
+const SuperAdminActivityPage = lazy(() => import("../features/super-admin/activity/SuperAdminActivityPage"));
 const SuperAdminMadrasasPage = lazy(
   () => import("../features/super-admin/madrasa-management/SuperAdminMadrasasPage"),
 );
@@ -78,6 +79,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="dashboard" replace /> },
       { path: "dashboard", element: withSuspense(<SuperAdminDashboardPage />) },
+      { path: "activity", element: withSuspense(<SuperAdminActivityPage />) },
       { path: "leads", element: withSuspense(<SuperAdminLeadsPage />) },
       { path: "madrasas", element: withSuspense(<SuperAdminMadrasasPage />) },
       { path: "madrasas/trash", element: withSuspense(<SuperAdminMadrasasTrashPage />) },

@@ -10,13 +10,14 @@ import Badge from "@madrasha/shared-ui/src/components/ui/Badge";
 import {
   formatCurrency,
   formatDate,
-  formatDateTime,
   formatNumber,
   useLang,
   useText,
 } from "@madrasha/shared-ui/src/i18n";
 import { dashboardText } from "./dashboard.text";
 import LeadSummary from "../leads/LeadSummary";
+import { Link } from "react-router-dom";
+import PlatformActivityTable from "../activity/PlatformActivityTable";
 
 const SuperAdminDashboardChart = lazy(
   () => import("./SuperAdminDashboardChart"),
@@ -254,58 +255,18 @@ export default function SuperAdminDashboardPage() {
 
       {/* Recent Activity */}
       <Card padding="none" className="overflow-hidden">
-        <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-700">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-700">
           <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-            {t.recentActivity}
+            সাম্প্রতিক কার্যক্রম
           </h3>
+          <Link to="/activity" className="text-sm font-medium text-blue-700 hover:underline dark:text-blue-300">সব কার্যক্রম দেখুন</Link>
         </div>
         {!stats?.recentActivities?.length ? (
           <p className="px-5 py-6 text-sm text-slate-500 dark:text-slate-400">
-            {t.noActivity}
+            কোনো কার্যক্রম পাওয়া যায়নি।
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-sm">
-              <thead className="bg-slate-50 text-start text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                <tr>
-                  <th className="px-5 py-3">{t.colTime}</th>
-                  <th className="px-5 py-3">{t.colInstitution}</th>
-                  <th className="px-5 py-3">{t.colUser}</th>
-                  <th className="px-5 py-3">{t.colAction}</th>
-                  <th className="px-5 py-3">{t.colEntity}</th>
-                  <th className="px-5 py-3">{t.colDetails}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.recentActivities.map((a) => (
-                  <tr
-                    key={a.id}
-                    className="border-t border-slate-100 dark:border-slate-800"
-                  >
-                    <td className="px-5 py-3 text-slate-500 dark:text-slate-400">
-                      {formatDateTime(a.created_at, lang)}
-                    </td>
-                    <td className="px-5 py-3 dark:text-slate-300">
-                      {a.madrasa_name || "-"}
-                    </td>
-                    <td className="px-5 py-3 dark:text-slate-300">
-                      {a.user_name || "-"}
-                    </td>
-                    <td className="px-5 py-3">
-                      <Badge tone="blue">{a.action}</Badge>
-                    </td>
-                    <td className="px-5 py-3 dark:text-slate-300">
-                      {a.entity}
-                      {a.entity_id ? `#${a.entity_id}` : ""}
-                    </td>
-                    <td className="px-5 py-3 text-slate-600 dark:text-slate-400">
-                      {a.details || "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <PlatformActivityTable rows={stats.recentActivities} compact />
         )}
       </Card>
     </div>

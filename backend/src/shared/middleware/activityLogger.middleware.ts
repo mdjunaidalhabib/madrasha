@@ -13,6 +13,7 @@ import {
   type ActivityRequestContext,
 } from "../utils/activityContext";
 import { describeActivityRequest, responseEntityId } from "../utils/activityRequestDetails";
+import { preparePlatformAudit } from "../../modules/super-admin/platform-activity.audit";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const ACTION_BY_METHOD: Record<string, string> = {
@@ -99,10 +100,24 @@ async function loadSnapshot(
 export const activityLoggerMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const context: ActivityRequestContext = { logged: [] };
   return activityContext.run(context, () => {
-    if (!MUTATING_METHODS.has(req.method)) return next();
+    const platformTest = req.method === "GET" && /^\/api\/super\/platform-settings\/(email\/test|sms\/balance)(?:\?|$)/.test(req.originalUrl);
+    if (!MUTATING_METHODS.has(req.method) && !platformTest) return next();
 
     const { entity, entityId } = deriveEntity(req.originalUrl);
     if (IGNORED_PATHS.has(entity)) return next();
+
+    if (entity.startsWith("super/") || entity.startsWith("website/super/")) {
+      const audit = preparePlatformAudit(req, context);
+      let reply: unknown = null;
+      const originalJson = res.json.bind(res);
+      res.json = (payload: unknown) => { reply = payload; return originalJson(payload); };
+      res.on("finish", () => {
+        if (res.statusCode >= 200 && res.statusCode < 300)
+          void audit.finish(reply).catch((error) => logger.error("Platform activity log failed", error));
+      });
+      void audit.ready.finally(() => next());
+      return;
+    }
 
     const bulk = findBulkDescriber(entity);
     const beforePromise = loadSnapshot(entity, entityId);

@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
+import { activityContext } from "../../shared/utils/activityContext";
 
 export class SubscriptionsRepository {
   transaction<T>(fn: (tx: TransactionClient) => Promise<T>) {
@@ -34,16 +35,18 @@ export class SubscriptionsRepository {
       data: { studentLimit, userLimit: null, planStatus: "active", isActive: 1 },
     });
   }
-  log(
+  async log(
     tx: TransactionClient,
     madrasaId: number,
     action: string,
     entityId: number,
     details?: string,
   ) {
-    return tx.activityLog.create({
+    const row = await tx.activityLog.create({
       data: { madrasaId, action, entity: "subscriptions", entityId, details },
     });
+    activityContext.getStore()?.logged.push({ id: row.id, madrasaId: row.madrasaId, userId: row.userId, entity: row.entity ?? "" });
+    return row;
   }
   refundRecord(tx: TransactionClient, madrasaId: number, id: number) {
     return tx.madrasaSubscription.findFirst({

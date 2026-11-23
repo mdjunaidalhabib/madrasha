@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 /** Tracks persisted service logs in this request only, including async handlers. */
 export type ActivityRequestContext = {
-  logged: Array<{ madrasaId: number | null; userId: number | null; entity: string }>;
+  logged: Array<{ id?: number; madrasaId: number | null; userId: number | null; entity: string }>;
 };
 export const activityContext = new AsyncLocalStorage<ActivityRequestContext>();
 

@@ -29,6 +29,7 @@ type NavItem = {
 // Keep a flat export for breadcrumbs, ordered by the sidebar's sections.
 export const SUPER_ADMIN_NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", label: "dashboard", icon: <LayoutDashboard size={18} />, end: true, group: "main" },
+  { to: "/activity", label: "activity", icon: <ClipboardList size={18} />, group: "activity" },
   { to: "/madrasas", label: "institutions", icon: <School size={18} />, end: true, group: "institutions" },
   { to: "/leads", label: "leads", icon: <Megaphone size={18} />, group: "institutions" },
   { to: "/madrasas/trash", label: "trash", icon: <Trash2 size={18} />, group: "institutions" },

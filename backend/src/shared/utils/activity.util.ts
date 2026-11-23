@@ -16,7 +16,7 @@ export const logActivity = async (args: {
   details?: string | null;
 }) => {
   const { madrasa_id, user_id, action, entity, entity_id = null, details = null } = args;
-  await prisma.activityLog.create({
+  const row = await prisma.activityLog.create({
     data: {
       madrasaId: madrasa_id,
       userId: user_id,
@@ -26,5 +26,5 @@ export const logActivity = async (args: {
       details,
     },
   });
-  activityContext.getStore()?.logged.push({ madrasaId: madrasa_id, userId: user_id, entity });
+  activityContext.getStore()?.logged.push({ id: row.id, madrasaId: madrasa_id, userId: user_id, entity });
 };

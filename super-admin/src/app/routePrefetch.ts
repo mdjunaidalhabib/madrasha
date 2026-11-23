@@ -1,6 +1,7 @@
 import { canPrefetch } from "@madrasha/shared-ui/src/utils/canPrefetch";
 
 const loaders: Record<string, () => Promise<unknown>> = {
+  activity: () => import("../features/super-admin/activity/SuperAdminActivityPage"),
   dashboard: () =>
     import("../features/super-admin/dashboard/SuperAdminDashboardPage"),
   leads: () => import("../features/super-admin/leads/SuperAdminLeadsPage"),

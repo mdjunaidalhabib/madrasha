@@ -15,6 +15,7 @@ export const shellText = defineBilingualText({
     templateEdit: "টেমপ্লেট এডিট",
     groups: {
       main: "মূল",
+      activity: "কার্যক্রম",
       institutions: "প্রতিষ্ঠান ব্যবস্থাপনা",
       content: "একাডেমিক ও টেমপ্লেট",
       billing: "বিলিং ও সাবস্ক্রিপশন",
@@ -24,6 +25,7 @@ export const shellText = defineBilingualText({
     nav: {
       leads: "লিড ম্যানেজমেন্ট",
       dashboard: "ড্যাশবোর্ড",
+      activity: "কার্যক্রম লগ",
       institutions: "প্রতিষ্ঠানসমূহ",
       trash: "ট্র্যাশ",
       plans: "প্ল্যানসমূহ",
@@ -54,6 +56,7 @@ export const shellText = defineBilingualText({
     templateEdit: "Edit Template",
     groups: {
       main: "Main",
+      activity: "Activity",
       institutions: "Institution Management",
       content: "Academics & Templates",
       billing: "Billing & Subscriptions",
@@ -62,6 +65,7 @@ export const shellText = defineBilingualText({
     },
     nav: {
       dashboard: "Dashboard",
+      activity: "Activity log",
       leads: "Lead management",
       institutions: "Institutions",
       trash: "Trash",

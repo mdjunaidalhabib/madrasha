@@ -4,10 +4,13 @@ import { HttpStatus } from "../../shared/constants";
 import { logger } from "../../shared/logger/logger";
 import { superAdminAuthService } from "./superadmin.auth.service";
 import { t } from "../../shared/i18n";
+import { logActivity } from "../../shared/utils/activity.util";
 
 export const superAdminLogin = async (req: Request, res: Response) => {
   try {
     const result = await superAdminAuthService.login(req.body);
+    await logActivity({ madrasa_id: null, user_id: result.admin.id, action: "SUPER_ADMIN_AUDIT", entity: "super/auth/login",
+      details: JSON.stringify({ version: 1, method: "LOGIN", actor_name: result.admin.name, input: {}, source_log_ids: [], summary: "সুপার অ্যাডমিন প্যানেলে লগইন করেছেন" }) }).catch((error) => logger.error("Super admin login audit failed", error));
     res.json(result);
   } catch (err) {
     if (err instanceof ApiError) {

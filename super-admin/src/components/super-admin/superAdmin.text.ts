@@ -12,6 +12,8 @@ export const superAdminText = defineBilingualText({
     next: "পরের",
 
     // MadrasasTable
+    realId: "আসল আইডি",
+    serial: "সিরিয়াল",
     selectPlan: "প্ল্যান বাছাই করুন",
     suspend: "স্থগিত করুন",
     activate: "সক্রিয় করুন",
@@ -102,6 +104,8 @@ export const superAdminText = defineBilingualText({
     selectRow: (name) => `Select ${name}`,
     selectAll: "Select all",
     colName: "Name",
+    realId: "Real ID",
+    serial: "Serial",
     colSlug: "Slug",
     colType: "Type",
     colLanguage: "Language",

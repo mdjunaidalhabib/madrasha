@@ -1,5 +1,6 @@
 import { renewSubscription, cancelAndRefund, listExpiredSubscriptions, listDomainSubscriptions, createDomainSubscription, updateDomainSubscription, removeDomainSubscription } from "./subscriptions.controller";
 import { Router } from "express";
+import { getPlatformActivities } from "./platform-activity.controller";
 import { superAdminMiddleware } from "../../shared/middleware/superAdmin.middleware";
 
 /* =========================
@@ -161,6 +162,7 @@ import {
 import { getPlatformAdminLogo, savePlatformAdminLogo, deletePlatformAdminLogo, previewPlatformAdminLogo } from "./platform-brand.controller";
 
 const router = Router();
+router.get("/activity", superAdminMiddleware, getPlatformActivities);
 
 /* =====================================================
    MADRASAS

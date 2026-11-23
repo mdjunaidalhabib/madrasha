@@ -13,6 +13,7 @@ import {
 export default function MadrasasTable({
   loading,
   items,
+  serialOffset,
   plans,
   busyId,
   onPlanChange,
@@ -26,6 +27,7 @@ export default function MadrasasTable({
 }: {
   loading: boolean;
   items: Madrasa[];
+  serialOffset: number;
   plans: Plan[];
   busyId: number | null;
   onPlanChange: (m: Madrasa, planId: number) => Promise<void>;
@@ -41,13 +43,14 @@ export default function MadrasasTable({
   const t = useText(superAdminText);
   const c = useText(commonText);
   const lang = useLang();
-  const renderIdentity = (m: Madrasa) => (
+  const renderIdentity = (m: Madrasa, index: number) => (
     <div className="flex min-w-0 items-start gap-3">
-      <span className="inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded-lg border border-teal-100 bg-teal-50 px-2 py-1 text-sm font-semibold tabular-nums text-teal-700 dark:border-teal-900 dark:bg-teal-950/50 dark:text-teal-300">
-        {formatNumber(m.madrasa_no ?? m.id, lang)}
+      <span title={t.serial} className="inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded-lg border border-teal-100 bg-teal-50 px-2 py-1 text-sm font-semibold tabular-nums text-teal-700 dark:border-teal-900 dark:bg-teal-950/50 dark:text-teal-300">
+        {formatNumber(serialOffset + index + 1, lang)}
       </span>
       <div className="min-w-0 flex-1">
         <p className="break-words text-base font-semibold leading-6 text-slate-900 dark:text-slate-100">{m.name}</p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t.realId}: <span dir="ltr">#{m.id}</span></p>
         <div className="mt-1 flex min-w-0 items-center">
           <span dir="ltr" className="min-w-0 max-w-full truncate text-xs leading-5 text-slate-500 dark:text-slate-400" title={`/${m.slug}`}>/{m.slug}</span>
         </div>
@@ -153,7 +156,7 @@ export default function MadrasasTable({
           <div className="p-4 text-gray-500 dark:text-slate-400">{t.noInstitutions}</div>
         ) : (
           <div className="grid gap-3 p-3 sm:p-4 md:grid-cols-2">
-            {items.map((m) => (
+            {items.map((m, index) => (
             <div
               key={m.id}
               className={`institution-card flex flex-col gap-4 rounded-lg border p-4 dark:border-slate-800 ${
@@ -172,7 +175,7 @@ export default function MadrasasTable({
                     aria-label={t.selectRow(m.name)}
                   />
                   <div className="min-w-0">
-                    {renderIdentity(m)}
+                    {renderIdentity(m, index)}
                     <div className="mt-1 flex flex-wrap items-center gap-1">
                       <InstitutionTypeBadge type={m.institution_type} />
                       <LanguageChip lang={m.default_language} />
@@ -245,7 +248,7 @@ export default function MadrasasTable({
               </tr>
             </thead>
             <tbody>
-              {items.map((m) => (
+              {items.map((m, index) => (
                 <tr key={m.id} className="border-t dark:border-slate-800">
                   <td className="p-3 text-center">
                     <input
@@ -260,7 +263,7 @@ export default function MadrasasTable({
                       its own column, which got squeezed and broke mid-word. */}
                   <td className="p-3 text-start">
                     <div className="min-w-[180px] max-w-[280px]">
-                      {renderIdentity(m)}
+                      {renderIdentity(m, index)}
                     </div>
                   </td>
                   <td className="p-3 text-center">

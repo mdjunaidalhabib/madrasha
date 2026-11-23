@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 import { invalidateSubscriptionCache } from "../../shared/subscription/subscription-state";
 import { prisma } from "../../shared/database/prisma";
 import { TransactionClient } from "../../shared/database/transaction";
+import { activityContext } from "../../shared/utils/activityContext";
+import { listPlatformActivities } from "./platform-activity.repository";
 
 export class SuperAdminRepository {
   // createMadrasa/updateMadrasa/permanentDeleteMadrasa run many sequential
@@ -101,23 +103,7 @@ export class SuperAdminRepository {
   }
 
   findRecentActivities() {
-    return prisma.$queryRaw`
-      SELECT
-        a.id,
-        m.name AS madrasa_name,
-        u.name AS user_name,
-        a.action,
-        a.entity,
-        a.entity_id,
-        a.details,
-        a.created_at
-      FROM activity_logs a
-      LEFT JOIN madrasas m ON m.id = a.madrasa_id
-      LEFT JOIN users u ON u.id = a.user_id
-      WHERE (a.action LIKE 'SUPER_ADMIN%' OR a.action IN ('MADRASA_CREATED','PLAN_CREATED','PLAN_UPDATED','PLAN_DELETED'))
-      ORDER BY a.created_at DESC
-      LIMIT 15
-    `;
+    return listPlatformActivities({ page: 1, limit: 15 }).then((result) => result.rows);
   }
 
   findExpiringPlans() {
@@ -649,8 +635,10 @@ export class SuperAdminRepository {
     });
   }
 
-  createActivityLogOnTx(tx: TransactionClient, data: Prisma.ActivityLogUncheckedCreateInput) {
-    return tx.activityLog.create({ data });
+  async createActivityLogOnTx(tx: TransactionClient, data: Prisma.ActivityLogUncheckedCreateInput) {
+    const row = await tx.activityLog.create({ data });
+    activityContext.getStore()?.logged.push({ id: row.id, madrasaId: row.madrasaId, userId: row.userId, entity: row.entity ?? "" });
+    return row;
   }
 
   findMadrasaNameSlug(id: number) {
@@ -742,8 +730,10 @@ export class SuperAdminRepository {
     return prisma.user.update({ where: { id }, data });
   }
 
-  createActivityLog(data: Prisma.ActivityLogUncheckedCreateInput) {
-    return prisma.activityLog.create({ data });
+  async createActivityLog(data: Prisma.ActivityLogUncheckedCreateInput) {
+    const row = await prisma.activityLog.create({ data });
+    activityContext.getStore()?.logged.push({ id: row.id, madrasaId: row.madrasaId, userId: row.userId, entity: row.entity ?? "" });
+    return row;
   }
 
   /* ================= PERMANENT DELETE (tx) ================= */
