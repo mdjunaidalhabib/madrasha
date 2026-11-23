@@ -2,6 +2,7 @@ import { prisma } from "../../shared/database/prisma";
 import { MISSING_TABLE_OR_COLUMN_CODES, REPORT_MISSING_TABLE_WARNING } from "./reports.constants";
 import { OptionalQueryResult } from "./reports.types";
 import { examCandidateParticipationSql } from "../exam-candidate/exam-candidate.policy";
+import { DEFAULT_FAIL_MARK } from "../ResultPanel/result-panel.constants";
 
 // Raw subject pass mark: subject override, division override, tenant default.
 // Kept inside the subject aggregate so grading lookups do not duplicate rows.
@@ -10,7 +11,7 @@ const SUBJECT_PASS_MARK_SQL = `COALESCE(mb.pass_mark,
    WHERE md.madrasa_id = s.madrasa_id AND md.division_id = s.division_id
      AND md.deleted_at IS NULL LIMIT 1),
   (SELECT NULLIF(fs.value, '')::int FROM settings fs
-   WHERE fs.madrasa_id = s.madrasa_id AND fs.name = 'fail_mark' LIMIT 1), 35)`;
+   WHERE fs.madrasa_id = s.madrasa_id AND fs.name = 'fail_mark' LIMIT 1), ${DEFAULT_FAIL_MARK})`;
 
 /** Optional narrowing filters accepted by roster-shaped queries (id cards,
  * admit cards) so document-templates.service.ts can generate for a single
@@ -1665,7 +1666,7 @@ export class ReportsRepository {
               'book_id', b.id,
               'subject_name', COALESCE(b.name_bn, b.name),
               'full_marks', COALESCE(mb.full_mark, 100),
-              'pass_mark', COALESCE(mb.pass_mark, md.fail_mark, NULLIF(fs.value, '')::int, 35),
+              'pass_mark', COALESCE(mb.pass_mark, md.fail_mark, NULLIF(fs.value, '')::int, ${DEFAULT_FAIL_MARK}),
               'mark', m.mark,
               'is_absent', COALESCE(m.is_absent, false)
             )

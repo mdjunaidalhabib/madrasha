@@ -1,6 +1,7 @@
 import app from "./app";
 import { config } from "../shared/config";
 import { logger } from "../shared/logger/logger";
+import { syncStartupSuperAdmin } from "./superadmin-bootstrap";
 import {
   verifyDatabaseConnection,
   registerGracefulShutdown,
@@ -17,6 +18,7 @@ import {
 async function start() {
   registerProcessSafetyNets();
   await verifyDatabaseConnection();
+  await syncStartupSuperAdmin();
 
   const server = app.listen(config.app.port, () => {
     logger.info(`Server running on port ${config.app.port}`);

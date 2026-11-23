@@ -1,7 +1,7 @@
 import { PLAN_SEEDS, seedPlans } from "./data/plans.seed";
 import "dotenv/config";
 import { InstitutionType, PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
+import { logger } from "../src/shared/logger/logger";
 import { DEFAULT_CANVAS_SIZE_PX } from "../src/modules/document-templates/document-templates.constants";
 import {
   buildAdmitCardBackground,
@@ -36,7 +36,7 @@ const defaultGeneralGrades = [
   { keyName: "a_minus", name: "A-", minMark: 60, maxMark: 69, point: 3.5, sortOrder: 3 },
   { keyName: "b", name: "B", minMark: 50, maxMark: 59, point: 3, sortOrder: 4 },
   { keyName: "c", name: "C", minMark: 40, maxMark: 49, point: 2, sortOrder: 5 },
-  { keyName: "d", name: "D", minMark: 35, maxMark: 39, point: 1, sortOrder: 6 },
+  { keyName: "d", name: "D", minMark: 33, maxMark: 39, point: 1, sortOrder: 6 },
 ];
 
 const defaultMadrasaGrades = [
@@ -49,18 +49,10 @@ const defaultMadrasaGrades = [
     sortOrder: 2,
   },
   { keyName: "jayyid", name: "জায়্যিদ", minMark: 50, maxMark: 64, sortOrder: 3 },
-  { keyName: "maqbul", name: "মাকবুল", minMark: 35, maxMark: 49, sortOrder: 4 },
+  { keyName: "maqbul", name: "মাকবুল", minMark: 33, maxMark: 49, sortOrder: 4 },
 ];
 
-const defaultSettings = [{ name: "fail_mark", value: "35" }];
-
-function requiredEnv(name: string) {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    throw new Error(`${name} is required for prisma seed`);
-  }
-  return value;
-}
+const defaultSettings = [{ name: "fail_mark", value: "33" }];
 
 async function syncDelete(
   label: string,
@@ -73,10 +65,10 @@ async function syncDelete(
     if (keep.has(row.id)) continue;
     try {
       await del(row.id);
-      console.log(`   🗑️  Removed ${label} (id=${row.id}) — no longer in seed.ts`);
+      logger.info(`Removed ${label} (id=${row.id}) - no longer in seed.ts`);
     } catch {
-      console.warn(
-        `   ⚠️  Skipped removing ${label} (id=${row.id}) — still referenced by existing data ` +
+      logger.warn(
+        `Skipped removing ${label} (id=${row.id}) - still referenced by existing data ` +
           `(e.g. students/teachers/results). Remove that data first if you really want it gone.`,
       );
     }
@@ -99,37 +91,16 @@ async function createIfMissing<T extends { id: number }>(
   const existing = await find();
   if (existing) return existing;
   const created = await create();
-  console.log(`   ✅ Seeded ${label}`);
+  logger.info(`Seeded ${label}`);
   return created;
 }
 
 async function main() {
-  /* ============== SUPER ADMIN ==============
-     Credentials are intentionally read from .env, never from seed defaults. */
-  const superAdminName = requiredEnv("SUPER_ADMIN_NAME");
-  const superAdminEmail = requiredEnv("SUPER_ADMIN_EMAIL").toLowerCase();
-  const superAdminPassword = requiredEnv("SUPER_ADMIN_PASSWORD");
-
-  if (superAdminPassword.length < 8) {
-    throw new Error("SUPER_ADMIN_PASSWORD must be at least 8 characters");
-  }
-
-  const passwordHash = await bcrypt.hash(superAdminPassword, 10);
-
-  const superAdminRow = await prisma.superAdmin.upsert({
-    where: { email: superAdminEmail },
-    update: {
-      name: superAdminName,
-      passwordHash,
-      isActive: 1,
-      deletedAt: null,
-    },
-    create: {
-      name: superAdminName,
-      email: superAdminEmail,
-      passwordHash,
-      isActive: 1,
-    },
+  // Account creation and env synchronization run only at server startup.
+  // Existing owner attribution is optional; seed also works before first boot.
+  const templateCreator = await prisma.superAdmin.findFirst({
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: { id: true },
   });
 
   /* ============== SYSTEM DOCUMENT TEMPLATES ==============
@@ -143,7 +114,11 @@ async function main() {
      lists above, re-running seed.ts must never silently discard an
      admin's post-seed edits to these rows. "custom" isn't seeded here: a
      blank background isn't a meaningful starting preset. */
-  const SYSTEM_TEMPLATE_PRESETS: Array<{ type: "ID_CARD" | "ADMIT_CARD"; preset: PresetKey; name: string }> = [
+  const SYSTEM_TEMPLATE_PRESETS: Array<{
+    type: "ID_CARD" | "ADMIT_CARD";
+    preset: PresetKey;
+    name: string;
+  }> = [
     { type: "ID_CARD", preset: "classic", name: "আইডি কার্ড - ধ্রুপদী" },
     { type: "ID_CARD", preset: "minimal", name: "আইডি কার্ড - মিনিমাল" },
     { type: "ID_CARD", preset: "arch", name: "আইডি কার্ড - খিলান" },
@@ -159,9 +134,12 @@ async function main() {
     if (existing) continue;
 
     const { width, height } = DEFAULT_CANVAS_SIZE_PX[spec.type];
-    const layers = spec.type === "ID_CARD" ? buildIdCardLayers(spec.preset) : buildAdmitCardLayers(spec.preset);
+    const layers =
+      spec.type === "ID_CARD" ? buildIdCardLayers(spec.preset) : buildAdmitCardLayers(spec.preset);
     const background =
-      spec.type === "ID_CARD" ? buildIdCardBackground(spec.preset) : buildAdmitCardBackground(spec.preset);
+      spec.type === "ID_CARD"
+        ? buildIdCardBackground(spec.preset)
+        : buildAdmitCardBackground(spec.preset);
 
     const template = await prisma.documentTemplate.create({
       data: {
@@ -171,7 +149,7 @@ async function main() {
         name: spec.name,
         description: "সিস্টেম স্টার্টার টেমপ্লেট",
         createdByRole: "SUPER_ADMIN",
-        createdBySuperAdminId: superAdminRow.id,
+        createdBySuperAdminId: templateCreator?.id ?? null,
         isPublished: true,
         isSystemDefault: spec.preset === "classic",
       },
@@ -210,7 +188,7 @@ async function main() {
       data: { currentVersionId: draftVersion.id, publishedVersionId: publishedVersion.id },
     });
 
-    console.log(`   ✅ Seeded system template: ${spec.name}`);
+    logger.info(`Seeded system template: ${spec.name}`);
   }
 
   /* ============== NEW-MADRASA DEFAULT TEMPLATES ==============
@@ -310,7 +288,8 @@ async function main() {
     await createIfMissing(
       `important link "${link.subLabel}"`,
       () => prisma.importantLink.findFirst({ where: { url: link.url } }),
-      () => prisma.importantLink.create({ data: { ...link, sortOrder: index + 1, isActive: true } }),
+      () =>
+        prisma.importantLink.create({ data: { ...link, sortOrder: index + 1, isActive: true } }),
     );
   }
 
@@ -320,7 +299,12 @@ async function main() {
   // Do not syncDelete plans: legacy and custom plans may have subscriptions.
 
   /* ============== DIVISIONS ============== */
-  const divisions: { keyName: string; name: string; nameBn: string; institutionType?: InstitutionType }[] = [
+  const divisions: {
+    keyName: string;
+    name: string;
+    nameBn: string;
+    institutionType?: InstitutionType;
+  }[] = [
     { keyName: "nurani", name: "Nurani", nameBn: "নূরানী" },
     { keyName: "nazera_hifz", name: "Nazera/Hifz", nameBn: "নাযেরা/হিফজ" },
     { keyName: "kitab", name: "Kitab", nameBn: "কিতাব" },
@@ -352,15 +336,23 @@ async function main() {
   };
   for (let index = 0; index < plans.length; index++) {
     // New tiers reuse the nearest existing registration-block preset.
-    const preset = plans[index].studentLimit <= 100 ? "Basic"
-      : plans[index].studentLimit <= 700 ? "Standard" : "Premium";
+    const preset =
+      plans[index].studentLimit <= 100
+        ? "Basic"
+        : plans[index].studentLimit <= 700
+          ? "Standard"
+          : "Premium";
     const sizes = {
       ...(planRegBlockSizes[plans[index].name] ?? planRegBlockSizes[preset]),
       ...(NON_MADRASA_REG_BLOCKS[plans[index].name] ?? NON_MADRASA_REG_BLOCKS[preset]),
     };
     const data = Object.entries(sizes)
       .filter(([key]) => divisionIds[key])
-      .map(([key, blockSize]) => ({ planId: planIds[index], divisionId: divisionIds[key], blockSize }));
+      .map(([key, blockSize]) => ({
+        planId: planIds[index],
+        divisionId: divisionIds[key],
+        blockSize,
+      }));
     if (data.length) await prisma.planDivisionRegBlock.createMany({ data, skipDuplicates: true });
   }
 
@@ -379,6 +371,7 @@ async function main() {
     kitab: [
       { name: "Urdu", nameBn: "উর্দু" },
       { name: "Taisir", nameBn: "তাইসির" },
+      { name: "Khususi", nameBn: "খুসুসী" },
       { name: "Mizan", nameBn: "মিজান" },
       { name: "Nahbemir", nameBn: "নাহবেমীর" },
       { name: "Hedayatun Nahw", nameBn: "হেদায়াতুন নাহু" },
@@ -408,7 +401,10 @@ async function main() {
       const row = await createIfMissing(
         `class: ${c.nameBn}`,
         () => prisma.class.findUnique({ where: { divisionId_name: { divisionId, name: c.name } } }),
-        () => prisma.class.create({ data: { ...c, divisionId, isActive: true, sortOrder: classSortOrder } }),
+        () =>
+          prisma.class.create({
+            data: { ...c, divisionId, isActive: true, sortOrder: classSortOrder },
+          }),
       );
       classIds[`${divisionKey}/${c.name}`] = row.id;
     }
@@ -417,27 +413,38 @@ async function main() {
   /* ============== BOOKS ============== */
   const booksByClass: Record<string, { name: string; nameBn: string }[]> = {
     "nurani/Child": [
-      { name: "Quran", nameBn: "কুরআন" },
+      { name: "Arabic Education", nameBn: "আরবি শিক্ষা" },
+      { name: "Kalima and Hadith", nameBn: "কালিমা ও হাদীস" },
+      { name: "Masaalah and General Knowledge", nameBn: "মাসআলাহ ও সাধারণ জ্ঞান" },
       { name: "Bangla", nameBn: "বাংলা" },
-      { name: "English", nameBn: "ইংরেজি" },
+      { name: "English", nameBn: "ইংরেজী" },
       { name: "Gonit", nameBn: "গণিত" },
     ],
     "nurani/First": [
-      { name: "Quran", nameBn: "কুরআন" },
+      { name: "Arabic Writing", nameBn: "আরবি লেখা" },
+      { name: "Quran and Tajweed (Oral)", nameBn: "কোরআন ও তাজবীদ (মৌখিক)" },
+      { name: "Hadith Sharif and Kalima", nameBn: "হাদিস শরীফ ও কালিমা" },
+      { name: "Masaalah and Adiyaye Salah (Oral)", nameBn: "মাসআলাহ ও আদিয়ায়ে সালাহ (মৌখিক)" },
       { name: "Bangla", nameBn: "বাংলা" },
-      { name: "English", nameBn: "ইংরেজি" },
+      { name: "English", nameBn: "ইংরেজী" },
       { name: "Gonit", nameBn: "গণিত" },
     ],
     "nurani/Second": [
-      { name: "Quran", nameBn: "কুরআন" },
+      { name: "Arabic Writing", nameBn: "আরবি লেখা" },
+      { name: "Quran and Tajweed (Oral)", nameBn: "কোরআন ও তাজবীদ (মৌখিক)" },
+      { name: "Hadith Sharif and Dua", nameBn: "হাদিস শরীফ ও দোয়া" },
+      { name: "Masaalah and Adiyaye Salah (Oral)", nameBn: "মাসআলাহ ও আদিয়ায়ে সালাহ (মৌখিক)" },
+      { name: "Kalima and Asmaul Husna", nameBn: "কালিমা ও আসমাউল হুসনা" },
       { name: "Bangla", nameBn: "বাংলা" },
-      { name: "English", nameBn: "ইংরেজি" },
+      { name: "English", nameBn: "ইংরেজী" },
       { name: "Gonit", nameBn: "গণিত" },
     ],
     "nurani/Third": [
-      { name: "Quran", nameBn: "কুরআন" },
+      { name: "Arabic Writing", nameBn: "আরবি লেখা" },
+      { name: "Quran and Tajweed (Oral)", nameBn: "কোরআন ও তাজবীদ (মৌখিক)" },
+      { name: "Hadith Sharif, Dua, Masaalah and Khutbah", nameBn: "হাদিস শরীফ, দোয়া, মাসআলাহ ও খুৎবা" },
       { name: "Bangla", nameBn: "বাংলা" },
-      { name: "English", nameBn: "ইংরেজি" },
+      { name: "English", nameBn: "ইংরেজী" },
       { name: "Gonit", nameBn: "গণিত" },
     ],
     "nazera_hifz/Nazera": [
@@ -465,6 +472,15 @@ async function main() {
     ],
     "kitab/Taisir": [
       { name: "Talimul Islam 4", nameBn: "তালিমুল ইসলাম ৪" },
+      { name: "Urdu Tesri", nameBn: "উর্দু তেসরী" },
+      { name: "Bangla", nameBn: "বাংলা" },
+      { name: "English & Grammar", nameBn: "ইংরেজি ও গ্রামার" },
+      { name: "Gonit", nameBn: "গণিত" },
+      { name: "Itihas O Bhugol", nameBn: "ইতিহাস ও ভূগোল" },
+    ],
+    "kitab/Khususi": [
+      { name: "Talimul Islam 1-4", nameBn: "তালিমুল ইসলাম ১-৪" },
+      { name: "Urdu Qaida", nameBn: "উর্দু কায়েদা" },
       { name: "Urdu Tesri", nameBn: "উর্দু তেসরী" },
       { name: "Eso Arabi Shikhi 1", nameBn: "এসো আরবি শিখি ১" },
       { name: "Bangla", nameBn: "বাংলা" },
@@ -854,10 +870,25 @@ async function main() {
         sortOrder: 8,
       },
       { keyName: "attendance_dashboard", name: "Dashboard", nameBn: "ড্যাশবোর্ড", sortOrder: 0 },
-      { keyName: "attendance_sessions", name: "Session Attendance", nameBn: "সেশন উপস্থিতি", sortOrder: 3 },
+      {
+        keyName: "attendance_sessions",
+        name: "Session Attendance",
+        nameBn: "সেশন উপস্থিতি",
+        sortOrder: 3,
+      },
       { keyName: "attendance_leaves", name: "Leave Requests", nameBn: "ছুটির আবেদন", sortOrder: 3 },
-      { keyName: "attendance_payroll", name: "Attendance & Payroll", nameBn: "উপস্থিতি ও বেতন", sortOrder: 9 },
-      { keyName: "attendance_policy", name: "Attendance Policy", nameBn: "উপস্থিতি নীতি", sortOrder: 10 },
+      {
+        keyName: "attendance_payroll",
+        name: "Attendance & Payroll",
+        nameBn: "উপস্থিতি ও বেতন",
+        sortOrder: 9,
+      },
+      {
+        keyName: "attendance_policy",
+        name: "Attendance Policy",
+        nameBn: "উপস্থিতি নীতি",
+        sortOrder: 10,
+      },
     ],
     communication: [
       { keyName: "single_send", name: "Single Send", nameBn: "একক পাঠান", sortOrder: 1 },
@@ -874,7 +905,12 @@ async function main() {
     library: [
       { keyName: "catalog", name: "Book Catalog", nameBn: "বই তালিকা", sortOrder: 1 },
       { keyName: "circulation", name: "Issue & Return", nameBn: "ইস্যু ও ফেরত", sortOrder: 2 },
-      { keyName: "overdue", name: "Overdue & Fines", nameBn: "মেয়াদোত্তীর্ণ ও জরিমানা", sortOrder: 3 },
+      {
+        keyName: "overdue",
+        name: "Overdue & Fines",
+        nameBn: "মেয়াদোত্তীর্ণ ও জরিমানা",
+        sortOrder: 3,
+      },
       { keyName: "settings", name: "Library Settings", nameBn: "লাইব্রেরি সেটিংস", sortOrder: 4 },
     ],
   };
@@ -1044,10 +1080,10 @@ async function main() {
     string,
     { admission: number; form: number; tuition: number; exam: number; boarding: number }
   > = {
-    nurani: { admission: 300, form: 100, tuition: 200, exam: 150, boarding: 500 },
-    nazera_hifz: { admission: 500, form: 150, tuition: 300, exam: 200, boarding: 600 },
-    kitab: { admission: 700, form: 200, tuition: 400, exam: 300, boarding: 800 },
-    takhassus: { admission: 1000, form: 300, tuition: 600, exam: 400, boarding: 1000 },
+    nurani: { admission: 1500, form: 100, tuition: 200, exam: 150, boarding: 500 },
+    nazera_hifz: { admission: 2000, form: 100, tuition: 300, exam: 200, boarding: 600 },
+    kitab: { admission: 2500, form: 100, tuition: 400, exam: 300, boarding: 800 },
+    takhassus: { admission: 2500, form: 100, tuition: 600, exam: 400, boarding: 1000 },
     ...NON_MADRASA_FEE_TIERS,
   };
   for (const [classKey, classId] of Object.entries(classIds)) {
@@ -1066,11 +1102,41 @@ async function main() {
       frequency: "ONE_TIME" | "MONTHLY" | "YEARLY";
       feeType: string;
     }[] = [
-      { keyName: `form_${safeKey}`, name: "ভর্তি ফরম", amount: tier.form, frequency: "ONE_TIME", feeType: "ভর্তি ফরম" },
-      { keyName: `admission_${safeKey}`, name: "ভর্তি ফি", amount: tier.admission, frequency: "ONE_TIME", feeType: "ভর্তি ফি" },
-      { keyName: `tuition_${safeKey}`, name: "মাসিক বেতন", amount: tier.tuition, frequency: "MONTHLY", feeType: "মাসিক বেতন" },
-      { keyName: `boarding_${safeKey}`, name: "বোর্ডিং ফি", amount: tier.boarding, frequency: "MONTHLY", feeType: "বোর্ডিং ফি" },
-      { keyName: `exam_${safeKey}`, name: "পরীক্ষার ফি", amount: tier.exam, frequency: "YEARLY", feeType: "পরীক্ষার ফি" },
+      {
+        keyName: `form_${safeKey}`,
+        name: "ভর্তি ফরম",
+        amount: tier.form,
+        frequency: "ONE_TIME",
+        feeType: "ভর্তি ফরম",
+      },
+      {
+        keyName: `admission_${safeKey}`,
+        name: "ভর্তি ফি",
+        amount: tier.admission,
+        frequency: "ONE_TIME",
+        feeType: "ভর্তি ফি",
+      },
+      {
+        keyName: `tuition_${safeKey}`,
+        name: "মাসিক বেতন",
+        amount: tier.tuition,
+        frequency: "MONTHLY",
+        feeType: "মাসিক বেতন",
+      },
+      {
+        keyName: `boarding_${safeKey}`,
+        name: "বোর্ডিং ফি",
+        amount: tier.boarding,
+        frequency: "MONTHLY",
+        feeType: "বোর্ডিং ফি",
+      },
+      {
+        keyName: `exam_${safeKey}`,
+        name: "পরীক্ষার ফি",
+        amount: tier.exam,
+        frequency: "YEARLY",
+        feeType: "পরীক্ষার ফি",
+      },
     ];
 
     // A tier amount of 0 (e.g. no boarding at a day school) means "no such fee".
@@ -1093,14 +1159,13 @@ async function main() {
     }
   }
 
-  console.log("✅ Seed complete (catalog and new-madrasa templates synced with seed.ts).");
-  console.log(`   Super Admin account synced from env: ${superAdminEmail}`);
+  logger.info("Seed complete (catalog and new-madrasa templates synced with seed.ts).");
 }
 
 main()
   .catch((e) => {
-    console.error(e);
-    process.exit(1);
+    logger.error("Database seed failed", e);
+    process.exitCode = 1;
   })
   .finally(async () => {
     await prisma.$disconnect();

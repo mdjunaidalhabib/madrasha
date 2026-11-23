@@ -1,4 +1,6 @@
 type LogLevel = "debug" | "info" | "warn" | "error";
+type LogStatus = "created" | "updated" | "unchanged" | "failed";
+const statusColors: Record<LogStatus, number> = { created: 32, updated: 33, unchanged: 36, failed: 31 };
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -10,7 +12,7 @@ function serializeMeta(meta?: unknown) {
   return meta;
 }
 
-function write(level: LogLevel, message: string, meta?: unknown) {
+function write(level: LogLevel, message: string, meta?: unknown, color?: number) {
   if (level === "debug" && isProduction) return;
 
   const payload = {
@@ -20,9 +22,13 @@ function write(level: LogLevel, message: string, meta?: unknown) {
     ...(serializeMeta(meta) ? { meta: serializeMeta(meta) } : {}),
   };
 
+  const stream = level === "error" || level === "warn" ? process.stderr : process.stdout;
+  const colorEnabled = color !== undefined && process.env.NO_COLOR === undefined &&
+    (process.env.FORCE_COLOR !== undefined ? process.env.FORCE_COLOR !== "0" : !!stream.isTTY);
+  const terminalMessage = colorEnabled ? `\x1b[1;${color}m${message}\x1b[0m` : message;
   const line = isProduction
     ? JSON.stringify(payload)
-    : `[${payload.timestamp}] ${level.toUpperCase()} ${message}${meta ? ` ${JSON.stringify(payload.meta)}` : ""}`;
+    : `[${payload.timestamp}] ${level.toUpperCase()} ${terminalMessage}${meta ? ` ${JSON.stringify(payload.meta)}` : ""}`;
 
   if (level === "error") return console.error(line);
   if (level === "warn") return console.warn(line);
@@ -31,6 +37,7 @@ function write(level: LogLevel, message: string, meta?: unknown) {
 }
 
 export const logger = {
+  status: (status: LogStatus, message: string) => write(status === "failed" ? "error" : "info", message, undefined, statusColors[status]),
   debug: (message: string, meta?: unknown) => write("debug", message, meta),
   info: (message: string, meta?: unknown) => write("info", message, meta),
   warn: (message: string, meta?: unknown) => write("warn", message, meta),

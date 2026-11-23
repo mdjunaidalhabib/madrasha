@@ -185,16 +185,16 @@ type FeeTier = { admission: number; form: number; tuition: number; exam: number;
 
 /** Demo per-class fee amounts (same shape as seed.ts feeTierByDivision). */
 export const NON_MADRASA_FEE_TIERS: Record<string, FeeTier> = {
-  school_primary: { admission: 1000, form: 200, tuition: 500, exam: 300, boarding: 0 },
-  school_junior: { admission: 1500, form: 250, tuition: 700, exam: 400, boarding: 0 },
-  ssc_science: { admission: 2000, form: 300, tuition: 900, exam: 500, boarding: 0 },
-  ssc_business: { admission: 2000, form: 300, tuition: 850, exam: 500, boarding: 0 },
-  ssc_humanities: { admission: 2000, form: 300, tuition: 800, exam: 500, boarding: 0 },
-  hsc_science: { admission: 3000, form: 400, tuition: 1200, exam: 700, boarding: 0 },
-  hsc_business: { admission: 3000, form: 400, tuition: 1100, exam: 700, boarding: 0 },
-  hsc_humanities: { admission: 3000, form: 400, tuition: 1000, exam: 700, boarding: 0 },
-  kg_preprimary: { admission: 1500, form: 200, tuition: 800, exam: 300, boarding: 0 },
-  kg_primary: { admission: 1500, form: 200, tuition: 900, exam: 350, boarding: 0 },
+  school_primary: { admission: 1000, form: 100, tuition: 500, exam: 300, boarding: 0 },
+  school_junior: { admission: 1500, form: 100, tuition: 700, exam: 400, boarding: 0 },
+  ssc_science: { admission: 2000, form: 100, tuition: 900, exam: 500, boarding: 0 },
+  ssc_business: { admission: 2000, form: 100, tuition: 850, exam: 500, boarding: 0 },
+  ssc_humanities: { admission: 2000, form: 100, tuition: 800, exam: 500, boarding: 0 },
+  hsc_science: { admission: 3000, form: 100, tuition: 1200, exam: 700, boarding: 0 },
+  hsc_business: { admission: 3000, form: 100, tuition: 1100, exam: 700, boarding: 0 },
+  hsc_humanities: { admission: 3000, form: 100, tuition: 1000, exam: 700, boarding: 0 },
+  kg_preprimary: { admission: 1500, form: 100, tuition: 800, exam: 300, boarding: 0 },
+  kg_primary: { admission: 1500, form: 100, tuition: 900, exam: 350, boarding: 0 },
 };
 
 /** Per-plan registration-number block size for each non-madrasa division. */
