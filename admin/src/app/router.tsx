@@ -94,6 +94,7 @@ const AccountDashboardPage = lazy(() => import("../features/accounts/AccountDash
 const AccountFundSettingsPage = lazy(() => import("../features/accounts/AccountFundSettingsPage"));
 
 const TalimatDashboardPage = lazy(() => import("../features/talimat/TalimatDashboardPage"));
+const QuestionPaperPage = lazy(() => import("../features/question-paper/QuestionPaperPage"));
 const TeacherAssignmentPanel = lazy(() => import("../features/talimat/TeacherAssignmentPanel"));
 const ResultPreviewPage = lazy(() => import("../features/talimat/ResultPreviewPage"));
 const ResultEntryPage = lazy(() => import("../features/talimat/ResultEntryPage"));
@@ -147,6 +148,10 @@ const LegacyStudentRedirect = ({ to }: { to: (id?: string) => string }) => {
 };
 
 const madrasaAdminChildren = [
+  {
+    path: "talimat/question-papers",
+    element: <ModuleGuard module="talimat"><PermissionGuard permission="talimat.manage">{withSuspense(<QuestionPaperPage />)}</PermissionGuard></ModuleGuard>,
+  },
   { index: true, element: <Navigate to="dashboard" replace /> },
   { path: "unauthorized", element: withSuspense(<UnauthorizedPage />) },
 

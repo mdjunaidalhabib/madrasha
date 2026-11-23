@@ -1,0 +1,21 @@
+model QuestionPaper {
+  id           String   @id @default(uuid()) @db.Uuid
+  madrasaId    Int      @map("madrasa_id")
+  createdBy    Int?     @map("created_by")
+  title        String   @db.VarChar(200)
+  divisionId   Int      @map("division_id")
+  classId      Int      @map("class_id")
+  subjectId    Int      @map("subject_id")
+  divisionName String   @map("division_name") @db.VarChar(150)
+  className    String   @map("class_name") @db.VarChar(150)
+  subject      String   @db.VarChar(200)
+  duration     String   @default("") @db.VarChar(100)
+  instructions String   @default("")
+  questions    Json
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  madrasa      Madrasa  @relation(fields: [madrasaId], references: [id], onDelete: Cascade)
+
+  @@index([madrasaId, updatedAt], map: "idx_question_papers_tenant_updated")
+  @@map("question_papers")
+}

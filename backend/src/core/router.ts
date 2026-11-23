@@ -13,6 +13,7 @@ import userRoutes from "../modules/users/user.routes";
 import settingsRoutes from "../modules/settings/settings.routes";
 import documentTemplateRoutes from "../modules/document-templates/document-templates.routes";
 import noticeRoutes from "../modules/notices/notice.routes";
+import questionPaperRoutes from "../modules/question-paper/question-paper.routes";
 import activityRoutes from "../modules/activity/activity.routes";
 import sidebarRoutes from "../modules/sidebar/sidebar.routes";
 
@@ -191,6 +192,7 @@ router.use("/users", userRoutes);
 router.use("/settings", settingsRoutes);
 router.use("/document-templates", documentTemplateRoutes);
 router.use("/notices", noticeRoutes);
+router.use("/question-papers", questionPaperRoutes);
 router.use("/activity", activityRoutes);
 
 /* =========================

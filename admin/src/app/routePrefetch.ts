@@ -16,6 +16,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   "reports/documents": () => import("../features/reports/DocumentsReportPage"),
   "talimat/teacher_assignment": () => import("../features/talimat/TeacherAssignmentPanel"),
   "talimat/results": () => import("../features/talimat/ResultPreviewPage"),
+  "talimat/question-papers": () => import("../features/question-paper/QuestionPaperPage"),
   "talimat/results/entry": () => import("../features/talimat/ResultEntryPage"),
   "talimat/settings": () => import("../features/talimat/settings/TalimatSettingsLayout"),
   "talimat/settings/class-book": () => import("../features/talimat/settings/ClassBookSettingsPage"),

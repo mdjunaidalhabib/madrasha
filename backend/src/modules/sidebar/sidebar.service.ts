@@ -347,6 +347,7 @@ export class SidebarService {
         }
 
         const fallbackTalimatChildren: { key: string; label: string; sortOrder: number }[] = [
+          { key: "question-papers", label: "প্রশ্নপত্র তৈরি", sortOrder: 9 },
           // Module-specific dashboard (pass/fail, average, grade
           // distribution, class entry status) - pinned first, same pattern
           // as the শিক্ষার্থী/হিসাব/ফি dashboard fallbacks elsewhere in this file.
