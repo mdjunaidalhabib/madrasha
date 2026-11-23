@@ -382,6 +382,22 @@ export type MadrasaCleanStats = {
   teachers: number;
 };
 
+export const MADRASA_CLEAN_SECTIONS = [
+  "students", "fees", "accounts", "exams", "attendance", "personnel", "library", "routines", "logs",
+] as const;
+export type MadrasaCleanSection = typeof MADRASA_CLEAN_SECTIONS[number];
+export type MadrasaCleanPayload = {
+  mode: "operational" | "full";
+  confirm_name: string;
+  password: string;
+  sections?: MadrasaCleanSection[];
+};
+
+export function resolveCleanSections(sections: readonly MadrasaCleanSection[]): MadrasaCleanSection[] {
+  const selected = new Set(sections);
+  return MADRASA_CLEAN_SECTIONS.filter((section) => selected.has(section));
+}
+
 export async function getMadrasaCleanStats(id: number) {
   const res = await api.get(`/super/madrasas/${id}/clean-stats`);
   return res.data.data as MadrasaCleanStats;
@@ -389,7 +405,7 @@ export async function getMadrasaCleanStats(id: number) {
 
 export async function cleanMadrasaData(
   id: number,
-  payload: { mode: "operational" | "full"; confirm_name: string; password: string },
+  payload: MadrasaCleanPayload,
 ) {
   const res = await api.post(`/super/madrasas/${id}/clean`, payload);
   return res.data;

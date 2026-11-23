@@ -38,9 +38,23 @@ export const superAdminText = defineBilingualText({
     // CleanMadrasaModal
     cleanTitle: (name: string) => `"${name}" এর ডেটা ক্লিন করুন`,
     cleanIrreversible: "এই কাজ অপরিবর্তনীয় - মুছে যাওয়া ডেটা আর ফিরিয়ে আনা যাবে না।",
-    modeOperational: "শুধু অপারেশনাল ডেটা",
+    modeOperational: "অংশ বেছে ক্লিন করুন",
     modeOperationalDesc:
-      "ছাত্র, ভর্তি, ফি স্ট্রাকচার/ইনভয়েস/পেমেন্ট, একাউন্ট, উপস্থিতি, পরীক্ষা/রেজাল্ট/রুটিন, লাইব্রেরি ইস্যু, শিক্ষক/স্টাফ (বেতন ও দায়িত্বসহ), নোটিফিকেশন ও অ্যাক্টিভিটি লগ মুছে যাবে। প্রতিষ্ঠানের সেটিংস, বিভাগ/শ্রেণি/বিষয় কাঠামো, ইউজার লগইন ও রোল-পারমিশন অক্ষত থাকবে।",
+      "নিচ থেকে যে অংশগুলো সম্পূর্ণ ক্লিন করতে চান বেছে নিন। শিক্ষার্থী বা শিক্ষক/স্টাফ মুছলে শুধু তাঁদের সঙ্গে যুক্ত রেকর্ডও মুছবে। সেটিংস, বিভাগ/শ্রেণি/বই, ইউজার লগইন ও রোল-পারমিশন থাকবে।",
+    sectionsTitle: "কোন ডেটা ক্লিন করবেন",
+    sectionsHint: "ফি ও হিসাব আলাদাভাবে নির্বাচন করুন। ফি ক্লিনে শুধু ফি-সংক্রান্ত রেকর্ড ও যুক্ত আয়-এন্ট্রি মুছবে। হিসাব ক্লিনে আয়-ব্যয়ের খাতা, ফান্ড ও খাত মুছবে; ফি-পেমেন্ট ও বেতনের রেকর্ড থাকবে। শিক্ষার্থী বা শিক্ষক/স্টাফ ক্লিনে শুধু তাঁদের সঙ্গে যুক্ত রেকর্ডও মুছবে।",
+    clearSelection: "নির্বাচন বাতিল",
+    cleanSections: {
+      students: { label: "শিক্ষার্থী ও ভর্তি", description: "সব শিক্ষার্থী, অভিভাবক, ভর্তি ও নম্বরের ইতিহাস এবং তাঁদের সঙ্গে যুক্ত ফি-পেমেন্ট, আয়-এন্ট্রি, ফলাফল, উপস্থিতি ও বই ধার মুছবে। পরীক্ষার সংজ্ঞা, রুটিন ও ফি কাঠামো থাকবে। রেজিস্ট্রেশন ও রোল আবার শুরু হবে।" },
+      fees: { label: "ফি", description: "ফি কাঠামো, ছাড়, ইনভয়েস, পেমেন্ট ও সেই পেমেন্টের যুক্ত আয়-এন্ট্রি মুছবে। অন্য আয়-ব্যয়, বেতন, ফান্ড ও খাত থাকবে। ডিফল্ট ফি কাঠামো আবার বসবে।" },
+      accounts: { label: "হিসাব", description: "সব আয়-ব্যয়, ফান্ড ও খাত মুছবে। শিক্ষার্থীর ফি কাঠামো, ছাড়, ইনভয়েস, পেমেন্ট ও বেতনের রেকর্ড থাকবে।" },
+      exams: { label: "পরীক্ষা ও ফলাফল", description: "পরীক্ষা, নম্বর, ফলাফল, পরীক্ষার রুটিন, আসন, উপস্থিতি ও পরীক্ষাভিত্তিক ফি কাঠামো মুছবে। ডিফল্ট পরীক্ষা ও পরীক্ষার ফি কাঠামো আবার বসবে।" },
+      attendance: { label: "উপস্থিতি ও ছুটি", description: "সবার দৈনিক ও সেশন উপস্থিতি, পরিবর্তনের ইতিহাস, ছুটির আবেদন, ডিভাইস পাঞ্চ লগ ও উপস্থিতির SMS কিউ মুছবে। উপস্থিতির নিয়ম ও ডিভাইস সেটিংস থাকবে।" },
+      personnel: { label: "শিক্ষক, স্টাফ ও বেতন", description: "শিক্ষক/স্টাফ, তাঁদের বেতন ও সংশ্লিষ্ট ব্যয়-এন্ট্রি, দায়িত্ব, উপস্থিতি, বই ধার ও রেজিস্ট্রেশন ইতিহাস মুছবে। শিক্ষার্থীর হিসাব, উপস্থিতি ও বই ধার এবং ইউজার লগইন থাকবে।" },
+      library: { label: "লাইব্রেরি ইস্যু", description: "সব বই ধার ও ফেরতের রেকর্ড মুছবে। লাইব্রেরির বই ও ক্যাটাগরি থাকবে।" },
+      routines: { label: "ক্লাস রুটিন", description: "সাপ্তাহিক ক্লাস রুটিন মুছবে। পরীক্ষার রুটিন মুছতে পরীক্ষা ও ফলাফল নির্বাচন করুন।" },
+      logs: { label: "নোটিফিকেশন ও লগ", description: "নোটিফিকেশন, অপেক্ষমাণ SMS ও অ্যাক্টিভিটি লগ মুছবে। এই ক্লিনের নতুন লগ রাখা হবে।" },
+    },
     modeFull: "একদম সব কিছু (ফ্যাক্টরি রিসেট)",
     modeFullDesc:
       "উপরের সব কিছুসহ সেটিংস, বিভাগ/শ্রেণি/বই কাঠামো, ওয়েবসাইট/ব্র্যান্ডিং, নথি টেমপ্লেট এবং সব ইউজার লগইন মুছে যাবে। এরপর প্রতিষ্ঠানটি নতুন তৈরির মতো অবস্থায় ফিরে আসবে: ডিফল্ট রোল, বিভাগ/শ্রেণি/বই, পরীক্ষা, গ্রেড, সেটিং, সেশন ও ফি স্ট্রাকচার আবার বসবে। প্রতিষ্ঠানের নাম/স্লাগ/প্ল্যানও থাকবে। শুধু মুহতামিম (প্রধান অ্যাডমিন) লগইন আগের ইমেইল-পাসওয়ার্ডসহ ফিরে আসবে; অন্য ইউজার ও কাস্টম রোল ফিরবে না।",
@@ -102,9 +116,23 @@ export const superAdminText = defineBilingualText({
 
     cleanTitle: (name) => `Clean data of "${name}"`,
     cleanIrreversible: "This cannot be undone - deleted data can never be recovered.",
-    modeOperational: "Operational data only",
+    modeOperational: "Clean selected sections",
     modeOperationalDesc:
-      "Students, admissions, fee structures/invoices/payments, accounts, attendance, exams/results/routines, library issues, teachers/staff (with payroll and assignments), notifications and activity logs are deleted. The institution's settings, division/class/subject structure, user logins and role permissions stay intact.",
+      "Choose sections to clear in full. Deleting students or personnel also clears only records linked to those people. Settings, divisions/classes/books, user logins and role permissions are kept.",
+    sectionsTitle: "Choose data to clean",
+    sectionsHint: "Select fees and accounts separately. Fee cleaning removes fee records and linked income entries. Account cleaning clears the ledger, funds and categories while keeping fee payments and payroll records. Student or personnel cleaning also removes only records linked to those people.",
+    clearSelection: "Clear selection",
+    cleanSections: {
+      students: { label: "Students & admissions", description: "Deletes all students, guardians, admission/number history and their linked fees, payments, income entries, results, attendance and loans. Keeps exam definitions, routines and fee structures. Restarts registration and roll numbers." },
+      fees: { label: "Fees", description: "Deletes fee structures, discounts, invoices, payments and their linked income entries. Keeps other income/expenses, payroll, funds and categories. Restores default fee structures." },
+      accounts: { label: "Accounts", description: "Deletes all income/expenses, funds and categories. Keeps student fee structures, discounts, invoices, payments and payroll records." },
+      exams: { label: "Exams & results", description: "Deletes exams, marks, results, exam routines, seating, exam attendance and exam-specific fee structures. Restores default exams and exam fee structures." },
+      attendance: { label: "Attendance & leave", description: "Deletes everyone's daily/session attendance, changes, leave requests, device punch logs and attendance SMS queue. Keeps attendance rules and device settings." },
+      personnel: { label: "Teachers, staff & payroll", description: "Deletes personnel and their payroll, linked expense entries, assignments, attendance, loans and registration history. Keeps student accounts, attendance, loans and user logins." },
+      library: { label: "Library issues", description: "Deletes all borrowing and return records. Keeps the library book catalog and categories." },
+      routines: { label: "Class routines", description: "Deletes weekly class routines. Select Exams & results to clear exam routines." },
+      logs: { label: "Notifications & logs", description: "Deletes notifications, queued SMS and activity logs. Records a new log for this clean." },
+    },
     modeFull: "Everything (factory reset)",
     modeFullDesc:
       "Everything above plus settings, division/class/book structure, website/branding, document templates and all user logins is deleted. The institution is then rebuilt as if newly created: default roles, divisions/classes/books, exams, grades, settings, session and fee structures are re-created. Its name/slug/plan are kept. Only the Muhtamim (main admin) login is restored, with the same email and password; other users and custom roles are not.",

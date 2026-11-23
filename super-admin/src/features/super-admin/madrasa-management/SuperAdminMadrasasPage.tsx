@@ -16,6 +16,7 @@ import {
   suspendMadrasa,
   trashMadrasa,
   updateMadrasa,
+  type MadrasaCleanPayload,
 } from "../../../services/superAdminApi";
 import SearchPaginationBar from "../../../components/super-admin/SearchPaginationBar";
 import MadrasasTable from "../../../components/super-admin/MadrasasTable";
@@ -308,11 +309,7 @@ export default function SuperAdminMadrasasPage() {
      CLEAN MADRASA DATA (super-admin-only, password-verified wipe)
   ============================== */
 
-  const onCleanConfirm = async (payload: {
-    mode: "operational" | "full";
-    confirm_name: string;
-    password: string;
-  }) => {
+  const onCleanConfirm = async (payload: MadrasaCleanPayload) => {
     if (!cleaningTarget) return;
     setCleanBusy(true);
     try {

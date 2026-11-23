@@ -96,6 +96,31 @@ const request = (tenant: number, token = String(tenant), path = "/plan") =>
   });
 
 describe("GET /settings/plan", () => {
+  it("excludes inactive, expelled, deleted and unapproved students from usage and renewal pricing", async () => {
+    const enrolled = { madrasaId: 7, isActive: 1, admissionStatus: "APPROVED", deletedAt: null };
+    const students = [
+      ...Array.from({ length: 80 }, () => ({ ...enrolled })),
+      ...Array.from({ length: 100 }, () => ({ ...enrolled, isActive: 2 })),
+      ...Array.from({ length: 100 }, () => ({ ...enrolled, isActive: 0 })),
+      ...Array.from({ length: 100 }, () => ({ ...enrolled, deletedAt: now })),
+      ...Array.from({ length: 100 }, () => ({ ...enrolled, admissionStatus: "PENDING" })),
+      ...Array.from({ length: 100 }, () => ({ ...enrolled, admissionStatus: "REJECTED" })),
+      ...Array.from({ length: 100 }, () => ({ ...enrolled, madrasaId: 8 })),
+    ];
+    db.student.count.mockImplementation(async ({ where }) =>
+      students.filter((student) =>
+        Object.entries(where).every(([key, value]) => student[key as keyof typeof student] === value),
+      ).length,
+    );
+
+    const response = await request(7);
+    expect(response.status).toBe(200);
+    const { data } = await response.json() as any;
+    expect(data.usage.students).toBe(80);
+    expect(data.over_limit).toBeNull();
+    expect(data.next_renewal_price).toBe(3000);
+  });
+
   it("retains old fields, adds pricing/refund/domain data and isolates two tenants", async () => {
     const response = await request(7);
     expect(response.status).toBe(200);
@@ -135,7 +160,7 @@ describe("GET /settings/plan", () => {
       expect.objectContaining({ where: { madrasaId: 7 }, take: 10 }),
     );
     expect(db.student.count).toHaveBeenCalledWith({
-      where: { madrasaId: 7, isActive: 1, deletedAt: null },
+      where: { madrasaId: 7, isActive: 1, admissionStatus: "APPROVED", deletedAt: null },
     });
     const second = (await (await request(8)).json()) as any;
     expect(second.data.usage.students).toBe(10);

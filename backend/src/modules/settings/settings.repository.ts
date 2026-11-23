@@ -172,7 +172,11 @@ export class SettingsRepository {
   }
 
   countActiveStudents(madrasaId: number, tx?: TransactionClient) {
-    return (tx ?? prisma).student.count({ where: { madrasaId, isActive: 1, deletedAt: null } });
+    // Applications keep isActive = 1 while awaiting admission approval.
+    // Only enrolled students contribute to plan usage and pricing.
+    return (tx ?? prisma).student.count({
+      where: { madrasaId, isActive: 1, admissionStatus: "APPROVED", deletedAt: null },
+    });
   }
 
   countActiveUsers(madrasaId: number) {

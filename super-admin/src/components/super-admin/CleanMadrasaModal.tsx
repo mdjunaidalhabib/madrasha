@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, Eye, EyeOff } from "lucide-react";
 import Button from "@madrasha/shared-ui/src/components/ui/Button";
-import { getMadrasaCleanStats, type MadrasaCleanStats } from "../../services/superAdminApi";
+import { getMadrasaCleanStats, MADRASA_CLEAN_SECTIONS, resolveCleanSections, type MadrasaCleanPayload, type MadrasaCleanSection, type MadrasaCleanStats } from "../../services/superAdminApi";
 import { logger } from "@madrasha/shared-ui/src/utils/logger";
 import { commonText, formatNumber, useLang, useText } from "@madrasha/shared-ui/src/i18n";
 import { superAdminText } from "./superAdmin.text";
@@ -28,7 +28,7 @@ export default function CleanMadrasaModal({
   madrasaId: number;
   madrasaName: string;
   busy?: boolean;
-  onConfirm: (payload: { mode: CleanMode; confirm_name: string; password: string }) => void;
+  onConfirm: (payload: MadrasaCleanPayload) => void;
   onClose: () => void;
 }) {
   const t = useText(superAdminText);
@@ -36,6 +36,7 @@ export default function CleanMadrasaModal({
   const lang = useLang();
   const n = (v: number) => formatNumber(v, lang);
   const [mode, setMode] = useState<CleanMode>("operational");
+  const [sections, setSections] = useState<MadrasaCleanSection[]>([]);
   const [stats, setStats] = useState<MadrasaCleanStats>(EMPTY_STATS);
   const [statsLoading, setStatsLoading] = useState(true);
   const [confirmName, setConfirmName] = useState("");
@@ -66,13 +67,21 @@ export default function CleanMadrasaModal({
   // কনফার্মেশন দিয়ে সাবমিট হয়ে যাওয়া ঠেকাতে।
   const handleModeChange = (next: CleanMode) => {
     setMode(next);
+    setSections([]);
     setConfirmName("");
     setAcknowledged(false);
     setPassword("");
   };
 
   const nameValid = confirmName.trim() === madrasaName;
-  const canSubmit = nameValid && acknowledged && password.length > 0 && !busy;
+  const effectiveSections = resolveCleanSections(sections);
+  const canSubmit = nameValid && acknowledged && password.length > 0 && !busy && (mode === "full" || sections.length > 0);
+  const changeSections = (next: MadrasaCleanSection[]) => {
+    setSections(next);
+    setConfirmName("");
+    setAcknowledged(false);
+    setPassword("");
+  };
 
   const copyName = async () => {
     try {
@@ -142,6 +151,31 @@ export default function CleanMadrasaModal({
             </div>
           </label>
         </div>
+
+        {mode === "operational" && (
+          <fieldset className="mt-4 space-y-2 rounded-lg border border-gray-200 p-3 dark:border-slate-700" disabled={busy}>
+            <legend className="px-1 text-sm font-semibold text-gray-800 dark:text-slate-100">{t.sectionsTitle}</legend>
+            <p className="text-sm text-gray-600 dark:text-slate-400">{t.sectionsHint}</p>
+            <div className="flex gap-3 text-sm">
+              <button type="button" className="text-blue-600 dark:text-blue-400" onClick={() => changeSections([...MADRASA_CLEAN_SECTIONS])}>{t.selectAll}</button>
+              <button type="button" className="text-gray-600 dark:text-slate-400" onClick={() => changeSections([])}>{t.clearSelection}</button>
+            </div>
+            {MADRASA_CLEAN_SECTIONS.map((section) => (
+              <label key={section} className="flex items-start gap-2 rounded-md bg-gray-50 p-2 dark:bg-slate-800">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={effectiveSections.includes(section)}
+                  onChange={(event) => changeSections(event.target.checked ? [...sections, section] : sections.filter((item) => item !== section))}
+                />
+                <span className="text-sm text-gray-800 dark:text-slate-100">
+                  <span className="font-medium">{t.cleanSections[section].label}</span>
+                  <span className="mt-0.5 block text-sm text-gray-600 dark:text-slate-400">{t.cleanSections[section].description}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+        )}
 
         {/* Stats preview */}
         <div className="mt-4 grid grid-cols-2 gap-2 rounded-lg bg-gray-50 p-3 text-sm dark:bg-slate-800 dark:text-slate-200 sm:grid-cols-3">
@@ -236,7 +270,7 @@ export default function CleanMadrasaModal({
             variant="danger"
             className="flex-1 sm:flex-none"
             disabled={!canSubmit}
-            onClick={() => onConfirm({ mode, confirm_name: confirmName.trim(), password })}
+            onClick={() => onConfirm({ mode, confirm_name: confirmName.trim(), password, ...(mode === "operational" ? { sections: effectiveSections } : {}) })}
           >
             {busy ? (
               <span className="flex items-center gap-2">

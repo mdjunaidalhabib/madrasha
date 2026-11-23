@@ -10,7 +10,7 @@ import {
   CleanPasswordRequiredError,
   InvalidCleanModeError,
 } from "./madrasa-clean.types";
-import { CleanMadrasaDataRequestDto } from "./madrasa-clean.dto";
+import { CleanMadrasaDataRequestDto, MADRASA_CLEAN_SECTIONS, MadrasaCleanSection, resolveCleanSections } from "./madrasa-clean.dto";
 import { t } from "../../shared/i18n";
 import { TransactionClient } from "../../shared/database/transaction";
 import { EXAM_FEE_CATEGORY_NAME } from "../fee/fee.constants";
@@ -42,6 +42,13 @@ export class MadrasaCleanService {
    * here as the second confirmation factor. */
   async cleanMadrasaData(id: number, actingSuperAdminId: number, dto: CleanMadrasaDataRequestDto) {
     if (dto.mode !== "operational" && dto.mode !== "full") throw new InvalidCleanModeError();
+    if (dto.mode === "operational" && (
+      !Array.isArray(dto.sections) || dto.sections.length === 0 ||
+      dto.sections.some((section) => !MADRASA_CLEAN_SECTIONS.includes(section))
+    )) {
+      throw new BadRequestError(t({ bn: "ক্লিন করার জন্য অন্তত একটি সঠিক অংশ নির্বাচন করুন।", en: "Select at least one valid section to clean." }));
+    }
+    const sections = dto.mode === "full" ? [...MADRASA_CLEAN_SECTIONS] : resolveCleanSections(dto.sections!);
 
     const madrasa = await this.repository.findMadrasaForClean(id);
     if (!madrasa) throw new MadrasaNotFoundError();
@@ -76,19 +83,19 @@ export class MadrasaCleanService {
         // blocks out again from it, exactly like creation does.
         await assignMissingRegistrationBlocksOnTx(tx, id);
       } else {
-        await this.repository.wipeOperationalDataOnTx(tx, id);
-        await this.reseedDefaultsOnTx(tx, id, madrasa.institutionType);
+        await this.repository.wipeOperationalDataOnTx(tx, id, sections);
+        if (sections.includes("exams") || sections.includes("fees")) {
+          await this.reseedDefaultsOnTx(tx, id, madrasa.institutionType, sections);
+        }
       }
-    });
-
-    // Written AFTER the wipe (both modes clear ActivityLog) so this is the
-    // one record that survives, marking who cleaned this tenant and when.
-    await this.superAdminRepo.createActivityLog({
-      madrasaId: id,
-      action: MADRASA_ACTIVITY.DATA_CLEANED,
-      entity: "madrasa",
-      entityId: id,
-      details: JSON.stringify({ mode: dto.mode, superAdminId: actingSuperAdminId }),
+      // Keep the new audit after the wipe, in the same atomic operation.
+      await this.superAdminRepo.createActivityLogOnTx(tx, {
+        madrasaId: id,
+        action: MADRASA_ACTIVITY.DATA_CLEANED,
+        entity: "madrasa",
+        entityId: id,
+        details: JSON.stringify({ mode: dto.mode, sections, superAdminId: actingSuperAdminId }),
+      });
     });
   }
   /** What the institution was provisioned with, read before a factory reset
@@ -123,12 +130,9 @@ export class MadrasaCleanService {
     };
   }
 
-  /** Operational clean only: classes, books, sessions, grades and settings
-   * survived, so just put back what that wipe removed - the default exams,
-   * their dormant exam-fee rows and the default fee structures for the
-   * active classes (the same templates createMadrasa copies). Demo exam
-   * routines are not re-created. Idempotent (skipDuplicates). */
-  private async reseedDefaultsOnTx(tx: TransactionClient, madrasaId: number, institutionType: string | null) {
+  /** Restore defaults only for the sections that were cleared. Exam-only
+   * cleaning keeps regular fees; fees-only cleaning keeps existing exams. */
+  private async reseedDefaultsOnTx(tx: TransactionClient, madrasaId: number, institutionType: string | null, sections: readonly MadrasaCleanSection[]) {
     const repo = this.superAdminRepo;
     const defaultExams = await repo.findDefaultExamsOnTx(tx);
     if (!defaultExams.length) {
@@ -141,7 +145,7 @@ export class MadrasaCleanService {
     }
     const currentYear = String(new Date().getFullYear());
     const examNames = defaultExams.map((e) => e.name);
-    await repo.createDefaultExamsOnTx(tx, madrasaId, examNames, currentYear);
+    if (sections.includes("exams")) await repo.createDefaultExamsOnTx(tx, madrasaId, examNames, currentYear);
 
     const session =
       (await tx.session.findFirst({ where: { madrasaId, isActive: true }, select: { id: true } })) ??
@@ -162,9 +166,9 @@ export class MadrasaCleanService {
       }),
     );
     const rows = [
-      ...templates.filter(
+      ...(sections.includes("fees") ? templates.filter(
         (s) => s.feeType !== EXAM_FEE_CATEGORY_NAME && (s.classId === null || classIds.includes(s.classId)),
-      ),
+      ) : []),
       ...examRows,
     ];
     if (rows.length) await repo.createDefaultFeeStructuresOnTx(tx, madrasaId, rows, currentYear, session.id);
