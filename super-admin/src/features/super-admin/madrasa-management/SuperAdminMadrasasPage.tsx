@@ -155,6 +155,9 @@ export default function SuperAdminMadrasasPage() {
 
       if (!Array.isArray(data) && data.meta?.total != null) {
         setTotal(Number(data.meta.total));
+        // A deletion can empty the last page. Return to the last valid page.
+        const lastPage = Math.max(1, Math.ceil(Number(data.meta.total) / limit));
+        if (page > lastPage) setPage(lastPage);
       } else {
         setTotal(0);
       }
@@ -216,9 +219,12 @@ export default function SuperAdminMadrasasPage() {
       );
 
       setOpenCreate(false);
-      setPage(1);
-
-      await fetchAll();
+      if (page === 1) {
+        await fetchAll();
+      } else {
+        // The page effect fetches page 1 so the new institution appears first.
+        setPage(1);
+      }
     } catch (err) {
       logger.error("Create madrasa failed:", err);
     }
@@ -538,6 +544,7 @@ export default function SuperAdminMadrasasPage() {
       ) : <MadrasasTable
         loading={loading}
         items={items}
+        totalItems={total || items.length}
         serialOffset={(page - 1) * limit}
         plans={plans}
         busyId={busyId}

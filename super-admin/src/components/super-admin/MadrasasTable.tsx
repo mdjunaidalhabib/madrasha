@@ -13,6 +13,7 @@ import {
 export default function MadrasasTable({
   loading,
   items,
+  totalItems,
   serialOffset,
   plans,
   busyId,
@@ -27,6 +28,7 @@ export default function MadrasasTable({
 }: {
   loading: boolean;
   items: Madrasa[];
+  totalItems: number;
   serialOffset: number;
   plans: Plan[];
   busyId: number | null;
@@ -46,7 +48,7 @@ export default function MadrasasTable({
   const renderIdentity = (m: Madrasa, index: number) => (
     <div className="flex min-w-0 items-start gap-3">
       <span title={t.serial} className="inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded-lg border border-teal-100 bg-teal-50 px-2 py-1 text-sm font-semibold tabular-nums text-teal-700 dark:border-teal-900 dark:bg-teal-950/50 dark:text-teal-300">
-        {formatNumber(serialOffset + index + 1, lang)}
+        {formatNumber(totalItems - serialOffset - index, lang)}
       </span>
       <div className="min-w-0 flex-1">
         <p className="break-words text-base font-semibold leading-6 text-slate-900 dark:text-slate-100">{m.name}</p>

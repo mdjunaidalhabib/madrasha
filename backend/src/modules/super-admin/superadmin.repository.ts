@@ -53,7 +53,8 @@ export class SuperAdminRepository {
           select: { planId: true, startDate: true, endDate: true, plan: { select: { name: true } } },
         },
       },
-      orderBy: { createdAt: "desc" },
+      // Newest first; use the ID to keep pagination stable for equal timestamps.
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       skip: offset,
       take: limit,
     });

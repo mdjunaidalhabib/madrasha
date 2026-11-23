@@ -37,11 +37,19 @@ enum PaymentStatus {
   failed
 }
 
+/// Transactional tenant ID allocation. Committed IDs remain reserved forever.
+model MadrasaIdCounter {
+  id     Int @id @default(1)
+  lastId Int @map("last_id")
+
+  @@map("madrasa_id_counter")
+}
+
 model Madrasa {
   personnelNumberReservations PersonnelNumberReservation[]
   academicSequences AcademicSequence[]
   websiteDonations WebsiteDonationSettings?
-  id            Int           @id @default(autoincrement())
+  id            Int           @id @default(dbgenerated())
   madrasaNo     Int?          @unique(map: "uniq_madrasa_no") @map("madrasa_no")
   name          String        @db.VarChar(200)
   slug          String        @unique @db.VarChar(120)
