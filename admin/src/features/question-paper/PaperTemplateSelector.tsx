@@ -1,5 +1,6 @@
-import { useState, type RefObject } from "react";
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState, type RefObject } from "react";
+import { Bold, Check, ChevronDown, Pencil, Plus, Trash2, X } from "lucide-react";
+import { useConfirmStore } from "@madrasha/shared-ui/src/store/confirmStore";
 import { useLang } from "@madrasha/shared-ui/src/i18n";
 import {
   paperTemplateApi,
@@ -12,6 +13,8 @@ type Props = {
   templates: ClosingTemplate[];
   onTemplatesChange: (items: ClosingTemplate[]) => void;
   text: string;
+  bold: boolean;
+  onToggleBold: () => void;
   onTextChange: (text: string) => void;
   customText: string;
   onCustomTextChange: (text: string) => void;
@@ -22,10 +25,10 @@ type Props = {
   onError: (text: string) => void;
   errorMessage: (error: unknown) => string;
   onSuccess: (text: string) => void;
-  confirmDelete: (text: string, action: () => void) => void;
 };
 
 export default function PaperTemplateSelector(props: Props) {
+  const dropdownRef = useRef<HTMLDetailsElement>(null);
   const lang = useLang();
   const t = (bn: string, en: string) => (lang === "bn" ? bn : en);
   const instruction = props.kind === "instruction";
@@ -37,6 +40,25 @@ export default function PaperTemplateSelector(props: Props) {
     .filter(Boolean);
   const notes = Array.from(new Set([...props.templates.map((item) => item.text), ...selected]));
   const [editing, setEditing] = useState<{ template: ClosingTemplate; text: string } | null>(null);
+  useEffect(() => {
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        dropdownRef.current.open = false;
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && dropdownRef.current?.open) {
+        dropdownRef.current.open = false;
+        dropdownRef.current.querySelector<HTMLElement>("summary")?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
   const lengthError = instruction
     ? t(
         "নির্দেশনা সর্বোচ্চ ১০০০০ অক্ষরের হতে পারবে।",
@@ -99,6 +121,7 @@ export default function PaperTemplateSelector(props: Props) {
     }
   };
   const remove = async (template: ClosingTemplate) => {
+    if (props.busy) return;
     props.onBusyChange(true);
     try {
       await api.remove(template.id);
@@ -116,19 +139,39 @@ export default function PaperTemplateSelector(props: Props) {
 
   return (
     <fieldset
-      className="qp-full qp-closing-fields"
+      className={`qp-full qp-closing-fields ${instruction ? "qp-instruction-field" : "qp-closing-field"}`}
       aria-label={
         instruction
           ? t("নির্দেশনার টেমপ্লেট", "Instruction templates")
           : t("সমাপ্তির টেমপ্লেট", "Closing templates")
       }
     >
-      <legend>
+      <legend className="qp-field-heading">
         <span>
           {instruction ? t("নির্দেশনা", "Instructions") : t("সমাপ্তির লেখা", "Closing text")}
         </span>
         <span className="qp-section-rule" aria-hidden="true" />
+        <button
+          type="button"
+          className="qp-button qp-format-button qp-field-bold"
+          aria-label={instruction ? t("নির্দেশনা বোল্ড", "Bold instructions") : t("সমাপ্তির লেখা বোল্ড", "Bold closing text")}
+          title={instruction ? t("নির্দেশনা বোল্ড", "Bold instructions") : t("সমাপ্তির লেখা বোল্ড", "Bold closing text")}
+          aria-pressed={props.bold}
+          onClick={props.onToggleBold}
+        >
+          <Bold size={12} strokeWidth={2.5} />
+        </button>
       </legend>
+      <details className="qp-template-dropdown" ref={dropdownRef}>
+        <summary className="qp-template-dropdown-trigger">
+          <span>
+            {selected.length
+              ? t(`বাছাই করা: ${selected.length}`, `Selected: ${selected.length}`)
+              : t("লেখা বাছাই করুন", "Choose text")}
+          </span>
+          <ChevronDown size={15} aria-hidden="true" />
+        </summary>
+        <div className="qp-template-dropdown-menu">
       <div className="qp-closing-options">
         {notes.map((note) => {
           const template = props.templates.find((item) => item.text === note);
@@ -195,7 +238,7 @@ export default function PaperTemplateSelector(props: Props) {
                         )
                       }
                     />
-                    <span>{note}</span>
+                    <span className={props.bold && selected.includes(note) ? "qp-template-text-bold" : undefined}>{note}</span>
                   </label>
                   {template && (
                     <div className="qp-template-actions">
@@ -213,7 +256,14 @@ export default function PaperTemplateSelector(props: Props) {
                         className="touch-manipulation rounded-md p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                         aria-label={`${instruction ? t("নির্দেশনার টেমপ্লেট মুছুন", "Delete instruction template") : t("টেমপ্লেট মুছুন", "Delete template")}: ${note}`}
                         title={t("মুছুন", "Delete")}
-                        onClick={() => props.confirmDelete(note, () => void remove(template))}
+                        disabled={props.busy}
+                        onClick={() => useConfirmStore.getState().show({
+                          title: t("এই টেমপ্লেটটি মুছবেন?", "Delete this template?"),
+                          message: note,
+                          confirmText: t("নিশ্চিত করুন", "Confirm"),
+                          danger: true,
+                          onConfirm: () => remove(template),
+                        })}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -268,6 +318,8 @@ export default function PaperTemplateSelector(props: Props) {
           </span>
         </button>
       </div>
+        </div>
+      </details>
     </fieldset>
   );
 }

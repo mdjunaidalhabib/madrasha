@@ -69,15 +69,15 @@ const readRepeatHeaderPref = (madrasaSlug: string) => {
   }
 };
 
-// স্বাক্ষর ও নম্বরপত্র (২ কলাম): নিচের "পরীক্ষা নিয়ন্ত্রকের স্বাক্ষর" দেখাবে কি না - ডিফল্ট দেখায়।
-// জায়গা কম হলে বন্ধ করা যায়; একই নিয়মে localStorage-এ থাকে ও সার্ভার PDF-এ ?hide_signature=1 যায়।
+// Report signatures are hidden by default. Keep an explicit user choice in
+// localStorage and forward it to server PDF exports as ?hide_signature=1/0.
 const hideSignatureStorageKey = (madrasaSlug: string) => `report-hide-signature:${madrasaSlug}`;
 
 const readHideSignaturePref = (madrasaSlug: string) => {
   try {
-    return localStorage.getItem(hideSignatureStorageKey(madrasaSlug)) === "1";
+    return localStorage.getItem(hideSignatureStorageKey(madrasaSlug)) !== "0";
   } catch {
-    return false;
+    return true;
   }
 };
 
@@ -194,7 +194,7 @@ const ReportShell = ({
   };
   const supportsSignatureToggle = true;
   const [hideSignaturePref, setHideSignaturePref] = useState<boolean>(() =>
-    printMode ? searchParams.get("hide_signature") === "1" : readHideSignaturePref(madrasaSlug),
+    printMode ? searchParams.get("hide_signature") !== "0" : readHideSignaturePref(madrasaSlug),
   );
   const hideSignature = hideSignaturePref;
   const toggleSignature = () => {
@@ -834,7 +834,7 @@ const ReportShell = ({
           : undefined,
       columns: columnOptions ? effectiveReport.columns.map((c) => c.key).join(",") : undefined,
       repeat_header: repeatTableHeader ? "1" : undefined,
-      hide_signature: hideSignature ? "1" : undefined,
+      hide_signature: hideSignature ? "1" : "0",
       page_columns: supportsPageColumns ? String(pageColumns) : undefined,
       search: search.trim() || undefined,
       student_id: studentFilter || undefined,

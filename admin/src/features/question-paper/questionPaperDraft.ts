@@ -23,6 +23,14 @@ function validQuestion(value: unknown): value is Question {
     Array.isArray(value.options) &&
     value.options.length === 4 &&
     value.options.every((option) => typeof option === "string") &&
+    (value.mcqTwoColumn === undefined || typeof value.mcqTwoColumn === "boolean") &&
+    (value.mcqSubquestions === undefined ||
+      (Array.isArray(value.mcqSubquestions) && value.mcqSubquestions.every(
+        (item) => record(item) && typeof item.id === "string" && typeof item.text === "string" &&
+          Array.isArray(item.options) && item.options.length === 4 &&
+          item.options.every((option) => typeof option === "string") &&
+          (item.twoColumn === undefined || typeof item.twoColumn === "boolean"),
+      ))) &&
     (value.bold === undefined || typeof value.bold === "boolean")
   );
 }
@@ -76,7 +84,18 @@ function validPaper(value: unknown): value is QuestionPaper {
     )
       return false;
     if (
-      !["instructionsBold", "footerBold"].every(
+      !["marginTop", "marginRight", "marginBottom", "marginLeft"].every(
+        (key) =>
+          layout[key] === undefined ||
+          (typeof layout[key] === "number" &&
+            Number.isInteger(layout[key]) &&
+            layout[key] >= 0 &&
+            layout[key] <= 50),
+      )
+    )
+      return false;
+    if (
+      !["instructionsBold", "footerBold", "examBold", "divisionBold", "classBold", "subjectBold", "durationBold", "marksBold"].every(
         (key) => layout[key] === undefined || typeof layout[key] === "boolean",
       )
     )

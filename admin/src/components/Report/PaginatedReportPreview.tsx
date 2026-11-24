@@ -599,7 +599,7 @@ const PaginatedReportPreview = ({
   selectedDivisionId = null,
   selectedClassName = "",
   repeatTableHeader = false,
-  hideSignature = false,
+  hideSignature = true,
   hideBrandHeader = false,
   paperSize: sheetPaperSize,
   orientation: sheetOrientation,

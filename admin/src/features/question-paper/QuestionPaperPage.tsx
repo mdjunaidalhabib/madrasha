@@ -16,6 +16,7 @@ import {
   Pencil,
   Plus,
   Printer,
+  Ruler,
   Save,
   Search,
   Trash2,
@@ -25,6 +26,7 @@ import { formatNumber, useLang } from "@madrasha/shared-ui/src/i18n";
 import { useAuthStore } from "../../store/authStore";
 import {
   appendSubquestion,
+  bracketLines,
   defaultPaperLayout,
   defaultPaperExam,
   paperExamTitle,
@@ -32,6 +34,7 @@ import {
   newQuestion,
   printPaper,
   questionError,
+  subquestionLabel,
   totalMarks,
   type Question,
   type QuestionPaper,
@@ -106,7 +109,7 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
   const [editing, setEditing] = useState<string | null>(recovery.draft?.editing ?? null);
   const [tab, setTab] = useState<"editor" | "library">("editor");
   const [search, setSearch] = useState("");
-  const [showAnswers, setShowAnswers] = useState(false);
+  const [marginPanelOpen, setMarginPanelOpen] = useState(false);
   const [customClosingNote, setCustomClosingNote] = useState(
     recovery.draft?.customClosingNote ?? "",
   );
@@ -121,14 +124,33 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
     recovery.failed ? "error" : recovery.draft ? "saved" : "idle",
   );
   const questionInput = useRef<HTMLTextAreaElement>(null);
+  const marginPanelRef = useRef<HTMLDivElement>(null);
   const focusQuestionEnd = useRef(false);
   const closingNoteInput = useRef<HTMLInputElement>(null);
   const instructionNoteInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (marginPanelRef.current && !marginPanelRef.current.contains(event.target as Node)) {
+        setMarginPanelOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && marginPanelOpen) {
+        setMarginPanelOpen(false);
+        marginPanelRef.current?.querySelector<HTMLElement>("button")?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [marginPanelOpen]);
   const hasPendingClosingNote = Boolean(customClosingNote.trim() || customInstructionNote.trim());
   const hasPendingQuestion = Boolean(
     editing ||
     draft.text.trim() ||
-    draft.answer.trim() ||
     draft.options.some((option) => option.trim()),
   );
   useLayoutEffect(() => {
@@ -239,6 +261,36 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
     setMessage("");
   };
   const patchLayout = (value: Partial<typeof layout>) => patch({ layout: { ...layout, ...value } });
+  const updateMargin = (
+    key: "marginTop" | "marginRight" | "marginBottom" | "marginLeft",
+    value: number,
+  ) => patchLayout({ [key]: Math.min(50, Math.max(0, value)) });
+  const resetMargins = () => {
+    const defaults = defaultPaperLayout(lang);
+    patchLayout({
+      marginTop: defaults.marginTop,
+      marginRight: defaults.marginRight,
+      marginBottom: defaults.marginBottom,
+      marginLeft: defaults.marginLeft,
+    });
+  };
+  const marginSides = [
+    { key: "marginTop", bn: "উপর", en: "Top" },
+    { key: "marginRight", bn: "ডান", en: "Right" },
+    { key: "marginBottom", bn: "নিচে", en: "Bottom" },
+    { key: "marginLeft", bn: "বাম", en: "Left" },
+  ] as const;
+  const fieldHeading = (label: string, key: "examBold" | "divisionBold" | "classBold" | "subjectBold" | "durationBold" | "marksBold") => (
+    <span className="qp-field-heading">
+      <span>{label}</span>
+      <button type="button" className="qp-button qp-format-button qp-field-bold"
+        aria-label={label + " " + t("বোল্ড", "bold")}
+        title={label + " " + t("বোল্ড", "bold")} aria-pressed={layout[key]}
+        onClick={(event) => { event.preventDefault(); patchLayout({ [key]: !layout[key] }); }}>
+        <Bold size={12} strokeWidth={2.5} />
+      </button>
+    </span>
+  );
   const notify = (value: string) => {
     setMessage(value);
     setError("");
@@ -253,6 +305,14 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
     focusQuestionEnd.current = true;
     setDraft((q) => ({ ...q, text: next }));
   };
+  const addMcqSubquestion = () =>
+    setDraft((q) => ({
+      ...q,
+      mcqSubquestions: [
+        ...(q.mcqSubquestions ?? []),
+        { id: crypto.randomUUID(), text: "", options: ["", "", "", ""] },
+      ],
+    }));
   const savePaper = async () => {
     if (hasPendingClosingNote) {
       setError(
@@ -360,16 +420,17 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
     if (questionError(draft)) {
       setError(
         t(
-          "প্রশ্ন ও সঠিক নম্বর দিন। MCQ-এর চারটি অপশন ও সঠিক উত্তর নির্বাচন করুন।",
-          "Enter a question and positive marks. MCQs need four options and a correct answer.",
+          "প্রশ্ন ও সঠিক নম্বর দিন। বহুনির্বাচনী প্রশ্নে চারটি অপশন দিন।",
+          "Enter a question and positive marks. MCQs need four options.",
         ),
       );
       return;
     }
+    const question = { ...draft, answer: "" };
     patch({
       questions: editing
-        ? paper.questions.map((q) => (q.id === editing ? draft : q))
-        : [...paper.questions, draft],
+        ? paper.questions.map((q) => (q.id === editing ? question : q))
+        : [...paper.questions, question],
     });
     resetDraft();
     notify(
@@ -407,11 +468,13 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
         {
           className: t("শ্রেণি", "Class"),
           subject: t("বিষয়", "Subject"),
+          division: t("বিভাগ", "Division"),
           duration: t("সময়", "Duration"),
           marks: t("পূর্ণমান", "Total marks"),
           question: t("প্রশ্ন", "Question"),
         },
         n,
+        lang,
       );
     } catch {
       setError(
@@ -583,9 +646,10 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
               </div>
               <div className="qp-fields">
                 <label className="qp-exam-field">
-                  {t("পরীক্ষা", "Exam")}
+                  {fieldHeading(t("পরীক্ষা", "Exam"), "examBold")}
                   {exams.length ? (
                     <select
+                      aria-label={t("পরীক্ষা", "Exam")}
                       value={paper.title}
                       disabled={loading}
                       onChange={(e) => patch({ title: e.target.value })}
@@ -603,6 +667,7 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                     </select>
                   ) : (
                     <input
+                      aria-label={t("পরীক্ষা", "Exam")}
                       maxLength={200}
                       value={paper.title}
                       disabled={loading}
@@ -628,7 +693,7 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                   )}
                 </label>
                 <label>
-                  {t("বিভাগ", "Division")}
+                  {fieldHeading(t("বিভাগ", "Division"), "divisionBold")}
                   <select
                     aria-label={t("বিভাগ", "Division")}
                     value={paper.divisionId || ""}
@@ -673,7 +738,7 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                   </select>
                 </label>
                 <label className="qp-class-field">
-                  {t("শ্রেণি / জামাত", "Class")}
+                  {fieldHeading(t("শ্রেণি / জামাত", "Class"), "classBold")}
                   <select
                     aria-label={t("শ্রেণি / জামাত", "Class")}
                     value={paper.classId || ""}
@@ -702,7 +767,7 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                   </select>
                 </label>
                 <label className="qp-subject-field">
-                  {t("বিষয় / কিতাব", "Subject / book")}
+                  {fieldHeading(t("বিষয় / কিতাব", "Subject / book"), "subjectBold")}
                   <select
                     aria-label={t("বিষয় / কিতাব", "Subject / book")}
                     value={paper.subjectId || ""}
@@ -725,79 +790,26 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                     ))}
                   </select>
                 </label>
-                {references && !references.divisions.length && (
-                  <p className="qp-full qp-reference-note">
-                    {t(
-                      "তালিমাতের সেটিংস থেকে আগে বিভাগ, শ্রেণি ও বিষয় যোগ করুন।",
-                      "Add divisions, classes and subjects in academic settings first.",
-                    )}
-                  </p>
-                )}
-                <label className="qp-meta-field">
-                  {t("পরীক্ষার সময়", "Exam duration")}
+                <div className="qp-full qp-exam-meta-row">
+                <label className="qp-meta-field qp-meta-duration">
+                  {fieldHeading(t("সময়", "Time"), "durationBold")}
                   <input
+                    aria-label={t("সময়", "Time")}
                     value={paper.duration}
                     maxLength={100}
                     onChange={(e) => patch({ duration: e.target.value })}
                     placeholder={t("২ ঘণ্টা ৩০ মিনিট", "2h 30m")}
                   />
                 </label>
-                <label className="qp-meta-field">
-                  {t("মোট নম্বর", "Total marks")}
-                  <input value={n(totalMarks(paper))} readOnly />
+                <label className="qp-meta-field qp-meta-marks">
+                  {fieldHeading(t("পূর্ণমান", "Marks"), "marksBold")}
+                  <input aria-label={t("মোট নম্বর", "Total marks")} value={n(totalMarks(paper))} readOnly />
                 </label>
-                <PaperTemplateSelector
-                  kind="instruction"
-                  templates={instructionTemplates}
-                  onTemplatesChange={setInstructionTemplates}
-                  text={paper.instructions}
-                  onTextChange={(instructions) => patch({ instructions })}
-                  customText={customInstructionNote}
-                  onCustomTextChange={setCustomInstructionNote}
-                  inputRef={instructionNoteInput}
-                  busy={busy}
-                  loading={loading || !references}
-                  onBusyChange={setBusy}
-                  onError={setError}
-                  errorMessage={serverError}
-                  onSuccess={notify}
-                  confirmDelete={(text, action) =>
-                    setConfirm({
-                      label: `${t("এই টেমপ্লেটটি মুছবেন?", "Delete this template?")} ${text}`,
-                      action,
-                    })
-                  }
-                />
-                <PaperTemplateSelector
-                  kind="closing"
-                  templates={closingTemplates}
-                  onTemplatesChange={setClosingTemplates}
-                  text={layout.footerText}
-                  onTextChange={(footerText) => patchLayout({ footerText })}
-                  customText={customClosingNote}
-                  onCustomTextChange={setCustomClosingNote}
-                  inputRef={closingNoteInput}
-                  busy={busy}
-                  loading={loading || !references}
-                  onBusyChange={setBusy}
-                  onError={setError}
-                  errorMessage={serverError}
-                  onSuccess={notify}
-                  confirmDelete={(text, action) =>
-                    setConfirm({
-                      label: `${t("এই টেমপ্লেটটি মুছবেন?", "Delete this template?")} ${text}`,
-                      action,
-                    })
-                  }
-                />
-                <div className="qp-full qp-subsection-heading">
-                  <h3>{t("সাজসজ্জা", "Formatting")}</h3>
-                  <span className="qp-section-rule" aria-hidden="true" />
-                </div>
                 <div className="qp-full qp-layout-controls">
-                  <label>
-                    {t("সময় ও পূর্ণমানের নিচের দাগ", "Line below time and marks")}
+                  <label className="qp-line-style-control">
+                    {t("নিচের দাগ", "Rule")}
                     <select
+                      aria-label={t("নিচের দাগ", "Rule below time and marks")}
                       value={layout.headerLineStyle}
                       onChange={(e) =>
                         patchLayout({
@@ -805,24 +817,22 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                         })
                       }
                     >
-                      <option value="none">{t("দাগ নেই", "None")}</option>
-                      <option value="solid">{t("সোজা দাগ ━━━", "Solid ━━━")}</option>
-                      <option value="double">{t("ডাবল দাগ ═══", "Double ═══")}</option>
-                      <option value="dashed">{t("ড্যাশ দাগ ┄┄┄", "Dashed ┄┄┄")}</option>
-                      <option value="dotted">{t("বিন্দু দাগ ······", "Dotted ······")}</option>
+                      <option value="none">∅</option>
+                      <option value="solid">━━━</option>
+                      <option value="double">═══</option>
+                      <option value="dashed">┄┄┄</option>
+                      <option value="dotted">······</option>
                     </select>
                   </label>
-                  <label>
-                    {t("দাগের পুরুত্ব", "Line thickness")}
+                  <label className="qp-line-thickness-control">
+                    {t("পুরুত্ব", "Thickness")}
                     <select
                       value={layout.headerLineThickness}
                       disabled={layout.headerLineStyle === "none"}
                       onChange={(e) => patchLayout({ headerLineThickness: Number(e.target.value) })}
                     >
                       {[1, 2, 3, 4].map((size) => (
-                        <option key={size} value={size}>
-                          {n(size)}
-                        </option>
+                        <option key={size} value={size}>{n(size)}</option>
                       ))}
                     </select>
                   </label>
@@ -832,7 +842,7 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                     aria-labelledby="qp-spacing-label"
                   >
                     <span id="qp-spacing-label">
-                      {t("প্রশ্নের মাঝের ফাঁক", "Question spacing")}
+                      {t("প্রশ্নের ফাঁক", "Spacing")}
                     </span>
                     <div className="qp-spacing-stepper">
                       <button
@@ -860,25 +870,112 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                       </button>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    className="qp-button qp-format-button"
-                    aria-pressed={layout.instructionsBold}
-                    onClick={() => patchLayout({ instructionsBold: !layout.instructionsBold })}
-                  >
-                    <Bold size={15} />
-                    {t("নির্দেশনা বোল্ড", "Bold instructions")}
-                  </button>
-                  <button
-                    type="button"
-                    className="qp-button qp-format-button"
-                    aria-pressed={layout.footerBold}
-                    onClick={() => patchLayout({ footerBold: !layout.footerBold })}
-                  >
-                    <Bold size={15} />
-                    {t("সমাপ্তির লেখা বোল্ড", "Bold closing text")}
-                  </button>
                 </div>
+                </div>
+                {references && !references.divisions.length && (
+                  <p className="qp-full qp-reference-note">
+                    {t(
+                      "তালিমাতের সেটিংস থেকে আগে বিভাগ, শ্রেণি ও বিষয় যোগ করুন।",
+                      "Add divisions, classes and subjects in academic settings first.",
+                    )}
+                  </p>
+                )}
+                <div className="qp-full qp-paper-settings-row">
+                <PaperTemplateSelector
+                  kind="instruction"
+                  bold={layout.instructionsBold}
+                  onToggleBold={() => patchLayout({ instructionsBold: !layout.instructionsBold })}
+                  templates={instructionTemplates}
+                  onTemplatesChange={setInstructionTemplates}
+                  text={paper.instructions}
+                  onTextChange={(instructions) => patch({ instructions })}
+                  customText={customInstructionNote}
+                  onCustomTextChange={setCustomInstructionNote}
+                  inputRef={instructionNoteInput}
+                  busy={busy}
+                  loading={loading || !references}
+                  onBusyChange={setBusy}
+                  onError={setError}
+                  errorMessage={serverError}
+                  onSuccess={notify}
+                />
+                <PaperTemplateSelector
+                  kind="closing"
+                  bold={layout.footerBold}
+                  onToggleBold={() => patchLayout({ footerBold: !layout.footerBold })}
+                  templates={closingTemplates}
+                  onTemplatesChange={setClosingTemplates}
+                  text={layout.footerText}
+                  onTextChange={(footerText) => patchLayout({ footerText })}
+                  customText={customClosingNote}
+                  onCustomTextChange={setCustomClosingNote}
+                  inputRef={closingNoteInput}
+                  busy={busy}
+                  loading={loading || !references}
+                  onBusyChange={setBusy}
+                  onError={setError}
+                  errorMessage={serverError}
+                  onSuccess={notify}
+                />
+<div className="qp-margin-popover" ref={marginPanelRef}>
+                  <span className="qp-margin-heading">{t("মার্জিন", "Margin")}</span>
+                  <button
+                    type="button"
+                    className="qp-margin-trigger"
+                    aria-expanded={marginPanelOpen}
+                    onClick={() => setMarginPanelOpen((open) => !open)}
+                  >
+                    <Ruler size={14} />
+                    {t("সেট করুন", "Set margins")}
+                    <ChevronDown size={14} />
+                  </button>
+                  {marginPanelOpen && (
+                    <div className="qp-margin-panel">
+                      <div className="qp-margin-panel-header">
+                        <span>{t("পেজ মার্জিন (mm)", "Page margin (mm)")}</span>
+                        <button type="button" onClick={resetMargins}>
+                          {t("ডিফল্ট সেট", "Set default")}
+                        </button>
+                      </div>
+                      <div className="qp-margin-sides">
+                        {marginSides.map(({ key, bn, en }) => (
+                          <div className="qp-margin-side" key={key}>
+                            <span>{t(bn, en)}</span>
+                            <div>
+                              <button
+                                type="button"
+                                aria-label={`${t(bn, en)} ${t("মার্জিন কমান", "decrease margin")}`}
+                                disabled={layout[key] <= 0}
+                                onClick={() => updateMargin(key, layout[key] - 1)}
+                              >
+                                −
+                              </button>
+                              <input
+                                type="number"
+                                min="0"
+                                max="50"
+                                value={layout[key]}
+                                aria-label={`${t(bn, en)} ${t("মার্জিন", "margin")}`}
+                                onChange={(e) => updateMargin(key, Number(e.target.value))}
+                              />
+                              <button
+                                type="button"
+                                aria-label={`${t(bn, en)} ${t("মার্জিন বাড়ান", "increase margin")}`}
+                                disabled={layout[key] >= 50}
+                                onClick={() => updateMargin(key, layout[key] + 1)}
+                              >
+                                +
+                              </button>
+                              <span>mm</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                </div>
+
               </div>
             </section>
 
@@ -900,41 +997,77 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                     )}
                   </p>
                 </div>
-              </div>
-              <form onSubmit={addQuestion}>
+              <div className="qp-question-heading-tools">
+                <button
+                  type="button"
+                  className="qp-button qp-format-button qp-question-bold-toggle"
+                  aria-label={t("প্রশ্ন বোল্ড", "Bold question")}
+                  title={t("প্রশ্ন বোল্ড", "Bold question")}
+                  aria-pressed={Boolean(draft.bold)}
+                  onClick={() => setDraft((q) => ({ ...q, bold: !q.bold }))}
+                >
+                  <strong>B</strong>
+                </button>
                 <div className="qp-type-picker">
-                  {(["written", "short", "mcq"] as const).map((type) => (
+                  {(["written", "mcq"] as const).map((type) => (
                     <button
                       type="button"
                       key={type}
                       aria-pressed={draft.type === type}
                       className={draft.type === type ? "selected" : ""}
-                      onClick={() => setDraft((q) => ({ ...q, type, answer: "" }))}
+                      onClick={() => setDraft((q) => ({
+                        ...q,
+                        type,
+                        answer: "",
+                        mcqSubquestions: type === "mcq" ? undefined : q.mcqSubquestions,
+                      }))}
                     >
-                      {type === "written" ? (
-                        <FileText size={17} />
-                      ) : type === "short" ? (
-                        <Pencil size={17} />
-                      ) : (
-                        <ListChecks size={17} />
-                      )}
-                      {type === "written"
-                        ? t("লিখিত", "Written")
-                        : type === "short"
-                          ? t("সংক্ষিপ্ত", "Short answer")
-                          : t("বহুনির্বাচনি", "MCQ")}
+                      {type === "written" ? t("\u09b2\u09bf\u0996\u09bf\u09a4", "Written") : t("\u09ac\u09b9\u09c1\u09a8\u09bf\u09b0\u09cd\u09ac\u09be\u099a\u09a8\u09c0", "MCQ")}
                       {draft.type === type && <Check size={14} />}
                     </button>
                   ))}
                 </div>
+              </div>
+              </div>
+              <form onSubmit={addQuestion}>
                 <div className="qp-fields">
-                  <label className="qp-full">
+                <div className="qp-full qp-question-entry">
+                  <div className="qp-question-entry-head">
+                    <label htmlFor="qp-question-text">
                     {t("প্রশ্ন লিখুন", "Question")}
-                    <textarea
+                    </label>
+                    <div className="qp-question-entry-tools">
+
+                    <button
+                        type="button"
+                        className="qp-button qp-add-subquestion"
+                        aria-label={t("উপপ্রশ্ন যোগ করুন (ক, খ)", "Add subquestion (a, b)")}
+                        title={t("উপপ্রশ্ন যোগ করুন (ক, খ)", "Add subquestion (a, b)")}
+                        onClick={addSubquestion}
+                        disabled={appendSubquestion(draft.text) === draft.text}
+                      >
+                        <Plus size={15} aria-hidden="true" />
+                        <span>{t("উপপ্রশ্ন যোগ", "Add subquestion")}</span>
+                        <span className="qp-subquestion-hint" aria-hidden="true">ক · খ · গ</span>
+                      </button>
+                  <label className="qp-question-marks">
+                    {t("প্রশ্নের নম্বর", "Marks")}
+                    <input
+                      type="number"
+                      min="0.5"
+                      step="0.5"
+                      required
+                      value={draft.marks || ""}
+                      onChange={(e) => setDraft((q) => ({ ...q, marks: Number(e.target.value) }))}
+                    />
+                  </label>
+                    </div>
+                  </div>
+                    <textarea id="qp-question-text"
                       ref={questionInput}
                       maxLength={10000}
                       aria-label={t("প্রশ্ন লিখুন", "Question")}
-                      rows={4}
+                      rows={3}
                       required
                       dir="auto"
                       value={draft.text}
@@ -961,51 +1094,127 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                       }}
                       placeholder={t("এখানে আপনার প্রশ্নটি লিখুন…", "Write your question here…")}
                     />
-                  </label>
-                  <div className="qp-full qp-subquestion-action">
-                    <button
-                      type="button"
-                      className="qp-button qp-format-button"
-                      aria-pressed={Boolean(draft.bold)}
-                      onClick={() => setDraft((q) => ({ ...q, bold: !q.bold }))}
-                    >
-                      <Bold size={15} />
-                      {t("প্রশ্ন বোল্ড", "Bold question")}
-                    </button>
-                    {draft.type !== "mcq" && (
+                </div>
+
+                  {draft.type !== "mcq" && (
+                    <div className="qp-full qp-subquestion-action">
                       <button
                         type="button"
-                        className="qp-button"
-                        onClick={addSubquestion}
-                        disabled={appendSubquestion(draft.text) === draft.text}
+                        className="qp-button qp-add-subquestion"
+                        onClick={addMcqSubquestion}
                       >
-                        <Plus size={15} />
-                        {t("উপপ্রশ্ন যোগ করুন (ক, খ)", "Add subquestion (ক, খ)")}
+                        <Plus size={15} aria-hidden="true" />
+                        <span>{t("বহুনির্বাচনী উপপ্রশ্ন যোগ করুন", "Add MCQ subquestion")}</span>
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
+
+                  {(draft.mcqSubquestions ?? []).map((subquestion, subIndex) => (
+                    <fieldset className="qp-full qp-nested-mcq" key={subquestion.id}>
+                      <legend>
+                        {t("বহুনির্বাচনী উপপ্রশ্ন", "MCQ subquestion")} {n(subIndex + 1)}
+                        <label className="qp-nested-mcq-layout">
+                          <span>{t("\u09aa\u09cd\u09b0\u09b6\u09cd\u09a8\u09c7\u09b0 \u09ac\u09bf\u09a8\u09cd\u09af\u09be\u09b8", "Question layout")}</span>
+                          <select
+                            aria-label={t("\u09aa\u09cd\u09b0\u09b6\u09cd\u09a8\u09c7\u09b0 \u09ac\u09bf\u09a8\u09cd\u09af\u09be\u09b8", "Question layout")}
+                            value={subquestion.twoColumn ? 2 : 1}
+                            onChange={(e) => setDraft((q) => ({
+                              ...q,
+                              mcqSubquestions: (q.mcqSubquestions ?? []).map((item) =>
+                                item.id === subquestion.id
+                                  ? { ...item, twoColumn: Number(e.target.value) === 2 }
+                                  : item,
+                              ),
+                            }))}
+                          >
+                            <option value={1}>{t("\u09aa\u09c2\u09b0\u09cd\u09a3 \u09aa\u09cd\u09b0\u09b8\u09cd\u09a5", "Full width")}</option>
+                            <option value={2}>{t("\u09a6\u09c1\u0987 \u0995\u09b2\u09be\u09ae", "Two columns")}</option>
+                          </select>
+                        </label>
+                        <button
+                          type="button"
+                          className="qp-nested-mcq-remove"
+                          aria-label={t("উপপ্রশ্ন মুছুন", "Remove subquestion")}
+                          onClick={() => setDraft((q) => ({
+                            ...q,
+                            mcqSubquestions: (q.mcqSubquestions ?? []).filter((item) => item.id !== subquestion.id),
+                          }))}
+                        ><X size={14} /></button>
+                      </legend>
+                      <input
+                        required
+                        value={subquestion.text}
+                        placeholder={t("উপপ্রশ্ন লিখুন", "Write the subquestion")}
+                        onChange={(e) => setDraft((q) => ({
+                          ...q,
+                          mcqSubquestions: (q.mcqSubquestions ?? []).map((item) => item.id === subquestion.id ? { ...item, text: e.target.value } : item),
+                        }))}
+                      />
+                      <div className="qp-nested-mcq-options">
+                        {subquestion.options.map((option, optionIndex) => (
+                          <label className="qp-option-input" key={optionIndex}>
+                            <span>{n(optionIndex + 1)}</span>
+                            <input
+                              required
+                              value={option}
+                              placeholder={`${t("অপশন", "Option")} ${n(optionIndex + 1)}`}
+                              onChange={(e) => setDraft((q) => ({
+                                ...q,
+                                mcqSubquestions: (q.mcqSubquestions ?? []).map((item) => item.id === subquestion.id ? {
+                                  ...item,
+                                  options: item.options.map((value, index) => index === optionIndex ? e.target.value : value),
+                                } : item),
+                              }))}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
+                  ))}
+
                   {draft.type === "mcq" && (
-                    <fieldset className="qp-full qp-options-field">
+                    <fieldset className="qp-full qp-options-field" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
                       <legend>
                         {t(
-                          "উত্তরের অপশন · সঠিক উত্তর নির্বাচন করুন",
-                          "Options · select the correct answer",
+                          "বিকল্প লিখুন",
+                          "Question options",
                         )}
+                        <label className="qp-mcq-column-control">
+                          <span>{t("\u09aa\u09cd\u09b0\u09b6\u09cd\u09a8\u09c7\u09b0 \u09ac\u09bf\u09a8\u09cd\u09af\u09be\u09b8", "Question layout")}</span>
+                          <select
+                            aria-label={t("\u09aa\u09cd\u09b0\u09b6\u09cd\u09a8\u09c7\u09b0 \u09ac\u09bf\u09a8\u09cd\u09af\u09be\u09b8", "Question layout")}
+                            value={draft.mcqTwoColumn ? 2 : 1}
+                            onChange={(e) => setDraft((q) => ({
+                              ...q,
+                              mcqTwoColumn: Number(e.target.value) === 2,
+                            }))}
+                          >
+                            <option value={1}>{t("\u09aa\u09c2\u09b0\u09cd\u09a3 \u09aa\u09cd\u09b0\u09b8\u09cd\u09a5", "Full width")}</option>
+                            <option value={2}>{t("\u09a6\u09c1\u0987 \u0995\u09b2\u09be\u09ae", "Two columns")}</option>
+                          </select>
+                        </label>
                       </legend>
+
                       {draft.options.map((option, index) => (
                         <label key={index} className="qp-option-input">
-                          <input
-                            type="radio"
-                            name="correct-answer"
-                            aria-label={`${t("সঠিক উত্তর", "Correct answer")} ${n(index + 1)}`}
-                            checked={draft.answer === String(index)}
-                            onChange={() => setDraft((q) => ({ ...q, answer: String(index) }))}
-                            required
-                          />
                           <span>{n(index + 1)}</span>
                           <input
                             required
                             dir="auto"
+                            aria-label={`${t("বিকল্প", "Option")} ${n(index + 1)}`}
+                            onKeyDown={(e) => {
+                              if (e.key !== "Enter") return;
+                              e.preventDefault();
+                              const inputs = Array.from(
+                                e.currentTarget.closest(".qp-options-field")?.querySelectorAll<HTMLInputElement>(
+                                  'input:not([type="radio"])',
+                                ) || [],
+                              );
+                              (inputs[index + 1] ||
+                                e.currentTarget.closest("form")?.querySelector<HTMLInputElement>(
+                                  ".qp-question-marks input",
+                                ))?.focus();
+                            }}
                             value={option}
                             placeholder={`${t("অপশন", "Option")} ${n(index + 1)}`}
                             onChange={(e) =>
@@ -1021,36 +1230,7 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                       ))}
                     </fieldset>
                   )}
-                  {draft.type !== "mcq" && (
-                    <details className="qp-full qp-optional" key={draft.id}>
-                      <summary>{t("নমুনা উত্তর (ঐচ্ছিক)", "Model answer (optional)")}</summary>
-                      <label>
-                        <span className="sr-only">{t("নমুনা উত্তর", "Model answer")}</span>
-                        <textarea
-                          dir="auto"
-                          rows={2}
-                          value={draft.answer}
-                          onChange={(e) => setDraft((q) => ({ ...q, answer: e.target.value }))}
-                          placeholder={t(
-                            "শুধু শিক্ষকের জন্য; প্রিন্টে থাকবে না",
-                            "For teachers; excluded from print",
-                          )}
-                        />
-                      </label>
-                    </details>
-                  )}
-                  <label>
-                    {t("প্রশ্নের নম্বর", "Marks")}
-                    <input
-                      type="number"
-                      min="0.5"
-                      step="0.5"
-                      required
-                      value={draft.marks || ""}
-                      onChange={(e) => setDraft((q) => ({ ...q, marks: Number(e.target.value) }))}
-                    />
-                  </label>
-                  <div className="qp-add-action">
+                  <div className="qp-full qp-add-action">
                     {editing && (
                       <button type="button" className="qp-button" onClick={resetDraft}>
                         {t("বাতিল", "Cancel")}
@@ -1096,11 +1276,7 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                       <div className="qp-question-summary">
                         <p dir="auto">{q.text}</p>
                         <span>
-                          {q.type === "mcq"
-                            ? t("বহুনির্বাচনি", "MCQ")
-                            : q.type === "short"
-                              ? t("সংক্ষিপ্ত", "Short answer")
-                              : t("লিখিত", "Written")}{" "}
+                          {q.type === "mcq" ? t("\u09ac\u09b9\u09c1\u09a8\u09bf\u09b0\u09cd\u09ac\u09be\u099a\u09a8\u09c0", "MCQ") : t("\u09b2\u09bf\u0996\u09bf\u09a4", "Written")}{" "}
                           · {n(q.marks)} {t("নম্বর", "marks")}
                         </span>
                       </div>
@@ -1122,7 +1298,15 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                         <button
                           aria-label={t("প্রশ্ন সম্পাদনা", "Edit question")}
                           onClick={() => {
-                            setDraft({ ...q, options: [...q.options] });
+                            setDraft({
+                              ...q,
+                              type: q.type === "short" ? "written" : q.type,
+                              options: [...q.options],
+                              mcqSubquestions: q.mcqSubquestions?.map((item) => ({
+                                ...item,
+                                options: [...item.options],
+                              })),
+                            });
                             setEditing(q.id);
                             questionInput.current?.focus();
                           }}
@@ -1135,7 +1319,16 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                             patch({
                               questions: [
                                 ...paper.questions.slice(0, index + 1),
-                                { ...q, id: crypto.randomUUID(), options: [...q.options] },
+                                {
+                                  ...q,
+                                  id: crypto.randomUUID(),
+                                  options: [...q.options],
+                                  mcqSubquestions: q.mcqSubquestions?.map((item) => ({
+                                    ...item,
+                                    id: crypto.randomUUID(),
+                                    options: [...item.options],
+                                  })),
+                                },
                                 ...paper.questions.slice(index + 1),
                               ],
                             })
@@ -1176,26 +1369,34 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
               </button>
             </div>
             <div className="qp-preview-stage">
-              <article className="qp-paper">
+                <article
+                className="qp-paper"
+                style={{
+                  padding: `${layout.marginTop}mm ${layout.marginRight}mm ${layout.marginBottom}mm ${layout.marginLeft}mm`,
+                }}
+              >
                 <header>
                   <h2 dir="auto">
                     {paper.institution || t("আপনার প্রতিষ্ঠানের নাম", "Your institution name")}
                   </h2>
                   {paper.address && <p className="qp-paper-address">{paper.address}</p>}
-                  <h3>{paper.title || t("পরীক্ষার নাম", "Examination title")}</h3>
+                  <h3 className={layout.examBold ? "qp-text-bold" : undefined} style={{ fontWeight: layout.examBold ? 700 : 400 }}>{paper.title || t("পরীক্ষার নাম", "Examination title")}</h3>
                   <div className="qp-paper-class-subject">
-                    <span>
+                    {paper.divisionName && <span className={layout.divisionBold ? "qp-text-bold" : undefined} style={{ fontWeight: layout.divisionBold ? 700 : 400 }}>
+                      {t("বিভাগ", "Division")}: {paper.divisionName}
+                    </span>}
+                    <span className={layout.classBold ? "qp-text-bold" : undefined} style={{ fontWeight: layout.classBold ? 700 : 400 }}>
                       {t("শ্রেণি", "Class")}: {paper.className || "…………"}
                     </span>
-                    <span>
+                    <span className={layout.subjectBold ? "qp-text-bold" : undefined} style={{ fontWeight: layout.subjectBold ? 700 : 400 }}>
                       {t("বিষয়", "Subject")}: {paper.subject || "………………"}
                     </span>
                   </div>
                   <div className="qp-paper-meta">
-                    <span>
+                    <span className={layout.durationBold ? "qp-text-bold" : undefined} style={{ fontWeight: layout.durationBold ? 700 : 400 }}>
                       {t("সময়", "Time")}: {paper.duration || "…………"}
                     </span>
-                    <span>
+                    <span className={layout.marksBold ? "qp-text-bold" : undefined} style={{ fontWeight: layout.marksBold ? 700 : 400 }}>
                       {t("পূর্ণমান", "Marks")}: {n(totalMarks(paper))}
                     </span>
                   </div>
@@ -1215,13 +1416,22 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                     className={`qp-paper-instructions${layout.instructionsBold ? " qp-text-bold" : ""}`}
                     style={{ fontWeight: layout.instructionsBold ? 700 : 400 }}
                   >
-                    {paper.instructions}
+                    {bracketLines(paper.instructions)}
                   </p>
                 )}
                 {paper.questions.length ? (
-                  <div className="qp-paper-questions" style={{ gap: layout.questionSpacing }}>
+                  <div
+                    className="qp-paper-questions"
+                    style={{
+                      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                      rowGap: layout.questionSpacing,
+                    }}
+                  >
                     {paper.questions.map((q, i) => (
-                      <section key={q.id} className={q.bold ? "qp-question-bold" : undefined}>
+                      <section
+                        key={q.id}
+                        className={`${q.mcqTwoColumn ? "qp-question-two-column" : "qp-question-full-width"}${q.bold ? " qp-question-bold" : ""}`}
+                      >
                         <div className="qp-paper-question">
                           <strong>{n(i + 1)}.</strong>
                           <p dir="auto">{q.text}</p>
@@ -1236,12 +1446,21 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                             ))}
                           </div>
                         )}
-                        {showAnswers && q.answer && (
-                          <p className="qp-answer">
-                            {t("উত্তর", "Answer")}:{" "}
-                            {q.type === "mcq" ? q.options[Number(q.answer)] : q.answer}
-                          </p>
+                        {q.type !== "mcq" && !!q.mcqSubquestions?.length && (
+                          <div className={`qp-paper-subquestions${q.mcqSubquestions.some((item) => item.twoColumn) ? " has-two-column" : ""}`}>
+                            {q.mcqSubquestions.map((subquestion, subIndex) => (
+                              <div className={`qp-paper-subquestion${subquestion.twoColumn ? " two-column" : ""}`} key={subquestion.id}>
+                                <p dir="auto"><strong>{subquestionLabel(subIndex, lang)}.</strong> {subquestion.text}</p>
+                                <div className="qp-paper-options">
+                                  {subquestion.options.map((option, optionIndex) => (
+                                    <p dir="auto" key={optionIndex}>{n(optionIndex + 1)}) {option}</p>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         )}
+
                       </section>
                     ))}
                   </div>
@@ -1258,20 +1477,13 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
                     className={layout.footerBold ? "qp-text-bold" : undefined}
                     style={{ fontWeight: layout.footerBold ? 700 : 400 }}
                   >
-                    {layout.footerText}
+                    {bracketLines(layout.footerText)}
                   </footer>
                 )}
               </article>
             </div>
             <div className="qp-preview-footer">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={showAnswers}
-                  onChange={(e) => setShowAnswers(e.target.checked)}
-                />
-                {t("উত্তর দেখুন (শুধু প্রিভিউ)", "Show answers (preview only)")}
-              </label>
+
               <span>
                 {dirty
                   ? t("পরিবর্তন সংরক্ষণ করুন", "Save your changes")
@@ -1282,8 +1494,8 @@ function QuestionPaperWorkspace({ storageKey }: { storageKey: string | null }) {
               <CheckCircle2 size={19} />
               <p>
                 {t(
-                  "প্রিন্ট বাটন থেকে “Save as PDF” বেছে নিয়ে প্রশ্নপত্র PDF হিসেবে রাখতে পারবেন। উত্তর প্রিন্ট হবে না।",
-                  "Choose “Save as PDF” in the print dialog to download your paper. Answers are excluded.",
+                  "প্রিন্ট ডায়ালগ থেকে Save as PDF বেছে প্রশ্নপত্র ডাউনলোড করুন।",
+                  "Choose Save as PDF in the print dialog to download your question paper.",
                 )}
               </p>
             </div>

@@ -347,6 +347,17 @@ describe("Question paper service", () => {
 });
 
 describe("Question validation", () => {
+  it("preserves independent header bold settings and rejects invalid values", () => {
+    const layout = {
+      footerText: "Done", questionSpacing: 10, instructionsBold: false, footerBold: false,
+      examBold: false, divisionBold: true, classBold: false,
+      subjectBold: true, durationBold: false, marksBold: true,
+    };
+    expect(paperSchema.parse({ ...input(), layout }).layout).toEqual(layout);
+    for (const key of ["examBold", "divisionBold", "classBold", "subjectBold", "durationBold", "marksBold"]) {
+      expect(paperSchema.safeParse({ ...input(), layout: { ...layout, [key]: "true" } }).success).toBe(false);
+    }
+  });
   it("rejects invalid layout settings", () => {
     const layout = {
       footerText: "Done",
