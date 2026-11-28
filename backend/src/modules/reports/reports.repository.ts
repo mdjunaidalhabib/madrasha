@@ -616,7 +616,7 @@ export class ReportsRepository {
         AND s.deleted_at IS NULL
         AND s.is_active = 1
         ${conditions}
-      ORDER BY s.admission_date DESC NULLS LAST, s.id DESC
+      ORDER BY ${classOrderSql("d.id", "c.id")}, s.roll ASC NULLS LAST, s.name_bn ASC
       `,
       params,
     );
